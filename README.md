@@ -104,7 +104,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### Read-Only Tools (34)
+### Read-Only Tools (36)
 
 | Category | Tool | Description |
 |----------|------|-------------|
@@ -145,7 +145,7 @@ Once configured, try these prompts with your AI client:
 | Calendar | `list_calendar_events` | List calendar events for a course |
 | Conversations | `list_conversations` | List inbox messages for the authenticated user |
 
-### Write Tools (8)
+### Write Tools (6)
 
 | Tool | Description | Idempotent |
 |------|-------------|------------|
@@ -253,7 +253,7 @@ const courses = await canvas.courses.list()
 | `CANVAS_API_TOKEN` | Yes | Canvas personal access token |
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
-| `CANVAS_MAX_PAGINATION_PAGES` | No | Max pages to fetch during pagination (default: `1000`) |
+
 
 ## Development
 
