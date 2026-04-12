@@ -1,0 +1,42 @@
+name: Enrich Release Notes
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enrich release notes via Claude Haiku
+        id: enrich
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+          SKIP_AI_RELEASE_NOTES: ${{ vars.SKIP_AI_RELEASE_NOTES }}
+        run: |
+          enriched=$(node scripts/enrich-release-notes.mjs)
+          if [ $? -eq 0 ] && [ -n "$enriched" ]; then
+            echo "enriched_body<<ENRICH_EOF" >> "$GITHUB_OUTPUT"
+            echo "$enriched" >> "$GITHUB_OUTPUT"
+            echo "ENRICH_EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update GitHub Release with enriched notes
+        if: steps.enrich.outputs.enriched_body != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.event.release.tag_name }}" \
+            --notes "${{ steps.enrich.outputs.enriched_body }}"
