@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient } from './canvas'
 import { registerAllTools } from './tools'
+import { registerAllResources } from './resources'
 
 export interface CanvasMCPServerConfig {
   token: string
@@ -24,6 +25,7 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
   })
 
   registerAllTools(server, canvas)
+  registerAllResources(server, canvas)
 
   return { server, canvas }
 }

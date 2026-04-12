@@ -3,9 +3,38 @@ import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { healthTools } from './health'
 import { courseTools } from './courses'
+import { assignmentTools } from './assignments'
+import { submissionTools } from './submissions'
+import { rubricTools } from './rubrics'
+import { quizTools } from './quizzes'
+import { fileTools } from './files'
+import { userTools } from './users'
+import { groupTools } from './groups'
+import { enrollmentTools } from './enrollments'
+import { discussionTools } from './discussions'
+import { moduleTools } from './modules'
+import { pageTools } from './pages'
+import { calendarTools } from './calendar'
+import { conversationTools } from './conversations'
 
 export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
-  return [...healthTools(canvas), ...courseTools(canvas)]
+  return [
+    ...healthTools(canvas),
+    ...courseTools(canvas),
+    ...assignmentTools(canvas),
+    ...submissionTools(canvas),
+    ...rubricTools(canvas),
+    ...quizTools(canvas),
+    ...fileTools(canvas),
+    ...userTools(canvas),
+    ...groupTools(canvas),
+    ...enrollmentTools(canvas),
+    ...discussionTools(canvas),
+    ...moduleTools(canvas),
+    ...pageTools(canvas),
+    ...calendarTools(canvas),
+    ...conversationTools(canvas),
+  ]
 }
 
 export function registerAllTools(server: McpServer, canvas: CanvasClient): void {
