@@ -26,9 +26,11 @@ export function parseArgs(args: string[]): CliConfig {
       case 'serve':
         config.mode = 'http'
         break
-      case '--port':
-        config.port = Number(args[++i]) || 3001
+      case '--port': {
+        const parsed = Number(args[++i])
+        config.port = Number.isNaN(parsed) ? 3001 : parsed
         break
+      }
       case '--allowed-origin':
         config.allowedOrigin = args[++i] ?? 'http://localhost:3000'
         break

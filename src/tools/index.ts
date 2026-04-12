@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
+import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
 import { healthTools } from './health'
 import { courseTools } from './courses'
@@ -47,7 +48,7 @@ export function registerAllTools(server: McpServer, canvas: CanvasClient): void 
           content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
       } catch (error) {
-        if (error && typeof error === 'object' && 'status' in error) {
+        if (error instanceof CanvasApiError) {
           // CanvasApiError — expected, no need to log
         } else {
           console.error(`Unexpected error in tool "${tool.name}":`, error)
@@ -62,9 +63,9 @@ export function registerAllTools(server: McpServer, canvas: CanvasClient): void 
 }
 
 export function formatError(error: unknown): string {
-  if (error && typeof error === 'object' && 'status' in error) {
-    const status = (error as { status: number }).status
-    const message = 'message' in error ? String((error as { message: string }).message) : ''
+  if (error instanceof CanvasApiError) {
+    const status = error.status
+    const message = error.message
     switch (status) {
       case 401:
         return 'Canvas token is invalid or expired'

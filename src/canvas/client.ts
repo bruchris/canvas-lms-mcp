@@ -29,12 +29,18 @@ export class CanvasHttpClient {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.token}`,
+      'User-Agent': USER_AGENT,
+    }
+    if (options.body) {
+      headers['Content-Type'] = 'application/json'
+    }
+
     const response = await fetch(url, {
       ...options,
       headers: {
-        Authorization: `Bearer ${this.token}`,
-        'User-Agent': USER_AGENT,
-        'Content-Type': 'application/json',
+        ...headers,
         ...options.headers,
       },
     })
