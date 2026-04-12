@@ -1,12 +1,37 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 
 export function getAllTools(_canvas: CanvasClient): ToolDefinition[] {
   return [
     // Tool domain modules will be registered here as implemented.
-    // See implementation plan Tasks 7, 9, 11.
     // Pattern: ...courseTools(canvas), ...assignmentTools(canvas), etc.
   ]
+}
+
+export function registerAllTools(server: McpServer, canvas: CanvasClient): void {
+  const tools = getAllTools(canvas)
+  for (const tool of tools) {
+    server.tool(
+      tool.name,
+      tool.description,
+      tool.inputSchema,
+      tool.annotations,
+      async (params) => {
+        try {
+          const result = await tool.handler(params as Record<string, unknown>)
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          }
+        } catch (error) {
+          return {
+            content: [{ type: 'text' as const, text: formatError(error) }],
+            isError: true,
+          }
+        }
+      },
+    )
+  }
 }
 
 export function formatError(error: unknown): string {
