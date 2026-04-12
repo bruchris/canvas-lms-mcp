@@ -1,0 +1,73 @@
+{
+  "name": "canvas-lms-mcp",
+  "version": "0.0.1",
+  "description": "Canvas LMS MCP server — read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
+    },
+    "./stdio": {
+      "import": "./dist/stdio.js",
+      "require": "./dist/stdio.cjs"
+    },
+    "./http": {
+      "import": "./dist/http.js",
+      "require": "./dist/http.cjs"
+    },
+    "./canvas": {
+      "import": "./dist/canvas/index.js",
+      "require": "./dist/canvas/index.cjs"
+    }
+  },
+  "bin": {
+    "canvas-lms-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ tests/ && prettier --check src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix && prettier --write src/ tests/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "canvas",
+    "lms",
+    "mcp",
+    "model-context-protocol",
+    "education",
+    "grading"
+  ],
+  "author": "Christian Bru",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bruchris/canvas-lms-mcp.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.1",
+    "@typescript-eslint/parser": "^8.58.1",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.2",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
+  }
+}
