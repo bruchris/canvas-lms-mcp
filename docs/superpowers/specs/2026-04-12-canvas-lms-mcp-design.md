@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-~35 tools across 15 domains.
+42 tools across 15 domains.
 
 ### Tool Pattern
 
@@ -336,10 +336,11 @@ All errors returned as structured MCP content, never thrown:
 | `get_rubric_assessment` | read | Existing assessment for a submission |
 | `submit_rubric_assessment` | write | Grade via rubric criteria |
 
-#### Quizzes (5 tools)
+#### Quizzes (6 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
+| `list_quizzes` | read | List quizzes in a course |
 | `get_quiz` | read | Quiz metadata |
 | `list_quiz_submissions` | read | Submissions for a quiz |
 | `get_quiz_questions` | read | Question definitions |
@@ -412,7 +413,7 @@ All errors returned as structured MCP content, never thrown:
 | `list_conversations` | read | Inbox messages |
 | `send_conversation` | write | Send a message to students |
 
-**Totals: 41 tools (33 read, 8 write)**
+**Totals: 42 tools (36 read, 6 write)**
 
 ## MCP Resources
 
