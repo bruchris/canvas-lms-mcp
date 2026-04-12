@@ -1,6 +1,7 @@
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
+import { CanvasApiError } from '../canvas/client'
 import { formatError } from '../tools'
 
 export function registerSyllabusResource(server: McpServer, canvas: CanvasClient): void {
@@ -37,6 +38,9 @@ export function registerSyllabusResource(server: McpServer, canvas: CanvasClient
           ],
         }
       } catch (error) {
+        if (!(error instanceof CanvasApiError)) {
+          console.error('Unexpected error in syllabus resource:', error)
+        }
         return {
           contents: [
             {

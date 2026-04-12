@@ -1,6 +1,7 @@
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
+import { CanvasApiError } from '../canvas/client'
 import { formatError } from '../tools'
 
 export function registerAssignmentDescriptionResource(
@@ -37,6 +38,9 @@ export function registerAssignmentDescriptionResource(
           ],
         }
       } catch (error) {
+        if (!(error instanceof CanvasApiError)) {
+          console.error('Unexpected error in assignment-description resource:', error)
+        }
         return {
           contents: [{ uri, mimeType: 'text/plain', text: formatError(error) }],
         }

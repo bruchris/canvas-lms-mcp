@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Important Workflow Rule
 
-**Do not run `git commit` or `git push`**. Make code changes as requested and let the user handle committing manually.
+**Do not merge PRs or force-push.** You push feature branches, open PRs, and commit to your branches. CTO handles PR merging.
 
 ## Commands
 
