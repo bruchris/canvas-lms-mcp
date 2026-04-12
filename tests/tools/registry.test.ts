@@ -5,17 +5,26 @@ import type { CanvasClient } from '../../src/canvas'
 
 describe('getAllTools', () => {
   it('returns an array of tool definitions', () => {
-    const mockCanvas = {} as CanvasClient
+    const mockCanvas = {
+      courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null },
+    } as unknown as CanvasClient
     const tools = getAllTools(mockCanvas)
 
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns empty array when no tool modules registered', () => {
-    const mockCanvas = {} as CanvasClient
+  it('returns health and course tools', () => {
+    const mockCanvas = {
+      courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null },
+    } as unknown as CanvasClient
     const tools = getAllTools(mockCanvas)
+    const names = tools.map((t) => t.name)
 
-    expect(tools).toEqual([])
+    expect(names).toContain('health_check')
+    expect(names).toContain('list_courses')
+    expect(names).toContain('get_course')
+    expect(names).toContain('get_syllabus')
+    expect(tools).toHaveLength(4)
   })
 })
 
@@ -26,9 +35,10 @@ describe('registerAllTools', () => {
 
   it('registers tools on the MCP server', () => {
     const server = new McpServer({ name: 'test', version: '1.0.0' })
-    const mockCanvas = {} as CanvasClient
+    const mockCanvas = {
+      courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null },
+    } as unknown as CanvasClient
 
-    // Should not throw with empty tool list
     expect(() => registerAllTools(server, mockCanvas)).not.toThrow()
   })
 })
