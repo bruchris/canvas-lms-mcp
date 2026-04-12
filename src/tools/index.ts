@@ -1,12 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { healthTools } from './health'
+import { courseTools } from './courses'
 
-export function getAllTools(_canvas: CanvasClient): ToolDefinition[] {
-  return [
-    // Tool domain modules will be registered here as implemented.
-    // Pattern: ...courseTools(canvas), ...assignmentTools(canvas), etc.
-  ]
+export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
+  return [...healthTools(canvas), ...courseTools(canvas)]
 }
 
 export function registerAllTools(server: McpServer, canvas: CanvasClient): void {
