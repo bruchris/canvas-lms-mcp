@@ -1,0 +1,14 @@
+services:
+  canvas-lms-mcp:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - CANVAS_API_TOKEN=${CANVAS_API_TOKEN}
+      - CANVAS_BASE_URL=${CANVAS_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
