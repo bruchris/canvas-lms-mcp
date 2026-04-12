@@ -65,7 +65,16 @@ describe('QuizzesModule', () => {
     )
   })
 
-  it('scores a quiz question', async () => {
+  it('lists quizzes in a course', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      { id: 1, title: 'Midterm', quiz_type: 'assignment', points_possible: 100, question_count: 20, published: true },
+    ])
+    const result = await quizzes.list(100)
+    expect(result).toHaveLength(1)
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/quizzes')
+  })
+
+  it('scores a quiz question without attempt', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
     await quizzes.scoreQuestion(100, 1, 50, 10, 5, 'Correct!')
     expect(client.request).toHaveBeenCalledWith(
@@ -75,10 +84,30 @@ describe('QuizzesModule', () => {
         body: JSON.stringify({
           quiz_submissions: [
             {
-              attempt: 1,
               questions: {
                 10: { score: 5, comment: 'Correct!' },
               },
+            },
+          ],
+        }),
+      },
+    )
+  })
+
+  it('scores a quiz question with specific attempt', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+    await quizzes.scoreQuestion(100, 1, 50, 10, 5, 'Correct!', 2)
+    expect(client.request).toHaveBeenCalledWith(
+      '/api/v1/courses/100/quizzes/1/submissions/50',
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          quiz_submissions: [
+            {
+              questions: {
+                10: { score: 5, comment: 'Correct!' },
+              },
+              attempt: 2,
             },
           ],
         }),

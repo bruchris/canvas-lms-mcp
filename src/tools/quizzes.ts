@@ -5,6 +5,21 @@ import type { ToolDefinition } from './types'
 export function quizTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
+      name: 'list_quizzes',
+      description: 'List all quizzes in a course.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        return canvas.quizzes.list(course_id)
+      },
+    },
+    {
       name: 'get_quiz',
       description: 'Get details for a single quiz by ID.',
       inputSchema: {
@@ -56,7 +71,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
-      name: 'get_submission_answers',
+      name: 'get_quiz_submission_answers',
       description: "Get a student's answers for a quiz submission.",
       inputSchema: {
         quiz_submission_id: z.number().describe('The Canvas quiz submission ID'),
@@ -72,7 +87,8 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'score_quiz_question',
-      description: 'Score a specific question in a quiz submission. Requires grading permissions.',
+      description:
+        'Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         quiz_id: z.number().describe('The Canvas quiz ID'),
@@ -80,6 +96,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
         question_id: z.number().describe('The Canvas quiz question ID'),
         score: z.number().describe('The score to assign'),
         comment: z.string().optional().describe('Optional feedback comment'),
+        attempt: z.number().optional().describe('Quiz attempt number to score (omit for latest)'),
       },
       annotations: {
         destructiveHint: true,
@@ -93,6 +110,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
         const question_id = params.question_id as number
         const score = params.score as number
         const comment = params.comment as string | undefined
+        const attempt = params.attempt as number | undefined
         await canvas.quizzes.scoreQuestion(
           course_id,
           quiz_id,
@@ -100,6 +118,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
           question_id,
           score,
           comment,
+          attempt,
         )
         return { success: true }
       },

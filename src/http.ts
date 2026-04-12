@@ -3,11 +3,20 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 
-async function main() {
-  const config = parseArgs(process.argv.slice(2))
-  const port = config.port
+function isValidCanvasUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
 
-  const httpServer = createServer(async (req, res) => {
+export function createHttpHandler(defaultConfig: { token?: string; baseUrl?: string }) {
+  return async (
+    req: import('node:http').IncomingMessage,
+    res: import('node:http').ServerResponse,
+  ) => {
     // CORS headers on all responses
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
@@ -54,8 +63,8 @@ async function main() {
     }
 
     // Extract per-request Canvas credentials from headers
-    const token = (req.headers['x-canvas-token'] as string) ?? config.token
-    const baseUrl = (req.headers['x-canvas-base-url'] as string) ?? config.baseUrl
+    const token = (req.headers['x-canvas-token'] as string) ?? defaultConfig.token
+    const baseUrl = (req.headers['x-canvas-base-url'] as string) ?? defaultConfig.baseUrl
 
     if (!token || !baseUrl) {
       res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -63,6 +72,17 @@ async function main() {
         JSON.stringify({
           error:
             'Missing Canvas credentials. Provide X-Canvas-Token and X-Canvas-Base-URL headers.',
+        }),
+      )
+      return
+    }
+
+    // Validate base URL to prevent SSRF
+    if (!isValidCanvasUrl(baseUrl)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(
+        JSON.stringify({
+          error: 'Invalid X-Canvas-Base-URL: must be a valid HTTP or HTTPS URL.',
         }),
       )
       return
@@ -78,8 +98,12 @@ async function main() {
       await server.connect(transport)
       await transport.handleRequest(req, res)
       res.on('close', () => {
-        transport.close()
-        server.close()
+        try {
+          transport.close()
+          server.close()
+        } catch (cleanupError) {
+          console.error('Error during MCP cleanup:', cleanupError)
+        }
       })
     } catch (error) {
       console.error('Error handling MCP request:', error)
@@ -94,7 +118,14 @@ async function main() {
         )
       }
     }
-  })
+  }
+}
+
+async function main() {
+  const config = parseArgs(process.argv.slice(2))
+  const port = config.port
+
+  const httpServer = createServer(createHttpHandler({ token: config.token, baseUrl: config.baseUrl }))
 
   httpServer.listen(port, () => {
     console.log(`Canvas LMS MCP server listening on http://localhost:${port}`)

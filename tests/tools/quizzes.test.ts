@@ -54,6 +54,7 @@ describe('quizTools', () => {
   function buildMockCanvas(): CanvasClient {
     return {
       quizzes: {
+        list: vi.fn().mockResolvedValue([mockQuiz]),
         get: vi.fn().mockResolvedValue(mockQuiz),
         listSubmissions: vi.fn().mockResolvedValue([mockQuizSubmission]),
         listQuestions: vi.fn().mockResolvedValue([mockQuestion]),
@@ -63,17 +64,18 @@ describe('quizTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
-    expect(quizTools(buildMockCanvas())).toHaveLength(5)
+  it('returns an array with 6 tool definitions', () => {
+    expect(quizTools(buildMockCanvas())).toHaveLength(6)
   })
 
   it('exports tools with correct names', () => {
     const names = quizTools(buildMockCanvas()).map((t) => t.name)
     expect(names).toEqual([
+      'list_quizzes',
       'get_quiz',
       'list_quiz_submissions',
       'list_quiz_questions',
-      'get_submission_answers',
+      'get_quiz_submission_answers',
       'score_quiz_question',
     ])
   })
@@ -121,15 +123,30 @@ describe('quizTools', () => {
     })
   })
 
-  describe('get_submission_answers', () => {
+  describe('list_quizzes', () => {
     it('has read-only annotations', () => {
-      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'get_submission_answers')!
+      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'list_quizzes')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.quizzes.list', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'list_quizzes')!
+      const result = await tool.handler({ course_id: 1 })
+      expect(canvas.quizzes.list).toHaveBeenCalledWith(1)
+      expect(result).toEqual([mockQuiz])
+    })
+  })
+
+  describe('get_quiz_submission_answers', () => {
+    it('has read-only annotations', () => {
+      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'get_quiz_submission_answers')!
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
     it('delegates to canvas.quizzes.getSubmissionAnswers', async () => {
       const canvas = buildMockCanvas()
-      const tool = quizTools(canvas).find((t) => t.name === 'get_submission_answers')!
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_answers')!
       await tool.handler({ quiz_submission_id: 1 })
       expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith(1)
     })
@@ -156,7 +173,7 @@ describe('quizTools', () => {
         score: 10,
         comment: 'Correct!',
       })
-      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, 'Correct!')
+      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, 'Correct!', undefined)
     })
 
     it('returns success object', async () => {
@@ -170,6 +187,20 @@ describe('quizTools', () => {
         score: 10,
       })
       expect(result).toEqual({ success: true })
+    })
+
+    it('passes attempt parameter when provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'score_quiz_question')!
+      await tool.handler({
+        course_id: 1,
+        quiz_id: 1,
+        submission_id: 1,
+        question_id: 1,
+        score: 10,
+        attempt: 2,
+      })
+      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, undefined, 2)
     })
   })
 })

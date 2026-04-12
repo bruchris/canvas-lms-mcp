@@ -1,10 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { z } from 'zod'
 import type { CanvasClient } from '../../src/canvas'
-import type { ToolDefinition } from '../../src/tools/types'
-
-// We'll import healthTools once it exists
-// For now, this will fail at import time
+import { CanvasApiError } from '../../src/canvas/client'
 import { healthTools } from '../../src/tools/health'
 
 describe('healthTools', () => {
@@ -59,10 +55,10 @@ describe('healthTools', () => {
     })
   })
 
-  it('returns error status when Canvas API fails', async () => {
+  it('returns error status when Canvas API returns CanvasApiError', async () => {
     const canvas = buildMockCanvas({
       courses: {
-        list: vi.fn().mockRejectedValue(new Error('fetch failed')),
+        list: vi.fn().mockRejectedValue(new CanvasApiError('Unauthorized', 401, '/api/v1/courses')),
         get: vi.fn(),
         getSyllabus: vi.fn(),
       } as unknown as CanvasClient['courses'],
@@ -71,8 +67,20 @@ describe('healthTools', () => {
     const result = await tools[0].handler({})
     expect(result).toEqual({
       status: 'error',
-      message: 'fetch failed',
+      message: 'Unauthorized',
     })
+  })
+
+  it('rethrows non-CanvasApiError errors', async () => {
+    const canvas = buildMockCanvas({
+      courses: {
+        list: vi.fn().mockRejectedValue(new TypeError('unexpected')),
+        get: vi.fn(),
+        getSyllabus: vi.fn(),
+      } as unknown as CanvasClient['courses'],
+    })
+    const tools = healthTools(canvas)
+    await expect(tools[0].handler({})).rejects.toThrow('unexpected')
   })
 
   it('has a description', () => {

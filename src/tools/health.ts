@@ -1,3 +1,4 @@
+import { CanvasApiError } from '../canvas/client'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 
@@ -17,8 +18,10 @@ export function healthTools(canvas: CanvasClient): ToolDefinition[] {
           await canvas.courses.list()
           return { status: 'ok', message: 'Canvas API is reachable' }
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error'
-          return { status: 'error', message }
+          if (error instanceof CanvasApiError) {
+            return { status: 'error', message: error.message }
+          }
+          throw error
         }
       },
     },

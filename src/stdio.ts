@@ -1,5 +1,4 @@
 // stdio transport entry point — for Claude Desktop, Cursor, VS Code, etc.
-// See implementation plan Task 13 for full implementation.
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createCanvasMCPServer } from './server'

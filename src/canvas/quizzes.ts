@@ -9,6 +9,12 @@ import type {
 export class QuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
+  async list(courseId: number): Promise<CanvasQuiz[]> {
+    return this.client.paginate<CanvasQuiz>(
+      `/api/v1/courses/${courseId}/quizzes`,
+    )
+  }
+
   async get(courseId: number, quizId: number): Promise<CanvasQuiz> {
     return this.client.request<CanvasQuiz>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}`,
@@ -51,16 +57,18 @@ export class QuizzesModule {
     questionId: number,
     score: number,
     comment?: string,
+    attempt?: number,
   ): Promise<void> {
+    const submission: Record<string, unknown> = {
+      questions: {
+        [questionId]: { score, comment },
+      },
+    }
+    if (attempt !== undefined) {
+      submission.attempt = attempt
+    }
     const body: Record<string, unknown> = {
-      quiz_submissions: [
-        {
-          attempt: 1,
-          questions: {
-            [questionId]: { score, comment },
-          },
-        },
-      ],
+      quiz_submissions: [submission],
     }
     await this.client.request(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions/${submissionId}`,

@@ -12,7 +12,7 @@ export class PagesModule {
 
   async get(courseId: number, pageUrl: string): Promise<CanvasPage> {
     return this.client.request<CanvasPage>(
-      `/api/v1/courses/${courseId}/pages/${pageUrl}`,
+      `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`,
     )
   }
 }

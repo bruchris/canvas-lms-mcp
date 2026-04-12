@@ -20,6 +20,7 @@ function buildFullMockCanvas(): CanvasClient {
       submitAssessment: async () => ({}),
     },
     quizzes: {
+      list: async () => [],
       get: async () => ({}),
       listSubmissions: async () => [],
       listQuestions: async () => [],
@@ -49,7 +50,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 41 tools across all domains', () => {
+  it('returns all 42 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -73,11 +74,12 @@ describe('getAllTools', () => {
     expect(names).toContain('get_rubric')
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
-    // Quizzes (5)
+    // Quizzes (6)
+    expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
     expect(names).toContain('list_quiz_submissions')
     expect(names).toContain('list_quiz_questions')
-    expect(names).toContain('get_submission_answers')
+    expect(names).toContain('get_quiz_submission_answers')
     expect(names).toContain('score_quiz_question')
     // Files (3)
     expect(names).toContain('list_files')
@@ -110,7 +112,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_conversations')
     expect(names).toContain('send_conversation')
 
-    expect(tools).toHaveLength(41)
+    expect(tools).toHaveLength(42)
   })
 
   it('all tools have openWorldHint: true', () => {
