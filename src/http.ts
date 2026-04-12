@@ -3,33 +3,6 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 
-const PRIVATE_IP_RANGES = [
-  /^127\./, // loopback
-  /^10\./, // 10.0.0.0/8
-  /^172\.(1[6-9]|2\d|3[01])\./, // 172.16.0.0/12
-  /^192\.168\./, // 192.168.0.0/16
-  /^169\.254\./, // link-local
-  /^0\./, // current network
-]
-
-function isPrivateHost(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true
-  return PRIVATE_IP_RANGES.some((re) => re.test(hostname))
-}
-
-function isValidCanvasUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString)
-    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-    if (!isDev && url.protocol !== 'https:') return false
-    if (isDev && url.protocol !== 'https:' && url.protocol !== 'http:') return false
-    if (isPrivateHost(url.hostname)) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function createHttpHandler(defaultConfig: {
   token?: string
   baseUrl?: string
@@ -47,7 +20,7 @@ export function createHttpHandler(defaultConfig: {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, X-Canvas-Token, X-Canvas-Base-URL, Mcp-Session-Id, Mcp-Protocol-Version',
+      'Content-Type, X-Canvas-Token, Mcp-Session-Id, Mcp-Protocol-Version',
     )
     res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id, Mcp-Protocol-Version')
 
@@ -84,27 +57,16 @@ export function createHttpHandler(defaultConfig: {
       return
     }
 
-    // Extract per-request Canvas credentials from headers
+    // Per-request token from header; base URL must come from server config (SSRF protection)
     const token = (req.headers['x-canvas-token'] as string) ?? defaultConfig.token
-    const baseUrl = (req.headers['x-canvas-base-url'] as string) ?? defaultConfig.baseUrl
+    const baseUrl = defaultConfig.baseUrl
 
     if (!token || !baseUrl) {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(
         JSON.stringify({
           error:
-            'Missing Canvas credentials. Provide X-Canvas-Token and X-Canvas-Base-URL headers.',
-        }),
-      )
-      return
-    }
-
-    // Validate base URL to prevent SSRF
-    if (!isValidCanvasUrl(baseUrl)) {
-      res.writeHead(400, { 'Content-Type': 'application/json' })
-      res.end(
-        JSON.stringify({
-          error: 'Invalid X-Canvas-Base-URL: must be a valid HTTP or HTTPS URL.',
+            'Missing Canvas credentials. Provide X-Canvas-Token header and configure base URL via --base-url or CANVAS_BASE_URL.',
         }),
       )
       return

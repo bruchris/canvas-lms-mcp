@@ -89,7 +89,7 @@ describe('createHttpHandler', () => {
       expect(res._headers['access-control-allow-origin']).toBe('https://myapp.example.com')
       expect(res._headers['access-control-allow-methods']).toBe('GET, POST, DELETE, OPTIONS')
       expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Token')
-      expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Base-URL')
+      expect(res._headers['access-control-allow-headers']).not.toContain('X-Canvas-Base-URL')
     })
 
     it('defaults CORS origin to localhost when not configured', async () => {
@@ -150,41 +150,38 @@ describe('createHttpHandler', () => {
       expect(JSON.parse(res._body).error).toContain('Missing Canvas credentials')
     })
 
-    it('returns 400 for invalid base URL', async () => {
-      const noConfigHandler = createHttpHandler({})
+    it('does not allow base URL override via request header', async () => {
       const req = createMockReq({
         method: 'POST',
         url: '/mcp',
         headers: {
-          'x-canvas-token': 'tok',
-          'x-canvas-base-url': 'not-a-url',
+          'x-canvas-base-url': 'https://attacker.example.com/api/v1',
         },
       })
       const res = createMockRes()
-      await noConfigHandler(req, res)
-      expect(res._status).toBe(400)
-      expect(JSON.parse(res._body).error).toContain('Invalid X-Canvas-Base-URL')
+      await handler(req, res)
+      const { createCanvasMCPServer } = await import('../src/server')
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseUrl: 'https://canvas.example.com/api/v1',
+        }),
+      )
     })
 
-    it('rejects private IP addresses in base URL', async () => {
-      const noConfigHandler = createHttpHandler({})
-      for (const privateUrl of [
-        'https://127.0.0.1/api/v1',
-        'https://10.0.0.1/api/v1',
-        'https://172.16.0.1/api/v1',
-        'https://192.168.1.1/api/v1',
-        'https://169.254.1.1/api/v1',
-        'https://localhost/api/v1',
-      ]) {
-        const req = createMockReq({
-          method: 'POST',
-          url: '/mcp',
-          headers: { 'x-canvas-token': 'tok', 'x-canvas-base-url': privateUrl },
-        })
-        const res = createMockRes()
-        await noConfigHandler(req, res)
-        expect(res._status).toBe(400)
-      }
+    it('allows per-request token via X-Canvas-Token header', async () => {
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-token': 'per-request-token' },
+      })
+      const res = createMockRes()
+      await handler(req, res)
+      const { createCanvasMCPServer } = await import('../src/server')
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: 'per-request-token',
+        }),
+      )
     })
 
     it('uses default config when headers not provided', async () => {

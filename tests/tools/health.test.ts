@@ -55,7 +55,7 @@ describe('healthTools', () => {
     })
   })
 
-  it('returns error status when Canvas API returns CanvasApiError', async () => {
+  it('propagates CanvasApiError to outer handler for formatError()', async () => {
     const canvas = buildMockCanvas({
       users: {
         getProfile: vi
@@ -66,14 +66,10 @@ describe('healthTools', () => {
       } as unknown as CanvasClient['users'],
     })
     const tools = healthTools(canvas)
-    const result = await tools[0].handler({})
-    expect(result).toEqual({
-      status: 'error',
-      message: 'Unauthorized',
-    })
+    await expect(tools[0].handler({})).rejects.toThrow(CanvasApiError)
   })
 
-  it('rethrows non-CanvasApiError errors', async () => {
+  it('propagates non-CanvasApiError errors', async () => {
     const canvas = buildMockCanvas({
       users: {
         getProfile: vi.fn().mockRejectedValue(new TypeError('unexpected')),
