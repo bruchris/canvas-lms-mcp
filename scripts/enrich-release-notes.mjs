@@ -93,13 +93,26 @@ async function enrichReleaseNotes() {
     process.exit(0);
   }
 
+  if (data?.stop_reason === 'max_tokens') {
+    process.stderr.write('[enrich-release-notes] Response truncated (hit max_tokens) — skipping.\n');
+    process.exit(0);
+  }
+
   const enriched = data?.content?.[0]?.text;
   if (!enriched) {
     process.stderr.write('[enrich-release-notes] Unexpected response shape from Anthropic API — skipping.\n');
     process.exit(0);
   }
 
+  if (enriched.trim().length < RELEASE_BODY.trim().length * 0.5) {
+    process.stderr.write('[enrich-release-notes] Enriched content suspiciously short — skipping.\n');
+    process.exit(0);
+  }
+
   process.stdout.write(enriched);
 }
 
-enrichReleaseNotes();
+enrichReleaseNotes().catch((err) => {
+  process.stderr.write(`[enrich-release-notes] Unexpected error: ${err.message}\n`);
+  process.exit(0);
+});

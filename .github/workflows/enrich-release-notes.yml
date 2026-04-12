@@ -26,17 +26,20 @@ jobs:
           VERSION_TAG: ${{ github.event.release.tag_name }}
           SKIP_AI_RELEASE_NOTES: ${{ vars.SKIP_AI_RELEASE_NOTES }}
         run: |
-          enriched=$(node scripts/enrich-release-notes.mjs)
-          if [ $? -eq 0 ] && [ -n "$enriched" ]; then
-            echo "enriched_body<<ENRICH_EOF" >> "$GITHUB_OUTPUT"
-            echo "$enriched" >> "$GITHUB_OUTPUT"
-            echo "ENRICH_EOF" >> "$GITHUB_OUTPUT"
+          node scripts/enrich-release-notes.mjs > /tmp/enriched-notes.md
+          if [ $? -eq 0 ] && [ -s /tmp/enriched-notes.md ]; then
+            delimiter="ENRICH_EOF_$(openssl rand -hex 8)"
+            echo "enriched_body<<${delimiter}" >> "$GITHUB_OUTPUT"
+            cat /tmp/enriched-notes.md >> "$GITHUB_OUTPUT"
+            echo "${delimiter}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Update GitHub Release with enriched notes
         if: steps.enrich.outputs.enriched_body != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENRICHED_BODY: ${{ steps.enrich.outputs.enriched_body }}
         run: |
+          printf '%s' "$ENRICHED_BODY" > /tmp/enriched-notes.md
           gh release edit "${{ github.event.release.tag_name }}" \
-            --notes "${{ steps.enrich.outputs.enriched_body }}"
+            --notes-file /tmp/enriched-notes.md
