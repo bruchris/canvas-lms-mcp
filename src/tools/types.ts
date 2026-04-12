@@ -10,7 +10,7 @@ export interface ToolAnnotations {
 export interface ToolDefinition {
   name: string
   description: string
-  inputSchema: z.ZodType
+  inputSchema: Record<string, z.ZodType>
   annotations: ToolAnnotations
   handler: (params: Record<string, unknown>) => Promise<unknown>
 }

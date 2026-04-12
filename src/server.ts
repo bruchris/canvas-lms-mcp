@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient } from './canvas'
-import { getAllTools, formatError } from './tools'
+import { registerAllTools } from './tools'
+import { registerAllResources } from './resources'
 
 export interface CanvasMCPServerConfig {
   token: string
@@ -23,23 +24,8 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
     version: '1.0.0',
   })
 
-  // Register all tools
-  const tools = getAllTools(canvas)
-  for (const tool of tools) {
-    server.tool(tool.name, tool.description, tool.annotations, async (params) => {
-      try {
-        const result = await tool.handler(params as Record<string, unknown>)
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-        }
-      } catch (error) {
-        return {
-          content: [{ type: 'text' as const, text: formatError(error) }],
-          isError: true,
-        }
-      }
-    })
-  }
+  registerAllTools(server, canvas)
+  registerAllResources(server, canvas)
 
   return { server, canvas }
 }

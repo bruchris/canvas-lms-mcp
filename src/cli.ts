@@ -3,6 +3,7 @@ export interface CliConfig {
   baseUrl: string
   mode: 'stdio' | 'http'
   port: number
+  allowedOrigin: string
 }
 
 export function parseArgs(args: string[]): CliConfig {
@@ -11,6 +12,7 @@ export function parseArgs(args: string[]): CliConfig {
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
     mode: 'stdio',
     port: 3001,
+    allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -26,6 +28,9 @@ export function parseArgs(args: string[]): CliConfig {
         break
       case '--port':
         config.port = Number(args[++i]) || 3001
+        break
+      case '--allowed-origin':
+        config.allowedOrigin = args[++i] ?? 'http://localhost:3000'
         break
     }
   }

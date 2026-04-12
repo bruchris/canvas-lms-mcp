@@ -107,9 +107,7 @@ describe('CoursesModule', () => {
 
       const result = await courses.getSyllabus(1)
       expect(result).toBe('<p>Welcome to CS 101</p>')
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/1?include[]=syllabus_body',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1?include[]=syllabus_body')
     })
 
     it('returns null when syllabus_body is undefined', async () => {
@@ -135,9 +133,7 @@ describe('CoursesModule', () => {
       })
 
       await courses.getSyllabus(99)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/99?include[]=syllabus_body',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/99?include[]=syllabus_body')
     })
   })
 })
