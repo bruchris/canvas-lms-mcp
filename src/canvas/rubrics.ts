@@ -5,15 +5,11 @@ export class RubricsModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(courseId: number): Promise<CanvasRubric[]> {
-    return this.client.paginate<CanvasRubric>(
-      `/api/v1/courses/${courseId}/rubrics`,
-    )
+    return this.client.paginate<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics`)
   }
 
   async get(courseId: number, rubricId: number): Promise<CanvasRubric> {
-    return this.client.request<CanvasRubric>(
-      `/api/v1/courses/${courseId}/rubrics/${rubricId}`,
-    )
+    return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics/${rubricId}`)
   }
 
   async getAssessment(

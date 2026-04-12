@@ -11,11 +11,7 @@ export class SubmissionsModule {
     )
   }
 
-  async get(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
-  ): Promise<CanvasSubmission> {
+  async get(courseId: number, assignmentId: number, userId: number): Promise<CanvasSubmission> {
     return this.client.request<CanvasSubmission>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}?include[]=submission_comments`,
     )

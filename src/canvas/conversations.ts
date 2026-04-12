@@ -8,11 +8,7 @@ export class ConversationsModule {
     return this.client.paginate<CanvasConversation>('/api/v1/conversations')
   }
 
-  async send(
-    recipients: string[],
-    subject: string,
-    body: string,
-  ): Promise<CanvasConversation[]> {
+  async send(recipients: string[], subject: string, body: string): Promise<CanvasConversation[]> {
     return this.client.request<CanvasConversation[]>('/api/v1/conversations', {
       method: 'POST',
       body: JSON.stringify({

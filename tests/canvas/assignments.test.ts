@@ -46,9 +46,7 @@ describe('AssignmentsModule', () => {
 
       const result = await assignments.list(100)
       expect(result).toEqual(mockAssignments)
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/100/assignments',
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/assignments')
     })
 
     it('returns empty array when no assignments', async () => {
@@ -62,9 +60,7 @@ describe('AssignmentsModule', () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
 
       await assignments.list(42)
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/42/assignments',
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/42/assignments')
     })
   })
 
@@ -86,9 +82,7 @@ describe('AssignmentsModule', () => {
 
       const result = await assignments.get(100, 1)
       expect(result).toEqual(mockAssignment)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/100/assignments/1',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/1')
     })
 
     it('constructs correct URL for different IDs', async () => {
@@ -105,9 +99,7 @@ describe('AssignmentsModule', () => {
       })
 
       await assignments.get(42, 55)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/42/assignments/55',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/assignments/55')
     })
   })
 
@@ -122,9 +114,7 @@ describe('AssignmentsModule', () => {
 
       const result = await assignments.listGroups(100)
       expect(result).toEqual(mockGroups)
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/100/assignment_groups',
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups')
     })
 
     it('returns empty array when no groups', async () => {

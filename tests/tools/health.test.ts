@@ -58,7 +58,9 @@ describe('healthTools', () => {
   it('returns error status when Canvas API returns CanvasApiError', async () => {
     const canvas = buildMockCanvas({
       users: {
-        getProfile: vi.fn().mockRejectedValue(new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/profile')),
+        getProfile: vi
+          .fn()
+          .mockRejectedValue(new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/profile')),
         get: vi.fn(),
         listStudents: vi.fn(),
       } as unknown as CanvasClient['users'],

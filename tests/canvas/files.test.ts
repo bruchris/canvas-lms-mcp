@@ -16,7 +16,14 @@ describe('FilesModule', () => {
 
   it('lists files for a course', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
-      { id: 1, display_name: 'syllabus.pdf', content_type: 'application/pdf', url: 'https://example.com/file', size: 1024, folder_id: 1 },
+      {
+        id: 1,
+        display_name: 'syllabus.pdf',
+        content_type: 'application/pdf',
+        url: 'https://example.com/file',
+        size: 1024,
+        folder_id: 1,
+      },
     ])
     const result = await files.list(100)
     expect(result).toHaveLength(1)

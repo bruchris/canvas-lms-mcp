@@ -35,9 +35,7 @@ describe('calendarTools', () => {
 
   describe('list_calendar_events', () => {
     it('has read-only annotations', () => {
-      const tool = calendarTools(buildMockCanvas()).find(
-        (t) => t.name === 'list_calendar_events',
-      )!
+      const tool = calendarTools(buildMockCanvas()).find((t) => t.name === 'list_calendar_events')!
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 

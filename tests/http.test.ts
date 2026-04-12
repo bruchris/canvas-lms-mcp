@@ -93,7 +93,10 @@ describe('createHttpHandler', () => {
     })
 
     it('defaults CORS origin to localhost when not configured', async () => {
-      const defaultHandler = createHttpHandler({ token: 'tok', baseUrl: 'https://canvas.example.com' })
+      const defaultHandler = createHttpHandler({
+        token: 'tok',
+        baseUrl: 'https://canvas.example.com',
+      })
       const req = createMockReq({ url: '/health' })
       const res = createMockRes()
       await defaultHandler(req, res)

@@ -16,13 +16,18 @@ describe('DiscussionsModule', () => {
 
   it('lists discussion topics for a course', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
-      { id: 1, title: 'Week 1 Discussion', message: 'Discuss this.', posted_at: '2026-04-01T00:00:00Z', discussion_type: 'threaded', published: true },
+      {
+        id: 1,
+        title: 'Week 1 Discussion',
+        message: 'Discuss this.',
+        posted_at: '2026-04-01T00:00:00Z',
+        discussion_type: 'threaded',
+        published: true,
+      },
     ])
     const result = await discussions.list(100)
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith(
-      '/api/v1/courses/100/discussion_topics',
-    )
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics')
   })
 
   it('gets a single discussion topic with all_dates include', async () => {
@@ -43,14 +48,18 @@ describe('DiscussionsModule', () => {
 
   it('lists announcements with only_announcements filter', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
-      { id: 10, title: 'Important Announcement', message: 'Read this!', posted_at: '2026-04-05T00:00:00Z' },
+      {
+        id: 10,
+        title: 'Important Announcement',
+        message: 'Read this!',
+        posted_at: '2026-04-05T00:00:00Z',
+      },
     ])
     const result = await discussions.listAnnouncements(100)
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith(
-      '/api/v1/courses/100/discussion_topics',
-      { only_announcements: 'true' },
-    )
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics', {
+      only_announcements: 'true',
+    })
   })
 
   it('posts a discussion entry', async () => {
@@ -61,12 +70,9 @@ describe('DiscussionsModule', () => {
       created_at: '2026-04-10T12:00:00Z',
     })
     await discussions.postEntry(100, 1, 'My response')
-    expect(client.request).toHaveBeenCalledWith(
-      '/api/v1/courses/100/discussion_topics/1/entries',
-      {
-        method: 'POST',
-        body: JSON.stringify({ message: 'My response' }),
-      },
-    )
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics/1/entries', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'My response' }),
+    })
   })
 })

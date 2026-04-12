@@ -25,8 +25,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course',
-      description:
-        'Get details for a single course by ID, including term and total student count.',
+      description: 'Get details for a single course by ID, including term and total student count.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
       },

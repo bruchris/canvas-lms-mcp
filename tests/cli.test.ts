@@ -45,14 +45,25 @@ describe('parseArgs', () => {
   it('CLI args override env vars', () => {
     process.env.CANVAS_API_TOKEN = 'env-token'
     process.env.CANVAS_BASE_URL = 'https://env-canvas.example.com'
-    const result = parseArgs(['--token', 'cli-token', '--base-url', 'https://cli-canvas.example.com'])
+    const result = parseArgs([
+      '--token',
+      'cli-token',
+      '--base-url',
+      'https://cli-canvas.example.com',
+    ])
 
     expect(result.token).toBe('cli-token')
     expect(result.baseUrl).toBe('https://cli-canvas.example.com')
   })
 
   it('sets mode to http when serve subcommand is given', () => {
-    const result = parseArgs(['--token', 'my-token', '--base-url', 'https://canvas.example.com', 'serve'])
+    const result = parseArgs([
+      '--token',
+      'my-token',
+      '--base-url',
+      'https://canvas.example.com',
+      'serve',
+    ])
 
     expect(result.mode).toBe('http')
   })
@@ -65,10 +76,13 @@ describe('parseArgs', () => {
 
   it('parses --port', () => {
     const result = parseArgs([
-      '--token', 'my-token',
-      '--base-url', 'https://canvas.example.com',
+      '--token',
+      'my-token',
+      '--base-url',
+      'https://canvas.example.com',
       'serve',
-      '--port', '8080',
+      '--port',
+      '8080',
     ])
 
     expect(result.port).toBe(8080)
@@ -82,9 +96,12 @@ describe('parseArgs', () => {
 
   it('defaults port to 3001 for invalid port value', () => {
     const result = parseArgs([
-      '--token', 'my-token',
-      '--base-url', 'https://canvas.example.com',
-      '--port', 'not-a-number',
+      '--token',
+      'my-token',
+      '--base-url',
+      'https://canvas.example.com',
+      '--port',
+      'not-a-number',
     ])
 
     expect(result.port).toBe(3001)
@@ -96,7 +113,9 @@ describe('parseArgs', () => {
     })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(() => parseArgs(['--base-url', 'https://canvas.example.com'])).toThrow('process.exit called')
+    expect(() => parseArgs(['--base-url', 'https://canvas.example.com'])).toThrow(
+      'process.exit called',
+    )
 
     expect(errorSpy).toHaveBeenCalledWith(
       'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN',
@@ -134,9 +153,12 @@ describe('parseArgs', () => {
   it('handles args in any order', () => {
     const result = parseArgs([
       'serve',
-      '--port', '9000',
-      '--base-url', 'https://canvas.example.com',
-      '--token', 'my-token',
+      '--port',
+      '9000',
+      '--base-url',
+      'https://canvas.example.com',
+      '--token',
+      'my-token',
     ])
 
     expect(result).toEqual<CliConfig>({
@@ -150,9 +172,12 @@ describe('parseArgs', () => {
 
   it('parses --allowed-origin', () => {
     const result = parseArgs([
-      '--token', 'my-token',
-      '--base-url', 'https://canvas.example.com',
-      '--allowed-origin', 'https://myapp.example.com',
+      '--token',
+      'my-token',
+      '--base-url',
+      'https://canvas.example.com',
+      '--allowed-origin',
+      'https://myapp.example.com',
     ])
 
     expect(result.allowedOrigin).toBe('https://myapp.example.com')

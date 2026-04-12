@@ -140,7 +140,9 @@ describe('quizTools', () => {
 
   describe('get_quiz_submission_answers', () => {
     it('has read-only annotations', () => {
-      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'get_quiz_submission_answers')!
+      const tool = quizTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_quiz_submission_answers',
+      )!
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
@@ -173,7 +175,15 @@ describe('quizTools', () => {
         score: 10,
         comment: 'Correct!',
       })
-      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, 'Correct!', undefined)
+      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(
+        1,
+        1,
+        1,
+        1,
+        10,
+        'Correct!',
+        undefined,
+      )
     })
 
     it('returns success object', async () => {

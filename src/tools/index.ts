@@ -40,30 +40,24 @@ export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
 export function registerAllTools(server: McpServer, canvas: CanvasClient): void {
   const tools = getAllTools(canvas)
   for (const tool of tools) {
-    server.tool(
-      tool.name,
-      tool.description,
-      tool.inputSchema,
-      tool.annotations,
-      async (params) => {
-        try {
-          const result = await tool.handler(params as Record<string, unknown>)
-          return {
-            content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-          }
-        } catch (error) {
-          if (error && typeof error === 'object' && 'status' in error) {
-            // CanvasApiError — expected, no need to log
-          } else {
-            console.error(`Unexpected error in tool "${tool.name}":`, error)
-          }
-          return {
-            content: [{ type: 'text' as const, text: formatError(error) }],
-            isError: true,
-          }
+    server.tool(tool.name, tool.description, tool.inputSchema, tool.annotations, async (params) => {
+      try {
+        const result = await tool.handler(params as Record<string, unknown>)
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
         }
-      },
-    )
+      } catch (error) {
+        if (error && typeof error === 'object' && 'status' in error) {
+          // CanvasApiError — expected, no need to log
+        } else {
+          console.error(`Unexpected error in tool "${tool.name}":`, error)
+        }
+        return {
+          content: [{ type: 'text' as const, text: formatError(error) }],
+          isError: true,
+        }
+      }
+    })
   }
 }
 

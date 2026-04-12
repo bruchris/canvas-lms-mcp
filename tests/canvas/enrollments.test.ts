@@ -16,7 +16,14 @@ describe('EnrollmentsModule', () => {
 
   it('lists enrollments for current user', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
-      { id: 1, course_id: 100, user_id: 1, type: 'StudentEnrollment', role: 'StudentEnrollment', enrollment_state: 'active' },
+      {
+        id: 1,
+        course_id: 100,
+        user_id: 1,
+        type: 'StudentEnrollment',
+        role: 'StudentEnrollment',
+        enrollment_state: 'active',
+      },
     ])
     const result = await enrollments.list()
     expect(result).toHaveLength(1)

@@ -16,7 +16,14 @@ describe('CalendarModule', () => {
 
   it('lists calendar events for a course', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
-      { id: 1, title: 'Lecture', start_at: '2026-04-15T10:00:00Z', end_at: '2026-04-15T11:00:00Z', type: 'event', context_code: 'course_100' },
+      {
+        id: 1,
+        title: 'Lecture',
+        start_at: '2026-04-15T10:00:00Z',
+        end_at: '2026-04-15T11:00:00Z',
+        type: 'event',
+        context_code: 'course_100',
+      },
     ])
     const result = await calendar.list(100)
     expect(result).toHaveLength(1)

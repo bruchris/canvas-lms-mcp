@@ -20,9 +20,7 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'send_conversation',
       description: 'Send a new conversation message to one or more recipients.',
       inputSchema: {
-        recipients: z
-          .array(z.string())
-          .describe('Array of recipient user IDs (as strings)'),
+        recipients: z.array(z.string()).describe('Array of recipient user IDs (as strings)'),
         subject: z.string().describe('The conversation subject line'),
         body: z.string().describe('The message body'),
       },

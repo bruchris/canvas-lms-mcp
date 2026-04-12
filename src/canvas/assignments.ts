@@ -5,9 +5,7 @@ export class AssignmentsModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(courseId: number): Promise<CanvasAssignment[]> {
-    return this.client.paginate<CanvasAssignment>(
-      `/api/v1/courses/${courseId}/assignments`,
-    )
+    return this.client.paginate<CanvasAssignment>(`/api/v1/courses/${courseId}/assignments`)
   }
 
   async get(courseId: number, assignmentId: number): Promise<CanvasAssignment> {

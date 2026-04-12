@@ -48,10 +48,9 @@ describe('SubmissionsModule', () => {
 
       const result = await submissions.list(1, 10)
       expect(result).toEqual(mockSubmissions)
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/1/assignments/10/submissions',
-        { 'include[]': 'submission_comments' },
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/1/assignments/10/submissions', {
+        'include[]': 'submission_comments',
+      })
     })
 
     it('returns empty array when no submissions', async () => {

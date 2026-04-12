@@ -55,9 +55,7 @@ describe('conversationTools', () => {
 
   describe('send_conversation', () => {
     it('has destructive and openWorld annotations', () => {
-      const tool = conversationTools(buildMockCanvas()).find(
-        (t) => t.name === 'send_conversation',
-      )!
+      const tool = conversationTools(buildMockCanvas()).find((t) => t.name === 'send_conversation')!
       expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
     })
 

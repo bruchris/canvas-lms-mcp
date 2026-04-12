@@ -10,39 +10,27 @@ export class QuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(courseId: number): Promise<CanvasQuiz[]> {
-    return this.client.paginate<CanvasQuiz>(
-      `/api/v1/courses/${courseId}/quizzes`,
-    )
+    return this.client.paginate<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes`)
   }
 
   async get(courseId: number, quizId: number): Promise<CanvasQuiz> {
-    return this.client.request<CanvasQuiz>(
-      `/api/v1/courses/${courseId}/quizzes/${quizId}`,
-    )
+    return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`)
   }
 
-  async listSubmissions(
-    courseId: number,
-    quizId: number,
-  ): Promise<CanvasQuizSubmission[]> {
+  async listSubmissions(courseId: number, quizId: number): Promise<CanvasQuizSubmission[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmission>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions`,
       'quiz_submissions',
     )
   }
 
-  async listQuestions(
-    courseId: number,
-    quizId: number,
-  ): Promise<CanvasQuizQuestion[]> {
+  async listQuestions(courseId: number, quizId: number): Promise<CanvasQuizQuestion[]> {
     return this.client.paginate<CanvasQuizQuestion>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
     )
   }
 
-  async getSubmissionAnswers(
-    quizSubmissionId: number,
-  ): Promise<CanvasQuizSubmissionQuestion[]> {
+  async getSubmissionAnswers(quizSubmissionId: number): Promise<CanvasQuizSubmissionQuestion[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmissionQuestion>(
       `/api/v1/quiz_submissions/${quizSubmissionId}/questions`,
       'quiz_submission_questions',

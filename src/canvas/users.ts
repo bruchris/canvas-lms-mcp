@@ -5,10 +5,9 @@ export class UsersModule {
   constructor(private client: CanvasHttpClient) {}
 
   async listStudents(courseId: number): Promise<CanvasUser[]> {
-    return this.client.paginate<CanvasUser>(
-      `/api/v1/courses/${courseId}/users`,
-      { 'enrollment_type[]': 'student' },
-    )
+    return this.client.paginate<CanvasUser>(`/api/v1/courses/${courseId}/users`, {
+      'enrollment_type[]': 'student',
+    })
   }
 
   async get(userId: number): Promise<CanvasUser> {

@@ -5,8 +5,6 @@ export class EnrollmentsModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(): Promise<CanvasEnrollment[]> {
-    return this.client.paginate<CanvasEnrollment>(
-      '/api/v1/users/self/enrollments',
-    )
+    return this.client.paginate<CanvasEnrollment>('/api/v1/users/self/enrollments')
   }
 }

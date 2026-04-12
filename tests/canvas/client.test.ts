@@ -105,10 +105,9 @@ describe('CanvasHttpClient', () => {
 
     it('throws CanvasApiError on 404 with message field', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'The specified resource does not exist' }),
-          { status: 404 },
-        ),
+        new Response(JSON.stringify({ message: 'The specified resource does not exist' }), {
+          status: 404,
+        }),
       )
 
       const error = await client.request('/api/v1/courses/999').catch((e) => e)
@@ -280,10 +279,7 @@ describe('CanvasHttpClient', () => {
           }),
         )
 
-      const result = await client.paginateEnvelope<{ id: number }>(
-        '/api/v1/items',
-        'items',
-      )
+      const result = await client.paginateEnvelope<{ id: number }>('/api/v1/items', 'items')
       expect(result).toEqual([{ id: 1 }, { id: 2 }])
       expect(fetch).toHaveBeenCalledTimes(2)
     })

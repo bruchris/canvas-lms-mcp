@@ -20,7 +20,10 @@ describe('registerSyllabusResource', () => {
     registerSyllabusResource(server, canvas)
     // The handler is the last argument to server.resource()
     const call = resourceSpy.mock.calls[0]
-    return call[call.length - 1] as (uri: unknown, variables: Record<string, string>) => Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }>
+    return call[call.length - 1] as (
+      uri: unknown,
+      variables: Record<string, string>,
+    ) => Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }>
   }
 
   it('registers without throwing', () => {
@@ -46,7 +49,9 @@ describe('registerSyllabusResource', () => {
 
   it('returns error message when Canvas API fails', async () => {
     const canvas = buildMockCanvas({
-      getSyllabus: vi.fn().mockRejectedValue(new CanvasApiError('Not Found', 404, '/api/v1/courses/999')),
+      getSyllabus: vi
+        .fn()
+        .mockRejectedValue(new CanvasApiError('Not Found', 404, '/api/v1/courses/999')),
     })
     const handler = captureHandler(canvas)
     const result = await handler(new URL('canvas://course/999/syllabus'), { courseId: '999' })

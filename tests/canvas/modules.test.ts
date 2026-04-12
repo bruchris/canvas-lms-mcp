@@ -43,8 +43,6 @@ describe('ModulesModule', () => {
     ])
     const result = await modules.listItems(100, 1)
     expect(result).toHaveLength(2)
-    expect(client.paginate).toHaveBeenCalledWith(
-      '/api/v1/courses/100/modules/1/items',
-    )
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items')
   })
 })

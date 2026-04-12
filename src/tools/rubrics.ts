@@ -38,8 +38,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_rubric_assessment',
-      description:
-        'Get the rubric assessment for a specific student submission on an assignment.',
+      description: 'Get the rubric assessment for a specific student submission on an assignment.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         assignment_id: z.number().describe('The Canvas assignment ID'),
