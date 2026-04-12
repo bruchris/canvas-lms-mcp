@@ -1,7 +1,3 @@
-// Canvas HTTP client — foundation for all modules.
-// Handles auth, pagination, error parsing.
-// See implementation plan Task 4 for full implementation.
-
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
 export class CanvasApiError extends Error {
