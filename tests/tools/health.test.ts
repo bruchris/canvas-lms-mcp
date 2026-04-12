@@ -6,10 +6,10 @@ import { healthTools } from '../../src/tools/health'
 describe('healthTools', () => {
   function buildMockCanvas(overrides: Partial<CanvasClient> = {}): CanvasClient {
     return {
-      courses: {
-        list: vi.fn(),
+      users: {
+        getProfile: vi.fn(),
         get: vi.fn(),
-        getSyllabus: vi.fn(),
+        listStudents: vi.fn(),
       },
       ...overrides,
     } as unknown as CanvasClient
@@ -41,11 +41,11 @@ describe('healthTools', () => {
 
   it('returns ok status when Canvas API is reachable', async () => {
     const canvas = buildMockCanvas({
-      courses: {
-        list: vi.fn().mockResolvedValue([{ id: 1, name: 'Test Course' }]),
+      users: {
+        getProfile: vi.fn().mockResolvedValue({ id: 1, name: 'Test User' }),
         get: vi.fn(),
-        getSyllabus: vi.fn(),
-      } as unknown as CanvasClient['courses'],
+        listStudents: vi.fn(),
+      } as unknown as CanvasClient['users'],
     })
     const tools = healthTools(canvas)
     const result = await tools[0].handler({})
@@ -57,11 +57,11 @@ describe('healthTools', () => {
 
   it('returns error status when Canvas API returns CanvasApiError', async () => {
     const canvas = buildMockCanvas({
-      courses: {
-        list: vi.fn().mockRejectedValue(new CanvasApiError('Unauthorized', 401, '/api/v1/courses')),
+      users: {
+        getProfile: vi.fn().mockRejectedValue(new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/profile')),
         get: vi.fn(),
-        getSyllabus: vi.fn(),
-      } as unknown as CanvasClient['courses'],
+        listStudents: vi.fn(),
+      } as unknown as CanvasClient['users'],
     })
     const tools = healthTools(canvas)
     const result = await tools[0].handler({})
@@ -73,11 +73,11 @@ describe('healthTools', () => {
 
   it('rethrows non-CanvasApiError errors', async () => {
     const canvas = buildMockCanvas({
-      courses: {
-        list: vi.fn().mockRejectedValue(new TypeError('unexpected')),
+      users: {
+        getProfile: vi.fn().mockRejectedValue(new TypeError('unexpected')),
         get: vi.fn(),
-        getSyllabus: vi.fn(),
-      } as unknown as CanvasClient['courses'],
+        listStudents: vi.fn(),
+      } as unknown as CanvasClient['users'],
     })
     const tools = healthTools(canvas)
     await expect(tools[0].handler({})).rejects.toThrow('unexpected')

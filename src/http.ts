@@ -3,22 +3,40 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 
+const PRIVATE_IP_RANGES = [
+  /^127\./,               // loopback
+  /^10\./,                // 10.0.0.0/8
+  /^172\.(1[6-9]|2\d|3[01])\./, // 172.16.0.0/12
+  /^192\.168\./,          // 192.168.0.0/16
+  /^169\.254\./,          // link-local
+  /^0\./,                 // current network
+]
+
+function isPrivateHost(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') return true
+  return PRIVATE_IP_RANGES.some((re) => re.test(hostname))
+}
+
 function isValidCanvasUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString)
-    return url.protocol === 'https:' || url.protocol === 'http:'
+    const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+    if (!isDev && url.protocol !== 'https:') return false
+    if (isDev && url.protocol !== 'https:' && url.protocol !== 'http:') return false
+    if (isPrivateHost(url.hostname)) return false
+    return true
   } catch {
     return false
   }
 }
 
-export function createHttpHandler(defaultConfig: { token?: string; baseUrl?: string }) {
+export function createHttpHandler(defaultConfig: { token?: string; baseUrl?: string; allowedOrigin?: string }) {
   return async (
     req: import('node:http').IncomingMessage,
     res: import('node:http').ServerResponse,
   ) => {
     // CORS headers on all responses
-    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Origin', defaultConfig.allowedOrigin ?? 'http://localhost:3000')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
@@ -125,7 +143,7 @@ async function main() {
   const config = parseArgs(process.argv.slice(2))
   const port = config.port
 
-  const httpServer = createServer(createHttpHandler({ token: config.token, baseUrl: config.baseUrl }))
+  const httpServer = createServer(createHttpHandler({ token: config.token, baseUrl: config.baseUrl, allowedOrigin: config.allowedOrigin }))
 
   httpServer.listen(port, () => {
     console.log(`Canvas LMS MCP server listening on http://localhost:${port}`)

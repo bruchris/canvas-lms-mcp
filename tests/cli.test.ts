@@ -8,6 +8,7 @@ describe('parseArgs', () => {
     process.env = { ...originalEnv }
     delete process.env.CANVAS_API_TOKEN
     delete process.env.CANVAS_BASE_URL
+    delete process.env.CANVAS_ALLOWED_ORIGIN
   })
 
   afterEach(() => {
@@ -23,6 +24,7 @@ describe('parseArgs', () => {
       baseUrl: 'https://canvas.example.com',
       mode: 'stdio',
       port: 3001,
+      allowedOrigin: 'http://localhost:3000',
     })
   })
 
@@ -142,6 +144,24 @@ describe('parseArgs', () => {
       baseUrl: 'https://canvas.example.com',
       mode: 'http',
       port: 9000,
+      allowedOrigin: 'http://localhost:3000',
     })
+  })
+
+  it('parses --allowed-origin', () => {
+    const result = parseArgs([
+      '--token', 'my-token',
+      '--base-url', 'https://canvas.example.com',
+      '--allowed-origin', 'https://myapp.example.com',
+    ])
+
+    expect(result.allowedOrigin).toBe('https://myapp.example.com')
+  })
+
+  it('falls back to CANVAS_ALLOWED_ORIGIN env var', () => {
+    process.env.CANVAS_ALLOWED_ORIGIN = 'https://env-origin.example.com'
+    const result = parseArgs(['--token', 'my-token', '--base-url', 'https://canvas.example.com'])
+
+    expect(result.allowedOrigin).toBe('https://env-origin.example.com')
   })
 })

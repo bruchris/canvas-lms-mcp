@@ -15,7 +15,7 @@ export function healthTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async () => {
         try {
-          await canvas.courses.list()
+          await canvas.users.getProfile()
           return { status: 'ok', message: 'Canvas API is reachable' }
         } catch (error) {
           if (error instanceof CanvasApiError) {

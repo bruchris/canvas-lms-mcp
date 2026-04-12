@@ -22,6 +22,7 @@ vi.mock('../src/cli', () => ({
     baseUrl: 'https://canvas.example.com/api/v1',
     mode: 'http',
     port: 3001,
+    allowedOrigin: 'http://localhost:3000',
   }),
 }))
 
@@ -77,17 +78,26 @@ describe('createHttpHandler', () => {
   const handler = createHttpHandler({
     token: 'test-token',
     baseUrl: 'https://canvas.example.com/api/v1',
+    allowedOrigin: 'https://myapp.example.com',
   })
 
   describe('CORS', () => {
-    it('sets CORS headers on all responses', async () => {
+    it('sets CORS headers with configured origin', async () => {
       const req = createMockReq({ url: '/health' })
       const res = createMockRes()
       await handler(req, res)
-      expect(res._headers['access-control-allow-origin']).toBe('*')
+      expect(res._headers['access-control-allow-origin']).toBe('https://myapp.example.com')
       expect(res._headers['access-control-allow-methods']).toBe('GET, POST, DELETE, OPTIONS')
       expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Token')
       expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Base-URL')
+    })
+
+    it('defaults CORS origin to localhost when not configured', async () => {
+      const defaultHandler = createHttpHandler({ token: 'tok', baseUrl: 'https://canvas.example.com' })
+      const req = createMockReq({ url: '/health' })
+      const res = createMockRes()
+      await defaultHandler(req, res)
+      expect(res._headers['access-control-allow-origin']).toBe('http://localhost:3000')
     })
 
     it('responds 204 to OPTIONS preflight', async () => {
@@ -151,6 +161,27 @@ describe('createHttpHandler', () => {
       await noConfigHandler(req, res)
       expect(res._status).toBe(400)
       expect(JSON.parse(res._body).error).toContain('Invalid X-Canvas-Base-URL')
+    })
+
+    it('rejects private IP addresses in base URL', async () => {
+      const noConfigHandler = createHttpHandler({})
+      for (const privateUrl of [
+        'https://127.0.0.1/api/v1',
+        'https://10.0.0.1/api/v1',
+        'https://172.16.0.1/api/v1',
+        'https://192.168.1.1/api/v1',
+        'https://169.254.1.1/api/v1',
+        'https://localhost/api/v1',
+      ]) {
+        const req = createMockReq({
+          method: 'POST',
+          url: '/mcp',
+          headers: { 'x-canvas-token': 'tok', 'x-canvas-base-url': privateUrl },
+        })
+        const res = createMockRes()
+        await noConfigHandler(req, res)
+        expect(res._status).toBe(400)
+      }
     })
 
     it('uses default config when headers not provided', async () => {
