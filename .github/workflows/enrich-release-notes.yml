@@ -1,0 +1,48 @@
+name: Enrich Release Notes
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enrich release notes via Claude Haiku
+        id: enrich
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+          SKIP_AI_RELEASE_NOTES: ${{ vars.SKIP_AI_RELEASE_NOTES }}
+        run: |
+          node scripts/enrich-release-notes.mjs > /tmp/enriched-notes.md
+          if [ $? -eq 0 ] && [ -s /tmp/enriched-notes.md ]; then
+            delimiter="ENRICH_EOF_$(openssl rand -hex 8)"
+            echo "enriched_body<<${delimiter}" >> "$GITHUB_OUTPUT"
+            cat /tmp/enriched-notes.md >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
+            echo "${delimiter}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update GitHub Release with enriched notes
+        if: steps.enrich.outputs.enriched_body != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENRICHED_BODY: ${{ steps.enrich.outputs.enriched_body }}
+          VERSION_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          printf '%s' "$ENRICHED_BODY" > /tmp/enriched-notes.md
+          gh release edit "$VERSION_TAG" \
+            --notes-file /tmp/enriched-notes.md
