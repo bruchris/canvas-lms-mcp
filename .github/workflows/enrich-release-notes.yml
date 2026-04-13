@@ -39,7 +39,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ENRICHED_BODY: ${{ steps.enrich.outputs.enriched_body }}
+          VERSION_TAG: ${{ github.event.release.tag_name }}
         run: |
           printf '%s' "$ENRICHED_BODY" > /tmp/enriched-notes.md
-          gh release edit "${{ github.event.release.tag_name }}" \
+          gh release edit "$VERSION_TAG" \
             --notes-file /tmp/enriched-notes.md

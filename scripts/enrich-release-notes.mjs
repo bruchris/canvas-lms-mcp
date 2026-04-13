@@ -73,6 +73,7 @@ async function enrichReleaseNotes() {
           { role: 'user', content: USER_PROMPT },
         ],
       }),
+      signal: AbortSignal.timeout(30_000),
     });
   } catch (err) {
     process.stderr.write(`[enrich-release-notes] Network error calling Anthropic API: ${err.message}\n`);
@@ -93,8 +94,8 @@ async function enrichReleaseNotes() {
     process.exit(0);
   }
 
-  if (data?.stop_reason === 'max_tokens') {
-    process.stderr.write('[enrich-release-notes] Response truncated (hit max_tokens) — skipping.\n');
+  if (data?.stop_reason !== 'end_turn') {
+    process.stderr.write(`[enrich-release-notes] Unexpected stop_reason "${data?.stop_reason}" — skipping.\n`);
     process.exit(0);
   }
 
@@ -113,6 +114,6 @@ async function enrichReleaseNotes() {
 }
 
 enrichReleaseNotes().catch((err) => {
-  process.stderr.write(`[enrich-release-notes] Unexpected error: ${err.message}\n`);
+  process.stderr.write(`[enrich-release-notes] Unexpected error: ${err?.message ?? String(err)}\n`);
   process.exit(0);
 });
