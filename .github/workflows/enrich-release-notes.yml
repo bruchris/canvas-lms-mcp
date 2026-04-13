@@ -31,11 +31,13 @@ jobs:
             delimiter="ENRICH_EOF_$(openssl rand -hex 8)"
             echo "enriched_body<<${delimiter}" >> "$GITHUB_OUTPUT"
             cat /tmp/enriched-notes.md >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
             echo "${delimiter}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Update GitHub Release with enriched notes
         if: steps.enrich.outputs.enriched_body != ''
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ENRICHED_BODY: ${{ steps.enrich.outputs.enriched_body }}

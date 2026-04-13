@@ -2,7 +2,7 @@
 /**
  * enrich-release-notes.mjs
  *
- * Calls Claude Haiku to rewrite release-please-generated notes in a
+ * Calls Claude Haiku to enrich release-please-generated notes in a
  * more engaging, human-readable voice, then prints the result to stdout.
  *
  * Environment variables:
@@ -76,12 +76,12 @@ async function enrichReleaseNotes() {
       signal: AbortSignal.timeout(30_000),
     });
   } catch (err) {
-    process.stderr.write(`[enrich-release-notes] Network error calling Anthropic API: ${err.message}\n`);
+    process.stderr.write(`[enrich-release-notes] Network error calling Anthropic API: ${err?.message ?? String(err)}\n`);
     process.exit(0);
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '');
+    const text = await response.text().catch((e) => { process.stderr.write(`[enrich-release-notes] Failed to read error body: ${e?.message ?? String(e)}\n`); return ''; });
     process.stderr.write(`[enrich-release-notes] Anthropic API returned ${response.status}: ${text}\n`);
     process.exit(0);
   }
