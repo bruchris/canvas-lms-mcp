@@ -79,7 +79,8 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
         const assignment_id = params.assignment_id as number
         const submission_id = params.submission_id as number
         const user_id = params.user_id as number
-        return canvas.peerReviews.delete(course_id, assignment_id, submission_id, user_id)
+        await canvas.peerReviews.delete(course_id, assignment_id, submission_id, user_id)
+        return { success: true, message: 'Peer review deleted successfully' }
       },
     },
   ]

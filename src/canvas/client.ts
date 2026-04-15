@@ -59,7 +59,7 @@ export class CanvasHttpClient {
       throw new CanvasApiError(message, response.status, endpoint)
     }
 
-    if (response.status === 204 || response.headers.get('content-length') === '0') {
+    if (response.status === 204) {
       return undefined as T
     }
 

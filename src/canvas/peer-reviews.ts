@@ -40,8 +40,8 @@ export class PeerReviewsModule {
     assignmentId: number,
     submissionId: number,
     userId: number,
-  ): Promise<CanvasPeerReview> {
-    return this.client.request<CanvasPeerReview>(
+  ): Promise<void> {
+    await this.client.request<void>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/peer_reviews?user_id=${userId}`,
       { method: 'DELETE' },
     )

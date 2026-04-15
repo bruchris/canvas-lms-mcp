@@ -46,8 +46,12 @@ export function registerAllTools(server: McpServer, canvas: CanvasClient): void 
     server.tool(tool.name, tool.description, tool.inputSchema, tool.annotations, async (params) => {
       try {
         const result = await tool.handler(params as Record<string, unknown>)
+        const text =
+          result === undefined || result === null
+            ? 'Operation completed successfully.'
+            : JSON.stringify(result, null, 2)
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text' as const, text }],
         }
       } catch (error) {
         if (error instanceof CanvasApiError) {
