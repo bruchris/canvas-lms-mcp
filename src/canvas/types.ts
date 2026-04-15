@@ -81,6 +81,7 @@ export interface CanvasSubmission {
   url: string | null
   attempt: number | null
   workflow_state: string
+  custom_grade_status_id?: number | null
   attachments?: CanvasAttachment[]
   submission_comments?: CanvasSubmissionComment[]
 }
