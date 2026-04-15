@@ -29,6 +29,13 @@ export class CanvasHttpClient {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`
 
+    const method = (options.method ?? 'GET').toUpperCase()
+    if (options.body != null && (method === 'GET' || method === 'HEAD')) {
+      throw new Error(
+        `GET requests must not include a body (Canvas CloudFront CDN rejects them with 403): ${endpoint}`,
+      )
+    }
+
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
       'User-Agent': USER_AGENT,
