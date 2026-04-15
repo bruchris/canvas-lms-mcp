@@ -301,3 +301,14 @@ export interface CanvasConversation {
   message_count: number
   participants: Array<{ id: number; name: string }>
 }
+
+// --- Peer Reviews ---
+
+export interface CanvasPeerReview {
+  id: number
+  assessor_id: number
+  user_id: number
+  asset_id: number
+  asset_type: string
+  workflow_state: string
+}
