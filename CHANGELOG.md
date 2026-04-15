@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.1.0...canvas-lms-mcp-v0.2.0) (2026-04-15)
+
+
+### Features
+
+* add custom_grade_status_id to CanvasSubmission type ([#14](https://github.com/bruchris/canvas-lms-mcp/issues/14)) ([a1a6290](https://github.com/bruchris/canvas-lms-mcp/commit/a1a6290fbd4a14bdc8bce3552eebf19a4766cab3))
+* add Peer Reviews domain ([#16](https://github.com/bruchris/canvas-lms-mcp/issues/16)) ([7145426](https://github.com/bruchris/canvas-lms-mcp/commit/714542675b7c37b024b86bc824351deff064af6a))
+
+
+### Bug Fixes
+
+* prevent GET requests with body payloads in CanvasHttpClient ([#13](https://github.com/bruchris/canvas-lms-mcp/issues/13)) ([9ec037c](https://github.com/bruchris/canvas-lms-mcp/commit/9ec037ce0114ffa42abcc8155bfc0fcf6011abc2))
+
+
+### Documentation
+
+* add one-liner MCP setup commands to README ([#17](https://github.com/bruchris/canvas-lms-mcp/issues/17)) ([2422071](https://github.com/bruchris/canvas-lms-mcp/commit/242207190912476ffac879910743ab163a9b5686))
+
 ## [0.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.0.1...canvas-lms-mcp-v0.1.0) (2026-04-13)
 
 
