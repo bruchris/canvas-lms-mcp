@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.2.0...canvas-lms-mcp-v0.3.0) (2026-04-15)
+
+
+### Features
+
+* add smithery.yaml for Smithery registry listing ([#18](https://github.com/bruchris/canvas-lms-mcp/issues/18)) ([d8d2175](https://github.com/bruchris/canvas-lms-mcp/commit/d8d2175f6a84c36b9cea856c9a06d803839efb7d))
+
 ## [0.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.1.0...canvas-lms-mcp-v0.2.0) (2026-04-15)
 
 
