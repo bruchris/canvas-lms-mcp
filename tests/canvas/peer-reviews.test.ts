@@ -20,9 +20,7 @@ describe('PeerReviewsModule', () => {
     ])
     const result = await peerReviews.listForAssignment(1, 2)
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith(
-      '/api/v1/courses/1/assignments/2/peer_reviews',
-    )
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/1/assignments/2/peer_reviews')
   })
 
   it('lists peer reviews for a submission', async () => {

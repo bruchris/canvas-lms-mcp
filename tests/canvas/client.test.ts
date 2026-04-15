@@ -158,9 +158,7 @@ describe('CanvasHttpClient', () => {
     })
 
     it('returns undefined for 204 No Content without throwing', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-        new Response(null, { status: 204 }),
-      )
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 204 }))
 
       const result = await client.request('/api/v1/courses/1/peer_reviews?user_id=5', {
         method: 'DELETE',
