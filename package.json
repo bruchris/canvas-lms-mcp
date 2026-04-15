@@ -1,6 +1,6 @@
 {
   "name": "canvas-lms-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Canvas LMS MCP server — read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent",
   "type": "module",
   "exports": {
