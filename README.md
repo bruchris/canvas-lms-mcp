@@ -18,7 +18,42 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 4. Give it a name (e.g., "MCP Server") and click **Generate Token**
 5. Copy the token immediately -- you won't see it again
 
-### 2. Configure Your AI Client
+### 2. One Command Setup
+
+```bash
+npx add-mcp canvas-lms-mcp
+```
+
+This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.) and configures them. You will be prompted for your Canvas API token and base URL.
+
+### Client-Specific Commands
+
+**Claude Code**
+
+```bash
+claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y canvas-lms-mcp
+```
+
+**VS Code**
+
+```bash
+code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
+```
+
+**Gemini CLI**
+
+```bash
+gemini mcp add canvas-lms npx canvas-lms-mcp
+```
+
+**Codex CLI**
+
+```bash
+codex mcp add canvas-lms -- npx canvas-lms-mcp
+```
+
+<details>
+<summary>Manual Configuration</summary>
 
 #### Claude Desktop
 
@@ -77,6 +112,25 @@ Add to your VS Code settings (`settings.json`):
 }
 ```
 
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "canvas-lms": {
+      "command": "npx",
+      "args": ["-y", "canvas-lms-mcp"],
+      "env": {
+        "CANVAS_API_TOKEN": "your-token-here",
+        "CANVAS_BASE_URL": "https://your-institution.instructure.com"
+      }
+    }
+  }
+}
+```
+
 #### ChatGPT / HTTP Clients
 
 Run the server in HTTP mode, then point your client at the endpoint:
@@ -88,6 +142,8 @@ npx canvas-lms-mcp serve --port 3001 \
 ```
 
 The MCP endpoint is `http://localhost:3001/mcp`. Per-request credentials can be passed via `X-Canvas-Token` and `X-Canvas-Base-URL` headers.
+
+</details>
 
 ## Example Prompts
 
