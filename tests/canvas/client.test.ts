@@ -168,7 +168,10 @@ describe('CanvasHttpClient', () => {
 
     it('attempts to parse body on 200 with content-length: 0', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: 1 }), { status: 200, headers: { 'content-length': '0' } }),
+        new Response(JSON.stringify({ id: 1 }), {
+          status: 200,
+          headers: { 'content-length': '0' },
+        }),
       )
 
       const result = await client.request('/api/v1/courses/1/something')
