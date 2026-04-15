@@ -41,6 +41,12 @@ function buildFullMockCanvas(): CanvasClient {
     pages: { list: async () => [], get: async () => ({}) },
     calendar: { list: async () => [] },
     conversations: { list: async () => [], send: async () => [] },
+    peerReviews: {
+      listForAssignment: async () => [],
+      listForSubmission: async () => [],
+      create: async () => ({}),
+      delete: async () => undefined,
+    },
   } as unknown as CanvasClient
 }
 
@@ -111,8 +117,13 @@ describe('getAllTools', () => {
     // Conversations (2)
     expect(names).toContain('list_conversations')
     expect(names).toContain('send_conversation')
+    // Peer Reviews (4)
+    expect(names).toContain('list_peer_reviews')
+    expect(names).toContain('get_submission_peer_reviews')
+    expect(names).toContain('create_peer_review')
+    expect(names).toContain('delete_peer_review')
 
-    expect(tools).toHaveLength(42)
+    expect(tools).toHaveLength(46)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -130,6 +141,8 @@ describe('getAllTools', () => {
       'score_quiz_question',
       'post_discussion_entry',
       'send_conversation',
+      'create_peer_review',
+      'delete_peer_review',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -146,6 +159,8 @@ describe('getAllTools', () => {
       'score_quiz_question',
       'post_discussion_entry',
       'send_conversation',
+      'create_peer_review',
+      'delete_peer_review',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

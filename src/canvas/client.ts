@@ -26,6 +26,11 @@ export class CanvasHttpClient {
     this.maxPaginationPages = config.maxPaginationPages ?? DEFAULT_MAX_PAGINATION_PAGES
   }
 
+  /**
+   * Makes a single authenticated request to the Canvas API.
+   * Returns `undefined` (typed as `T`) when Canvas responds with 204 No Content,
+   * which is the expected response for DELETE operations.
+   */
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`
 
@@ -57,6 +62,10 @@ export class CanvasHttpClient {
       const message =
         body.errors?.[0]?.message ?? body.message ?? `Canvas API error: ${response.status}`
       throw new CanvasApiError(message, response.status, endpoint)
+    }
+
+    if (response.status === 204) {
+      return undefined as T
     }
 
     return response.json() as Promise<T>

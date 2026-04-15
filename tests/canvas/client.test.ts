@@ -156,6 +156,27 @@ describe('CanvasHttpClient', () => {
       expect(error.status).toBe(500)
       expect(error.message).toContain('500')
     })
+
+    it('returns undefined for 204 No Content without throwing', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+      const result = await client.request('/api/v1/courses/1/peer_reviews?user_id=5', {
+        method: 'DELETE',
+      })
+      expect(result).toBeUndefined()
+    })
+
+    it('attempts to parse body on 200 with content-length: 0', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 1 }), {
+          status: 200,
+          headers: { 'content-length': '0' },
+        }),
+      )
+
+      const result = await client.request('/api/v1/courses/1/something')
+      expect(result).toEqual({ id: 1 })
+    })
   })
 
   describe('paginate', () => {

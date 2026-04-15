@@ -301,3 +301,16 @@ export interface CanvasConversation {
   message_count: number
   participants: Array<{ id: number; name: string }>
 }
+
+// --- Peer Reviews ---
+
+export interface CanvasPeerReview {
+  id: number
+  /** The user ID of the reviewer (the person doing the reviewing). */
+  assessor_id: number
+  /** The user ID of the reviewee (the student whose submission is being reviewed). */
+  user_id: number
+  asset_id: number
+  asset_type: 'Submission'
+  workflow_state: 'assigned' | 'completed'
+}
