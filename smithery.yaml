@@ -1,0 +1,35 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+
+configSchema:
+  type: object
+  required:
+    - canvasApiToken
+    - canvasBaseUrl
+  properties:
+    canvasApiToken:
+      type: string
+      description: >
+        Canvas personal access token. Generate one in Canvas under
+        Account > Settings > New Access Token.
+    canvasBaseUrl:
+      type: string
+      description: >
+        Your Canvas instance API base URL, e.g.
+        https://yourschool.instructure.com/api/v1
+
+commandFunction: |-
+  (config) => ({
+    command: 'npx',
+    args: ['-y', 'canvas-lms-mcp'],
+    env: {
+      CANVAS_API_TOKEN: config.canvasApiToken,
+      CANVAS_BASE_URL: config.canvasBaseUrl
+    }
+  })
+
+exampleConfig:
+  canvasApiToken: "1234~abcdefghijklmnopqrstuvwxyz"
+  canvasBaseUrl: "https://school.instructure.com/api/v1"

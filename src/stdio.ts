@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // stdio transport entry point — for Claude Desktop, Cursor, VS Code, etc.
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'

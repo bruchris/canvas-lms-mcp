@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "canvas-lms-mcp": "./dist/cli.js"
+    "canvas-lms-mcp": "./dist/stdio.js"
   },
   "files": [
     "dist/"
