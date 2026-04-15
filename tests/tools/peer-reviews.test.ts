@@ -19,7 +19,7 @@ describe('peerReviewTools', () => {
         listForAssignment: vi.fn().mockResolvedValue([mockPeerReview]),
         listForSubmission: vi.fn().mockResolvedValue([mockPeerReview]),
         create: vi.fn().mockResolvedValue(mockPeerReview),
-        delete: vi.fn().mockResolvedValue(mockPeerReview),
+        delete: vi.fn().mockResolvedValue(undefined),
       },
     } as unknown as CanvasClient
   }

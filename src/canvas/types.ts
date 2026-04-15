@@ -306,9 +306,11 @@ export interface CanvasConversation {
 
 export interface CanvasPeerReview {
   id: number
+  /** The user ID of the reviewer (the person doing the reviewing). */
   assessor_id: number
+  /** The user ID of the reviewee (the student whose submission is being reviewed). */
   user_id: number
   asset_id: number
-  asset_type: string
-  workflow_state: string
+  asset_type: 'Submission'
+  workflow_state: 'assigned' | 'completed'
 }

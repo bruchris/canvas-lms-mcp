@@ -47,7 +47,7 @@ export function registerAllTools(server: McpServer, canvas: CanvasClient): void 
       try {
         const result = await tool.handler(params as Record<string, unknown>)
         const text =
-          result === undefined || result === null
+          result === undefined
             ? 'Operation completed successfully.'
             : JSON.stringify(result, null, 2)
         return {

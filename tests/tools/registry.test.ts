@@ -45,7 +45,7 @@ function buildFullMockCanvas(): CanvasClient {
       listForAssignment: async () => [],
       listForSubmission: async () => [],
       create: async () => ({}),
-      delete: async () => ({}),
+      delete: async () => undefined,
     },
   } as unknown as CanvasClient
 }
