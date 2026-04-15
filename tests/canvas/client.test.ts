@@ -58,6 +58,36 @@ describe('CanvasHttpClient', () => {
       )
     })
 
+    it('throws if a body is passed with a GET request (no method specified)', async () => {
+      await expect(
+        client.request('/api/v1/courses', { body: JSON.stringify({ foo: 'bar' }) }),
+      ).rejects.toThrow('GET requests must not include a body')
+    })
+
+    it('throws if a body is passed with an explicit GET method', async () => {
+      await expect(
+        client.request('/api/v1/courses', { method: 'GET', body: JSON.stringify({ foo: 'bar' }) }),
+      ).rejects.toThrow('GET requests must not include a body')
+    })
+
+    it('throws if a body is passed with a HEAD request', async () => {
+      await expect(
+        client.request('/api/v1/courses', {
+          method: 'HEAD',
+          body: JSON.stringify({ foo: 'bar' }),
+        }),
+      ).rejects.toThrow('GET requests must not include a body')
+    })
+
+    it('does not throw when a body is passed with POST', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      )
+      await expect(
+        client.request('/api/v1/courses', { method: 'POST', body: JSON.stringify({ name: 'x' }) }),
+      ).resolves.toBeDefined()
+    })
+
     it('handles absolute URLs without prepending baseUrl', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify([]), { status: 200 }),
