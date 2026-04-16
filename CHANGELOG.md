@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.4.0...canvas-lms-mcp-v0.4.1) (2026-04-16)
+
+
+### Miscellaneous
+
+* improve npm and GitHub discoverability ([#23](https://github.com/bruchris/canvas-lms-mcp/issues/23)) ([edefb7c](https://github.com/bruchris/canvas-lms-mcp/commit/edefb7cb51e6b3a02b6747bc11c177b7e1bbe093))
+* migrate npm publish to Trusted Publishing (OIDC) ([#22](https://github.com/bruchris/canvas-lms-mcp/issues/22)) ([217253b](https://github.com/bruchris/canvas-lms-mcp/commit/217253b832c77ff4332a946f21974039d1590b00))
+* update npm description and keywords for discoverability ([#27](https://github.com/bruchris/canvas-lms-mcp/issues/27)) ([79a4541](https://github.com/bruchris/canvas-lms-mcp/commit/79a4541dcc01f593debca81d8707eabf06766bbf))
+
 ## [0.4.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.3.0...canvas-lms-mcp-v0.4.0) (2026-04-16)
 
 
