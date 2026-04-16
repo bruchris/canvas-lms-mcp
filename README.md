@@ -4,6 +4,7 @@
 [![npm](https://img.shields.io/npm/v/%40bruchris%2Fcanvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
+[![npm downloads](https://img.shields.io/npm/dw/@bruchris/canvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent.
 
