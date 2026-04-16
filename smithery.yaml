@@ -12,13 +12,13 @@ configSchema:
     canvasApiToken:
       type: string
       description: >
-        Canvas personal access token. Generate one in Canvas under
-        Account > Settings > New Access Token.
+        Your Canvas personal access token. In Canvas, go to Account > Settings >
+        Approved Integrations > New Access Token to generate one.
     canvasBaseUrl:
       type: string
       description: >
-        Your Canvas instance API base URL, e.g.
-        https://yourschool.instructure.com/api/v1
+        Your Canvas instance API base URL. Append /api/v1 to your school's Canvas
+        domain, e.g. https://yourschool.instructure.com/api/v1
 
 commandFunction: |-
   (config) => ({
