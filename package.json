@@ -42,7 +42,17 @@
     "mcp",
     "model-context-protocol",
     "education",
-    "grading"
+    "grading",
+    "ai-agent",
+    "claude-desktop",
+    "cursor",
+    "vscode",
+    "instructure",
+    "education-technology",
+    "edtech",
+    "teacher",
+    "student",
+    "grading-automation"
   ],
   "author": "Christian Bru",
   "license": "MIT",
