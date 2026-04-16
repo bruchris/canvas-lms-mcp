@@ -1,0 +1,16 @@
+{
+  "ref": "refs/tags/canvas-lms-mcp-v0.1.0",
+  "node_id": "REF_kwDOSAt8ab9yZWZzL3RhZ3MvY2FudmFzLWxtcy1tY3AtdjAuMS4w",
+  "url": "https://api.github.com/repos/bruchris/canvas-lms-mcp/git/refs/tags/canvas-lms-mcp-v0.1.0",
+  "object": {
+    "sha": "4c2e3b33a54819725c58eb728ed3567cfca9b646",
+    "type": "commit",
+    "url": "https://api.github.com/repos/bruchris/canvas-lms-mcp/git/commits/4c2e3b33a54819725c58eb728ed3567cfca9b646"
+  },
+  "release": {
+    "name": "canvas-lms-mcp: v0.1.0",
+    "tag_name": "canvas-lms-mcp-v0.1.0",
+    "created_at": "2026-04-13T15:02:23Z",
+    "published_at": "2026-04-13T15:02:34Z"
+  }
+}

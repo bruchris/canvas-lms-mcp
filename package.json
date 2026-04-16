@@ -1,5 +1,5 @@
 {
-  "name": "canvas-lms-mcp",
+  "name": "@bruchris/canvas-lms-mcp",
   "version": "0.3.0",
   "description": "Canvas LMS MCP server — read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent",
   "type": "module",
@@ -46,6 +46,9 @@
   ],
   "author": "Christian Bru",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bruchris/canvas-lms-mcp.git"

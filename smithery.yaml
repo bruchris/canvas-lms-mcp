@@ -23,7 +23,7 @@ configSchema:
 commandFunction: |-
   (config) => ({
     command: 'npx',
-    args: ['-y', 'canvas-lms-mcp'],
+    args: ['-y', '@bruchris/canvas-lms-mcp'],
     env: {
       CANVAS_API_TOKEN: config.canvasApiToken,
       CANVAS_BASE_URL: config.canvasBaseUrl
