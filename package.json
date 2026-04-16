@@ -1,6 +1,6 @@
 {
   "name": "@bruchris/canvas-lms-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "TypeScript MCP server for Canvas LMS — courses, assignments, submissions, rubrics, quizzes, and more",
   "type": "module",
   "exports": {
