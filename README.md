@@ -10,14 +10,14 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent.
 
-42 tools across 15 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
+46 tools across 16 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
 | | @bruchris/canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 42 | 80+ | 54 |
+| Tools | 46 | 80+ | 54 |
 | License | MIT | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
