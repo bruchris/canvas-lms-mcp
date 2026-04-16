@@ -1,7 +1,7 @@
 {
   "name": "@bruchris/canvas-lms-mcp",
   "version": "0.4.0",
-  "description": "Canvas LMS MCP server — read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent",
+  "description": "TypeScript MCP server for Canvas LMS — courses, assignments, submissions, rubrics, quizzes, and more",
   "type": "module",
   "exports": {
     ".": {
@@ -38,12 +38,14 @@
   },
   "keywords": [
     "canvas",
+    "canvas-lms",
     "lms",
     "mcp",
     "model-context-protocol",
     "education",
     "grading",
     "ai-agent",
+    "ai-tools",
     "claude-desktop",
     "cursor",
     "vscode",
@@ -52,7 +54,8 @@
     "edtech",
     "teacher",
     "student",
-    "grading-automation"
+    "grading-automation",
+    "typescript"
   ],
   "author": "Christian Bru",
   "license": "MIT",
