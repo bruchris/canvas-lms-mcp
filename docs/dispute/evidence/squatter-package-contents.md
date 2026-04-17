@@ -45,4 +45,4 @@ package/package.json
 
 ## Summary
 
-The squatter package (`canvas-lms-mcp@1.0.0`, published 2026-04-13T12:43:07Z by user `clm808`) contains only 11 pre-built JavaScript files with no TypeScript source, no tests, no documentation, and no README. It consists of thin wrapper stubs for a subset of Canvas LMS operations with no configuration schema, no published source repository, and no licence file. The package has no functional parity with `@bruchris/canvas-lms-mcp` and appears to have been registered opportunistically to capture the npm namespace.
+The squatter package (`canvas-lms-mcp@1.0.0`, published 2026-04-13T12:43:07Z by user `clm808`) contains only 11 pre-built JavaScript files with no TypeScript source, no tests, no documentation, and no README. It consists of thin wrapper stubs for a subset of Canvas LMS operations with no configuration schema, no published source repository, and no licence file. The package had no functional parity with the official implementation and appears to have been registered opportunistically to capture the npm namespace.

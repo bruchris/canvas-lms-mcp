@@ -52,7 +52,7 @@ Choose the AI client you installed:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "paste-your-token-here",
         "CANVAS_BASE_URL": "https://your-school.instructure.com"
@@ -77,7 +77,7 @@ You should see a hammer icon (🔨) in the bottom-left of the chat input — cli
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "paste-your-token-here",
         "CANVAS_BASE_URL": "https://your-school.instructure.com"
@@ -94,7 +94,7 @@ You should see a hammer icon (🔨) in the bottom-left of the chat input — cli
 Run this command in your terminal (replace the values in quotes):
 
 ```bash
-code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","@bruchris/canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://your-school.instructure.com"}}'
+code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://your-school.instructure.com"}}'
 ```
 
 > **Windows users:** The single quotes above don't work in PowerShell or Command Prompt. Use the manual JSON method below instead.
@@ -106,7 +106,7 @@ Or add it manually to VS Code settings (`settings.json`):
   "mcp.servers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "paste-your-token-here",
         "CANVAS_BASE_URL": "https://your-school.instructure.com"

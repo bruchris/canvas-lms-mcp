@@ -62,11 +62,11 @@
 
 ### ⚠ BREAKING CHANGES
 
-* package install path is now @bruchris/canvas-lms-mcp
+* package install path temporarily moved to the scoped package
 
 ### Features
 
-* rename package to @bruchris/canvas-lms-mcp ([#20](https://github.com/bruchris/canvas-lms-mcp/issues/20)) ([1dede1d](https://github.com/bruchris/canvas-lms-mcp/commit/1dede1d4fc59d0e2fc24b7301a8cd1d020e699c3))
+* rename package to scoped package ([#20](https://github.com/bruchris/canvas-lms-mcp/issues/20)) ([1dede1d](https://github.com/bruchris/canvas-lms-mcp/commit/1dede1d4fc59d0e2fc24b7301a8cd1d020e699c3))
 
 ## [0.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.2.0...canvas-lms-mcp-v0.3.0) (2026-04-15)
 

@@ -768,9 +768,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm install --global npm@^11.5.1
+      - run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
 ```
 
 - [ ] **Step 3: Create `release-please-config.json`**
