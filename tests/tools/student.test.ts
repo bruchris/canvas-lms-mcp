@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import { CanvasApiError } from '../../src/canvas'
 import type {
   CanvasCourse,
   CanvasEnrollment,
@@ -99,6 +100,15 @@ describe('studentTools', () => {
       expect(canvas.courses.list).toHaveBeenCalledWith({ enrollment_state: 'active' })
       expect(result).toEqual([mockCourse])
     })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.courses.list).mockRejectedValue(
+        new CanvasApiError('Unauthorized', 401, '/api/v1/courses'),
+      )
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_courses')!
+      await expect(tool.handler({})).rejects.toThrow(CanvasApiError)
+    })
   })
 
   describe('get_my_grades', () => {
@@ -116,6 +126,15 @@ describe('studentTools', () => {
       await tool.handler({ course_id: 1 })
       expect(canvas.enrollments.listMyGrades).toHaveBeenCalledWith(1)
     })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.enrollments.listMyGrades).mockRejectedValue(
+        new CanvasApiError('Not Found', 404, '/api/v1/users/self/enrollments'),
+      )
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_grades')!
+      await expect(tool.handler({})).rejects.toThrow(CanvasApiError)
+    })
   })
 
   describe('get_my_submissions', () => {
@@ -126,6 +145,15 @@ describe('studentTools', () => {
       expect(canvas.submissions.listMy).toHaveBeenCalledWith(1)
       expect(result).toEqual([mockSubmission])
     })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.submissions.listMy).mockRejectedValue(
+        new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/students/submissions'),
+      )
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
+      await expect(tool.handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
+    })
   })
 
   describe('get_my_upcoming_assignments', () => {
@@ -135,6 +163,15 @@ describe('studentTools', () => {
       const result = await tool.handler({})
       expect(canvas.users.getUpcomingAssignments).toHaveBeenCalled()
       expect(result).toEqual([mockUpcomingEvent])
+    })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.users.getUpcomingAssignments).mockRejectedValue(
+        new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/upcoming_events'),
+      )
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_upcoming_assignments')!
+      await expect(tool.handler({})).rejects.toThrow(CanvasApiError)
     })
   })
 })

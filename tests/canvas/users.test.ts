@@ -86,10 +86,10 @@ describe('UsersModule', () => {
   })
 
   it('fetches upcoming assignment events filtered by type=Assignment', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    vi.spyOn(client, 'request').mockResolvedValueOnce([])
     await users.getUpcomingAssignments()
-    expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events', {
-      type: 'Assignment',
-    })
+    expect(client.request).toHaveBeenCalledWith(
+      '/api/v1/users/self/upcoming_events?type=Assignment',
+    )
   })
 })

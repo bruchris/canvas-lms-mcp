@@ -37,8 +37,8 @@ export class UsersModule {
   }
 
   async getUpcomingAssignments(): Promise<CanvasUpcomingEvent[]> {
-    return this.client.paginate<CanvasUpcomingEvent>('/api/v1/users/self/upcoming_events', {
-      type: 'Assignment',
-    })
+    return this.client.request<CanvasUpcomingEvent[]>(
+      '/api/v1/users/self/upcoming_events?type=Assignment',
+    )
   }
 }
