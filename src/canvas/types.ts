@@ -230,8 +230,10 @@ export interface CanvasModule {
   name: string
   position: number
   items_count: number
+  items_url?: string
   state?: string
   published?: boolean
+  unlock_at?: string | null
 }
 
 export interface CanvasModuleItem {
@@ -242,6 +244,9 @@ export interface CanvasModuleItem {
   type: string
   content_id?: number
   html_url?: string
+  indent?: number
+  published?: boolean
+  external_url?: string
 }
 
 // --- Pages ---
@@ -252,7 +257,9 @@ export interface CanvasPage {
   title: string
   body?: string
   published: boolean
+  created_at?: string
   updated_at: string
+  editing_roles?: string
 }
 
 // --- Discussions ---

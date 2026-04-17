@@ -37,8 +37,21 @@ function buildFullMockCanvas(): CanvasClient {
       listAnnouncements: async () => [],
       postEntry: async () => ({}),
     },
-    modules: { list: async () => [], get: async () => ({}), listItems: async () => [] },
-    pages: { list: async () => [], get: async () => ({}) },
+    modules: {
+      list: async () => [],
+      get: async () => ({}),
+      listItems: async () => [],
+      create: async () => ({}),
+      update: async () => ({}),
+      createItem: async () => ({}),
+    },
+    pages: {
+      list: async () => [],
+      get: async () => ({}),
+      create: async () => ({}),
+      update: async () => ({}),
+      delete: async () => undefined,
+    },
     calendar: { list: async () => [] },
     conversations: { list: async () => [], send: async () => [] },
     peerReviews: {
@@ -64,7 +77,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 52 tools across all domains', () => {
+  it('returns all 58 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -113,13 +126,19 @@ describe('getAllTools', () => {
     expect(names).toContain('get_discussion')
     expect(names).toContain('list_announcements')
     expect(names).toContain('post_discussion_entry')
-    // Modules (3)
+    // Modules (6)
     expect(names).toContain('list_modules')
     expect(names).toContain('get_module')
     expect(names).toContain('list_module_items')
-    // Pages (2)
+    expect(names).toContain('create_module')
+    expect(names).toContain('update_module')
+    expect(names).toContain('create_module_item')
+    // Pages (5)
     expect(names).toContain('list_pages')
     expect(names).toContain('get_page')
+    expect(names).toContain('create_page')
+    expect(names).toContain('update_page')
+    expect(names).toContain('delete_page')
     // Calendar (1)
     expect(names).toContain('list_calendar_events')
     // Conversations (2)
@@ -138,7 +157,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(52)
+    expect(tools).toHaveLength(58)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -158,6 +177,12 @@ describe('getAllTools', () => {
       'send_conversation',
       'create_peer_review',
       'delete_peer_review',
+      'create_module',
+      'update_module',
+      'create_module_item',
+      'create_page',
+      'update_page',
+      'delete_page',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -176,6 +201,12 @@ describe('getAllTools', () => {
       'send_conversation',
       'create_peer_review',
       'delete_peer_review',
+      'create_module',
+      'update_module',
+      'create_module_item',
+      'create_page',
+      'update_page',
+      'delete_page',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

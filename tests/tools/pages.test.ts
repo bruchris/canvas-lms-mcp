@@ -20,17 +20,20 @@ describe('pageTools', () => {
       pages: {
         list: vi.fn().mockResolvedValue([mockPage]),
         get: vi.fn().mockResolvedValue(mockPage),
+        create: vi.fn().mockResolvedValue(mockPage),
+        update: vi.fn().mockResolvedValue(mockPage),
+        delete: vi.fn().mockResolvedValue(undefined),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 2 tool definitions', () => {
-    expect(pageTools(buildMockCanvas())).toHaveLength(2)
+  it('returns an array with 5 tool definitions', () => {
+    expect(pageTools(buildMockCanvas())).toHaveLength(5)
   })
 
   it('exports tools with correct names', () => {
     const names = pageTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_pages', 'get_page'])
+    expect(names).toEqual(['list_pages', 'get_page', 'create_page', 'update_page', 'delete_page'])
   })
 
   describe('list_pages', () => {
@@ -58,6 +61,59 @@ describe('pageTools', () => {
       const tool = pageTools(canvas).find((t) => t.name === 'get_page')!
       await tool.handler({ course_id: 1, page_url: 'welcome-page' })
       expect(canvas.pages.get).toHaveBeenCalledWith(1, 'welcome-page')
+    })
+  })
+
+  describe('create_page', () => {
+    it('has destructive annotations', () => {
+      const tool = pageTools(buildMockCanvas()).find((t) => t.name === 'create_page')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.pages.create', async () => {
+      const canvas = buildMockCanvas()
+      const tool = pageTools(canvas).find((t) => t.name === 'create_page')!
+      await tool.handler({ course_id: 1, title: 'New Page', body: '<p>Hi</p>' })
+      expect(canvas.pages.create).toHaveBeenCalledWith(1, {
+        title: 'New Page',
+        body: '<p>Hi</p>',
+        published: undefined,
+        editing_roles: undefined,
+      })
+    })
+  })
+
+  describe('update_page', () => {
+    it('has destructive annotations', () => {
+      const tool = pageTools(buildMockCanvas()).find((t) => t.name === 'update_page')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.pages.update', async () => {
+      const canvas = buildMockCanvas()
+      const tool = pageTools(canvas).find((t) => t.name === 'update_page')!
+      await tool.handler({ course_id: 1, page_url: 'welcome-page', published: false })
+      expect(canvas.pages.update).toHaveBeenCalledWith(1, 'welcome-page', {
+        title: undefined,
+        body: undefined,
+        published: false,
+        editing_roles: undefined,
+      })
+    })
+  })
+
+  describe('delete_page', () => {
+    it('has destructive annotations', () => {
+      const tool = pageTools(buildMockCanvas()).find((t) => t.name === 'delete_page')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.pages.delete', async () => {
+      const canvas = buildMockCanvas()
+      const tool = pageTools(canvas).find((t) => t.name === 'delete_page')!
+      const result = await tool.handler({ course_id: 1, page_url: 'old-page' })
+      expect(canvas.pages.delete).toHaveBeenCalledWith(1, 'old-page')
+      expect(result).toEqual({ deleted: true, page_url: 'old-page' })
     })
   })
 })
