@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-42 tools across 15 domains.
+88 tools across Canvas courses, assignments, submissions, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, student workflows, dashboard, and health checks.
 
 ### Tool Pattern
 
@@ -302,21 +302,26 @@ All errors returned as structured MCP content, never thrown:
 |------|------|-------------|
 | `health_check` | read | Verify Canvas API connectivity and token validity |
 
-#### Courses (3 tools)
+#### Courses (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_courses` | read | User's courses with optional term/enrollment filtering |
 | `get_course` | read | Single course details |
 | `get_syllabus` | read | Course syllabus content |
+| `create_course` | write | Create a course in a Canvas account |
+| `update_course` | write | Update an existing course |
 
-#### Assignments (3 tools)
+#### Assignments (6 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_assignments` | read | Assignments for a course |
 | `get_assignment` | read | Single assignment with rubric settings |
 | `list_assignment_groups` | read | Grouped assignments with weights/rules |
+| `create_assignment` | write | Create a new assignment |
+| `update_assignment` | write | Update an existing assignment |
+| `delete_assignment` | write | Delete an assignment |
 
 #### Submissions (4 tools)
 
@@ -343,25 +348,29 @@ All errors returned as structured MCP content, never thrown:
 | `list_quizzes` | read | List quizzes in a course |
 | `get_quiz` | read | Quiz metadata |
 | `list_quiz_submissions` | read | Submissions for a quiz |
-| `get_quiz_questions` | read | Question definitions |
+| `list_quiz_questions` | read | Question definitions |
 | `get_quiz_submission_answers` | read | Student's answered questions |
 | `score_quiz_question` | write | Score an essay/open-ended question |
 
-#### Files (3 tools)
+#### Files (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_files` | read | Files in a course |
 | `list_folders` | read | Folder structure |
 | `get_file` | read | File metadata + download URL |
+| `upload_file` | write | Upload a file to a course folder |
+| `delete_file` | write | Delete a file |
 
-#### Users (3 tools)
+#### Users (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_students` | read | Students enrolled in a course |
 | `get_user` | read | User profile details |
-| `get_user_profile` | read | Authenticated user's own profile |
+| `get_profile` | read | Authenticated user's own profile |
+| `search_users` | read | Search users in an account |
+| `list_course_users` | read | List users in a course, optionally filtered by enrollment type |
 
 #### Groups (2 tools)
 
@@ -370,26 +379,34 @@ All errors returned as structured MCP content, never thrown:
 | `list_groups` | read | Course groups |
 | `list_group_members` | read | Members of a group |
 
-#### Enrollments (1 tool)
+#### Enrollments (3 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_enrollments` | read | User's enrollments across courses |
+| `enroll_user` | write | Enroll a user in a course |
+| `remove_enrollment` | write | Remove or conclude an enrollment |
 
-#### Modules (3 tools)
+#### Modules (6 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_modules` | read | Course modules |
 | `get_module` | read | Single module details |
 | `list_module_items` | read | Items within a module |
+| `create_module` | write | Create a module |
+| `update_module` | write | Update an existing module |
+| `create_module_item` | write | Add an item to a module |
 
-#### Pages (2 tools)
+#### Pages (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_pages` | read | Course pages |
 | `get_page` | read | Page content |
+| `create_page` | write | Create a wiki page |
+| `update_page` | write | Update a wiki page |
+| `delete_page` | write | Delete a wiki page |
 
 #### Discussions (4 tools)
 
@@ -399,21 +416,75 @@ All errors returned as structured MCP content, never thrown:
 | `get_discussion` | read | Discussion topic with entries |
 | `list_announcements` | read | Course announcements |
 | `post_discussion_entry` | write | Post to a discussion topic |
+| `create_discussion` | write | Create a discussion topic |
+| `update_discussion` | write | Update a discussion topic |
+| `delete_discussion` | write | Delete a discussion topic |
 
-#### Calendar (1 tool)
+#### Calendar (3 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_calendar_events` | read | Calendar events and due dates |
+| `create_calendar_event` | write | Create a calendar event |
+| `update_calendar_event` | write | Update a calendar event |
 
-#### Conversations (2 tools)
+#### Conversations (4 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_conversations` | read | Inbox messages |
+| `get_conversation` | read | Conversation message thread |
+| `get_conversation_unread_count` | read | Count unread conversations |
 | `send_conversation` | write | Send a message to students |
 
-**Totals: 42 tools (36 read, 6 write)**
+#### Peer Reviews (4 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_peer_reviews` | read | Peer reviews for an assignment |
+| `get_submission_peer_reviews` | read | Peer reviews assigned to a submission |
+| `create_peer_review` | write | Assign a peer review |
+| `delete_peer_review` | write | Remove a peer review assignment |
+
+#### Accounts (6 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_account` | read | Canvas account details |
+| `list_accounts` | read | Accounts accessible to the authenticated user |
+| `list_sub_accounts` | read | Sub-accounts under an account |
+| `list_account_courses` | read | Courses in an account |
+| `list_account_users` | read | Users in an account |
+| `get_account_reports` | read | Available account report types |
+
+#### Analytics (4 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `search_course_content` | read | Search Canvas course content |
+| `get_course_analytics` | read | Course analytics activity |
+| `get_student_analytics` | read | Student analytics in a course |
+| `get_course_activity_stream` | read | Course activity stream |
+
+#### Student (4 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_my_courses` | read | Authenticated student's courses |
+| `get_my_grades` | read | Authenticated student's grades |
+| `get_my_submissions` | read | Authenticated student's submissions |
+| `get_my_upcoming_assignments` | read | Authenticated student's upcoming assignments |
+
+#### Dashboard (4 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_dashboard_cards` | read | Current user's dashboard course cards |
+| `get_todo_items` | read | Current user's Canvas todo items |
+| `get_upcoming_events` | read | Current user's upcoming events |
+| `get_missing_submissions` | read | Current user's missing submissions |
+
+**Totals: 88 tools (60 read, 28 write)**
 
 ## MCP Resources
 
@@ -547,8 +618,8 @@ All tools include MCP tool annotations to help clients (Claude, ChatGPT) make sa
 
 | Annotation | Applied to | Effect |
 |------------|-----------|--------|
-| `readOnlyHint: true` | All 33 read tools | Clients may auto-execute without confirmation |
-| `destructiveHint: true` | All 8 write tools | Clients should ask for user confirmation before executing |
+| `readOnlyHint: true` | All 60 read tools | Clients may auto-execute without confirmation |
+| `destructiveHint: true` | All 28 write tools | Clients should ask for user confirmation before executing |
 | `idempotentHint: true` | `grade_submission`, `submit_rubric_assessment`, `score_quiz_question` | Safe to retry — re-grading with same value is a no-op |
 | `openWorldHint: true` | All tools | Tools interact with external Canvas API |
 
