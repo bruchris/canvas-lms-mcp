@@ -61,7 +61,7 @@ describe('ConversationsModule', () => {
     }
     vi.spyOn(client, 'request').mockResolvedValueOnce(mockDetail)
 
-    const result = await conversations.get('1')
+    const result = await conversations.get(1)
     expect(result.id).toBe(1)
     expect(result.messages).toHaveLength(2)
     expect(result.messages[0]!.body).toBe('Can you help?')
@@ -80,6 +80,13 @@ describe('ConversationsModule', () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({ unread_count: '0' })
     const result = await conversations.getUnreadCount()
     expect(result.unread_count).toBe(0)
+  })
+
+  it('throws when Canvas returns a non-numeric unread_count', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ unread_count: 'bad' })
+    await expect(conversations.getUnreadCount()).rejects.toThrow(
+      'Canvas returned unexpected unread_count value: "bad"',
+    )
   })
 
   it('sends a conversation', async () => {

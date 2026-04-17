@@ -20,14 +20,14 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'get_conversation',
       description: 'Get a single conversation with its full message thread.',
       inputSchema: {
-        conversation_id: z.string().regex(/^\d+$/).describe('The conversation ID'),
+        conversation_id: z.number().describe('The conversation ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.conversations.get(params.conversation_id as string)
+        return canvas.conversations.get(params.conversation_id as number)
       },
     },
     {

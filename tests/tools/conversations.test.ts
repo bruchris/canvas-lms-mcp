@@ -86,8 +86,8 @@ describe('conversationTools', () => {
     it('delegates to canvas.conversations.get with conversation_id', async () => {
       const canvas = buildMockCanvas()
       const tool = conversationTools(canvas).find((t) => t.name === 'get_conversation')!
-      const result = await tool.handler({ conversation_id: '1' })
-      expect(canvas.conversations.get).toHaveBeenCalledWith('1')
+      const result = await tool.handler({ conversation_id: 1 })
+      expect(canvas.conversations.get).toHaveBeenCalledWith(1)
       expect(result).toEqual(mockDetail)
       expect((result as CanvasConversationDetail).messages).toHaveLength(1)
     })
