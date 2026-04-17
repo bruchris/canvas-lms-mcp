@@ -64,11 +64,11 @@ describe('analyticsTools', () => {
       expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
     })
 
-    it('returns empty array when content_types is empty', async () => {
+    it('returns empty results when content_types is empty', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = await tool.handler({ course_id: 10, search_term: 'test', content_types: [] })
-      expect(result).toEqual([])
+      expect(result).toEqual({ results: [] })
       expect(canvas.analytics.searchContentType).not.toHaveBeenCalled()
     })
 
@@ -81,20 +81,34 @@ describe('analyticsTools', () => {
           { id: 3, title: 'Report', type: 'assignment', course_id: 10 },
         ])
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      const result = await tool.handler({
+      const result = (await tool.handler({
         course_id: 10,
         search_term: 'test',
         content_types: ['pages', 'assignments'],
-      })
-      expect(result).toHaveLength(3)
+      })) as { results: unknown[] }
+      expect(result.results).toHaveLength(3)
     })
 
-    it('throws when any content type fetch fails', async () => {
+    it('returns partial results with warnings when some types fail', async () => {
       const canvas = buildMockCanvas()
-      const error = new Error('401 Unauthorized')
       vi.mocked(canvas.analytics.searchContentType)
         .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
-        .mockRejectedValueOnce(error)
+        .mockRejectedValueOnce(new Error('Network error'))
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const result = (await tool.handler({
+        course_id: 10,
+        search_term: 'test',
+        content_types: ['pages', 'assignments'],
+      })) as { results: unknown[]; warnings: string[] }
+      expect(result.results).toHaveLength(1)
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toMatch(/assignments search failed/)
+    })
+
+    it('throws when all content types fail', async () => {
+      const canvas = buildMockCanvas()
+      const error = new Error('401 Unauthorized')
+      vi.mocked(canvas.analytics.searchContentType).mockRejectedValue(error)
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await expect(
         tool.handler({
