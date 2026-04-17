@@ -6,7 +6,14 @@ import type { CanvasClient } from '../../src/canvas'
 function buildFullMockCanvas(): CanvasClient {
   return {
     courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null },
-    assignments: { list: async () => [], get: async () => ({}), listGroups: async () => [] },
+    assignments: {
+      list: async () => [],
+      get: async () => ({}),
+      listGroups: async () => [],
+      create: async () => ({}),
+      update: async () => ({}),
+      delete: async () => undefined,
+    },
     submissions: {
       list: async () => [],
       get: async () => ({}),
@@ -86,7 +93,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 65 tools across all domains', () => {
+  it('returns all 68 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -96,10 +103,13 @@ describe('getAllTools', () => {
     expect(names).toContain('list_courses')
     expect(names).toContain('get_course')
     expect(names).toContain('get_syllabus')
-    // Assignments (3)
+    // Assignments (6)
     expect(names).toContain('list_assignments')
     expect(names).toContain('get_assignment')
     expect(names).toContain('list_assignment_groups')
+    expect(names).toContain('create_assignment')
+    expect(names).toContain('update_assignment')
+    expect(names).toContain('delete_assignment')
     // Submissions (4)
     expect(names).toContain('list_submissions')
     expect(names).toContain('get_submission')
@@ -173,7 +183,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(65)
+    expect(tools).toHaveLength(68)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -185,6 +195,9 @@ describe('getAllTools', () => {
 
   it('write tools have destructiveHint: true', () => {
     const writeToolNames = [
+      'create_assignment',
+      'update_assignment',
+      'delete_assignment',
       'grade_submission',
       'comment_on_submission',
       'submit_rubric_assessment',
@@ -214,6 +227,9 @@ describe('getAllTools', () => {
 
   it('read tools have readOnlyHint: true', () => {
     const writeToolNames = new Set([
+      'create_assignment',
+      'update_assignment',
+      'delete_assignment',
       'grade_submission',
       'comment_on_submission',
       'submit_rubric_assessment',

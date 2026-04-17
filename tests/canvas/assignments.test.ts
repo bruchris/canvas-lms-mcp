@@ -124,4 +124,123 @@ describe('AssignmentsModule', () => {
       expect(result).toEqual([])
     })
   })
+
+  describe('create', () => {
+    it('creates an assignment with required params', async () => {
+      const mockAssignment: CanvasAssignment = {
+        id: 10,
+        name: 'New HW',
+        description: null,
+        due_at: null,
+        points_possible: 0,
+        grading_type: 'points',
+        submission_types: ['none'],
+        course_id: 100,
+        allowed_attempts: -1,
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockAssignment)
+
+      const result = await assignments.create(100, { name: 'New HW' })
+      expect(result).toEqual(mockAssignment)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments', {
+        method: 'POST',
+        body: JSON.stringify({ assignment: { name: 'New HW' } }),
+      })
+    })
+
+    it('creates an assignment with all optional params', async () => {
+      const mockAssignment: CanvasAssignment = {
+        id: 11,
+        name: 'Full HW',
+        description: '<p>Details</p>',
+        due_at: '2026-06-01T23:59:00Z',
+        points_possible: 50,
+        grading_type: 'points',
+        submission_types: ['online_upload'],
+        course_id: 100,
+        allowed_attempts: -1,
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockAssignment)
+
+      await assignments.create(100, {
+        name: 'Full HW',
+        description: '<p>Details</p>',
+        points_possible: 50,
+        due_at: '2026-06-01T23:59:00Z',
+        submission_types: ['online_upload'],
+        assignment_group_id: 5,
+      })
+
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment: {
+            name: 'Full HW',
+            description: '<p>Details</p>',
+            points_possible: 50,
+            due_at: '2026-06-01T23:59:00Z',
+            submission_types: ['online_upload'],
+            assignment_group_id: 5,
+          },
+        }),
+      })
+    })
+  })
+
+  describe('update', () => {
+    it('updates an assignment', async () => {
+      const mockAssignment: CanvasAssignment = {
+        id: 1,
+        name: 'Updated HW',
+        description: null,
+        due_at: null,
+        points_possible: 75,
+        grading_type: 'points',
+        submission_types: ['online_upload'],
+        course_id: 100,
+        allowed_attempts: -1,
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockAssignment)
+
+      const result = await assignments.update(100, 1, { name: 'Updated HW', points_possible: 75 })
+      expect(result).toEqual(mockAssignment)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/1', {
+        method: 'PUT',
+        body: JSON.stringify({ assignment: { name: 'Updated HW', points_possible: 75 } }),
+      })
+    })
+
+    it('constructs correct URL for different IDs', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignment)
+
+      await assignments.update(42, 99, { name: 'Renamed' })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/assignments/99', {
+        method: 'PUT',
+        body: JSON.stringify({ assignment: { name: 'Renamed' } }),
+      })
+    })
+  })
+
+  describe('delete', () => {
+    it('deletes an assignment', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+
+      await assignments.delete(100, 1)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/1', {
+        method: 'DELETE',
+      })
+    })
+
+    it('constructs correct URL for different IDs', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+
+      await assignments.delete(42, 99)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/assignments/99', {
+        method: 'DELETE',
+      })
+    })
+  })
 })

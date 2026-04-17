@@ -1,5 +1,10 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasAssignment, CanvasAssignmentGroup } from './types'
+import type {
+  CanvasAssignment,
+  CanvasAssignmentGroup,
+  CreateAssignmentParams,
+  UpdateAssignmentParams,
+} from './types'
 
 export class AssignmentsModule {
   constructor(private client: CanvasHttpClient) {}
@@ -18,5 +23,32 @@ export class AssignmentsModule {
     return this.client.paginate<CanvasAssignmentGroup>(
       `/api/v1/courses/${courseId}/assignment_groups`,
     )
+  }
+
+  async create(courseId: number, params: CreateAssignmentParams): Promise<CanvasAssignment> {
+    return this.client.request<CanvasAssignment>(`/api/v1/courses/${courseId}/assignments`, {
+      method: 'POST',
+      body: JSON.stringify({ assignment: params }),
+    })
+  }
+
+  async update(
+    courseId: number,
+    assignmentId: number,
+    params: UpdateAssignmentParams,
+  ): Promise<CanvasAssignment> {
+    return this.client.request<CanvasAssignment>(
+      `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ assignment: params }),
+      },
+    )
+  }
+
+  async delete(courseId: number, assignmentId: number): Promise<void> {
+    await this.client.request<void>(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {
+      method: 'DELETE',
+    })
   }
 }
