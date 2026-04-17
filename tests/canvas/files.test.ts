@@ -206,10 +206,7 @@ describe('FilesModule', () => {
         upload_url: 'https://s3.example.com/upload',
         upload_params: {},
       })
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockRejectedValueOnce(new TypeError('fetch failed')),
-      )
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('fetch failed')))
 
       await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
         'Unable to reach file storage (s3.example.com)',

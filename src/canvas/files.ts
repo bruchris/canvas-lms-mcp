@@ -58,14 +58,14 @@ export class FilesModule {
         body: form,
         redirect: 'manual',
       })
-    } catch (err) {
+    } catch (networkErr) {
       let hostname: string
       try {
         hostname = new URL(uploadInfo.upload_url).hostname
       } catch {
         hostname = uploadInfo.upload_url
       }
-      throw new Error(`Unable to reach file storage (${hostname})`)
+      throw new Error(`Unable to reach file storage (${hostname})`, { cause: networkErr })
     }
 
     // Step 3: If S3 returned a redirect, POST to Canvas confirm URL
@@ -88,9 +88,10 @@ export class FilesModule {
     let parsed: unknown
     try {
       parsed = JSON.parse(responseText)
-    } catch (err) {
+    } catch (parseErr) {
       throw new Error(
-        `File upload response is not valid JSON (${err instanceof Error ? err.message : String(err)}): ${responseText.slice(0, 500)}`,
+        `File upload response is not valid JSON (${parseErr instanceof Error ? parseErr.message : String(parseErr)}): ${responseText.slice(0, 500)}`,
+        { cause: parseErr },
       )
     }
     return parsed as CanvasFile
