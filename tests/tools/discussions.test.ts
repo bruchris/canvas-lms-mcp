@@ -180,6 +180,14 @@ describe('discussionTools', () => {
         require_initial_post: undefined,
       })
     })
+
+    it('rejects when no update fields are provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      await expect(tool.handler({ course_id: 1, topic_id: 1 })).rejects.toThrow(
+        'At least one field must be provided to update a discussion topic',
+      )
+    })
   })
 
   describe('delete_discussion', () => {
