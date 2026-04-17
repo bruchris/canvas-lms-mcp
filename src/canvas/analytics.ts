@@ -87,7 +87,10 @@ export class AnalyticsModule {
           .paginate<{
             id: number
             title: string
-          }>(`/api/v1/courses/${courseId}/discussion_topics`, { search_term: searchTerm, only_announcements: 'true' })
+          }>(`/api/v1/courses/${courseId}/discussion_topics`, {
+            search_term: searchTerm,
+            only_announcements: 'true',
+          })
           .then((announcements) =>
             announcements.map((a) => ({
               id: a.id,
@@ -100,7 +103,14 @@ export class AnalyticsModule {
     }
 
     const settled = await Promise.allSettled(fetches)
-    return settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
+    const fulfilled = settled.filter(
+      (r): r is PromiseFulfilledResult<CanvasSearchResult[]> => r.status === 'fulfilled',
+    )
+    if (fulfilled.length === 0) {
+      const firstRejected = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+      throw firstRejected!.reason
+    }
+    return fulfilled.flatMap((r) => r.value)
   }
 
   async getCourseActivity(courseId: number): Promise<CanvasCourseActivitySummary[]> {

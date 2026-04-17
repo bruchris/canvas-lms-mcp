@@ -71,6 +71,24 @@ describe('AnalyticsModule', () => {
         only_announcements: 'true',
       })
     })
+
+    it('returns partial results when one content type fails', async () => {
+      const paginate = vi.spyOn(client, 'paginate')
+      paginate
+        .mockResolvedValueOnce([{ page_id: 1, title: 'Intro', url: 'intro' }])
+        .mockRejectedValueOnce(new Error('403 Forbidden'))
+      const results = await analytics.searchCourseContent(100, 'test', ['pages', 'assignments'])
+      expect(results).toHaveLength(1)
+      expect(results[0]).toMatchObject({ type: 'page', id: 1 })
+    })
+
+    it('throws the first error when all content types fail', async () => {
+      const error = new Error('401 Unauthorized')
+      vi.spyOn(client, 'paginate').mockRejectedValue(error)
+      await expect(
+        analytics.searchCourseContent(100, 'test', ['pages', 'assignments']),
+      ).rejects.toThrow('401 Unauthorized')
+    })
   })
 
   describe('getCourseActivity', () => {
