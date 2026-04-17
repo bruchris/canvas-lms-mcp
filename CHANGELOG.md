@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.5.1...canvas-lms-mcp-v0.6.0) (2026-04-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename package to unscoped canvas-lms-mcp ([#48](https://github.com/bruchris/canvas-lms-mcp/issues/48))
+
+### Features
+
+* rename package to unscoped canvas-lms-mcp ([#48](https://github.com/bruchris/canvas-lms-mcp/issues/48)) ([d923f70](https://github.com/bruchris/canvas-lms-mcp/commit/d923f70c0c57a6509d06d5052893d7d9d53557c3))
+
 ## [0.5.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.5.0...canvas-lms-mcp-v0.5.1) (2026-04-17)
 
 
