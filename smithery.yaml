@@ -1,5 +1,13 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 
+name: Canvas LMS MCP
+description: >
+  The TypeScript MCP 1.x server for Canvas LMS. Connect Claude Desktop, Cursor,
+  VS Code, or any MCP-compatible AI agent to your Canvas instance with 46 tools
+  across 16 domains: courses, assignments, submissions, rubrics, quizzes, grades,
+  discussions, modules, pages, files, users, enrollments, groups, calendar,
+  conversations, and accounts. Three deployment modes: stdio, HTTP, and library import.
+
 startCommand:
   type: stdio
 
