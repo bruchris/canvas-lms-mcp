@@ -144,7 +144,13 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.createItem', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'create_module_item')!
-      await tool.handler({ course_id: 1, module_id: 1, title: 'HW1', type: 'Assignment', content_id: 42 })
+      await tool.handler({
+        course_id: 1,
+        module_id: 1,
+        title: 'HW1',
+        type: 'Assignment',
+        content_id: 42,
+      })
       expect(canvas.modules.createItem).toHaveBeenCalledWith(1, 1, {
         title: 'HW1',
         type: 'Assignment',

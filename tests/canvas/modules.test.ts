@@ -94,7 +94,9 @@ describe('ModulesModule', () => {
     expect(result).toMatchObject({ id: 5, type: 'Assignment', content_id: 42 })
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items', {
       method: 'POST',
-      body: JSON.stringify({ module_item: { title: 'Assignment 1', type: 'Assignment', content_id: 42 } }),
+      body: JSON.stringify({
+        module_item: { title: 'Assignment 1', type: 'Assignment', content_id: 42 },
+      }),
     })
   })
 })

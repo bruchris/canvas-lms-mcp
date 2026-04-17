@@ -113,24 +113,15 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
         module_id: z.number().describe('The Canvas module ID'),
         title: z.string().describe('Title of the module item'),
         type: z
-          .enum([
-            'File',
-            'Page',
-            'Discussion',
-            'Assignment',
-            'Quiz',
-            'ExternalUrl',
-            'ExternalTool',
-          ])
+          .enum(['File', 'Page', 'Discussion', 'Assignment', 'Quiz', 'ExternalUrl', 'ExternalTool'])
           .describe('Type of content to add'),
         content_id: z
           .number()
           .optional()
-          .describe('Canvas ID of the content (required for File, Page, Discussion, Assignment, Quiz)'),
-        external_url: z
-          .string()
-          .optional()
-          .describe('URL for ExternalUrl or ExternalTool items'),
+          .describe(
+            'Canvas ID of the content (required for File, Page, Discussion, Assignment, Quiz)',
+          ),
+        external_url: z.string().optional().describe('URL for ExternalUrl or ExternalTool items'),
         position: z.number().optional().describe('Position within the module'),
       },
       annotations: {
