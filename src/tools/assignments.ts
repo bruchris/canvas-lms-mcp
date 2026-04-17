@@ -104,14 +104,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .string()
           .optional()
           .describe('New due date in ISO 8601 format (e.g. 2026-05-01T23:59:00Z)'),
-        submission_types: z
-          .array(z.string())
-          .optional()
-          .describe('New allowed submission types'),
-        assignment_group_id: z
-          .number()
-          .optional()
-          .describe('New assignment group ID'),
+        submission_types: z.array(z.string()).optional().describe('New allowed submission types'),
+        assignment_group_id: z.number().optional().describe('New assignment group ID'),
       },
       annotations: {
         destructiveHint: true,
