@@ -22,57 +22,61 @@ export class AnalyticsModule {
     searchTerm: string,
     type: SearchContentType,
   ): Promise<CourseSearchResult[]> {
-    if (type === 'pages') {
-      const pages = await this.client.paginate<{ page_id: number; title: string; url: string }>(
-        `/api/v1/courses/${courseId}/pages`,
-        { search_term: searchTerm },
-      )
-      return pages.map((p) => ({
-        id: p.page_id,
-        title: p.title,
-        type: 'page' as const,
-        url: p.url,
-        course_id: courseId,
-      }))
+    switch (type) {
+      case 'pages': {
+        const pages = await this.client.paginate<{ page_id: number; title: string; url: string }>(
+          `/api/v1/courses/${courseId}/pages`,
+          { search_term: searchTerm },
+        )
+        return pages.map((p) => ({
+          id: p.page_id,
+          title: p.title,
+          type: 'page' as const,
+          url: p.url,
+          course_id: courseId,
+        }))
+      }
+      case 'assignments': {
+        const assignments = await this.client.paginate<{ id: number; name: string }>(
+          `/api/v1/courses/${courseId}/assignments`,
+          { search_term: searchTerm },
+        )
+        return assignments.map((a) => ({
+          id: a.id,
+          title: a.name,
+          type: 'assignment' as const,
+          course_id: courseId,
+        }))
+      }
+      case 'discussions': {
+        const discussions = await this.client.paginate<{ id: number; title: string }>(
+          `/api/v1/courses/${courseId}/discussion_topics`,
+          { search_term: searchTerm },
+        )
+        return discussions.map((d) => ({
+          id: d.id,
+          title: d.title,
+          type: 'discussion' as const,
+          course_id: courseId,
+        }))
+      }
+      case 'announcements': {
+        const announcements = await this.client.paginate<{ id: number; title: string }>(
+          `/api/v1/courses/${courseId}/discussion_topics`,
+          { search_term: searchTerm, only_announcements: 'true' },
+        )
+        return announcements.map((a) => ({
+          id: a.id,
+          title: a.title,
+          type: 'announcement' as const,
+          course_id: courseId,
+        }))
+      }
+      default: {
+        const _exhaustive: never = type
+        throw new Error(`Unknown content type: ${_exhaustive}`)
+      }
     }
-
-    if (type === 'assignments') {
-      const assignments = await this.client.paginate<{ id: number; name: string }>(
-        `/api/v1/courses/${courseId}/assignments`,
-        { search_term: searchTerm },
-      )
-      return assignments.map((a) => ({
-        id: a.id,
-        title: a.name,
-        type: 'assignment' as const,
-        course_id: courseId,
-      }))
-    }
-
-    if (type === 'discussions') {
-      const discussions = await this.client.paginate<{ id: number; title: string }>(
-        `/api/v1/courses/${courseId}/discussion_topics`,
-        { search_term: searchTerm },
-      )
-      return discussions.map((d) => ({
-        id: d.id,
-        title: d.title,
-        type: 'discussion' as const,
-        course_id: courseId,
-      }))
-    }
-
-    // announcements
-    const announcements = await this.client.paginate<{ id: number; title: string }>(
-      `/api/v1/courses/${courseId}/discussion_topics`,
-      { search_term: searchTerm, only_announcements: 'true' },
-    )
-    return announcements.map((a) => ({
-      id: a.id,
-      title: a.title,
-      type: 'announcement' as const,
-      course_id: courseId,
-    }))
   }
 
   async getCourseActivity(courseId: number): Promise<CanvasCourseActivitySummary[]> {

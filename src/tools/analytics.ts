@@ -1,8 +1,10 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { formatError } from './errors'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
+import type { CourseSearchResult } from '../canvas/types'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -31,13 +33,35 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
           ...SEARCH_CONTENT_TYPES,
         ]
 
-        if (types.length === 0) return []
+        if (types.length === 0) return { results: [] }
 
-        const results = await Promise.all(
+        const settled = await Promise.allSettled(
           types.map((type) => canvas.analytics.searchContentType(courseId, searchTerm, type)),
         )
 
-        return results.flat()
+        const fulfilled = settled.filter(
+          (r): r is PromiseFulfilledResult<CourseSearchResult[]> => r.status === 'fulfilled',
+        )
+
+        if (fulfilled.length === 0) {
+          const allErrors = settled
+            .map((result, index) =>
+              result.status === 'rejected'
+                ? `${types[index]}: ${formatError(result.reason)}`
+                : null,
+            )
+            .filter((errorLine): errorLine is string => errorLine !== null)
+          throw new Error(`All content type searches failed:\n${allErrors.join('\n')}`)
+        }
+
+        const results = fulfilled.flatMap((r) => r.value)
+        const warnings = settled
+          .map((r, i) =>
+            r.status === 'rejected' ? `${types[i]} search failed: ${formatError(r.reason)}` : null,
+          )
+          .filter((w): w is string => w !== null)
+
+        return warnings.length > 0 ? { results, warnings } : { results }
       },
     },
     {

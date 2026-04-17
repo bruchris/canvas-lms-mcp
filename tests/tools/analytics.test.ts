@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import { CanvasApiError } from '../../src/canvas'
 import { analyticsTools } from '../../src/tools/analytics'
 
 describe('analyticsTools', () => {
@@ -64,11 +65,11 @@ describe('analyticsTools', () => {
       expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
     })
 
-    it('returns empty array when content_types is empty', async () => {
+    it('returns empty results when content_types is empty', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = await tool.handler({ course_id: 10, search_term: 'test', content_types: [] })
-      expect(result).toEqual([])
+      expect(result).toEqual({ results: [] })
       expect(canvas.analytics.searchContentType).not.toHaveBeenCalled()
     })
 
@@ -81,20 +82,55 @@ describe('analyticsTools', () => {
           { id: 3, title: 'Report', type: 'assignment', course_id: 10 },
         ])
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      const result = await tool.handler({
+      const result = (await tool.handler({
         course_id: 10,
         search_term: 'test',
         content_types: ['pages', 'assignments'],
-      })
-      expect(result).toHaveLength(3)
+      })) as { results: unknown[] }
+      expect(result.results).toHaveLength(3)
+      expect(result).not.toHaveProperty('warnings')
     })
 
-    it('throws when any content type fetch fails', async () => {
+    it('returns partial results with warnings when some types fail', async () => {
       const canvas = buildMockCanvas()
-      const error = new Error('401 Unauthorized')
       vi.mocked(canvas.analytics.searchContentType)
         .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
-        .mockRejectedValueOnce(error)
+        .mockRejectedValueOnce(new Error('Network error'))
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const result = (await tool.handler({
+        course_id: 10,
+        search_term: 'test',
+        content_types: ['pages', 'assignments'],
+      })) as { results: unknown[]; warnings: string[] }
+      expect(result.results).toHaveLength(1)
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toMatch(/assignments search failed:.*Failed to connect to Canvas/)
+    })
+
+    it('formats CanvasApiError failures in partial warnings', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.searchContentType)
+        .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
+        .mockRejectedValueOnce(
+          new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/assignments'),
+        )
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const result = (await tool.handler({
+        course_id: 10,
+        search_term: 'test',
+        content_types: ['pages', 'assignments'],
+      })) as { results: unknown[]; warnings: string[] }
+      expect(result.results).toHaveLength(1)
+      expect(result.warnings[0]).toContain(
+        "You don't have permission to perform this action in this course",
+      )
+    })
+
+    it('throws aggregated errors when all content types fail', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.searchContentType)
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new CanvasApiError('Unauthorized', 401, '/api/v1/courses/10'))
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await expect(
         tool.handler({
@@ -102,7 +138,9 @@ describe('analyticsTools', () => {
           search_term: 'test',
           content_types: ['pages', 'assignments'],
         }),
-      ).rejects.toThrow('401 Unauthorized')
+      ).rejects.toThrow(
+        /All content type searches failed:\npages: Failed to connect to Canvas.*\nassignments: Canvas token is invalid or expired/,
+      )
     })
   })
 
