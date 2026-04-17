@@ -1,5 +1,7 @@
 # Canvas LMS MCP Server
 
+> The TypeScript MCP server for Canvas LMS.
+
 [![CI](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40bruchris%2Fcanvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,7 +10,16 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent.
 
-42 tools across 15 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
+46 tools across 16 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
+
+## Comparison
+
+| | @bruchris/canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
+|---|---|---|---|
+| Language | TypeScript | Python | TypeScript |
+| Tools | 46 | 80+ | 54 |
+| License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
+| Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
 ## Quick Start
 
@@ -162,7 +173,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### Read-Only Tools (36)
+### Read-Only Tools (38)
 
 | Category | Tool | Description |
 |----------|------|-------------|
@@ -202,8 +213,10 @@ Once configured, try these prompts with your AI client:
 | Pages | `get_page` | Get a wiki page by its URL slug |
 | Calendar | `list_calendar_events` | List calendar events for a course |
 | Conversations | `list_conversations` | List inbox messages for the authenticated user |
+| Peer Reviews | `list_peer_reviews` | List all peer reviews for an assignment in a course |
+| Peer Reviews | `get_submission_peer_reviews` | List peer reviews assigned to a specific submission |
 
-### Write Tools (6)
+### Write Tools (8)
 
 | Tool | Description | Idempotent |
 |------|-------------|------------|
@@ -213,6 +226,8 @@ Once configured, try these prompts with your AI client:
 | `score_quiz_question` | Score a specific quiz question | Yes |
 | `post_discussion_entry` | Post a reply to a discussion topic | No |
 | `send_conversation` | Send a message to one or more recipients | No |
+| `create_peer_review` | Assign a user to peer-review a submission | No |
+| `delete_peer_review` | Remove a peer review assignment from a submission | No |
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
