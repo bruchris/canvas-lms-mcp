@@ -108,7 +108,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 72 tools across all domains', () => {
+  it('returns all 74 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -204,7 +204,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(72)
+    expect(tools).toHaveLength(74)
   })
 
   it('all tools have openWorldHint: true', () => {
