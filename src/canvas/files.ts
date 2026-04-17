@@ -1,4 +1,3 @@
-import { CanvasApiError } from './client'
 import type { CanvasHttpClient } from './client'
 import type { CanvasFile, CanvasFileUploadInfo, CanvasFolder } from './types'
 
@@ -59,23 +58,19 @@ export class FilesModule {
     if (s3Response.status >= 300 && s3Response.status < 400) {
       const confirmUrl = s3Response.headers.get('location')
       if (!confirmUrl) {
-        throw new CanvasApiError(
-          'Upload redirect missing Location header',
-          s3Response.status,
-          uploadInfo.upload_url,
-        )
+        throw new Error(`File upload redirect missing Location header (HTTP ${s3Response.status})`)
       }
       return this.client.request<CanvasFile>(confirmUrl, { method: 'POST' })
     }
 
     if (!s3Response.ok) {
-      throw new CanvasApiError('File upload failed', s3Response.status, uploadInfo.upload_url)
+      throw new Error(`File upload to storage failed (HTTP ${s3Response.status})`)
     }
 
     return s3Response.json() as Promise<CanvasFile>
   }
 
-  async delete(fileId: number): Promise<void> {
-    await this.client.request<void>(`/api/v1/files/${fileId}`, { method: 'DELETE' })
+  async delete(fileId: number): Promise<CanvasFile> {
+    return this.client.request<CanvasFile>(`/api/v1/files/${fileId}`, { method: 'DELETE' })
   }
 }

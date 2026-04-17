@@ -31,7 +31,7 @@ describe('fileTools', () => {
         listFolders: vi.fn().mockResolvedValue([mockFolder]),
         get: vi.fn().mockResolvedValue(mockFile),
         upload: vi.fn().mockResolvedValue(mockFile),
-        delete: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(mockFile),
       },
     } as unknown as CanvasClient
   }
@@ -139,12 +139,12 @@ describe('fileTools', () => {
       expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
     })
 
-    it('delegates to canvas.files.delete and returns confirmation', async () => {
+    it('delegates to canvas.files.delete and returns the deleted file', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'delete_file')!
       const result = await tool.handler({ file_id: 99 })
       expect(canvas.files.delete).toHaveBeenCalledWith(99)
-      expect(result).toEqual({ deleted: true, file_id: 99 })
+      expect(result).toMatchObject({ id: mockFile.id })
     })
   })
 })

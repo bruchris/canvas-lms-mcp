@@ -90,8 +90,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const file_id = params.file_id as number
-        await canvas.files.delete(file_id)
-        return { deleted: true, file_id }
+        return canvas.files.delete(file_id)
       },
     },
   ]

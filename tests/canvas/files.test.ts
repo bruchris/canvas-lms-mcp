@@ -161,12 +161,59 @@ describe('FilesModule', () => {
       const result = await files.upload(100, 'img.png', btoa('png'), 'image/png')
       expect(result).toMatchObject({ id: 7 })
     })
+
+    it('throws plain Error (not CanvasApiError) when S3 returns an error status', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(new Response('Forbidden', { status: 403 })),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload to storage failed (HTTP 403)',
+      )
+    })
+
+    it('throws plain Error when S3 redirect has no Location header', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(null, { status: 303 })))
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload redirect missing Location header',
+      )
+    })
+
+    it('throws CanvasApiError when Canvas rejects step 1', async () => {
+      const { CanvasApiError } = await import('../../src/canvas/client')
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError('Bad request', 400, '/api/v1/courses/100/files'),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        CanvasApiError,
+      )
+    })
   })
 
   describe('delete', () => {
-    it('sends DELETE to /api/v1/files/:id', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
-      await files.delete(99)
+    it('returns the deleted file object from Canvas', async () => {
+      const deletedFile = {
+        id: 99,
+        display_name: 'old.pdf',
+        content_type: 'application/pdf',
+        url: 'https://canvas.example.com/files/99/download',
+        size: 2048,
+        folder_id: 3,
+      }
+      vi.spyOn(client, 'request').mockResolvedValueOnce(deletedFile)
+      const result = await files.delete(99)
+      expect(result).toMatchObject({ id: 99, display_name: 'old.pdf' })
       expect(client.request).toHaveBeenCalledWith('/api/v1/files/99', { method: 'DELETE' })
     })
   })
