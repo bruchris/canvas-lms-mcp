@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
-import type { CanvasCourseSearchResult } from '../canvas/types'
+import type { CourseSearchResult } from '../canvas/types'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -39,14 +39,15 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         )
 
         const fulfilled = settled.filter(
-          (r): r is PromiseFulfilledResult<CanvasCourseSearchResult[]> => r.status === 'fulfilled',
+          (r): r is PromiseFulfilledResult<CourseSearchResult[]> => r.status === 'fulfilled',
         )
 
         if (fulfilled.length === 0) {
           const firstRejected = settled.find(
             (r): r is PromiseRejectedResult => r.status === 'rejected',
           )
-          throw firstRejected!.reason
+          if (!firstRejected) throw new Error('unexpected: no rejected result')
+          throw firstRejected.reason
         }
 
         const results = fulfilled.flatMap((r) => r.value)

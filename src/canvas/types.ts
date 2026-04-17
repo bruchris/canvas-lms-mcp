@@ -444,7 +444,7 @@ export interface CanvasActivityStreamItem {
   unread_count: number
 }
 
-export interface CanvasCourseSearchResult {
+export interface CourseSearchResult {
   id: number
   title: string
   type: 'page' | 'assignment' | 'discussion' | 'announcement'
