@@ -107,7 +107,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'create_module_item',
       description:
-        'Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader, Text) to a module.',
+        'Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader) to a module.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         module_id: z.number().describe('The Canvas module ID'),
@@ -122,7 +122,6 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
             'ExternalUrl',
             'ExternalTool',
             'SubHeader',
-            'Text',
           ])
           .describe('Type of content to add'),
         content_id: z
