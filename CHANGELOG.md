@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.6.0...canvas-lms-mcp-v1.1.0) (2026-04-17)
+
+
+### Bug Fixes
+
+* **release:** prepare first unscoped npm publish ([#50](https://github.com/bruchris/canvas-lms-mcp/issues/50)) ([fdc599b](https://github.com/bruchris/canvas-lms-mcp/commit/fdc599b65ef0d6be179b3021fa366f0a9edf4099))
+
+
+### Documentation
+
+* add contribution and PR governance guidance ([#51](https://github.com/bruchris/canvas-lms-mcp/issues/51)) ([76963ca](https://github.com/bruchris/canvas-lms-mcp/commit/76963caca80eb7b2ff25d6160112cf1f48cee286))
+
 ## [0.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.5.1...canvas-lms-mcp-v0.6.0) (2026-04-17)
 
 
