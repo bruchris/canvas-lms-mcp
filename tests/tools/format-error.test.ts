@@ -65,6 +65,11 @@ describe('formatError', () => {
     expect(formatError(error)).toBe('Failed to connect to Canvas — check your base URL')
   })
 
+  it('maps generic network errors through the shared formatter path', () => {
+    const error = new Error('Network error')
+    expect(formatError(error)).toBe('Failed to connect to Canvas — check your base URL')
+  })
+
   it('maps generic errors to their message', () => {
     const error = new Error('Something broke')
     expect(formatError(error)).toBe('Something broke')

@@ -104,7 +104,7 @@ describe('analyticsTools', () => {
       })) as { results: unknown[]; warnings: string[] }
       expect(result.results).toHaveLength(1)
       expect(result.warnings).toHaveLength(1)
-      expect(result.warnings[0]).toMatch(/assignments search failed:.*Network error/)
+      expect(result.warnings[0]).toMatch(/assignments search failed:.*Failed to connect to Canvas/)
     })
 
     it('formats CanvasApiError failures in partial warnings', async () => {
@@ -139,7 +139,7 @@ describe('analyticsTools', () => {
           content_types: ['pages', 'assignments'],
         }),
       ).rejects.toThrow(
-        /All content type searches failed:\npages: Network error\nassignments: Canvas token is invalid or expired/,
+        /All content type searches failed:\npages: Failed to connect to Canvas.*\nassignments: Canvas token is invalid or expired/,
       )
     })
   })

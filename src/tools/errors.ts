@@ -40,6 +40,7 @@ function isNetworkError(error: Error): boolean {
     msg.includes('econnrefused') ||
     msg.includes('econnreset') ||
     msg.includes('etimedout') ||
+    msg.includes('network') ||
     msg.includes('dns') ||
     msg.includes('socket') ||
     error.name === 'TypeError'
