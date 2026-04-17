@@ -1,58 +1,84 @@
 import { execFileSync, execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
-const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+export function readPackageMetadata(packageJsonUrl = new URL('../package.json', import.meta.url)) {
+  const packageJson = JSON.parse(readFileSync(packageJsonUrl, 'utf8'))
+  const { name, version } = packageJson
 
-const { name, version } = packageJson
-
-if (!name || !version) {
-  throw new Error('package.json must define both name and version')
-}
-
-const currentVersion = parseSemver(version)
-
-let publishedVersion
-
-try {
-  const stdout =
-    process.platform === 'win32'
-      ? execSync(`npm.cmd view ${JSON.stringify(name)} version --json`, {
-          encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'pipe'],
-        }).trim()
-      : execFileSync('npm', ['view', name, 'version', '--json'], {
-          encoding: 'utf8',
-          stdio: ['ignore', 'pipe', 'pipe'],
-        }).trim()
-
-  if (!stdout) {
-    console.log(`npm registry returned no published version for ${name}; publish allowed`)
-    process.exit(0)
+  if (!name || !version) {
+    throw new Error('package.json must define both name and version')
   }
 
-  publishedVersion = JSON.parse(stdout)
-} catch (error) {
-  const stderr = error instanceof Error && 'stderr' in error ? String(error.stderr) : ''
+  return { name, version }
+}
 
-  if (stderr.includes('E404')) {
-    console.log(`npm package ${name} is not published yet; publish allowed`)
-    process.exit(0)
+export function fetchPublishedVersion(
+  name,
+  { platform = process.platform, execFile = execFileSync, exec = execSync } = {},
+) {
+  try {
+    const stdout =
+      platform === 'win32'
+        ? exec(`npm.cmd view ${JSON.stringify(name)} version --json`, {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+          }).trim()
+        : execFile('npm', ['view', name, 'version', '--json'], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+          }).trim()
+
+    if (!stdout) {
+      return {
+        status: 'missing',
+        message: `npm registry returned no published version for ${name}; publish allowed`,
+      }
+    }
+
+    return {
+      status: 'published',
+      version: JSON.parse(stdout),
+    }
+  } catch (error) {
+    const stderr = error instanceof Error && 'stderr' in error ? String(error.stderr) : ''
+
+    if (stderr.includes('E404')) {
+      return {
+        status: 'missing',
+        message: `npm package ${name} is not published yet; publish allowed`,
+      }
+    }
+
+    throw error
+  }
+}
+
+export function verifyPublishVersion({ name, version }, publishedVersion) {
+  const currentVersion = parseSemver(version)
+  const latestVersion = parseSemver(publishedVersion)
+
+  if (compareSemver(currentVersion, latestVersion) <= 0) {
+    throw new Error(
+      `Refusing to publish ${name}@${version}: npm already has ${publishedVersion}. Bump above the published version before releasing.`,
+    )
   }
 
-  throw error
+  return `Publish version check passed for ${name}: ${version} > ${publishedVersion}`
 }
 
-const latestVersion = parseSemver(publishedVersion)
+export function runPublishVersionCheck(options = {}) {
+  const packageMetadata = readPackageMetadata(options.packageJsonUrl)
+  const publishedVersionResult = fetchPublishedVersion(packageMetadata.name, options)
 
-if (compareSemver(currentVersion, latestVersion) <= 0) {
-  throw new Error(
-    `Refusing to publish ${name}@${version}: npm already has ${publishedVersion}. Bump above the published version before releasing.`,
-  )
+  if (publishedVersionResult.status === 'missing') {
+    return publishedVersionResult.message
+  }
+
+  return verifyPublishVersion(packageMetadata, publishedVersionResult.version)
 }
 
-console.log(`Publish version check passed for ${name}: ${version} > ${publishedVersion}`)
-
-function parseSemver(input) {
+export function parseSemver(input) {
   const match = String(input).trim().match(
     /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/,
   )
@@ -69,7 +95,7 @@ function parseSemver(input) {
   }
 }
 
-function compareSemver(left, right) {
+export function compareSemver(left, right) {
   if (left.major !== right.major) {
     return left.major - right.major
   }
@@ -131,4 +157,8 @@ function compareSemver(left, right) {
   }
 
   return 0
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  console.log(runPublishVersionCheck())
 }
