@@ -22,9 +22,10 @@
     }
   },
   "bin": {
-    "canvas-lms-mcp": "./dist/stdio.js"
+    "canvas-lms-mcp": "bin/canvas-lms-mcp.js"
   },
   "files": [
+    "bin/",
     "dist/"
   ],
   "scripts": {
@@ -64,7 +65,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bruchris/canvas-lms-mcp.git"
+    "url": "git+https://github.com/bruchris/canvas-lms-mcp.git"
   },
   "engines": {
     "node": ">=22"
