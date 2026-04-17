@@ -70,6 +70,11 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@10.11.0",
+  "pnpm": {
+    "overrides": {
+      "hono": "4.12.14"
+    }
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.3.6"
