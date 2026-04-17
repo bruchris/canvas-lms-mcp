@@ -57,7 +57,12 @@ function buildFullMockCanvas(): CanvasClient {
       getUpcomingAssignments: async () => [],
     },
     groups: { list: async () => [], listMembers: async () => [] },
-    enrollments: { list: async () => [], enroll: async () => ({}), remove: async () => ({}), listMyGrades: async () => [] },
+    enrollments: {
+      list: async () => [],
+      enroll: async () => ({}),
+      remove: async () => ({}),
+      listMyGrades: async () => [],
+    },
     discussions: {
       list: async () => [],
       get: async () => ({}),
