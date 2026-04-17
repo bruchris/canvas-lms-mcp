@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { FilesModule } from '../../src/canvas/files'
 import { CanvasHttpClient } from '../../src/canvas/client'
 
@@ -51,5 +51,123 @@ describe('FilesModule', () => {
     const result = await files.get(100, 1)
     expect(result).toMatchObject({ id: 1, display_name: 'syllabus.pdf' })
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/files/1')
+  })
+
+  describe('upload', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('completes multi-step upload when S3 returns a redirect', async () => {
+      const uploadInfo = {
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: { key: 'course/file', 'Content-Type': 'text/plain' },
+      }
+      const confirmedFile = {
+        id: 42,
+        display_name: 'notes.txt',
+        filename: 'notes.txt',
+        content_type: 'text/plain',
+        url: 'https://canvas.example.com/files/42/download',
+        size: 11,
+        folder_id: 5,
+      }
+
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce(uploadInfo) // step 1: notify Canvas
+        .mockResolvedValueOnce(confirmedFile) // step 3: confirm
+
+      const mockS3Response = new Response(null, {
+        status: 303,
+        headers: { location: 'https://canvas.example.com/api/v1/files/42/confirm' },
+      })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(mockS3Response))
+
+      const result = await files.upload(100, 'notes.txt', btoa('hello world'), 'text/plain')
+
+      expect(client.request).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/courses/100/files',
+        expect.objectContaining({ method: 'POST' }),
+      )
+      expect(client.request).toHaveBeenNthCalledWith(
+        2,
+        'https://canvas.example.com/api/v1/files/42/confirm',
+        { method: 'POST' },
+      )
+      expect(result).toMatchObject({ id: 42, display_name: 'notes.txt' })
+    })
+
+    it('includes parent_folder_path when provided', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      const confirmedFile = {
+        id: 10,
+        display_name: 'doc.pdf',
+        content_type: 'application/pdf',
+        url: 'https://canvas.example.com/files/10/download',
+        size: 100,
+        folder_id: 2,
+      }
+      vi.spyOn(client, 'request').mockResolvedValueOnce(confirmedFile)
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://canvas.example.com/api/v1/files/10/confirm' },
+          }),
+        ),
+      )
+
+      await files.upload(100, 'doc.pdf', btoa('data'), 'application/pdf', 'assignments/week1')
+
+      expect(client.request).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/courses/100/files',
+        expect.objectContaining({
+          body: expect.stringContaining('assignments/week1'),
+        }),
+      )
+    })
+
+    it('returns file directly when upload_url returns 200', async () => {
+      const uploadInfo = {
+        upload_url: 'https://canvas.example.com/upload',
+        upload_params: {},
+      }
+      const confirmedFile = {
+        id: 7,
+        display_name: 'img.png',
+        content_type: 'image/png',
+        url: 'https://canvas.example.com/files/7/download',
+        size: 50,
+        folder_id: 1,
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(uploadInfo)
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify(confirmedFile), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      )
+
+      const result = await files.upload(100, 'img.png', btoa('png'), 'image/png')
+      expect(result).toMatchObject({ id: 7 })
+    })
+  })
+
+  describe('delete', () => {
+    it('sends DELETE to /api/v1/files/:id', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+      await files.delete(99)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/files/99', { method: 'DELETE' })
+    })
   })
 })
