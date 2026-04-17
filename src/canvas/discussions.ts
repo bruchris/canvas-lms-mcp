@@ -1,6 +1,21 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasDiscussionTopic, CanvasDiscussionEntry, CanvasAnnouncement } from './types'
 
+export interface CreateDiscussionParams {
+  title: string
+  message?: string
+  discussion_type?: 'side_comment' | 'threaded'
+  published?: boolean
+  require_initial_post?: boolean
+}
+
+export interface UpdateDiscussionParams {
+  title?: string
+  message?: string
+  published?: boolean
+  require_initial_post?: boolean
+}
+
 export class DiscussionsModule {
   constructor(private client: CanvasHttpClient) {}
 
@@ -34,6 +49,37 @@ export class DiscussionsModule {
         method: 'POST',
         body: JSON.stringify({ message }),
       },
+    )
+  }
+
+  async create(courseId: number, params: CreateDiscussionParams): Promise<CanvasDiscussionTopic> {
+    return this.client.request<CanvasDiscussionTopic>(
+      `/api/v1/courses/${courseId}/discussion_topics`,
+      {
+        method: 'POST',
+        body: JSON.stringify(params),
+      },
+    )
+  }
+
+  async update(
+    courseId: number,
+    topicId: number,
+    params: UpdateDiscussionParams,
+  ): Promise<CanvasDiscussionTopic> {
+    return this.client.request<CanvasDiscussionTopic>(
+      `/api/v1/courses/${courseId}/discussion_topics/${topicId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(params),
+      },
+    )
+  }
+
+  async delete(courseId: number, topicId: number): Promise<void> {
+    await this.client.request<void>(
+      `/api/v1/courses/${courseId}/discussion_topics/${topicId}`,
+      { method: 'DELETE' },
     )
   }
 }

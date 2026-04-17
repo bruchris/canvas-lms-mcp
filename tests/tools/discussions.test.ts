@@ -41,12 +41,15 @@ describe('discussionTools', () => {
         get: vi.fn().mockResolvedValue(mockTopic),
         listAnnouncements: vi.fn().mockResolvedValue([mockAnnouncement]),
         postEntry: vi.fn().mockResolvedValue(mockEntry),
+        create: vi.fn().mockResolvedValue(mockTopic),
+        update: vi.fn().mockResolvedValue(mockTopic),
+        delete: vi.fn().mockResolvedValue(undefined),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 4 tool definitions', () => {
-    expect(discussionTools(buildMockCanvas())).toHaveLength(4)
+  it('returns an array with 7 tool definitions', () => {
+    expect(discussionTools(buildMockCanvas())).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -56,6 +59,9 @@ describe('discussionTools', () => {
       'get_discussion',
       'list_announcements',
       'post_discussion_entry',
+      'create_discussion',
+      'update_discussion',
+      'delete_discussion',
     ])
   })
 
@@ -114,6 +120,80 @@ describe('discussionTools', () => {
       const tool = discussionTools(canvas).find((t) => t.name === 'post_discussion_entry')!
       await tool.handler({ course_id: 1, topic_id: 1, message: 'Hello!' })
       expect(canvas.discussions.postEntry).toHaveBeenCalledWith(1, 1, 'Hello!')
+    })
+  })
+
+  describe('create_discussion', () => {
+    it('has destructive and openWorld annotations', () => {
+      const tool = discussionTools(buildMockCanvas()).find((t) => t.name === 'create_discussion')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.discussions.create with required params', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      await tool.handler({ course_id: 1, title: 'New Topic' })
+      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+        title: 'New Topic',
+        message: undefined,
+        discussion_type: undefined,
+        published: undefined,
+        require_initial_post: undefined,
+      })
+    })
+
+    it('passes optional params to canvas.discussions.create', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      await tool.handler({
+        course_id: 1,
+        title: 'New Topic',
+        message: '<p>Hello</p>',
+        discussion_type: 'threaded',
+        published: true,
+        require_initial_post: true,
+      })
+      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+        title: 'New Topic',
+        message: '<p>Hello</p>',
+        discussion_type: 'threaded',
+        published: true,
+        require_initial_post: true,
+      })
+    })
+  })
+
+  describe('update_discussion', () => {
+    it('has destructive and openWorld annotations', () => {
+      const tool = discussionTools(buildMockCanvas()).find((t) => t.name === 'update_discussion')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.discussions.update', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      await tool.handler({ course_id: 1, topic_id: 1, title: 'Updated', published: false })
+      expect(canvas.discussions.update).toHaveBeenCalledWith(1, 1, {
+        title: 'Updated',
+        message: undefined,
+        published: false,
+        require_initial_post: undefined,
+      })
+    })
+  })
+
+  describe('delete_discussion', () => {
+    it('has destructive and openWorld annotations', () => {
+      const tool = discussionTools(buildMockCanvas()).find((t) => t.name === 'delete_discussion')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.discussions.delete and returns confirmation', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'delete_discussion')!
+      const result = await tool.handler({ course_id: 1, topic_id: 5 })
+      expect(canvas.discussions.delete).toHaveBeenCalledWith(1, 5)
+      expect(result).toEqual({ deleted: true, topic_id: 5 })
     })
   })
 })

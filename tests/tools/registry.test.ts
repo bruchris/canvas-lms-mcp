@@ -42,6 +42,9 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       listAnnouncements: async () => [],
       postEntry: async () => ({}),
+      create: async () => ({}),
+      update: async () => ({}),
+      delete: async () => undefined,
     },
     modules: {
       list: async () => [],
@@ -83,7 +86,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 62 tools across all domains', () => {
+  it('returns all 65 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -131,11 +134,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_enrollments')
     expect(names).toContain('enroll_user')
     expect(names).toContain('remove_enrollment')
-    // Discussions (4)
+    // Discussions (7)
     expect(names).toContain('list_discussions')
     expect(names).toContain('get_discussion')
     expect(names).toContain('list_announcements')
     expect(names).toContain('post_discussion_entry')
+    expect(names).toContain('create_discussion')
+    expect(names).toContain('update_discussion')
+    expect(names).toContain('delete_discussion')
     // Modules (6)
     expect(names).toContain('list_modules')
     expect(names).toContain('get_module')
@@ -167,7 +173,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(62)
+    expect(tools).toHaveLength(65)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -184,6 +190,9 @@ describe('getAllTools', () => {
       'submit_rubric_assessment',
       'score_quiz_question',
       'post_discussion_entry',
+      'create_discussion',
+      'update_discussion',
+      'delete_discussion',
       'send_conversation',
       'create_peer_review',
       'delete_peer_review',
@@ -210,6 +219,9 @@ describe('getAllTools', () => {
       'submit_rubric_assessment',
       'score_quiz_question',
       'post_discussion_entry',
+      'create_discussion',
+      'update_discussion',
+      'delete_discussion',
       'send_conversation',
       'create_peer_review',
       'delete_peer_review',

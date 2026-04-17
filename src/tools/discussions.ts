@@ -70,5 +70,84 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         return canvas.discussions.postEntry(course_id, topic_id, message)
       },
     },
+    {
+      name: 'create_discussion',
+      description: 'Create a new discussion topic in a course.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        title: z.string().describe('Title of the discussion topic'),
+        message: z.string().optional().describe('Body text of the discussion (supports HTML)'),
+        discussion_type: z
+          .enum(['side_comment', 'threaded'])
+          .optional()
+          .describe('Discussion type: side_comment (flat) or threaded'),
+        published: z.boolean().optional().describe('Whether the topic is published'),
+        require_initial_post: z
+          .boolean()
+          .optional()
+          .describe('Require students to post before seeing replies'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        return canvas.discussions.create(course_id, {
+          title: params.title as string,
+          message: params.message as string | undefined,
+          discussion_type: params.discussion_type as 'side_comment' | 'threaded' | undefined,
+          published: params.published as boolean | undefined,
+          require_initial_post: params.require_initial_post as boolean | undefined,
+        })
+      },
+    },
+    {
+      name: 'update_discussion',
+      description: 'Update an existing discussion topic.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        topic_id: z.number().describe('The Canvas discussion topic ID'),
+        title: z.string().optional().describe('New title for the discussion topic'),
+        message: z.string().optional().describe('New body text (supports HTML)'),
+        published: z.boolean().optional().describe('Publish or unpublish the topic'),
+        require_initial_post: z
+          .boolean()
+          .optional()
+          .describe('Require students to post before seeing replies'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const topic_id = params.topic_id as number
+        return canvas.discussions.update(course_id, topic_id, {
+          title: params.title as string | undefined,
+          message: params.message as string | undefined,
+          published: params.published as boolean | undefined,
+          require_initial_post: params.require_initial_post as boolean | undefined,
+        })
+      },
+    },
+    {
+      name: 'delete_discussion',
+      description: 'Delete a discussion topic from a course.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        topic_id: z.number().describe('The Canvas discussion topic ID to delete'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const topic_id = params.topic_id as number
+        await canvas.discussions.delete(course_id, topic_id)
+        return { deleted: true, topic_id }
+      },
+    },
   ]
 }
