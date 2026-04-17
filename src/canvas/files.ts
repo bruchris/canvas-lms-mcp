@@ -74,6 +74,18 @@ export class FilesModule {
       if (!confirmUrl) {
         throw new Error(`File upload redirect missing Location header (HTTP ${s3Response.status})`)
       }
+      let confirmHostname: string
+      try {
+        confirmHostname = new URL(confirmUrl).hostname
+      } catch {
+        confirmHostname = ''
+      }
+      const canvasHostname = new URL(this.client.baseUrl).hostname
+      if (confirmHostname !== canvasHostname) {
+        throw new Error(
+          `File upload redirect points to unexpected host (${confirmHostname}); expected Canvas host (${canvasHostname})`,
+        )
+      }
       return this.client.request<CanvasFile>(confirmUrl, { method: 'POST' })
     }
 
@@ -92,6 +104,11 @@ export class FilesModule {
       throw new Error(
         `File upload response is not valid JSON (${parseErr instanceof Error ? parseErr.message : String(parseErr)}): ${responseText.slice(0, 500)}`,
         { cause: parseErr },
+      )
+    }
+    if (typeof parsed !== 'object' || parsed === null || !('id' in parsed)) {
+      throw new Error(
+        `File upload returned unexpected response (no file ID): ${responseText.slice(0, 500)}`,
       )
     }
     return parsed as CanvasFile

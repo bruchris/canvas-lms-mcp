@@ -325,7 +325,7 @@ export interface CanvasCalendarEvent {
   workflow_state?: string
   context_code: string
   location_name?: string | null
-  type?: string
+  type: string
 }
 
 // --- Conversations ---

@@ -17,13 +17,17 @@ const USER_AGENT = 'canvas-lms-mcp/1.0'
 
 export class CanvasHttpClient {
   private token: string
-  private baseUrl: string
+  private _baseUrl: string
   private maxPaginationPages: number
 
   constructor(config: CanvasClientConfig) {
     this.token = config.token
-    this.baseUrl = config.baseUrl.replace(/\/+$/, '')
+    this._baseUrl = config.baseUrl.replace(/\/+$/, '')
     this.maxPaginationPages = config.maxPaginationPages ?? DEFAULT_MAX_PAGINATION_PAGES
+  }
+
+  get baseUrl(): string {
+    return this._baseUrl
   }
 
   /**
@@ -32,7 +36,7 @@ export class CanvasHttpClient {
    * which is the expected response for DELETE operations.
    */
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`
+    const url = endpoint.startsWith('http') ? endpoint : `${this._baseUrl}${endpoint}`
 
     const method = (options.method ?? 'GET').toUpperCase()
     if (options.body != null && (method === 'GET' || method === 'HEAD')) {
@@ -72,7 +76,7 @@ export class CanvasHttpClient {
   }
 
   async paginate<T>(endpoint: string, params?: Record<string, string>): Promise<T[]> {
-    const url = new URL(`${this.baseUrl}${endpoint}`)
+    const url = new URL(`${this._baseUrl}${endpoint}`)
     url.searchParams.set('per_page', '100')
     if (params) {
       for (const [key, value] of Object.entries(params)) {
@@ -114,7 +118,7 @@ export class CanvasHttpClient {
     envelopeKey: string,
     params?: Record<string, string>,
   ): Promise<T[]> {
-    const url = new URL(`${this.baseUrl}${endpoint}`)
+    const url = new URL(`${this._baseUrl}${endpoint}`)
     url.searchParams.set('per_page', '100')
     if (params) {
       for (const [key, value] of Object.entries(params)) {

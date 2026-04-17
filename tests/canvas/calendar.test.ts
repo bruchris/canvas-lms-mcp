@@ -45,6 +45,7 @@ describe('CalendarModule', () => {
         title: 'Office Hours',
         start_at: '2026-05-01T14:00:00Z',
         end_at: '2026-05-01T15:00:00Z',
+        type: 'event',
         context_code: 'course_100',
         workflow_state: 'active',
       }
@@ -77,6 +78,7 @@ describe('CalendarModule', () => {
         title: 'Exam',
         start_at: '2026-05-10T09:00:00Z',
         end_at: null,
+        type: 'event',
         context_code: 'course_1',
       })
 
@@ -104,6 +106,7 @@ describe('CalendarModule', () => {
         title: 'Office Hours (Updated)',
         start_at: '2026-05-01T15:00:00Z',
         end_at: '2026-05-01T16:00:00Z',
+        type: 'event',
         context_code: 'course_100',
       }
       vi.spyOn(client, 'request').mockResolvedValueOnce(updated)

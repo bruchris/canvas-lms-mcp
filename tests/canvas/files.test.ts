@@ -90,6 +90,10 @@ describe('FilesModule', () => {
         '/api/v1/courses/100/files',
         expect.objectContaining({ method: 'POST' }),
       )
+      expect(fetch).toHaveBeenCalledWith(
+        'https://s3.example.com/upload',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
       expect(client.request).toHaveBeenNthCalledWith(
         2,
         'https://canvas.example.com/api/v1/files/42/confirm',
@@ -230,6 +234,46 @@ describe('FilesModule', () => {
 
       await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
         'File upload response is not valid JSON',
+      )
+    })
+
+    it('throws when S3 redirect Location hostname does not match Canvas base URL', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://evil.example.com/api/v1/files/42/confirm' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload redirect points to unexpected host (evil.example.com)',
+      )
+    })
+
+    it('throws when S3 200 response has no id field', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload returned unexpected response (no file ID)',
       )
     })
 

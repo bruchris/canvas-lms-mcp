@@ -10,6 +10,7 @@ describe('calendarTools', () => {
     description: '<p>Weekly office hours</p>',
     start_at: '2026-04-15T14:00:00Z',
     end_at: '2026-04-15T15:00:00Z',
+    type: 'event',
     workflow_state: 'active',
     context_code: 'course_1',
     all_day: false,
