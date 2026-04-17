@@ -59,23 +59,5 @@ export function studentTools(canvas: CanvasClient): ToolDefinition[] {
         return canvas.users.getUpcomingAssignments()
       },
     },
-    {
-      name: 'get_my_peer_reviews',
-      description:
-        'List peer reviews assigned to the authenticated student for a given assignment.',
-      inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-      },
-      annotations: {
-        readOnlyHint: true,
-        openWorldHint: true,
-      },
-      handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        return canvas.peerReviews.listForAssignment(course_id, assignment_id)
-      },
-    },
   ]
 }

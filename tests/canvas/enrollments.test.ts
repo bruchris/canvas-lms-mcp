@@ -81,4 +81,23 @@ describe('EnrollmentsModule', () => {
       method: 'DELETE',
     })
   })
+
+  describe('listMyGrades', () => {
+    it('fetches all enrollments with grades when no courseId', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await enrollments.listMyGrades()
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/enrollments', {
+        'include[]': 'grades',
+      })
+    })
+
+    it('fetches course-specific enrollments with grades when courseId provided', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await enrollments.listMyGrades(42)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/42/enrollments', {
+        user_id: 'self',
+        'include[]': 'grades',
+      })
+    })
+  })
 })

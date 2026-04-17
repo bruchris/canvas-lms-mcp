@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
-import type { CanvasCourse, CanvasEnrollment, CanvasSubmission, CanvasUpcomingEvent, CanvasPeerReview } from '../../src/canvas/types'
+import type {
+  CanvasCourse,
+  CanvasEnrollment,
+  CanvasSubmission,
+  CanvasUpcomingEvent,
+} from '../../src/canvas/types'
 import { studentTools } from '../../src/tools/student'
 
 describe('studentTools', () => {
@@ -49,15 +54,6 @@ describe('studentTools', () => {
     end_at: null,
   }
 
-  const mockPeerReview: CanvasPeerReview = {
-    id: 300,
-    assessor_id: 5,
-    user_id: 6,
-    asset_id: 100,
-    asset_type: 'Submission',
-    workflow_state: 'assigned',
-  }
-
   function buildMockCanvas(): CanvasClient {
     return {
       courses: {
@@ -72,14 +68,11 @@ describe('studentTools', () => {
       users: {
         getUpcomingAssignments: vi.fn().mockResolvedValue([mockUpcomingEvent]),
       },
-      peerReviews: {
-        listForAssignment: vi.fn().mockResolvedValue([mockPeerReview]),
-      },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
-    expect(studentTools(buildMockCanvas())).toHaveLength(5)
+  it('returns an array with 4 tool definitions', () => {
+    expect(studentTools(buildMockCanvas())).toHaveLength(4)
   })
 
   it('exports tools with correct names', () => {
@@ -89,7 +82,6 @@ describe('studentTools', () => {
       'get_my_grades',
       'get_my_submissions',
       'get_my_upcoming_assignments',
-      'get_my_peer_reviews',
     ])
   })
 
@@ -143,16 +135,6 @@ describe('studentTools', () => {
       const result = await tool.handler({})
       expect(canvas.users.getUpcomingAssignments).toHaveBeenCalled()
       expect(result).toEqual([mockUpcomingEvent])
-    })
-  })
-
-  describe('get_my_peer_reviews', () => {
-    it('delegates to canvas.peerReviews.listForAssignment', async () => {
-      const canvas = buildMockCanvas()
-      const tool = studentTools(canvas).find((t) => t.name === 'get_my_peer_reviews')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 2 })
-      expect(canvas.peerReviews.listForAssignment).toHaveBeenCalledWith(1, 2)
-      expect(result).toEqual([mockPeerReview])
     })
   })
 })
