@@ -42,4 +42,45 @@ describe('PagesModule', () => {
     expect(result).toMatchObject({ page_id: 1, title: 'Welcome' })
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/pages/welcome')
   })
+
+  it('creates a page', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      page_id: 2,
+      url: 'new-page',
+      title: 'New Page',
+      body: '<p>Content</p>',
+      published: false,
+      updated_at: '2026-04-01T00:00:00Z',
+    })
+    const result = await pages.create(100, { title: 'New Page', body: '<p>Content</p>' })
+    expect(result).toMatchObject({ page_id: 2, title: 'New Page' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/pages', {
+      method: 'POST',
+      body: JSON.stringify({ wiki_page: { title: 'New Page', body: '<p>Content</p>' } }),
+    })
+  })
+
+  it('updates a page', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      page_id: 1,
+      url: 'welcome',
+      title: 'Updated Welcome',
+      published: true,
+      updated_at: '2026-04-02T00:00:00Z',
+    })
+    const result = await pages.update(100, 'welcome', { title: 'Updated Welcome', published: true })
+    expect(result).toMatchObject({ title: 'Updated Welcome' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/pages/welcome', {
+      method: 'PUT',
+      body: JSON.stringify({ wiki_page: { title: 'Updated Welcome', published: true } }),
+    })
+  })
+
+  it('deletes a page', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+    await pages.delete(100, 'old-page')
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/pages/old-page', {
+      method: 'DELETE',
+    })
+  })
 })

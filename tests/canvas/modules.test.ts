@@ -45,4 +45,56 @@ describe('ModulesModule', () => {
     expect(result).toHaveLength(2)
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items')
   })
+
+  it('creates a module', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 3,
+      name: 'Week 3',
+      position: 3,
+      items_count: 0,
+    })
+    const result = await modules.create(100, { name: 'Week 3', position: 3 })
+    expect(result).toMatchObject({ id: 3, name: 'Week 3' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules', {
+      method: 'POST',
+      body: JSON.stringify({ module: { name: 'Week 3', position: 3 } }),
+    })
+  })
+
+  it('updates a module', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 1,
+      name: 'Week 1 Updated',
+      position: 1,
+      items_count: 5,
+      published: true,
+    })
+    const result = await modules.update(100, 1, { name: 'Week 1 Updated', published: true })
+    expect(result).toMatchObject({ name: 'Week 1 Updated', published: true })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1', {
+      method: 'PUT',
+      body: JSON.stringify({ module: { name: 'Week 1 Updated', published: true } }),
+    })
+  })
+
+  it('creates a module item', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 5,
+      module_id: 1,
+      title: 'Assignment 1',
+      position: 1,
+      type: 'Assignment',
+      content_id: 42,
+    })
+    const result = await modules.createItem(100, 1, {
+      title: 'Assignment 1',
+      type: 'Assignment',
+      content_id: 42,
+    })
+    expect(result).toMatchObject({ id: 5, type: 'Assignment', content_id: 42 })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items', {
+      method: 'POST',
+      body: JSON.stringify({ module_item: { title: 'Assignment 1', type: 'Assignment', content_id: 42 } }),
+    })
+  })
 })
