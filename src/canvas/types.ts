@@ -432,7 +432,7 @@ export interface CanvasStudentActivitySummary {
 export interface CanvasActivityStreamItem {
   type:
     | 'Submission'
-    | 'Discussion'
+    | 'DiscussionTopic'
     | 'Announcement'
     | 'Conversation'
     | 'Message'
@@ -444,7 +444,7 @@ export interface CanvasActivityStreamItem {
   unread_count: number
 }
 
-export interface CourseSearchResult {
+export interface CanvasCourseSearchResult {
   id: number
   title: string
   type: 'page' | 'assignment' | 'discussion' | 'announcement'

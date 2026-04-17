@@ -3,7 +3,7 @@ import type {
   CanvasCourseActivitySummary,
   CanvasStudentActivitySummary,
   CanvasActivityStreamItem,
-  CourseSearchResult,
+  CanvasCourseSearchResult,
 } from './types'
 
 export const SEARCH_CONTENT_TYPES = [
@@ -21,7 +21,7 @@ export class AnalyticsModule {
     courseId: number,
     searchTerm: string,
     type: SearchContentType,
-  ): Promise<CourseSearchResult[]> {
+  ): Promise<CanvasCourseSearchResult[]> {
     if (type === 'pages') {
       const pages = await this.client.paginate<{ page_id: number; title: string; url: string }>(
         `/api/v1/courses/${courseId}/pages`,

@@ -64,27 +64,30 @@ describe('analyticsTools', () => {
       expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
     })
 
-    it('returns empty array when content_types is empty', async () => {
+    it('returns empty results when content_types is empty', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = await tool.handler({ course_id: 10, search_term: 'test', content_types: [] })
-      expect(result).toEqual([])
+      expect(result).toEqual({ results: [] })
       expect(canvas.analytics.searchContentType).not.toHaveBeenCalled()
     })
 
-    it('returns partial results when one content type fails', async () => {
+    it('returns partial results with warnings when one content type fails', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.analytics.searchContentType)
         .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
         .mockRejectedValueOnce(new Error('403 Forbidden'))
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      const results = await tool.handler({
+      const response = (await tool.handler({
         course_id: 10,
         search_term: 'test',
         content_types: ['pages', 'assignments'],
-      })
-      expect(results).toHaveLength(1)
-      expect((results as Array<{ type: string }>)[0].type).toBe('page')
+      })) as { results: Array<{ type: string }>; warnings: string[] }
+      expect(response.results).toHaveLength(1)
+      expect(response.results[0].type).toBe('page')
+      expect(response.warnings).toHaveLength(1)
+      expect(response.warnings[0]).toContain('assignments')
+      expect(response.warnings[0]).toContain('403 Forbidden')
     })
 
     it('throws first error when all content types fail', async () => {
