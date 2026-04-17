@@ -190,7 +190,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(68)
+    expect(tools).toHaveLength(70)
   })
 
   it('all tools have openWorldHint: true', () => {
