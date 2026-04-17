@@ -98,10 +98,12 @@ export interface CanvasUpcomingEvent {
   id: number
   title: string
   type: string
-  workflow_state: string
+  workflow_state?: string
   context_code: string
   start_at: string | null
   end_at: string | null
+  url?: string | null
+  html_url?: string
   assignment?: CanvasAssignment
 }
 
@@ -520,24 +522,6 @@ export interface CanvasTodoItem {
   context_type: string
   course_id?: number
   group_id?: number
-}
-
-export interface CanvasUpcomingEvent {
-  id: number
-  title: string
-  start_at: string
-  end_at: string | null
-  type: string
-  context_code: string
-  url: string | null
-  html_url: string
-  assignment?: {
-    id: number
-    name: string
-    due_at: string | null
-    course_id: number
-    points_possible: number
-  }
 }
 
 export interface CanvasMissingSubmission {
