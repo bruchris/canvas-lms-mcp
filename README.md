@@ -332,6 +332,8 @@ src/cli.ts        CLI argument parser
 
 ### Contributing
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validation workflow.
+
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feat/my-feature`)
 3. Use conventional commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`)
