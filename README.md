@@ -3,10 +3,10 @@
 > The TypeScript MCP server for Canvas LMS.
 
 [![CI](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40bruchris%2Fcanvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
+[![npm](https://img.shields.io/npm/v/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![npm downloads](https://img.shields.io/npm/dw/@bruchris/canvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
+[![npm downloads](https://img.shields.io/npm/dw/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
@@ -14,7 +14,7 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 
 ## Comparison
 
-| | @bruchris/canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
+| | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
 | Tools | 88 | 80+ | 54 |
@@ -34,7 +34,7 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 ### 2. One Command Setup
 
 ```bash
-npx add-mcp @bruchris/canvas-lms-mcp
+npx add-mcp canvas-lms-mcp
 ```
 
 This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.) and configures them. You will be prompted for your Canvas API token and base URL.
@@ -44,25 +44,25 @@ This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.)
 **Claude Code**
 
 ```bash
-claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y @bruchris/canvas-lms-mcp
+claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y canvas-lms-mcp
 ```
 
 **VS Code**
 
 ```bash
-code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","@bruchris/canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
+code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
 ```
 
 **Gemini CLI**
 
 ```bash
-gemini mcp add canvas-lms npx @bruchris/canvas-lms-mcp
+gemini mcp add canvas-lms npx canvas-lms-mcp
 ```
 
 **Codex CLI**
 
 ```bash
-codex mcp add canvas-lms -- npx @bruchris/canvas-lms-mcp
+codex mcp add canvas-lms -- npx canvas-lms-mcp
 ```
 
 <details>
@@ -77,7 +77,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -96,7 +96,7 @@ Add to `.cursor/mcp.json` in your project:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -115,7 +115,7 @@ Add to your VS Code settings (`settings.json`):
   "mcp.servers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -134,7 +134,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -149,7 +149,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 Run the server in HTTP mode, then point your client at the endpoint:
 
 ```bash
-npx @bruchris/canvas-lms-mcp serve --port 3001 \
+npx canvas-lms-mcp serve --port 3001 \
   --token your-token-here \
   --base-url https://your-institution.instructure.com
 ```
@@ -216,7 +216,7 @@ All write tools require appropriate Canvas permissions. Canvas enforces its own 
 For local AI clients like Claude Desktop, Cursor, and VS Code. The server communicates over stdin/stdout.
 
 ```bash
-npx @bruchris/canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
+npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
 ```
 
 ### HTTP
@@ -224,7 +224,7 @@ npx @bruchris/canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_U
 For web-based clients or hosted services. Starts an HTTP server with Streamable HTTP transport.
 
 ```bash
-npx @bruchris/canvas-lms-mcp serve \
+npx canvas-lms-mcp serve \
   --token $CANVAS_API_TOKEN \
   --base-url $CANVAS_BASE_URL \
   --port 3001 \
@@ -259,7 +259,7 @@ services:
 Use the server factory directly in your own Node.js application:
 
 ```typescript
-import { createCanvasMCPServer } from '@bruchris/canvas-lms-mcp'
+import { createCanvasMCPServer } from 'canvas-lms-mcp'
 
 const { server, canvas } = createCanvasMCPServer({
   token: userToken,
@@ -270,7 +270,7 @@ const { server, canvas } = createCanvasMCPServer({
 Or use the Canvas client standalone (no MCP dependency):
 
 ```typescript
-import { CanvasClient } from '@bruchris/canvas-lms-mcp/canvas'
+import { CanvasClient } from 'canvas-lms-mcp/canvas'
 
 const canvas = new CanvasClient({
   token: userToken,

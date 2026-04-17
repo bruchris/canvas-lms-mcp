@@ -570,7 +570,7 @@ Automated release management via [release-please](https://github.com/googleapis/
 **npm-publish.yml** — runs when release-please creates a release:
 - Builds the package
 - Publishes to npm as `canvas-lms-mcp`
-- Uses `NPM_TOKEN` secret for authentication
+- Uses npm Trusted Publishing (OIDC) for authentication
 
 ## Agent Team
 

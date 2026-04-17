@@ -32,7 +32,7 @@ Keep this token private. It grants the same access as your Canvas login. If you 
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "paste-your-token-here",
         "CANVAS_BASE_URL": "https://your-school.instructure.com"

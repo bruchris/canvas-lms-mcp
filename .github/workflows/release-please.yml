@@ -4,15 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      publish_auth:
-        description: 'npm publish auth mode. Use trusted-publisher only after npm Trusted Publisher is configured.'
-        required: true
-        default: token
-        type: choice
-        options:
-          - token
-          - trusted-publisher
 
 permissions:
   contents: write
@@ -37,8 +28,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      USE_TRUSTED_PUBLISHING: ${{ ((github.event_name == 'workflow_dispatch' && inputs.publish_auth == 'trusted-publisher') || (github.event_name != 'workflow_dispatch' && vars.NPM_PUBLISH_AUTH == 'trusted-publisher')) && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -50,18 +39,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Default to the proven token path until the npm package Trusted Publisher
-      # has been configured and one release has verified OIDC end-to-end.
-      - name: Publish to npm with token fallback
-        if: ${{ env.USE_TRUSTED_PUBLISHING != 'true' }}
-        run: pnpm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Use npm CLI with trusted publishing support
-        if: ${{ env.USE_TRUSTED_PUBLISHING == 'true' }}
         run: npm install --global npm@^11.5.1
 
       - name: Publish to npm with Trusted Publisher OIDC
-        if: ${{ env.USE_TRUSTED_PUBLISHING == 'true' }}
         run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
