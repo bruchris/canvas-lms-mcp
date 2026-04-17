@@ -74,7 +74,11 @@ function buildFullMockCanvas(): CanvasClient {
       update: async () => ({}),
       delete: async () => undefined,
     },
-    calendar: { list: async () => [], createEvent: async () => ({}), updateEvent: async () => ({}) },
+    calendar: {
+      list: async () => [],
+      createEvent: async () => ({}),
+      updateEvent: async () => ({}),
+    },
     conversations: {
       list: async () => [],
       get: async () => ({}),

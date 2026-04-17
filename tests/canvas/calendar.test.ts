@@ -72,7 +72,13 @@ describe('CalendarModule', () => {
     })
 
     it('includes optional fields when provided', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 6, title: 'Exam', start_at: '2026-05-10T09:00:00Z', end_at: null, context_code: 'course_1' })
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 6,
+        title: 'Exam',
+        start_at: '2026-05-10T09:00:00Z',
+        end_at: null,
+        context_code: 'course_1',
+      })
 
       await calendar.createEvent({
         context_code: 'course_1',

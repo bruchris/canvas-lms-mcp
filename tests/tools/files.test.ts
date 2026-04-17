@@ -104,15 +104,32 @@ describe('fileTools', () => {
         content_type: 'text/plain',
         parent_folder_path: 'week1',
       })
-      expect(canvas.files.upload).toHaveBeenCalledWith(1, 'test.txt', 'aGVsbG8=', 'text/plain', 'week1')
+      expect(canvas.files.upload).toHaveBeenCalledWith(
+        1,
+        'test.txt',
+        'aGVsbG8=',
+        'text/plain',
+        'week1',
+      )
       expect(result).toEqual(mockFile)
     })
 
     it('passes undefined for omitted parent_folder_path', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'upload_file')!
-      await tool.handler({ course_id: 1, name: 'f.pdf', content: 'YQ==', content_type: 'application/pdf' })
-      expect(canvas.files.upload).toHaveBeenCalledWith(1, 'f.pdf', 'YQ==', 'application/pdf', undefined)
+      await tool.handler({
+        course_id: 1,
+        name: 'f.pdf',
+        content: 'YQ==',
+        content_type: 'application/pdf',
+      })
+      expect(canvas.files.upload).toHaveBeenCalledWith(
+        1,
+        'f.pdf',
+        'YQ==',
+        'application/pdf',
+        undefined,
+      )
     })
   })
 

@@ -59,7 +59,11 @@ export class FilesModule {
     if (s3Response.status >= 300 && s3Response.status < 400) {
       const confirmUrl = s3Response.headers.get('location')
       if (!confirmUrl) {
-        throw new CanvasApiError('Upload redirect missing Location header', s3Response.status, uploadInfo.upload_url)
+        throw new CanvasApiError(
+          'Upload redirect missing Location header',
+          s3Response.status,
+          uploadInfo.upload_url,
+        )
       }
       return this.client.request<CanvasFile>(confirmUrl, { method: 'POST' })
     }

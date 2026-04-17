@@ -32,7 +32,11 @@ describe('calendarTools', () => {
 
   it('exports tools with correct names', () => {
     const names = calendarTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_calendar_events', 'create_calendar_event', 'update_calendar_event'])
+    expect(names).toEqual([
+      'list_calendar_events',
+      'create_calendar_event',
+      'update_calendar_event',
+    ])
   })
 
   describe('list_calendar_events', () => {
