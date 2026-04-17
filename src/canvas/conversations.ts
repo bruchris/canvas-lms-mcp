@@ -1,5 +1,9 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasConversation, CanvasConversationDetail, CanvasConversationUnreadCount } from './types'
+import type {
+  CanvasConversation,
+  CanvasConversationDetail,
+  CanvasConversationUnreadCount,
+} from './types'
 
 export class ConversationsModule {
   constructor(private client: CanvasHttpClient) {}
@@ -13,7 +17,10 @@ export class ConversationsModule {
   }
 
   async getUnreadCount(): Promise<CanvasConversationUnreadCount> {
-    return this.client.request<CanvasConversationUnreadCount>('/api/v1/conversations/unread_count')
+    const raw = await this.client.request<{ unread_count: string }>(
+      '/api/v1/conversations/unread_count',
+    )
+    return { unread_count: parseInt(raw.unread_count, 10) }
   }
 
   async send(recipients: string[], subject: string, body: string): Promise<CanvasConversation[]> {

@@ -20,7 +20,7 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'get_conversation',
       description: 'Get a single conversation with its full message thread.',
       inputSchema: {
-        conversation_id: z.string().describe('The conversation ID'),
+        conversation_id: z.string().regex(/^\d+$/).describe('The conversation ID'),
       },
       annotations: {
         readOnlyHint: true,
@@ -31,7 +31,7 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
-      name: 'get_unread_count',
+      name: 'get_conversation_unread_count',
       description: 'Get the number of unread conversations for the authenticated user.',
       inputSchema: {},
       annotations: {

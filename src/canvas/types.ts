@@ -331,7 +331,7 @@ export interface CanvasConversationMessage {
   author_id: number
   generated: boolean
   media_comment?: { media_id: string; media_type: string; url: string }
-  attachments?: Array<{ id: number; filename: string; url: string }>
+  attachments?: Pick<CanvasAttachment, 'id' | 'filename' | 'url'>[]
 }
 
 export interface CanvasConversationDetail extends CanvasConversation {

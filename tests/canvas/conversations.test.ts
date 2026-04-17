@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ConversationsModule } from '../../src/canvas/conversations'
 import { CanvasHttpClient } from '../../src/canvas/client'
-import type { CanvasConversationDetail, CanvasConversationUnreadCount } from '../../src/canvas/types'
+import type { CanvasConversationDetail } from '../../src/canvas/types'
 
 describe('ConversationsModule', () => {
   let client: CanvasHttpClient
@@ -43,8 +43,20 @@ describe('ConversationsModule', () => {
         { id: 2, name: 'Bob' },
       ],
       messages: [
-        { id: 101, created_at: '2026-04-10T00:00:00Z', body: 'Can you help?', author_id: 1, generated: false },
-        { id: 102, created_at: '2026-04-10T01:00:00Z', body: 'Sure!', author_id: 2, generated: false },
+        {
+          id: 101,
+          created_at: '2026-04-10T00:00:00Z',
+          body: 'Can you help?',
+          author_id: 1,
+          generated: false,
+        },
+        {
+          id: 102,
+          created_at: '2026-04-10T01:00:00Z',
+          body: 'Sure!',
+          author_id: 2,
+          generated: false,
+        },
       ],
     }
     vi.spyOn(client, 'request').mockResolvedValueOnce(mockDetail)
@@ -57,8 +69,7 @@ describe('ConversationsModule', () => {
   })
 
   it('gets unread conversation count', async () => {
-    const mockCount: CanvasConversationUnreadCount = { unread_count: 3 }
-    vi.spyOn(client, 'request').mockResolvedValueOnce(mockCount)
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ unread_count: '3' })
 
     const result = await conversations.getUnreadCount()
     expect(result.unread_count).toBe(3)
@@ -66,7 +77,7 @@ describe('ConversationsModule', () => {
   })
 
   it('returns zero unread count when inbox is empty', async () => {
-    vi.spyOn(client, 'request').mockResolvedValueOnce({ unread_count: 0 })
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ unread_count: '0' })
     const result = await conversations.getUnreadCount()
     expect(result.unread_count).toBe(0)
   })
