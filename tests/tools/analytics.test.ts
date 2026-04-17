@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import { CanvasApiError } from '../../src/canvas'
 import { analyticsTools } from '../../src/tools/analytics'
 
 describe('analyticsTools', () => {
@@ -87,6 +88,7 @@ describe('analyticsTools', () => {
         content_types: ['pages', 'assignments'],
       })) as { results: unknown[] }
       expect(result.results).toHaveLength(3)
+      expect(result).not.toHaveProperty('warnings')
     })
 
     it('returns partial results with warnings when some types fail', async () => {
@@ -102,13 +104,33 @@ describe('analyticsTools', () => {
       })) as { results: unknown[]; warnings: string[] }
       expect(result.results).toHaveLength(1)
       expect(result.warnings).toHaveLength(1)
-      expect(result.warnings[0]).toMatch(/assignments search failed/)
+      expect(result.warnings[0]).toMatch(/assignments search failed:.*Network error/)
     })
 
-    it('throws when all content types fail', async () => {
+    it('formats CanvasApiError failures in partial warnings', async () => {
       const canvas = buildMockCanvas()
-      const error = new Error('401 Unauthorized')
-      vi.mocked(canvas.analytics.searchContentType).mockRejectedValue(error)
+      vi.mocked(canvas.analytics.searchContentType)
+        .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
+        .mockRejectedValueOnce(
+          new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/assignments'),
+        )
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const result = (await tool.handler({
+        course_id: 10,
+        search_term: 'test',
+        content_types: ['pages', 'assignments'],
+      })) as { results: unknown[]; warnings: string[] }
+      expect(result.results).toHaveLength(1)
+      expect(result.warnings[0]).toContain(
+        "You don't have permission to perform this action in this course",
+      )
+    })
+
+    it('throws aggregated errors when all content types fail', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.searchContentType)
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(new CanvasApiError('Unauthorized', 401, '/api/v1/courses/10'))
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await expect(
         tool.handler({
@@ -116,7 +138,9 @@ describe('analyticsTools', () => {
           search_term: 'test',
           content_types: ['pages', 'assignments'],
         }),
-      ).rejects.toThrow('401 Unauthorized')
+      ).rejects.toThrow(
+        /All content type searches failed:\npages: Network error\nassignments: Canvas token is invalid or expired/,
+      )
     })
   })
 

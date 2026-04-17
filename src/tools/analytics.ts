@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
-import { formatError } from './index'
+import { formatError } from './errors'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
 import type { CourseSearchResult } from '../canvas/types'
@@ -44,11 +44,14 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         )
 
         if (fulfilled.length === 0) {
-          const firstRejected = settled.find(
-            (r): r is PromiseRejectedResult => r.status === 'rejected',
-          )
-          if (!firstRejected) throw new Error('unexpected: no rejected result')
-          throw firstRejected.reason
+          const allErrors = settled
+            .map((result, index) =>
+              result.status === 'rejected'
+                ? `${types[index]}: ${formatError(result.reason)}`
+                : null,
+            )
+            .filter((errorLine): errorLine is string => errorLine !== null)
+          throw new Error(`All content type searches failed:\n${allErrors.join('\n')}`)
         }
 
         const results = fulfilled.flatMap((r) => r.value)
