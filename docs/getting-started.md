@@ -44,7 +44,7 @@ Choose the AI client you installed:
 ### Claude Desktop
 
 1. Open Claude Desktop
-2. Go to **Settings** (gear icon, top-right) → **Developer** → **Edit Config**
+2. Go to **Settings** (gear icon) → **Developer** section → **Edit Config**
 3. This opens a file called `claude_desktop_config.json`. Paste the following inside the curly braces, replacing the placeholder values:
 
 ```json
@@ -97,6 +97,8 @@ Run this command in your terminal (replace the values in quotes):
 code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","@bruchris/canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://your-school.instructure.com"}}'
 ```
 
+> **Windows users:** The single quotes above don't work in PowerShell or Command Prompt. Use the manual JSON method below instead.
+
 Or add it manually to VS Code settings (`settings.json`):
 
 ```json
@@ -140,7 +142,7 @@ Your token is wrong or has been revoked.
 - Go to Canvas → **Settings → Approved Integrations** and confirm the token still exists
 - If it was deleted, generate a new one and update your config file
 
-### "You don't have permission" (403 error)
+### "You don't have permission to perform this action in this course" (403 error)
 
 Your Canvas account doesn't have access to the resource you requested.
 
@@ -148,7 +150,7 @@ Your Canvas account doesn't have access to the resource you requested.
 - Some operations (like grading) require instructor or TA role
 - Contact your Canvas administrator if you believe you should have access
 
-### "Course not found" (404 error)
+### "Course/assignment/submission not found" (404 error)
 
 The course ID doesn't exist or you're not enrolled.
 

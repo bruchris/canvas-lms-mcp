@@ -17,8 +17,8 @@ configSchema:
     canvasBaseUrl:
       type: string
       description: >
-        Your Canvas instance API base URL. Append /api/v1 to your school's Canvas
-        domain, e.g. https://yourschool.instructure.com/api/v1
+        Your Canvas instance base URL — the root domain only, without /api/v1.
+        For example: https://yourschool.instructure.com
 
 commandFunction: |-
   (config) => ({
@@ -32,4 +32,4 @@ commandFunction: |-
 
 exampleConfig:
   canvasApiToken: "1234~abcdefghijklmnopqrstuvwxyz"
-  canvasBaseUrl: "https://school.instructure.com/api/v1"
+  canvasBaseUrl: "https://school.instructure.com"
