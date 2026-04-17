@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.4.1...canvas-lms-mcp-v0.5.0) (2026-04-17)
+
+
+### Features
+
+* add Account & Admin domain with 6 tools ([#28](https://github.com/bruchris/canvas-lms-mcp/issues/28)) ([ab2d4d5](https://github.com/bruchris/canvas-lms-mcp/commit/ab2d4d537ee4f770518717ac9f2f8a50eb7bb639))
+* add Assignment CRUD tools (create/update/delete) ([#29](https://github.com/bruchris/canvas-lms-mcp/issues/29)) ([1b2d1b4](https://github.com/bruchris/canvas-lms-mcp/commit/1b2d1b4c9baa32045e3d18cf2bdd3b89a031318b))
+* add create_course and update_course tools ([#30](https://github.com/bruchris/canvas-lms-mcp/issues/30)) ([e18a42c](https://github.com/bruchris/canvas-lms-mcp/commit/e18a42c6e52b8aac740bc58628710baf26be3765))
+* add Dashboard & Notifications domain (+4 tools) ([#35](https://github.com/bruchris/canvas-lms-mcp/issues/35)) ([3755b26](https://github.com/bruchris/canvas-lms-mcp/commit/3755b26ea1929a56742785ea68c1c96b48acbf88))
+* add Module & Page CRUD tools (+6 tools) ([#31](https://github.com/bruchris/canvas-lms-mcp/issues/31)) ([600c9f8](https://github.com/bruchris/canvas-lms-mcp/commit/600c9f83ba5499152d955ffb375963a952deef5c))
+* add Search & Analytics tools (+4 tools) ([#38](https://github.com/bruchris/canvas-lms-mcp/issues/38)) ([0a9fc3a](https://github.com/bruchris/canvas-lms-mcp/commit/0a9fc3aa58e45354bcff54d223e6a89f9cf5597f))
+* add search_users, list_course_users, enroll_user, remove_enrollment tools ([#34](https://github.com/bruchris/canvas-lms-mcp/issues/34)) ([699c6cb](https://github.com/bruchris/canvas-lms-mcp/commit/699c6cb462261e05daf096fbeb1d99bb8b1374d7))
+* add Student self-service tools (+4 tools) ([#36](https://github.com/bruchris/canvas-lms-mcp/issues/36)) ([b4cdb1b](https://github.com/bruchris/canvas-lms-mcp/commit/b4cdb1b229172f08c2ad6daf05f1fb0c26b2bf32))
+* add upload_file, delete_file, create_calendar_event, update_calendar_event (+4 tools) ([#37](https://github.com/bruchris/canvas-lms-mcp/issues/37)) ([72c7d16](https://github.com/bruchris/canvas-lms-mcp/commit/72c7d16ea8e4ee3e913a3a03af5544d144995676))
+* **conversations:** add get_conversation and get_conversation_unread_count tools ([#39](https://github.com/bruchris/canvas-lms-mcp/issues/39)) ([b603d16](https://github.com/bruchris/canvas-lms-mcp/commit/b603d16b5e8a78223f1586dc66d5eb2a18508764))
+* **discussions:** add create/update/delete CRUD tools ([#33](https://github.com/bruchris/canvas-lms-mcp/issues/33)) ([54a30ae](https://github.com/bruchris/canvas-lms-mcp/commit/54a30aed08a64dc340f3478108b5d8b54b99a051))
+
+
+### Bug Fixes
+
+* **analytics:** exhaustive switch, formatError in warnings, Promise.allSettled partial failure ([#41](https://github.com/bruchris/canvas-lms-mcp/issues/41)) ([4b467ef](https://github.com/bruchris/canvas-lms-mcp/commit/4b467ef52573189f02abdc577684df6442949c34))
+* restore vitest coverage provider ([#43](https://github.com/bruchris/canvas-lms-mcp/issues/43)) ([9391e8e](https://github.com/bruchris/canvas-lms-mcp/commit/9391e8e5dfb569b295d4891eea4b32f027d94af7))
+
+
+### Miscellaneous
+
+* add name and description to smithery.yaml for marketplace listing ([#40](https://github.com/bruchris/canvas-lms-mcp/issues/40)) ([0ad6ae6](https://github.com/bruchris/canvas-lms-mcp/commit/0ad6ae6a3a5a750a3e894a3e11ae0dd85e4b83a8))
+* pin patched hono dependency ([#42](https://github.com/bruchris/canvas-lms-mcp/issues/42)) ([6f06ef9](https://github.com/bruchris/canvas-lms-mcp/commit/6f06ef927fe8021af84cb62787b27fec1715c926))
+
+
+### Documentation
+
+* README overhaul — tagline, badges, comparison table ([#25](https://github.com/bruchris/canvas-lms-mcp/issues/25)) ([b366bbb](https://github.com/bruchris/canvas-lms-mcp/commit/b366bbbaea2650eadf6e9d4cef04a756c8d26c2a))
+* reconcile tool inventory documentation ([#44](https://github.com/bruchris/canvas-lms-mcp/issues/44)) ([f326f94](https://github.com/bruchris/canvas-lms-mcp/commit/f326f94578b4b64687e98d23e8a0d1b06ada8bba))
+* update Smithery listing copy with TypeScript-first description ([#26](https://github.com/bruchris/canvas-lms-mcp/issues/26)) ([72c5318](https://github.com/bruchris/canvas-lms-mcp/commit/72c5318a5b702dc523bb31a5dbe2fd3bc48587a0))
+
 ## [0.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.4.0...canvas-lms-mcp-v0.4.1) (2026-04-16)
 
 
