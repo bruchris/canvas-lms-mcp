@@ -133,7 +133,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 84 tools across all domains', () => {
+  it('returns all 88 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
