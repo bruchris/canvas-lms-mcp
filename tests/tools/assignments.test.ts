@@ -209,11 +209,12 @@ describe('assignmentTools', () => {
   })
 
   describe('update_assignment', () => {
-    it('has destructiveHint and openWorldHint annotations', () => {
+    it('has destructiveHint, idempotentHint, and openWorldHint annotations', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
       expect(tool.annotations).toEqual({
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       })
     })
@@ -250,11 +251,12 @@ describe('assignmentTools', () => {
   })
 
   describe('delete_assignment', () => {
-    it('has destructiveHint and openWorldHint annotations', () => {
+    it('has destructiveHint, idempotentHint, and openWorldHint annotations', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
       expect(tool.annotations).toEqual({
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       })
     })

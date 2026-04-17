@@ -1,23 +1,10 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasAssignment, CanvasAssignmentGroup } from './types'
-
-export interface CreateAssignmentParams {
-  name: string
-  description?: string
-  points_possible?: number
-  due_at?: string
-  submission_types?: string[]
-  assignment_group_id?: number
-}
-
-export interface UpdateAssignmentParams {
-  name?: string
-  description?: string
-  points_possible?: number
-  due_at?: string
-  submission_types?: string[]
-  assignment_group_id?: number
-}
+import type {
+  CanvasAssignment,
+  CanvasAssignmentGroup,
+  CreateAssignmentParams,
+  UpdateAssignmentParams,
+} from './types'
 
 export class AssignmentsModule {
   constructor(private client: CanvasHttpClient) {}

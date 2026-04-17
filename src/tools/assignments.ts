@@ -109,6 +109,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: {
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
@@ -134,6 +135,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: {
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {

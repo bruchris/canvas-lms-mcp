@@ -353,6 +353,19 @@ export interface CanvasAccountReport {
   } | null
 }
 
+// --- Assignments (params) ---
+
+export interface CreateAssignmentParams {
+  name: string
+  description?: string
+  points_possible?: number
+  due_at?: string
+  submission_types?: string[]
+  assignment_group_id?: number
+}
+
+export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
+
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {
