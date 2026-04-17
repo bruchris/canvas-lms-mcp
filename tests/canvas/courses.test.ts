@@ -136,4 +136,117 @@ describe('CoursesModule', () => {
       expect(client.request).toHaveBeenCalledWith('/api/v1/courses/99?include[]=syllabus_body')
     })
   })
+
+  describe('create', () => {
+    it('posts to accounts endpoint with course body', async () => {
+      const mockCourse: CanvasCourse = {
+        id: 10,
+        name: 'New Course',
+        course_code: 'NEW101',
+        workflow_state: 'unpublished',
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCourse)
+
+      const result = await courses.create({ account_id: 1, name: 'New Course', course_code: 'NEW101' })
+      expect(result).toEqual(mockCourse)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/1/courses', {
+        method: 'POST',
+        body: JSON.stringify({ course: { name: 'New Course', course_code: 'NEW101' } }),
+      })
+    })
+
+    it('posts with only required fields when optionals omitted', async () => {
+      const mockCourse: CanvasCourse = {
+        id: 11,
+        name: 'Minimal Course',
+        course_code: '',
+        workflow_state: 'unpublished',
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCourse)
+
+      await courses.create({ account_id: 5, name: 'Minimal Course' })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/5/courses', {
+        method: 'POST',
+        body: JSON.stringify({ course: { name: 'Minimal Course' } }),
+      })
+    })
+
+    it('includes start_at and end_at when provided', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 12,
+        name: 'Dated Course',
+        course_code: 'DAT101',
+        workflow_state: 'unpublished',
+      })
+
+      await courses.create({
+        account_id: 1,
+        name: 'Dated Course',
+        start_at: '2026-01-15T00:00:00Z',
+        end_at: '2026-05-15T00:00:00Z',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/1/courses', {
+        method: 'POST',
+        body: JSON.stringify({
+          course: {
+            name: 'Dated Course',
+            start_at: '2026-01-15T00:00:00Z',
+            end_at: '2026-05-15T00:00:00Z',
+          },
+        }),
+      })
+    })
+  })
+
+  describe('update', () => {
+    it('puts to course endpoint with course body', async () => {
+      const mockCourse: CanvasCourse = {
+        id: 1,
+        name: 'Renamed Course',
+        course_code: 'REN101',
+        workflow_state: 'available',
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCourse)
+
+      const result = await courses.update(1, { name: 'Renamed Course', course_code: 'REN101' })
+      expect(result).toEqual(mockCourse)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1', {
+        method: 'PUT',
+        body: JSON.stringify({ course: { name: 'Renamed Course', course_code: 'REN101' } }),
+      })
+    })
+
+    it('sends only provided fields', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 1,
+        name: 'CS 101',
+        course_code: 'CS101',
+        workflow_state: 'available',
+      })
+
+      await courses.update(1, { syllabus_body: '<p>Updated syllabus</p>' })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1', {
+        method: 'PUT',
+        body: JSON.stringify({ course: { syllabus_body: '<p>Updated syllabus</p>' } }),
+      })
+    })
+
+    it('constructs correct URL for different course IDs', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 99,
+        name: 'Bio 100',
+        course_code: 'BIO100',
+        workflow_state: 'available',
+      })
+
+      await courses.update(99, { default_view: 'modules' })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/99', {
+        method: 'PUT',
+        body: JSON.stringify({ course: { default_view: 'modules' } }),
+      })
+    })
+  })
 })

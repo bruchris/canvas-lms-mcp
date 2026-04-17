@@ -19,15 +19,17 @@ describe('courseTools', () => {
         list: vi.fn().mockResolvedValue([mockCourse]),
         get: vi.fn().mockResolvedValue(mockCourse),
         getSyllabus: vi.fn().mockResolvedValue('<p>Welcome to the course</p>'),
+        create: vi.fn().mockResolvedValue(mockCourse),
+        update: vi.fn().mockResolvedValue(mockCourse),
       },
       ...overrides,
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 3 tool definitions', () => {
+  it('returns an array with 5 tool definitions', () => {
     const canvas = buildMockCanvas()
     const tools = courseTools(canvas)
-    expect(tools).toHaveLength(3)
+    expect(tools).toHaveLength(5)
   })
 
   it('exports tools with correct names', () => {
@@ -37,6 +39,8 @@ describe('courseTools', () => {
     expect(names).toContain('list_courses')
     expect(names).toContain('get_course')
     expect(names).toContain('get_syllabus')
+    expect(names).toContain('create_course')
+    expect(names).toContain('update_course')
   })
 
   describe('list_courses', () => {
@@ -156,6 +160,8 @@ describe('courseTools', () => {
           list: vi.fn(),
           get: vi.fn(),
           getSyllabus: vi.fn().mockResolvedValue(null),
+          create: vi.fn(),
+          update: vi.fn(),
         } as unknown as CanvasClient['courses'],
       })
       const tool = courseTools(canvas).find((t) => t.name === 'get_syllabus')!
@@ -166,6 +172,109 @@ describe('courseTools', () => {
     it('has a description', () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_syllabus')!
+      expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('create_course', () => {
+    it('has destructiveHint and openWorldHint annotations', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('has required fields in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      expect(tool.inputSchema).toHaveProperty('account_id')
+      expect(tool.inputSchema).toHaveProperty('name')
+    })
+
+    it('has optional fields in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      expect(tool.inputSchema).toHaveProperty('course_code')
+      expect(tool.inputSchema).toHaveProperty('start_at')
+      expect(tool.inputSchema).toHaveProperty('end_at')
+    })
+
+    it('calls canvas.courses.create with params', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      await tool.handler({ account_id: 1, name: 'New Course', course_code: 'NEW101' })
+      expect(canvas.courses.create).toHaveBeenCalledWith({
+        account_id: 1,
+        name: 'New Course',
+        course_code: 'NEW101',
+        start_at: undefined,
+        end_at: undefined,
+      })
+    })
+
+    it('returns the created course', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      const result = await tool.handler({ account_id: 1, name: 'New Course' })
+      expect(result).toEqual(mockCourse)
+    })
+
+    it('has a description', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
+      expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('update_course', () => {
+    it('has destructiveHint and openWorldHint annotations', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('has course_id in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
+      expect(tool.inputSchema).toHaveProperty('course_id')
+    })
+
+    it('has optional update fields in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
+      expect(tool.inputSchema).toHaveProperty('name')
+      expect(tool.inputSchema).toHaveProperty('course_code')
+      expect(tool.inputSchema).toHaveProperty('start_at')
+      expect(tool.inputSchema).toHaveProperty('end_at')
+      expect(tool.inputSchema).toHaveProperty('default_view')
+      expect(tool.inputSchema).toHaveProperty('syllabus_body')
+    })
+
+    it('calls canvas.courses.update with course_id and fields', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
+      await tool.handler({ course_id: 1, name: 'Renamed', default_view: 'modules' })
+      expect(canvas.courses.update).toHaveBeenCalledWith(1, {
+        name: 'Renamed',
+        default_view: 'modules',
+      })
+    })
+
+    it('returns the updated course', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
+      const result = await tool.handler({ course_id: 1, name: 'Updated' })
+      expect(result).toEqual(mockCourse)
+    })
+
+    it('has a description', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
       expect(tool.description).toBeTruthy()
     })
   })

@@ -5,7 +5,7 @@ import type { CanvasClient } from '../../src/canvas'
 
 function buildFullMockCanvas(): CanvasClient {
   return {
-    courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null },
+    courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null, create: async () => ({}), update: async () => ({}) },
     assignments: {
       list: async () => [],
       get: async () => ({}),
@@ -108,16 +108,18 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 74 tools across all domains', () => {
+  it('returns all 76 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
     // Health (1)
     expect(names).toContain('health_check')
-    // Courses (3)
+    // Courses (5)
     expect(names).toContain('list_courses')
     expect(names).toContain('get_course')
     expect(names).toContain('get_syllabus')
+    expect(names).toContain('create_course')
+    expect(names).toContain('update_course')
     // Assignments (6)
     expect(names).toContain('list_assignments')
     expect(names).toContain('get_assignment')
@@ -204,7 +206,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(74)
+    expect(tools).toHaveLength(76)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -242,6 +244,8 @@ describe('getAllTools', () => {
       'delete_file',
       'create_calendar_event',
       'update_calendar_event',
+      'create_course',
+      'update_course',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -278,6 +282,8 @@ describe('getAllTools', () => {
       'delete_file',
       'create_calendar_event',
       'update_calendar_event',
+      'create_course',
+      'update_course',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {
