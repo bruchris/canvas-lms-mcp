@@ -58,15 +58,21 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_course',
       description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID to create the course in'),
+        account_id: z
+          .number()
+          .int()
+          .positive()
+          .describe('The Canvas account ID to create the course in'),
         name: z.string().describe('The name of the course'),
         course_code: z.string().optional().describe('The course code (e.g. CS101)'),
         start_at: z
           .string()
+          .datetime()
           .optional()
           .describe('Course start date in ISO 8601 format (e.g. 2026-01-15T00:00:00Z)'),
         end_at: z
           .string()
+          .datetime()
           .optional()
           .describe('Course end date in ISO 8601 format (e.g. 2026-05-15T00:00:00Z)'),
       },
@@ -75,13 +81,14 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.courses.create({
-          account_id: params.account_id as number,
-          name: params.name as string,
-          course_code: params.course_code as string | undefined,
-          start_at: params.start_at as string | undefined,
-          end_at: params.end_at as string | undefined,
-        })
+        const { account_id, ...courseFields } = params as {
+          account_id: number
+          name: string
+          course_code?: string
+          start_at?: string
+          end_at?: string
+        }
+        return canvas.courses.create({ account_id, ...courseFields })
       },
     },
     {
@@ -89,15 +96,17 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID to update'),
+        course_id: z.number().int().positive().describe('The Canvas course ID to update'),
         name: z.string().optional().describe('New course name'),
         course_code: z.string().optional().describe('New course code'),
         start_at: z
           .string()
+          .datetime()
           .optional()
           .describe('New start date in ISO 8601 format (e.g. 2026-01-15T00:00:00Z)'),
         end_at: z
           .string()
+          .datetime()
           .optional()
           .describe('New end date in ISO 8601 format (e.g. 2026-05-15T00:00:00Z)'),
         default_view: z

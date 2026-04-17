@@ -209,8 +209,6 @@ describe('courseTools', () => {
         account_id: 1,
         name: 'New Course',
         course_code: 'NEW101',
-        start_at: undefined,
-        end_at: undefined,
       })
     })
 
