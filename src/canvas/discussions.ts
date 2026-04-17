@@ -77,9 +77,8 @@ export class DiscussionsModule {
   }
 
   async delete(courseId: number, topicId: number): Promise<void> {
-    await this.client.request<void>(
-      `/api/v1/courses/${courseId}/discussion_topics/${topicId}`,
-      { method: 'DELETE' },
-    )
+    await this.client.request<void>(`/api/v1/courses/${courseId}/discussion_topics/${topicId}`, {
+      method: 'DELETE',
+    })
   }
 }
