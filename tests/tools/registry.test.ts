@@ -5,7 +5,13 @@ import type { CanvasClient } from '../../src/canvas'
 
 function buildFullMockCanvas(): CanvasClient {
   return {
-    courses: { list: async () => [], get: async () => ({}), getSyllabus: async () => null, create: async () => ({}), update: async () => ({}) },
+    courses: {
+      list: async () => [],
+      get: async () => ({}),
+      getSyllabus: async () => null,
+      create: async () => ({}),
+      update: async () => ({}),
+    },
     assignments: {
       list: async () => [],
       get: async () => ({}),

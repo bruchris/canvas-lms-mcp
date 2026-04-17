@@ -148,7 +148,11 @@ describe('CoursesModule', () => {
 
       vi.spyOn(client, 'request').mockResolvedValueOnce(mockCourse)
 
-      const result = await courses.create({ account_id: 1, name: 'New Course', course_code: 'NEW101' })
+      const result = await courses.create({
+        account_id: 1,
+        name: 'New Course',
+        course_code: 'NEW101',
+      })
       expect(result).toEqual(mockCourse)
       expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/1/courses', {
         method: 'POST',

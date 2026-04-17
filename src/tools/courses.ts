@@ -56,8 +56,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_course',
-      description:
-        'Create a new course in a Canvas account. Returns the created course object.',
+      description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
         account_id: z.number().describe('The Canvas account ID to create the course in'),
         name: z.string().describe('The name of the course'),
