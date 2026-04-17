@@ -1,5 +1,10 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasDashboardCard, CanvasTodoItem, CanvasUpcomingEvent, CanvasMissingSubmission } from './types'
+import type {
+  CanvasDashboardCard,
+  CanvasTodoItem,
+  CanvasUpcomingEvent,
+  CanvasMissingSubmission,
+} from './types'
 
 export class DashboardModule {
   constructor(private client: CanvasHttpClient) {}

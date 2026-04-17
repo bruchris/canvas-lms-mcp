@@ -28,7 +28,9 @@ describe('DashboardModule', () => {
   })
 
   it('fetches todo items', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ type: 'submitting', context_type: 'Course' }])
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      { type: 'submitting', context_type: 'Course' },
+    ])
     const result = await dashboard.getTodoItems()
     expect(result).toHaveLength(1)
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/todo')
@@ -41,7 +43,15 @@ describe('DashboardModule', () => {
   })
 
   it('fetches upcoming events', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 1, title: 'Lecture', start_at: '2026-04-20T10:00:00Z', type: 'event', context_code: 'course_1' }])
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      {
+        id: 1,
+        title: 'Lecture',
+        start_at: '2026-04-20T10:00:00Z',
+        type: 'event',
+        context_code: 'course_1',
+      },
+    ])
     const result = await dashboard.getUpcomingEvents()
     expect(result).toHaveLength(1)
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events')
@@ -54,7 +64,17 @@ describe('DashboardModule', () => {
   })
 
   it('fetches missing submissions', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 10, name: 'Assignment 1', due_at: '2026-04-10T23:59:00Z', course_id: 1, points_possible: 100, submission_types: ['online_text_entry'], html_url: 'https://canvas.example.com/courses/1/assignments/10' }])
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      {
+        id: 10,
+        name: 'Assignment 1',
+        due_at: '2026-04-10T23:59:00Z',
+        course_id: 1,
+        points_possible: 100,
+        submission_types: ['online_text_entry'],
+        html_url: 'https://canvas.example.com/courses/1/assignments/10',
+      },
+    ])
     const result = await dashboard.getMissingSubmissions()
     expect(result).toHaveLength(1)
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/missing_submissions')
