@@ -59,7 +59,7 @@ function buildFullMockCanvas(): CanvasClient {
       delete: async () => undefined,
     },
     calendar: { list: async () => [] },
-    conversations: { list: async () => [], send: async () => [] },
+    conversations: { list: async () => [], get: async () => ({}), getUnreadCount: async () => ({ unread_count: 0 }), send: async () => [] },
     peerReviews: {
       listForAssignment: async () => [],
       listForSubmission: async () => [],
@@ -151,8 +151,10 @@ describe('getAllTools', () => {
     expect(names).toContain('delete_page')
     // Calendar (1)
     expect(names).toContain('list_calendar_events')
-    // Conversations (2)
+    // Conversations (4)
     expect(names).toContain('list_conversations')
+    expect(names).toContain('get_conversation')
+    expect(names).toContain('get_unread_count')
     expect(names).toContain('send_conversation')
     // Peer Reviews (4)
     expect(names).toContain('list_peer_reviews')
@@ -167,7 +169,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(62)
+    expect(tools).toHaveLength(64)
   })
 
   it('all tools have openWorldHint: true', () => {

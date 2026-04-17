@@ -22,18 +22,25 @@ describe('conversationTools', () => {
     return {
       conversations: {
         list: vi.fn().mockResolvedValue([mockConversation]),
+        get: vi.fn().mockResolvedValue({ ...mockConversation, messages: [] }),
+        getUnreadCount: vi.fn().mockResolvedValue({ unread_count: 3 }),
         send: vi.fn().mockResolvedValue([mockConversation]),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 2 tool definitions', () => {
-    expect(conversationTools(buildMockCanvas())).toHaveLength(2)
+  it('returns an array with 4 tool definitions', () => {
+    expect(conversationTools(buildMockCanvas())).toHaveLength(4)
   })
 
   it('exports tools with correct names', () => {
     const names = conversationTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_conversations', 'send_conversation'])
+    expect(names).toEqual([
+      'list_conversations',
+      'get_conversation',
+      'get_unread_count',
+      'send_conversation',
+    ])
   })
 
   describe('list_conversations', () => {
@@ -50,6 +57,35 @@ describe('conversationTools', () => {
       const result = await tool.handler({})
       expect(canvas.conversations.list).toHaveBeenCalled()
       expect(result).toEqual([mockConversation])
+    })
+  })
+
+  describe('get_conversation', () => {
+    it('has read-only annotations', () => {
+      const tool = conversationTools(buildMockCanvas()).find((t) => t.name === 'get_conversation')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.conversations.get with the conversation id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = conversationTools(canvas).find((t) => t.name === 'get_conversation')!
+      await tool.handler({ conversation_id: 1 })
+      expect(canvas.conversations.get).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('get_unread_count', () => {
+    it('has read-only annotations', () => {
+      const tool = conversationTools(buildMockCanvas()).find((t) => t.name === 'get_unread_count')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.conversations.getUnreadCount', async () => {
+      const canvas = buildMockCanvas()
+      const tool = conversationTools(canvas).find((t) => t.name === 'get_unread_count')!
+      const result = await tool.handler({})
+      expect(canvas.conversations.getUnreadCount).toHaveBeenCalled()
+      expect(result).toEqual({ unread_count: 3 })
     })
   })
 

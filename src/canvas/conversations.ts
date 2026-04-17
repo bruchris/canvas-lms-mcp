@@ -8,6 +8,14 @@ export class ConversationsModule {
     return this.client.paginate<CanvasConversation>('/api/v1/conversations')
   }
 
+  async get(id: number): Promise<CanvasConversation> {
+    return this.client.request<CanvasConversation>(`/api/v1/conversations/${id}`)
+  }
+
+  async getUnreadCount(): Promise<{ unread_count: number }> {
+    return this.client.request<{ unread_count: number }>('/api/v1/conversations/unread_count')
+  }
+
   async send(recipients: string[], subject: string, body: string): Promise<CanvasConversation[]> {
     return this.client.request<CanvasConversation[]>('/api/v1/conversations', {
       method: 'POST',

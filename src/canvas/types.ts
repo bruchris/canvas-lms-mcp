@@ -300,13 +300,26 @@ export interface CanvasCalendarEvent {
 
 // --- Conversations ---
 
+export interface CanvasConversationMessage {
+  id: number
+  created_at: string
+  body: string
+  author_id: number
+  generated: boolean
+  media_comment?: { media_id: string; media_type: string; display_name: string }
+  attachments?: Array<{ id: number; display_name: string; url: string }>
+}
+
 export interface CanvasConversation {
   id: number
   subject: string
+  workflow_state: 'read' | 'unread' | 'archived'
   last_message: string
   last_message_at: string
   message_count: number
+  audience: number[]
   participants: Array<{ id: number; name: string }>
+  messages?: CanvasConversationMessage[]
 }
 
 // --- Accounts ---
