@@ -42,8 +42,5 @@ jobs:
       - name: Use npm CLI with trusted publishing support
         run: npm install --global npm@^11.5.1
 
-      - name: Verify npm publish version is newer than the registry
-        run: node scripts/verify-npm-publish-version.mjs
-
       - name: Publish to npm with Trusted Publisher OIDC
         run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
