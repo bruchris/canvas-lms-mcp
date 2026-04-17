@@ -3,7 +3,6 @@ import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
-import type { CourseSearchResult } from '../canvas/types'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -32,34 +31,13 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
           ...SEARCH_CONTENT_TYPES,
         ]
 
-        if (types.length === 0) return { results: [] }
+        if (types.length === 0) return []
 
-        const settled = await Promise.allSettled(
+        const results = await Promise.all(
           types.map((type) => canvas.analytics.searchContentType(courseId, searchTerm, type)),
         )
 
-        const fulfilled = settled.filter(
-          (r): r is PromiseFulfilledResult<CourseSearchResult[]> => r.status === 'fulfilled',
-        )
-
-        if (fulfilled.length === 0) {
-          const firstRejected = settled.find(
-            (r): r is PromiseRejectedResult => r.status === 'rejected',
-          )
-          if (!firstRejected) throw new Error('unexpected: no rejected result')
-          throw firstRejected.reason
-        }
-
-        const results = fulfilled.flatMap((r) => r.value)
-        const warnings = settled
-          .map((r, i) =>
-            r.status === 'rejected'
-              ? `${types[i]} failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`
-              : null,
-          )
-          .filter((w): w is string => w !== null)
-
-        return warnings.length > 0 ? { results, warnings } : { results }
+        return results.flat()
       },
     },
     {
