@@ -362,6 +362,7 @@ src/cli.ts        CLI argument parser
 
 ## Guides
 
+- [Getting Started](docs/getting-started.md) -- Step-by-step setup for non-developers: token, config, first query, troubleshooting
 - [Student Guide](docs/student-guide.md) -- Token setup, AI client configuration, 10 example prompts
 - [Educator Guide](docs/educator-guide.md) -- Grading workflows, write operations, privacy considerations
 - [Integration Guide](docs/integration-guide.md) -- Three integration patterns with code examples
