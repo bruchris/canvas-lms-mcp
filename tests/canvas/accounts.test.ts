@@ -45,7 +45,9 @@ describe('AccountsModule', () => {
   it('lists courses with a search term', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
     await accounts.listCourses(1, { search_term: 'math' })
-    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/courses', { search_term: 'math' })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/courses', {
+      search_term: 'math',
+    })
   })
 
   it('lists users under an account without filter', async () => {
@@ -56,7 +58,9 @@ describe('AccountsModule', () => {
   })
 
   it('gets available report types for an account', async () => {
-    vi.spyOn(client, 'request').mockResolvedValueOnce([{ report: 'grade_export_csv', title: 'Grade Export' }])
+    vi.spyOn(client, 'request').mockResolvedValueOnce([
+      { report: 'grade_export_csv', title: 'Grade Export' },
+    ])
     const result = await accounts.getReports(1)
     expect(result).toHaveLength(1)
     expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/1/reports')

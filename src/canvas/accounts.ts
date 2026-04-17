@@ -19,13 +19,19 @@ export class AccountsModule {
   async listCourses(accountId: number, params?: { search_term?: string }): Promise<CanvasCourse[]> {
     const query: Record<string, string> = {}
     if (params?.search_term) query.search_term = params.search_term
-    return this.client.paginate<CanvasCourse>(`/api/v1/accounts/${accountId}/courses`, Object.keys(query).length ? query : undefined)
+    return this.client.paginate<CanvasCourse>(
+      `/api/v1/accounts/${accountId}/courses`,
+      Object.keys(query).length ? query : undefined,
+    )
   }
 
   async listUsers(accountId: number, params?: { search_term?: string }): Promise<CanvasUser[]> {
     const query: Record<string, string> = {}
     if (params?.search_term) query.search_term = params.search_term
-    return this.client.paginate<CanvasUser>(`/api/v1/accounts/${accountId}/users`, Object.keys(query).length ? query : undefined)
+    return this.client.paginate<CanvasUser>(
+      `/api/v1/accounts/${accountId}/users`,
+      Object.keys(query).length ? query : undefined,
+    )
   }
 
   async getReports(accountId: number): Promise<CanvasAccountReport[]> {

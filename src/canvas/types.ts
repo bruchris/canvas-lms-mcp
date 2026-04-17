@@ -319,11 +319,11 @@ export interface CanvasAccount {
 export interface CanvasAccountReport {
   report: string
   title: string
-  parameters_schema: Record<string, unknown>[] | null
+  parameters: Record<string, { required?: boolean; description?: string }> | null
   last_run: {
     id: number
     report: string
-    status: string
+    status: 'created' | 'running' | 'complete' | 'error'
     created_at: string
     started_at: string | null
     ended_at: string | null

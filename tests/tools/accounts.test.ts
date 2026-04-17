@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
-import type { CanvasAccount, CanvasAccountReport, CanvasCourse, CanvasUser } from '../../src/canvas/types'
+import type {
+  CanvasAccount,
+  CanvasAccountReport,
+  CanvasCourse,
+  CanvasUser,
+} from '../../src/canvas/types'
 import { accountTools } from '../../src/tools/accounts'
 
 describe('accountTools', () => {
@@ -36,7 +41,7 @@ describe('accountTools', () => {
   const mockReport: CanvasAccountReport = {
     report: 'grade_export_csv',
     title: 'Grade Export',
-    parameters_schema: null,
+    parameters: null,
     last_run: null,
   }
 
