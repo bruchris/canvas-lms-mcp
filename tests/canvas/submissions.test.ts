@@ -168,6 +168,24 @@ describe('SubmissionsModule', () => {
     })
   })
 
+  describe('listMy', () => {
+    it('fetches submissions for self with student_ids[]=self', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listMy(10)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
+        'student_ids[]': 'self',
+      })
+    })
+
+    it('uses the correct course ID in the URL', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listMy(99)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/99/students/submissions', {
+        'student_ids[]': 'self',
+      })
+    })
+  })
+
   describe('comment', () => {
     it('posts a comment on a submission with PUT and text_comment', async () => {
       const mockResponse: CanvasSubmission = {

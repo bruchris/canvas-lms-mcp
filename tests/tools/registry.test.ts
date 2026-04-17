@@ -25,6 +25,7 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       grade: async () => ({}),
       comment: async () => ({}),
+      listMy: async () => [],
     },
     rubrics: {
       list: async () => [],
@@ -53,9 +54,15 @@ function buildFullMockCanvas(): CanvasClient {
       getProfile: async () => ({}),
       searchUsers: async () => [],
       listCourseUsers: async () => [],
+      getUpcomingAssignments: async () => [],
     },
     groups: { list: async () => [], listMembers: async () => [] },
-    enrollments: { list: async () => [], enroll: async () => ({}), remove: async () => ({}) },
+    enrollments: {
+      list: async () => [],
+      enroll: async () => ({}),
+      remove: async () => ({}),
+      listMyGrades: async () => [],
+    },
     discussions: {
       list: async () => [],
       get: async () => ({}),
@@ -120,7 +127,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 80 tools across all domains', () => {
+  it('returns all 84 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -222,8 +229,13 @@ describe('getAllTools', () => {
     expect(names).toContain('get_course_analytics')
     expect(names).toContain('get_student_analytics')
     expect(names).toContain('get_course_activity_stream')
+    // Student (4)
+    expect(names).toContain('get_my_courses')
+    expect(names).toContain('get_my_grades')
+    expect(names).toContain('get_my_submissions')
+    expect(names).toContain('get_my_upcoming_assignments')
 
-    expect(tools).toHaveLength(80)
+    expect(tools).toHaveLength(84)
   })
 
   it('all tools have openWorldHint: true', () => {

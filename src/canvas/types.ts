@@ -34,6 +34,13 @@ export interface CanvasTerm {
   end_at: string | null
 }
 
+export interface CanvasEnrollmentGrades {
+  current_grade: string | null
+  current_score: number | null
+  final_grade: string | null
+  final_score: number | null
+}
+
 export interface CanvasEnrollment {
   id: number
   course_id: number
@@ -41,6 +48,8 @@ export interface CanvasEnrollment {
   type: string
   role: string
   enrollment_state: string
+  created_at?: string
+  grades?: CanvasEnrollmentGrades
 }
 
 export interface CreateCourseParams {
@@ -83,6 +92,17 @@ export interface CanvasAssignmentGroup {
   position: number
   group_weight: number
   assignments?: CanvasAssignment[]
+}
+
+export interface CanvasUpcomingEvent {
+  id: number
+  title: string
+  type: string
+  workflow_state: string
+  context_code: string
+  start_at: string | null
+  end_at: string | null
+  assignment?: CanvasAssignment
 }
 
 // --- Submissions ---

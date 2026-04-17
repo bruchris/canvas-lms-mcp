@@ -48,4 +48,11 @@ export class SubmissionsModule {
       },
     )
   }
+
+  async listMy(courseId: number): Promise<CanvasSubmission[]> {
+    return this.client.paginate<CanvasSubmission>(
+      `/api/v1/courses/${courseId}/students/submissions`,
+      { 'student_ids[]': 'self' },
+    )
+  }
 }

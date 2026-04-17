@@ -84,4 +84,12 @@ describe('UsersModule', () => {
       'enrollment_type[]': 'teacher',
     })
   })
+
+  it('fetches upcoming assignment events filtered by type=Assignment', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce([])
+    await users.getUpcomingAssignments()
+    expect(client.request).toHaveBeenCalledWith(
+      '/api/v1/users/self/upcoming_events?type=Assignment',
+    )
+  })
 })

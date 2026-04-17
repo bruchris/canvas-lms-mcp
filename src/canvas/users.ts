@@ -1,5 +1,5 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasUser, CanvasUserProfile } from './types'
+import type { CanvasUpcomingEvent, CanvasUser, CanvasUserProfile } from './types'
 
 export class UsersModule {
   constructor(private client: CanvasHttpClient) {}
@@ -34,5 +34,11 @@ export class UsersModule {
     const params: Record<string, string> = {}
     if (enrollmentType) params['enrollment_type[]'] = enrollmentType
     return this.client.paginate<CanvasUser>(`/api/v1/courses/${courseId}/users`, params)
+  }
+
+  async getUpcomingAssignments(): Promise<CanvasUpcomingEvent[]> {
+    return this.client.request<CanvasUpcomingEvent[]>(
+      '/api/v1/users/self/upcoming_events?type=Assignment',
+    )
   }
 }

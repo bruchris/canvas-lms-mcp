@@ -33,4 +33,16 @@ export class EnrollmentsModule {
       { method: 'DELETE' },
     )
   }
+
+  async listMyGrades(courseId?: number): Promise<CanvasEnrollment[]> {
+    if (courseId !== undefined) {
+      return this.client.paginate<CanvasEnrollment>(`/api/v1/courses/${courseId}/enrollments`, {
+        user_id: 'self',
+        'include[]': 'grades',
+      })
+    }
+    return this.client.paginate<CanvasEnrollment>('/api/v1/users/self/enrollments', {
+      'include[]': 'grades',
+    })
+  }
 }
