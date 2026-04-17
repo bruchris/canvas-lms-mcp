@@ -1,5 +1,5 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasCourse } from './types'
+import type { CanvasCourse, CreateCourseParams, UpdateCourseParams } from './types'
 
 export class CoursesModule {
   constructor(private client: CanvasHttpClient) {}
@@ -25,5 +25,20 @@ export class CoursesModule {
       `/api/v1/courses/${courseId}?include[]=syllabus_body`,
     )
     return course.syllabus_body ?? null
+  }
+
+  async create(params: CreateCourseParams): Promise<CanvasCourse> {
+    const { account_id, ...courseFields } = params
+    return this.client.request<CanvasCourse>(`/api/v1/accounts/${account_id}/courses`, {
+      method: 'POST',
+      body: JSON.stringify({ course: courseFields }),
+    })
+  }
+
+  async update(courseId: number, params: UpdateCourseParams): Promise<CanvasCourse> {
+    return this.client.request<CanvasCourse>(`/api/v1/courses/${courseId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ course: params }),
+    })
   }
 }
