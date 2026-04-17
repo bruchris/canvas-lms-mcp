@@ -1,7 +1,7 @@
 {
   "name": "@bruchris/canvas-lms-mcp",
   "version": "0.4.1",
-  "description": "TypeScript MCP 1.x server for Canvas LMS — 46 tools across 16 domains. Connect Claude Desktop, Cursor, or VS Code to your Canvas courses, assignments, grades, quizzes, discussions, and more.",
+  "description": "TypeScript MCP 1.x server for Canvas LMS — 95 tools across 20 domains. Connect Claude Desktop, Cursor, VS Code, Gemini CLI, or Codex to your Canvas courses, assignments, grades, quizzes, discussions, and more.",
   "type": "module",
   "exports": {
     ".": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "canvas-lms-mcp": "./dist/stdio.js"
+    "canvas-lms-mcp": "dist/stdio.js"
   },
   "files": [
     "dist/"
@@ -64,7 +64,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bruchris/canvas-lms-mcp.git"
+    "url": "git+https://github.com/bruchris/canvas-lms-mcp.git"
   },
   "engines": {
     "node": ">=22"

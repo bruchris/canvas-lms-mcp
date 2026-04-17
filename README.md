@@ -10,14 +10,14 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent.
 
-46 tools across 16 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
+95 tools across 20 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
 | | @bruchris/canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 46 | 80+ | 54 |
+| Tools | 95 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -173,7 +173,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### Read-Only Tools (38)
+### Read-Only Tools (68)
 
 | Category | Tool | Description |
 |----------|------|-------------|
@@ -200,6 +200,8 @@ Once configured, try these prompts with your AI client:
 | Users | `list_students` | List all students enrolled in a course |
 | Users | `get_user` | Get details for a single user |
 | Users | `get_profile` | Get the authenticated user's profile |
+| Users | `search_users` | Search users by name or email |
+| Users | `list_course_users` | List all users in a course by enrollment type |
 | Groups | `list_groups` | List all groups in a course |
 | Groups | `list_group_members` | List all members of a group |
 | Enrollments | `list_enrollments` | List enrollments for the authenticated user |
@@ -213,21 +215,60 @@ Once configured, try these prompts with your AI client:
 | Pages | `get_page` | Get a wiki page by its URL slug |
 | Calendar | `list_calendar_events` | List calendar events for a course |
 | Conversations | `list_conversations` | List inbox messages for the authenticated user |
+| Conversations | `get_conversation` | Get a specific conversation thread |
+| Conversations | `get_conversation_unread_count` | Get unread conversation count |
 | Peer Reviews | `list_peer_reviews` | List all peer reviews for an assignment in a course |
 | Peer Reviews | `get_submission_peer_reviews` | List peer reviews assigned to a specific submission |
+| Accounts | `get_account` | Get details for a Canvas account |
+| Accounts | `list_accounts` | List accounts the user has access to |
+| Accounts | `list_sub_accounts` | List sub-accounts under an account |
+| Accounts | `list_account_courses` | List all courses in an account |
+| Accounts | `list_account_users` | List all users in an account |
+| Accounts | `get_account_reports` | Get available reports for an account |
+| Analytics | `search_course_content` | Search content across a course |
+| Analytics | `get_course_analytics` | Get course-level analytics and statistics |
+| Analytics | `get_student_analytics` | Get per-student analytics for a course |
+| Analytics | `get_course_activity_stream` | Get recent activity stream for a course |
+| Student | `get_my_courses` | Get the current student's enrolled courses |
+| Student | `get_my_grades` | Get the current student's grades across courses |
+| Student | `get_my_submissions` | Get the current student's submissions |
+| Student | `get_my_upcoming_assignments` | Get upcoming assignments for the current student |
+| Dashboard | `get_dashboard_cards` | Get dashboard course cards |
+| Dashboard | `get_todo_items` | Get todo items for the authenticated user |
+| Dashboard | `get_upcoming_events` | Get upcoming calendar events |
+| Dashboard | `get_missing_submissions` | Get missing submissions for the authenticated user |
 
-### Write Tools (8)
+### Write Tools (27)
 
-| Tool | Description | Idempotent |
-|------|-------------|------------|
-| `grade_submission` | Post or update a grade for a submission | Yes |
-| `comment_on_submission` | Add a text comment to a submission | No |
-| `submit_rubric_assessment` | Submit rubric scores and comments per criterion | Yes |
-| `score_quiz_question` | Score a specific quiz question | Yes |
-| `post_discussion_entry` | Post a reply to a discussion topic | No |
-| `send_conversation` | Send a message to one or more recipients | No |
-| `create_peer_review` | Assign a user to peer-review a submission | No |
-| `delete_peer_review` | Remove a peer review assignment from a submission | No |
+| Category | Tool | Description | Idempotent |
+|----------|------|-------------|------------|
+| Courses | `create_course` | Create a new course | No |
+| Courses | `update_course` | Update course settings and details | Yes |
+| Assignments | `create_assignment` | Create a new assignment | No |
+| Assignments | `update_assignment` | Update an existing assignment | Yes |
+| Assignments | `delete_assignment` | Delete an assignment | No |
+| Submissions | `grade_submission` | Post or update a grade for a submission | Yes |
+| Submissions | `comment_on_submission` | Add a text comment to a submission | No |
+| Rubrics | `submit_rubric_assessment` | Submit rubric scores and comments per criterion | Yes |
+| Quizzes | `score_quiz_question` | Score a specific quiz question | Yes |
+| Files | `upload_file` | Upload a file to a course | No |
+| Files | `delete_file` | Delete a file | No |
+| Enrollments | `enroll_user` | Enroll a user in a course | No |
+| Enrollments | `remove_enrollment` | Remove an enrollment from a course | No |
+| Discussions | `post_discussion_entry` | Post a reply to a discussion topic | No |
+| Discussions | `create_discussion` | Create a new discussion topic | No |
+| Discussions | `update_discussion` | Update an existing discussion topic | Yes |
+| Discussions | `delete_discussion` | Delete a discussion topic | No |
+| Modules | `create_module` | Create a new module in a course | No |
+| Modules | `update_module` | Update an existing module | Yes |
+| Modules | `create_module_item` | Add an item to a module | No |
+| Pages | `create_page` | Create a new wiki page | No |
+| Pages | `update_page` | Update an existing wiki page | Yes |
+| Pages | `delete_page` | Delete a wiki page | No |
+| Calendar | `create_calendar_event` | Create a new calendar event | No |
+| Calendar | `update_calendar_event` | Update an existing calendar event | Yes |
+| Conversations | `send_conversation` | Send a message to one or more recipients | No |
+| Peer Reviews | `create_peer_review` | Assign a user to peer-review a submission | No |
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -334,7 +375,7 @@ const courses = await canvas.courses.list()
 pnpm install       # Install dependencies
 pnpm dev           # Watch mode build
 pnpm build         # Production build
-pnpm test          # Run tests (294 tests)
+pnpm test          # Run tests (507 tests)
 pnpm lint          # ESLint + Prettier check
 pnpm lint:fix      # Auto-fix lint issues
 pnpm typecheck     # TypeScript strict type check
