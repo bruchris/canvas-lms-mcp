@@ -17,4 +17,22 @@ export class UsersModule {
   async getProfile(): Promise<CanvasUserProfile> {
     return this.client.request<CanvasUserProfile>('/api/v1/users/self/profile')
   }
+
+  async searchUsers(
+    accountId: number,
+    searchTerm: string,
+    sort?: string,
+    order?: string,
+  ): Promise<CanvasUser[]> {
+    const params: Record<string, string> = { search_term: searchTerm }
+    if (sort) params.sort = sort
+    if (order) params.order = order
+    return this.client.paginate<CanvasUser>(`/api/v1/accounts/${accountId}/users`, params)
+  }
+
+  async listCourseUsers(courseId: number, enrollmentType?: string): Promise<CanvasUser[]> {
+    const params: Record<string, string> = {}
+    if (enrollmentType) params['enrollment_type[]'] = enrollmentType
+    return this.client.paginate<CanvasUser>(`/api/v1/courses/${courseId}/users`, params)
+  }
 }

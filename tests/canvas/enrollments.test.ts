@@ -35,4 +35,51 @@ describe('EnrollmentsModule', () => {
     const result = await enrollments.list()
     expect(result).toEqual([])
   })
+
+  it('enrolls a user in a course', async () => {
+    const mockEnrollment = {
+      id: 10,
+      course_id: 100,
+      user_id: 5,
+      type: 'StudentEnrollment',
+      role: 'StudentEnrollment',
+      enrollment_state: 'invited',
+    }
+    vi.spyOn(client, 'request').mockResolvedValueOnce(mockEnrollment)
+    const result = await enrollments.enroll(100, 5, 'StudentEnrollment')
+    expect(result).toMatchObject({ id: 10, type: 'StudentEnrollment' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({ enrollment: { user_id: 5, type: 'StudentEnrollment' } }),
+    })
+  })
+
+  it('enrolls a user with explicit enrollment_state', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 11, type: 'TeacherEnrollment' })
+    await enrollments.enroll(100, 5, 'TeacherEnrollment', 'active')
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({
+        enrollment: { user_id: 5, type: 'TeacherEnrollment', enrollment_state: 'active' },
+      }),
+    })
+  })
+
+  it('removes an enrollment', async () => {
+    const mockEnrollment = {
+      id: 10,
+      course_id: 100,
+      user_id: 5,
+      type: 'StudentEnrollment',
+      role: 'StudentEnrollment',
+      enrollment_state: 'deleted',
+    }
+    vi.spyOn(client, 'request').mockResolvedValueOnce(mockEnrollment)
+    const result = await enrollments.remove(100, 10, 'delete')
+    expect(result).toMatchObject({ id: 10 })
+    expect(client.request).toHaveBeenCalledWith(
+      '/api/v1/courses/100/enrollments/10?task=delete',
+      { method: 'DELETE' },
+    )
+  })
 })

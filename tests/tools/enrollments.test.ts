@@ -18,17 +18,19 @@ describe('enrollmentTools', () => {
     return {
       enrollments: {
         list: vi.fn().mockResolvedValue([mockEnrollment]),
+        enroll: vi.fn().mockResolvedValue(mockEnrollment),
+        remove: vi.fn().mockResolvedValue(mockEnrollment),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 1 tool definition', () => {
-    expect(enrollmentTools(buildMockCanvas())).toHaveLength(1)
+  it('returns an array with 3 tool definitions', () => {
+    expect(enrollmentTools(buildMockCanvas())).toHaveLength(3)
   })
 
   it('exports tools with correct names', () => {
     const names = enrollmentTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_enrollments'])
+    expect(names).toEqual(['list_enrollments', 'enroll_user', 'remove_enrollment'])
   })
 
   describe('list_enrollments', () => {
@@ -43,6 +45,46 @@ describe('enrollmentTools', () => {
       const result = await tool.handler({})
       expect(canvas.enrollments.list).toHaveBeenCalled()
       expect(result).toEqual([mockEnrollment])
+    })
+  })
+
+  describe('enroll_user', () => {
+    it('has destructive annotations', () => {
+      const tool = enrollmentTools(buildMockCanvas()).find((t) => t.name === 'enroll_user')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.enrollments.enroll', async () => {
+      const canvas = buildMockCanvas()
+      const tool = enrollmentTools(canvas).find((t) => t.name === 'enroll_user')!
+      await tool.handler({ course_id: 1, user_id: 5, type: 'StudentEnrollment' })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(1, 5, 'StudentEnrollment', undefined)
+    })
+
+    it('passes optional enrollment_state', async () => {
+      const canvas = buildMockCanvas()
+      const tool = enrollmentTools(canvas).find((t) => t.name === 'enroll_user')!
+      await tool.handler({
+        course_id: 1,
+        user_id: 5,
+        type: 'TeacherEnrollment',
+        enrollment_state: 'active',
+      })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(1, 5, 'TeacherEnrollment', 'active')
+    })
+  })
+
+  describe('remove_enrollment', () => {
+    it('has destructive annotations', () => {
+      const tool = enrollmentTools(buildMockCanvas()).find((t) => t.name === 'remove_enrollment')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.enrollments.remove', async () => {
+      const canvas = buildMockCanvas()
+      const tool = enrollmentTools(canvas).find((t) => t.name === 'remove_enrollment')!
+      await tool.handler({ course_id: 1, enrollment_id: 10, task: 'conclude' })
+      expect(canvas.enrollments.remove).toHaveBeenCalledWith(1, 10, 'conclude')
     })
   })
 })

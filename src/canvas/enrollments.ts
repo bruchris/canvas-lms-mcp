@@ -7,4 +7,30 @@ export class EnrollmentsModule {
   async list(): Promise<CanvasEnrollment[]> {
     return this.client.paginate<CanvasEnrollment>('/api/v1/users/self/enrollments')
   }
+
+  async enroll(
+    courseId: number,
+    userId: number,
+    type: string,
+    enrollmentState?: string,
+  ): Promise<CanvasEnrollment> {
+    const body: Record<string, unknown> = {
+      enrollment: {
+        user_id: userId,
+        type,
+        ...(enrollmentState ? { enrollment_state: enrollmentState } : {}),
+      },
+    }
+    return this.client.request<CanvasEnrollment>(`/api/v1/courses/${courseId}/enrollments`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+  }
+
+  async remove(courseId: number, enrollmentId: number, task: string): Promise<CanvasEnrollment> {
+    return this.client.request<CanvasEnrollment>(
+      `/api/v1/courses/${courseId}/enrollments/${enrollmentId}?task=${encodeURIComponent(task)}`,
+      { method: 'DELETE' },
+    )
+  }
 }

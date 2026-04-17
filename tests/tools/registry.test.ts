@@ -28,9 +28,15 @@ function buildFullMockCanvas(): CanvasClient {
       scoreQuestion: async () => {},
     },
     files: { list: async () => [], listFolders: async () => [], get: async () => ({}) },
-    users: { listStudents: async () => [], get: async () => ({}), getProfile: async () => ({}) },
+    users: {
+      listStudents: async () => [],
+      get: async () => ({}),
+      getProfile: async () => ({}),
+      searchUsers: async () => [],
+      listCourseUsers: async () => [],
+    },
     groups: { list: async () => [], listMembers: async () => [] },
-    enrollments: { list: async () => [] },
+    enrollments: { list: async () => [], enroll: async () => ({}), remove: async () => ({}) },
     discussions: {
       list: async () => [],
       get: async () => ({}),
@@ -77,7 +83,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 58 tools across all domains', () => {
+  it('returns all 62 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -112,15 +118,19 @@ describe('getAllTools', () => {
     expect(names).toContain('list_files')
     expect(names).toContain('list_folders')
     expect(names).toContain('get_file')
-    // Users (3)
+    // Users (5)
     expect(names).toContain('list_students')
     expect(names).toContain('get_user')
     expect(names).toContain('get_profile')
+    expect(names).toContain('search_users')
+    expect(names).toContain('list_course_users')
     // Groups (2)
     expect(names).toContain('list_groups')
     expect(names).toContain('list_group_members')
-    // Enrollments (1)
+    // Enrollments (3)
     expect(names).toContain('list_enrollments')
+    expect(names).toContain('enroll_user')
+    expect(names).toContain('remove_enrollment')
     // Discussions (4)
     expect(names).toContain('list_discussions')
     expect(names).toContain('get_discussion')
@@ -157,7 +167,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(58)
+    expect(tools).toHaveLength(62)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -183,6 +193,8 @@ describe('getAllTools', () => {
       'create_page',
       'update_page',
       'delete_page',
+      'enroll_user',
+      'remove_enrollment',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -207,6 +219,8 @@ describe('getAllTools', () => {
       'create_page',
       'update_page',
       'delete_page',
+      'enroll_user',
+      'remove_enrollment',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {
