@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
+import type { CourseSearchResult } from '../canvas/types'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -25,10 +26,30 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const search_term = params.search_term as string
-        const content_types = params.content_types as SearchContentType[] | undefined
-        return canvas.analytics.searchCourseContent(course_id, search_term, content_types)
+        const courseId = params.course_id as number
+        const searchTerm = params.search_term as string
+        const types = (params.content_types as SearchContentType[] | undefined) ?? [
+          ...SEARCH_CONTENT_TYPES,
+        ]
+
+        if (types.length === 0) return []
+
+        const settled = await Promise.allSettled(
+          types.map((type) => canvas.analytics.searchContentType(courseId, searchTerm, type)),
+        )
+
+        const fulfilled = settled.filter(
+          (r): r is PromiseFulfilledResult<CourseSearchResult[]> => r.status === 'fulfilled',
+        )
+
+        if (fulfilled.length === 0) {
+          const firstRejected = settled.find(
+            (r): r is PromiseRejectedResult => r.status === 'rejected',
+          )
+          throw firstRejected!.reason
+        }
+
+        return fulfilled.flatMap((r) => r.value)
       },
     },
     {

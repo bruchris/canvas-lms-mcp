@@ -6,14 +6,19 @@ describe('analyticsTools', () => {
   function buildMockCanvas(): CanvasClient {
     return {
       analytics: {
-        searchCourseContent: vi
+        searchContentType: vi
           .fn()
           .mockResolvedValue([{ id: 1, title: 'Intro Page', type: 'page', course_id: 10 }]),
         getCourseActivity: vi
           .fn()
           .mockResolvedValue([{ date: '2024-01-01', views: 30, participations: 5 }]),
-        getStudentActivity: vi.fn().mockResolvedValue({ page_views: 80, participations: 12 }),
-        getCourseActivityStream: vi.fn().mockResolvedValue([{ type: 'Submission', count: 7 }]),
+        getStudentActivity: vi.fn().mockResolvedValue({
+          page_views: { '2024-01-01': 80 },
+          participations: [],
+        }),
+        getCourseActivityStream: vi
+          .fn()
+          .mockResolvedValue([{ type: 'Submission', count: 7, unread_count: 0 }]),
       },
     } as unknown as CanvasClient
   }
@@ -40,18 +45,60 @@ describe('analyticsTools', () => {
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
-    it('delegates to canvas.analytics.searchCourseContent', async () => {
+    it('calls searchContentType for each default content type', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await tool.handler({ course_id: 10, search_term: 'quiz' })
-      expect(canvas.analytics.searchCourseContent).toHaveBeenCalledWith(10, 'quiz', undefined)
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledTimes(4)
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'pages')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'discussions')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'announcements')
     })
 
-    it('passes content_types when provided', async () => {
+    it('calls searchContentType only for specified content_types', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await tool.handler({ course_id: 10, search_term: 'quiz', content_types: ['assignments'] })
-      expect(canvas.analytics.searchCourseContent).toHaveBeenCalledWith(10, 'quiz', ['assignments'])
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledTimes(1)
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
+    })
+
+    it('returns empty array when content_types is empty', async () => {
+      const canvas = buildMockCanvas()
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const result = await tool.handler({ course_id: 10, search_term: 'test', content_types: [] })
+      expect(result).toEqual([])
+      expect(canvas.analytics.searchContentType).not.toHaveBeenCalled()
+    })
+
+    it('returns partial results when one content type fails', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.searchContentType)
+        .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
+        .mockRejectedValueOnce(new Error('403 Forbidden'))
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      const results = await tool.handler({
+        course_id: 10,
+        search_term: 'test',
+        content_types: ['pages', 'assignments'],
+      })
+      expect(results).toHaveLength(1)
+      expect((results as Array<{ type: string }>)[0].type).toBe('page')
+    })
+
+    it('throws first error when all content types fail', async () => {
+      const canvas = buildMockCanvas()
+      const error = new Error('401 Unauthorized')
+      vi.mocked(canvas.analytics.searchContentType).mockRejectedValue(error)
+      const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
+      await expect(
+        tool.handler({
+          course_id: 10,
+          search_term: 'test',
+          content_types: ['pages', 'assignments'],
+        }),
+      ).rejects.toThrow('401 Unauthorized')
     })
   })
 

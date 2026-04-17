@@ -430,19 +430,27 @@ export interface CanvasStudentActivitySummary {
 }
 
 export interface CanvasActivityStreamItem {
-  type: string
+  type:
+    | 'Submission'
+    | 'Discussion'
+    | 'Announcement'
+    | 'Conversation'
+    | 'Message'
+    | 'Conference'
+    | 'Collaboration'
+    | 'AssessmentRequest'
+    | (string & {})
   count: number
   unread_count: number
 }
 
-export interface CanvasSearchResult {
+export interface CourseSearchResult {
   id: number
   title: string
   type: 'page' | 'assignment' | 'discussion' | 'announcement'
   url?: string
   course_id: number
 }
-
 
 // --- Peer Reviews ---
 

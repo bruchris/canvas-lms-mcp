@@ -106,7 +106,7 @@ function buildFullMockCanvas(): CanvasClient {
       getReports: async () => [],
     },
     analytics: {
-      searchCourseContent: async () => [],
+      searchContentType: async () => [],
       getCourseActivity: async () => [],
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
