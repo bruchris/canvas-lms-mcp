@@ -340,6 +340,13 @@ pnpm lint:fix      # Auto-fix lint issues
 pnpm typecheck     # TypeScript strict type check
 ```
 
+### Dependency audit
+
+The `pnpm.overrides.hono` entry pins `hono` to `4.12.14` because
+`@modelcontextprotocol/sdk@1.29.0` allows vulnerable `hono <4.12.14`
+versions. Remove the override when the MCP SDK publishes a release that
+depends on a patched `hono` range.
+
 ### Architecture
 
 ```
