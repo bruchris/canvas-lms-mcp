@@ -229,11 +229,12 @@ describe('courseTools', () => {
   })
 
   describe('update_course', () => {
-    it('has destructiveHint and openWorldHint annotations', () => {
+    it('has destructiveHint, idempotentHint, and openWorldHint annotations', () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
       expect(tool.annotations).toEqual({
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       })
     })

@@ -108,6 +108,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: {
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
@@ -117,7 +118,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
           course_code?: string
           start_at?: string
           end_at?: string
-          default_view?: string
+          default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
           syllabus_body?: string
         }
         return canvas.courses.update(course_id, fields)

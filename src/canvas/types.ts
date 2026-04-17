@@ -43,6 +43,23 @@ export interface CanvasEnrollment {
   enrollment_state: string
 }
 
+export interface CreateCourseParams {
+  account_id: number
+  name: string
+  course_code?: string
+  start_at?: string
+  end_at?: string
+}
+
+export interface UpdateCourseParams {
+  name?: string
+  course_code?: string
+  start_at?: string
+  end_at?: string
+  default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
+  syllabus_body?: string
+}
+
 // --- Assignments ---
 
 export interface CanvasAssignment {

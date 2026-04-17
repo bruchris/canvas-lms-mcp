@@ -1,22 +1,5 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasCourse } from './types'
-
-export interface CreateCourseParams {
-  account_id: number
-  name: string
-  course_code?: string
-  start_at?: string
-  end_at?: string
-}
-
-export interface UpdateCourseParams {
-  name?: string
-  course_code?: string
-  start_at?: string
-  end_at?: string
-  default_view?: string
-  syllabus_body?: string
-}
+import type { CanvasCourse, CreateCourseParams, UpdateCourseParams } from './types'
 
 export class CoursesModule {
   constructor(private client: CanvasHttpClient) {}
