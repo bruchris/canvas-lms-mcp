@@ -1,20 +1,11 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasDiscussionTopic, CanvasDiscussionEntry, CanvasAnnouncement } from './types'
-
-export interface CreateDiscussionParams {
-  title: string
-  message?: string
-  discussion_type?: 'side_comment' | 'threaded'
-  published?: boolean
-  require_initial_post?: boolean
-}
-
-export interface UpdateDiscussionParams {
-  title?: string
-  message?: string
-  published?: boolean
-  require_initial_post?: boolean
-}
+import type {
+  CanvasDiscussionTopic,
+  CanvasDiscussionEntry,
+  CanvasAnnouncement,
+  CreateDiscussionParams,
+  UpdateDiscussionParams,
+} from './types'
 
 export class DiscussionsModule {
   constructor(private client: CanvasHttpClient) {}
