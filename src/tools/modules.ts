@@ -107,13 +107,23 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'create_module_item',
       description:
-        'Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool) to a module.',
+        'Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader, Text) to a module.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         module_id: z.number().describe('The Canvas module ID'),
         title: z.string().describe('Title of the module item'),
         type: z
-          .enum(['File', 'Page', 'Discussion', 'Assignment', 'Quiz', 'ExternalUrl', 'ExternalTool'])
+          .enum([
+            'File',
+            'Page',
+            'Discussion',
+            'Assignment',
+            'Quiz',
+            'ExternalUrl',
+            'ExternalTool',
+            'SubHeader',
+            'Text',
+          ])
           .describe('Type of content to add'),
         content_id: z
           .number()
