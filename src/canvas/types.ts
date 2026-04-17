@@ -180,11 +180,14 @@ export interface CanvasQuizSubmissionQuestion {
 
 export interface CanvasFile {
   id: number
+  filename?: string
   display_name: string
   content_type: string
   url: string
   size: number
   folder_id: number
+  created_at?: string
+  updated_at?: string
 }
 
 export interface CanvasFolder {
@@ -192,6 +195,14 @@ export interface CanvasFolder {
   name: string
   full_name: string
   parent_folder_id: number | null
+  created_at?: string
+  files_count?: number
+  folders_count?: number
+}
+
+export interface CanvasFileUploadInfo {
+  upload_url: string
+  upload_params: Record<string, string>
 }
 
 // --- Users ---
@@ -307,10 +318,14 @@ export interface UpdateDiscussionParams {
 export interface CanvasCalendarEvent {
   id: number
   title: string
+  description?: string | null
   start_at: string
   end_at: string | null
-  type: string
+  all_day?: boolean
+  workflow_state?: string
   context_code: string
+  location_name?: string | null
+  type: string
 }
 
 // --- Conversations ---

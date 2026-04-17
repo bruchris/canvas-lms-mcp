@@ -37,4 +37,97 @@ describe('CalendarModule', () => {
     const result = await calendar.list(100)
     expect(result).toEqual([])
   })
+
+  describe('createEvent', () => {
+    it('POSTs to /api/v1/calendar_events with wrapped params', async () => {
+      const created = {
+        id: 5,
+        title: 'Office Hours',
+        start_at: '2026-05-01T14:00:00Z',
+        end_at: '2026-05-01T15:00:00Z',
+        type: 'event',
+        context_code: 'course_100',
+        workflow_state: 'active',
+      }
+      vi.spyOn(client, 'request').mockResolvedValueOnce(created)
+
+      const result = await calendar.createEvent({
+        context_code: 'course_100',
+        title: 'Office Hours',
+        start_at: '2026-05-01T14:00:00Z',
+        end_at: '2026-05-01T15:00:00Z',
+      })
+
+      expect(client.request).toHaveBeenCalledWith('/api/v1/calendar_events', {
+        method: 'POST',
+        body: JSON.stringify({
+          calendar_event: {
+            context_code: 'course_100',
+            title: 'Office Hours',
+            start_at: '2026-05-01T14:00:00Z',
+            end_at: '2026-05-01T15:00:00Z',
+          },
+        }),
+      })
+      expect(result).toMatchObject({ id: 5, title: 'Office Hours' })
+    })
+
+    it('includes optional fields when provided', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 6,
+        title: 'Exam',
+        start_at: '2026-05-10T09:00:00Z',
+        end_at: null,
+        type: 'event',
+        context_code: 'course_1',
+      })
+
+      await calendar.createEvent({
+        context_code: 'course_1',
+        title: 'Exam',
+        start_at: '2026-05-10T09:00:00Z',
+        description: '<p>Midterm exam</p>',
+        location_name: 'Room 101',
+      })
+
+      expect(client.request).toHaveBeenCalledWith(
+        '/api/v1/calendar_events',
+        expect.objectContaining({
+          body: expect.stringContaining('Room 101'),
+        }),
+      )
+    })
+  })
+
+  describe('updateEvent', () => {
+    it('PUTs to /api/v1/calendar_events/:id with wrapped params', async () => {
+      const updated = {
+        id: 5,
+        title: 'Office Hours (Updated)',
+        start_at: '2026-05-01T15:00:00Z',
+        end_at: '2026-05-01T16:00:00Z',
+        type: 'event',
+        context_code: 'course_100',
+      }
+      vi.spyOn(client, 'request').mockResolvedValueOnce(updated)
+
+      const result = await calendar.updateEvent(5, {
+        title: 'Office Hours (Updated)',
+        start_at: '2026-05-01T15:00:00Z',
+        end_at: '2026-05-01T16:00:00Z',
+      })
+
+      expect(client.request).toHaveBeenCalledWith('/api/v1/calendar_events/5', {
+        method: 'PUT',
+        body: JSON.stringify({
+          calendar_event: {
+            title: 'Office Hours (Updated)',
+            start_at: '2026-05-01T15:00:00Z',
+            end_at: '2026-05-01T16:00:00Z',
+          },
+        }),
+      })
+      expect(result).toMatchObject({ id: 5, title: 'Office Hours (Updated)' })
+    })
+  })
 })

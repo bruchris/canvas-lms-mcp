@@ -34,7 +34,13 @@ function buildFullMockCanvas(): CanvasClient {
       getSubmissionAnswers: async () => [],
       scoreQuestion: async () => {},
     },
-    files: { list: async () => [], listFolders: async () => [], get: async () => ({}) },
+    files: {
+      list: async () => [],
+      listFolders: async () => [],
+      get: async () => ({}),
+      upload: async () => ({}),
+      delete: async () => undefined,
+    },
     users: {
       listStudents: async () => [],
       get: async () => ({}),
@@ -68,7 +74,11 @@ function buildFullMockCanvas(): CanvasClient {
       update: async () => ({}),
       delete: async () => undefined,
     },
-    calendar: { list: async () => [] },
+    calendar: {
+      list: async () => [],
+      createEvent: async () => ({}),
+      updateEvent: async () => ({}),
+    },
     conversations: {
       list: async () => [],
       get: async () => ({}),
@@ -98,7 +108,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 68 tools across all domains', () => {
+  it('returns all 74 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -132,10 +142,12 @@ describe('getAllTools', () => {
     expect(names).toContain('list_quiz_questions')
     expect(names).toContain('get_quiz_submission_answers')
     expect(names).toContain('score_quiz_question')
-    // Files (3)
+    // Files (5)
     expect(names).toContain('list_files')
     expect(names).toContain('list_folders')
     expect(names).toContain('get_file')
+    expect(names).toContain('upload_file')
+    expect(names).toContain('delete_file')
     // Users (5)
     expect(names).toContain('list_students')
     expect(names).toContain('get_user')
@@ -170,8 +182,10 @@ describe('getAllTools', () => {
     expect(names).toContain('create_page')
     expect(names).toContain('update_page')
     expect(names).toContain('delete_page')
-    // Calendar (1)
+    // Calendar (3)
     expect(names).toContain('list_calendar_events')
+    expect(names).toContain('create_calendar_event')
+    expect(names).toContain('update_calendar_event')
     // Conversations (4)
     expect(names).toContain('list_conversations')
     expect(names).toContain('get_conversation')
@@ -190,7 +204,7 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
 
-    expect(tools).toHaveLength(70)
+    expect(tools).toHaveLength(74)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -224,6 +238,10 @@ describe('getAllTools', () => {
       'delete_page',
       'enroll_user',
       'remove_enrollment',
+      'upload_file',
+      'delete_file',
+      'create_calendar_event',
+      'update_calendar_event',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -256,6 +274,10 @@ describe('getAllTools', () => {
       'delete_page',
       'enroll_user',
       'remove_enrollment',
+      'upload_file',
+      'delete_file',
+      'create_calendar_event',
+      'update_calendar_event',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

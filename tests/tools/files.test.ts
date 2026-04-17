@@ -11,6 +11,7 @@ describe('fileTools', () => {
     url: 'https://canvas.example.com/files/1/download',
     content_type: 'application/pdf',
     size: 12345,
+    folder_id: 1,
   }
 
   const mockFolder: CanvasFolder = {
@@ -29,17 +30,19 @@ describe('fileTools', () => {
         list: vi.fn().mockResolvedValue([mockFile]),
         listFolders: vi.fn().mockResolvedValue([mockFolder]),
         get: vi.fn().mockResolvedValue(mockFile),
+        upload: vi.fn().mockResolvedValue(mockFile),
+        delete: vi.fn().mockResolvedValue(mockFile),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 3 tool definitions', () => {
-    expect(fileTools(buildMockCanvas())).toHaveLength(3)
+  it('returns an array with 5 tool definitions', () => {
+    expect(fileTools(buildMockCanvas())).toHaveLength(5)
   })
 
   it('exports tools with correct names', () => {
     const names = fileTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_files', 'list_folders', 'get_file'])
+    expect(names).toEqual(['list_files', 'list_folders', 'get_file', 'upload_file', 'delete_file'])
   })
 
   describe('list_files', () => {
@@ -82,6 +85,66 @@ describe('fileTools', () => {
       const tool = fileTools(canvas).find((t) => t.name === 'get_file')!
       await tool.handler({ course_id: 1, file_id: 1 })
       expect(canvas.files.get).toHaveBeenCalledWith(1, 1)
+    })
+  })
+
+  describe('upload_file', () => {
+    it('has destructive annotations', () => {
+      const tool = fileTools(buildMockCanvas()).find((t) => t.name === 'upload_file')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.files.upload with all params', async () => {
+      const canvas = buildMockCanvas()
+      const tool = fileTools(canvas).find((t) => t.name === 'upload_file')!
+      const result = await tool.handler({
+        course_id: 1,
+        name: 'test.txt',
+        content: 'aGVsbG8=',
+        content_type: 'text/plain',
+        parent_folder_path: 'week1',
+      })
+      expect(canvas.files.upload).toHaveBeenCalledWith(
+        1,
+        'test.txt',
+        'aGVsbG8=',
+        'text/plain',
+        'week1',
+      )
+      expect(result).toEqual(mockFile)
+    })
+
+    it('passes undefined for omitted parent_folder_path', async () => {
+      const canvas = buildMockCanvas()
+      const tool = fileTools(canvas).find((t) => t.name === 'upload_file')!
+      await tool.handler({
+        course_id: 1,
+        name: 'f.pdf',
+        content: 'YQ==',
+        content_type: 'application/pdf',
+      })
+      expect(canvas.files.upload).toHaveBeenCalledWith(
+        1,
+        'f.pdf',
+        'YQ==',
+        'application/pdf',
+        undefined,
+      )
+    })
+  })
+
+  describe('delete_file', () => {
+    it('has destructive annotations', () => {
+      const tool = fileTools(buildMockCanvas()).find((t) => t.name === 'delete_file')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.files.delete and returns the deleted file', async () => {
+      const canvas = buildMockCanvas()
+      const tool = fileTools(canvas).find((t) => t.name === 'delete_file')!
+      const result = await tool.handler({ file_id: 99 })
+      expect(canvas.files.delete).toHaveBeenCalledWith(99)
+      expect(result).toMatchObject({ id: mockFile.id })
     })
   })
 })
