@@ -29,15 +29,18 @@ describe('assignmentTools', () => {
         list: vi.fn().mockResolvedValue([mockAssignment]),
         get: vi.fn().mockResolvedValue(mockAssignment),
         listGroups: vi.fn().mockResolvedValue([mockGroup]),
+        create: vi.fn().mockResolvedValue(mockAssignment),
+        update: vi.fn().mockResolvedValue(mockAssignment),
+        delete: vi.fn().mockResolvedValue(undefined),
       },
       ...overrides,
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 3 tool definitions', () => {
+  it('returns an array with 6 tool definitions', () => {
     const canvas = buildMockCanvas()
     const tools = assignmentTools(canvas)
-    expect(tools).toHaveLength(3)
+    expect(tools).toHaveLength(6)
   })
 
   it('exports tools with correct names', () => {
@@ -47,6 +50,9 @@ describe('assignmentTools', () => {
     expect(names).toContain('list_assignments')
     expect(names).toContain('get_assignment')
     expect(names).toContain('list_assignment_groups')
+    expect(names).toContain('create_assignment')
+    expect(names).toContain('update_assignment')
+    expect(names).toContain('delete_assignment')
   })
 
   describe('list_assignments', () => {
@@ -157,6 +163,126 @@ describe('assignmentTools', () => {
     it('has a description', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignment_groups')!
+      expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('create_assignment', () => {
+    it('has destructiveHint and openWorldHint annotations', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('has course_id and name in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      expect(tool.inputSchema).toHaveProperty('course_id')
+      expect(tool.inputSchema).toHaveProperty('name')
+    })
+
+    it('calls canvas.assignments.create with course_id and params', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      await tool.handler({ course_id: 1, name: 'New HW', points_possible: 50 })
+      expect(canvas.assignments.create).toHaveBeenCalledWith(1, {
+        name: 'New HW',
+        points_possible: 50,
+      })
+    })
+
+    it('returns the created assignment', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      const result = await tool.handler({ course_id: 1, name: 'New HW' })
+      expect(result).toEqual(mockAssignment)
+    })
+
+    it('has a description', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('update_assignment', () => {
+    it('has destructiveHint and openWorldHint annotations', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('has course_id and assignment_id in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      expect(tool.inputSchema).toHaveProperty('course_id')
+      expect(tool.inputSchema).toHaveProperty('assignment_id')
+    })
+
+    it('calls canvas.assignments.update with course_id, assignment_id, and params', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      await tool.handler({ course_id: 1, assignment_id: 101, name: 'Updated', points_possible: 75 })
+      expect(canvas.assignments.update).toHaveBeenCalledWith(1, 101, {
+        name: 'Updated',
+        points_possible: 75,
+      })
+    })
+
+    it('returns the updated assignment', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      const result = await tool.handler({ course_id: 1, assignment_id: 101, name: 'Updated' })
+      expect(result).toEqual(mockAssignment)
+    })
+
+    it('has a description', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('delete_assignment', () => {
+    it('has destructiveHint and openWorldHint annotations', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('has course_id and assignment_id in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
+      expect(tool.inputSchema).toHaveProperty('course_id')
+      expect(tool.inputSchema).toHaveProperty('assignment_id')
+    })
+
+    it('calls canvas.assignments.delete with course_id and assignment_id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
+      await tool.handler({ course_id: 1, assignment_id: 101 })
+      expect(canvas.assignments.delete).toHaveBeenCalledWith(1, 101)
+    })
+
+    it('returns success: true', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
+      const result = await tool.handler({ course_id: 1, assignment_id: 101 })
+      expect(result).toEqual({ success: true })
+    })
+
+    it('has a description', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
       expect(tool.description).toBeTruthy()
     })
   })
