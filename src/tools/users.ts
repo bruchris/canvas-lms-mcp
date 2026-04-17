@@ -46,5 +46,51 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         return canvas.users.getProfile()
       },
     },
+    {
+      name: 'search_users',
+      description: 'Search for users in a Canvas account by name, login, or email.',
+      inputSchema: {
+        account_id: z.number().describe('The Canvas account ID'),
+        search_term: z.string().describe('The search term (name, login, or email)'),
+        sort: z
+          .enum(['username', 'email', 'sis_id', 'last_login'])
+          .optional()
+          .describe('Sort field'),
+        order: z.enum(['asc', 'desc']).optional().describe('Sort order'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        return canvas.users.searchUsers(
+          params.account_id as number,
+          params.search_term as string,
+          params.sort as string | undefined,
+          params.order as string | undefined,
+        )
+      },
+    },
+    {
+      name: 'list_course_users',
+      description: 'List all users in a course, optionally filtered by enrollment type.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        enrollment_type: z
+          .enum(['student', 'teacher', 'ta', 'observer', 'designer'])
+          .optional()
+          .describe('Filter by enrollment type'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        return canvas.users.listCourseUsers(
+          params.course_id as number,
+          params.enrollment_type as string | undefined,
+        )
+      },
+    },
   ]
 }
