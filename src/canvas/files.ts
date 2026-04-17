@@ -23,10 +23,10 @@ export class FilesModule {
     contentType: string,
     parentFolderPath?: string,
   ): Promise<CanvasFile> {
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) {
-      throw new Error('Invalid base64 content: contains characters outside the base64 alphabet')
-    }
     const content = Buffer.from(contentBase64, 'base64')
+    if (content.toString('base64') !== contentBase64) {
+      throw new Error('Invalid base64 content: string is not valid base64 encoding')
+    }
 
     // Step 1: Notify Canvas of the pending upload
     const uploadBody: Record<string, string> = {
@@ -59,10 +59,13 @@ export class FilesModule {
         redirect: 'manual',
       })
     } catch (err) {
-      const hostname = new URL(uploadInfo.upload_url).hostname
-      throw new Error(
-        `Failed to connect to file storage (${hostname}): ${err instanceof Error ? err.message : String(err)}`,
-      )
+      let hostname: string
+      try {
+        hostname = new URL(uploadInfo.upload_url).hostname
+      } catch {
+        hostname = uploadInfo.upload_url
+      }
+      throw new Error(`Unable to reach file storage (${hostname})`)
     }
 
     // Step 3: If S3 returned a redirect, POST to Canvas confirm URL
@@ -85,9 +88,9 @@ export class FilesModule {
     let parsed: unknown
     try {
       parsed = JSON.parse(responseText)
-    } catch {
+    } catch (err) {
       throw new Error(
-        `File upload response is not valid JSON: ${responseText.slice(0, 500)}`,
+        `File upload response is not valid JSON (${err instanceof Error ? err.message : String(err)}): ${responseText.slice(0, 500)}`,
       )
     }
     return parsed as CanvasFile

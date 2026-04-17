@@ -212,7 +212,7 @@ describe('FilesModule', () => {
       )
 
       await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
-        'Failed to connect to file storage (s3.example.com)',
+        'Unable to reach file storage (s3.example.com)',
       )
     })
 
