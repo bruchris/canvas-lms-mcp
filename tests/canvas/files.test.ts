@@ -99,10 +99,6 @@ describe('FilesModule', () => {
     })
 
     it('includes parent_folder_path when provided', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce({
-        upload_url: 'https://s3.example.com/upload',
-        upload_params: {},
-      })
       const confirmedFile = {
         id: 10,
         display_name: 'doc.pdf',
@@ -111,7 +107,12 @@ describe('FilesModule', () => {
         size: 100,
         folder_id: 2,
       }
-      vi.spyOn(client, 'request').mockResolvedValueOnce(confirmedFile)
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce({
+          upload_url: 'https://s3.example.com/upload',
+          upload_params: {},
+        })
+        .mockResolvedValueOnce(confirmedFile)
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValueOnce(
@@ -198,6 +199,47 @@ describe('FilesModule', () => {
       await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
         CanvasApiError,
       )
+    })
+
+    it('throws descriptive error when S3 fetch fails with network error', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockRejectedValueOnce(new TypeError('fetch failed')),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'Failed to connect to file storage (s3.example.com)',
+      )
+    })
+
+    it('throws descriptive error when S3 returns non-JSON 200 response', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response('<Error><Code>AccessDenied</Code></Error>', {
+            status: 200,
+            headers: { 'content-type': 'application/xml' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload response is not valid JSON',
+      )
+    })
+
+    it('throws descriptive error when base64 input is invalid', async () => {
+      await expect(
+        files.upload(100, 'file.txt', 'not-valid-base64!!!', 'text/plain'),
+      ).rejects.toThrow('Invalid base64 content')
     })
   })
 
