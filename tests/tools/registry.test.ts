@@ -118,6 +118,12 @@ function buildFullMockCanvas(): CanvasClient {
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
     },
+    dashboard: {
+      getDashboardCards: async () => [],
+      getTodoItems: async () => [],
+      getUpcomingEvents: async () => [],
+      getMissingSubmissions: async () => [],
+    },
   } as unknown as CanvasClient
 }
 
@@ -234,8 +240,13 @@ describe('getAllTools', () => {
     expect(names).toContain('get_my_grades')
     expect(names).toContain('get_my_submissions')
     expect(names).toContain('get_my_upcoming_assignments')
+    // Dashboard (4)
+    expect(names).toContain('get_dashboard_cards')
+    expect(names).toContain('get_todo_items')
+    expect(names).toContain('get_upcoming_events')
+    expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(84)
+    expect(tools).toHaveLength(88)
   })
 
   it('all tools have openWorldHint: true', () => {

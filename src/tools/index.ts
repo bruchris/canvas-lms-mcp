@@ -21,6 +21,7 @@ import { peerReviewTools } from './peer-reviews'
 import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
 import { studentTools } from './student'
+import { dashboardTools } from './dashboard'
 
 export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -43,6 +44,7 @@ export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
     ...accountTools(canvas),
     ...analyticsTools(canvas),
     ...studentTools(canvas),
+    ...dashboardTools(canvas),
   ]
 }
 

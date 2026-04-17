@@ -98,10 +98,12 @@ export interface CanvasUpcomingEvent {
   id: number
   title: string
   type: string
-  workflow_state: string
+  workflow_state?: string
   context_code: string
   start_at: string | null
   end_at: string | null
+  url?: string | null
+  html_url?: string
   assignment?: CanvasAssignment
 }
 
@@ -470,6 +472,66 @@ export interface CourseSearchResult {
   type: 'page' | 'assignment' | 'discussion' | 'announcement'
   url?: string
   course_id: number
+}
+
+// --- Dashboard & Notifications ---
+
+export interface CanvasDashboardCard {
+  id: number
+  shortName: string
+  originalName: string
+  courseCode: string
+  assetString: string
+  href: string
+  term: string | null
+  subtitle: string
+  enrollmentType: string
+  observee: string | null
+  color: string | null
+  image: string | null
+  isFavorited: boolean
+  enrollmentState: string
+  pagesUrl: string
+  frontPageTitle: string | null
+  canChangeCourseState: boolean
+  defaultView: string
+  longName: string
+  courseId: number
+  position: number | null
+}
+
+export interface CanvasTodoItem {
+  type: string
+  assignment?: {
+    id: number
+    name: string
+    due_at: string | null
+    course_id: number
+    points_possible: number
+  }
+  quiz?: {
+    id: number
+    title: string
+    due_at: string | null
+    course_id: number
+  }
+  ignore: string
+  ignore_permanently: string
+  html_url: string
+  needs_grading_count?: number
+  context_type: string
+  course_id?: number
+  group_id?: number
+}
+
+export interface CanvasMissingSubmission {
+  id: number
+  name: string
+  due_at: string | null
+  course_id: number
+  points_possible: number
+  submission_types: string[]
+  html_url: string
 }
 
 // --- Peer Reviews ---
