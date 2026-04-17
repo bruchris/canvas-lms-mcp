@@ -1,9 +1,8 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
-
-const CONTENT_TYPE_VALUES = ['pages', 'discussions', 'assignments', 'announcements'] as const
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -15,7 +14,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         course_id: z.number().describe('The Canvas course ID'),
         search_term: z.string().describe('The keyword or phrase to search for'),
         content_types: z
-          .array(z.enum(CONTENT_TYPE_VALUES))
+          .array(z.enum(SEARCH_CONTENT_TYPES))
           .optional()
           .describe(
             'Content types to search. Defaults to all types: pages, discussions, assignments, announcements.',

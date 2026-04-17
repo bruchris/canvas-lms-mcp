@@ -21,14 +21,24 @@ describe('AnalyticsModule', () => {
       expect(client.paginate).toHaveBeenCalledTimes(4)
     })
 
+    it('aggregates results from multiple content types', async () => {
+      const paginate = vi.spyOn(client, 'paginate')
+      paginate
+        .mockResolvedValueOnce([{ page_id: 1, title: 'Intro', url: 'intro' }])
+        .mockResolvedValueOnce([{ id: 5, name: 'Essay' }])
+      const results = await analytics.searchCourseContent(100, 'test', ['pages', 'assignments'])
+      expect(results).toHaveLength(2)
+      expect(results.find((r) => r.type === 'page')).toMatchObject({ id: 1, title: 'Intro' })
+      expect(results.find((r) => r.type === 'assignment')).toMatchObject({ id: 5, title: 'Essay' })
+    })
+
     it('searches only specified content types', async () => {
       vi.spyOn(client, 'paginate').mockResolvedValue([])
       await analytics.searchCourseContent(100, 'quiz', ['assignments'])
       expect(client.paginate).toHaveBeenCalledTimes(1)
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/100/assignments',
-        { search_term: 'quiz' },
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/assignments', {
+        search_term: 'quiz',
+      })
     })
 
     it('returns tagged results from pages', async () => {
@@ -56,10 +66,10 @@ describe('AnalyticsModule', () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 20, title: 'Important Notice' }])
       const results = await analytics.searchCourseContent(100, 'notice', ['announcements'])
       expect(results[0]).toMatchObject({ id: 20, title: 'Important Notice', type: 'announcement' })
-      expect(client.paginate).toHaveBeenCalledWith(
-        '/api/v1/courses/100/discussion_topics',
-        { search_term: 'notice', only_announcements: 'true' },
-      )
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics', {
+        search_term: 'notice',
+        only_announcements: 'true',
+      })
     })
   })
 
@@ -76,12 +86,15 @@ describe('AnalyticsModule', () => {
 
   describe('getStudentActivity', () => {
     it('requests the student analytics activity endpoint', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce({ page_views: 120, participations: 8 })
+      const mockData = {
+        page_views: { '2024-01-01': 5, '2024-01-02': 3 },
+        participations: [{ created_at: '2024-01-01T10:00:00Z', url: '/courses/1/assignments/2' }],
+      }
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockData)
       const result = await analytics.getStudentActivity(100, 42)
-      expect(result).toMatchObject({ page_views: 120, participations: 8 })
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/100/analytics/users/42/activity',
-      )
+      expect(result.page_views).toEqual({ '2024-01-01': 5, '2024-01-02': 3 })
+      expect(result.participations).toHaveLength(1)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/analytics/users/42/activity')
     })
   })
 
@@ -93,9 +106,7 @@ describe('AnalyticsModule', () => {
       ])
       const result = await analytics.getCourseActivityStream(100)
       expect(result).toHaveLength(2)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/100/activity_stream/summary',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/activity_stream/summary')
     })
   })
 })

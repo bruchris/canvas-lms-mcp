@@ -6,7 +6,13 @@ import type {
   CanvasSearchResult,
 } from './types'
 
-export type SearchContentType = 'pages' | 'discussions' | 'assignments' | 'announcements'
+export const SEARCH_CONTENT_TYPES = [
+  'pages',
+  'discussions',
+  'assignments',
+  'announcements',
+] as const
+export type SearchContentType = (typeof SEARCH_CONTENT_TYPES)[number]
 
 export class AnalyticsModule {
   constructor(private client: CanvasHttpClient) {}
@@ -16,55 +22,85 @@ export class AnalyticsModule {
     searchTerm: string,
     contentTypes?: SearchContentType[],
   ): Promise<CanvasSearchResult[]> {
-    const types: SearchContentType[] = contentTypes ?? [
-      'pages',
-      'discussions',
-      'assignments',
-      'announcements',
-    ]
-    const results: CanvasSearchResult[] = []
+    const types: SearchContentType[] = contentTypes ?? [...SEARCH_CONTENT_TYPES]
+    const fetches: Promise<CanvasSearchResult[]>[] = []
 
     if (types.includes('pages')) {
-      const pages = await this.client.paginate<{ page_id: number; title: string; url: string }>(
-        `/api/v1/courses/${courseId}/pages`,
-        { search_term: searchTerm },
+      fetches.push(
+        this.client
+          .paginate<{
+            page_id: number
+            title: string
+            url: string
+          }>(`/api/v1/courses/${courseId}/pages`, { search_term: searchTerm })
+          .then((pages) =>
+            pages.map((p) => ({
+              id: p.page_id,
+              title: p.title,
+              type: 'page' as const,
+              url: p.url,
+              course_id: courseId,
+            })),
+          ),
       )
-      for (const p of pages) {
-        results.push({ id: p.page_id, title: p.title, type: 'page', url: p.url, course_id: courseId })
-      }
     }
 
     if (types.includes('assignments')) {
-      const assignments = await this.client.paginate<{ id: number; name: string }>(
-        `/api/v1/courses/${courseId}/assignments`,
-        { search_term: searchTerm },
+      fetches.push(
+        this.client
+          .paginate<{
+            id: number
+            name: string
+          }>(`/api/v1/courses/${courseId}/assignments`, { search_term: searchTerm })
+          .then((assignments) =>
+            assignments.map((a) => ({
+              id: a.id,
+              title: a.name,
+              type: 'assignment' as const,
+              course_id: courseId,
+            })),
+          ),
       )
-      for (const a of assignments) {
-        results.push({ id: a.id, title: a.name, type: 'assignment', course_id: courseId })
-      }
     }
 
     if (types.includes('discussions')) {
-      const discussions = await this.client.paginate<{ id: number; title: string }>(
-        `/api/v1/courses/${courseId}/discussion_topics`,
-        { search_term: searchTerm },
+      fetches.push(
+        this.client
+          .paginate<{
+            id: number
+            title: string
+          }>(`/api/v1/courses/${courseId}/discussion_topics`, { search_term: searchTerm })
+          .then((discussions) =>
+            discussions.map((d) => ({
+              id: d.id,
+              title: d.title,
+              type: 'discussion' as const,
+              course_id: courseId,
+            })),
+          ),
       )
-      for (const d of discussions) {
-        results.push({ id: d.id, title: d.title, type: 'discussion', course_id: courseId })
-      }
     }
 
     if (types.includes('announcements')) {
-      const announcements = await this.client.paginate<{ id: number; title: string }>(
-        `/api/v1/courses/${courseId}/discussion_topics`,
-        { search_term: searchTerm, only_announcements: 'true' },
+      fetches.push(
+        this.client
+          .paginate<{
+            id: number
+            title: string
+          }>(`/api/v1/courses/${courseId}/discussion_topics`, { search_term: searchTerm, only_announcements: 'true' })
+          .then((announcements) =>
+            announcements.map((a) => ({
+              id: a.id,
+              title: a.title,
+              type: 'announcement' as const,
+              course_id: courseId,
+            })),
+          ),
       )
-      for (const a of announcements) {
-        results.push({ id: a.id, title: a.title, type: 'announcement', course_id: courseId })
-      }
     }
 
-    return results
+    const settled = await Promise.allSettled(fetches)
+    return settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
   }
 
   async getCourseActivity(courseId: number): Promise<CanvasCourseActivitySummary[]> {

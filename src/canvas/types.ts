@@ -425,31 +425,22 @@ export interface CanvasCourseActivitySummary {
 }
 
 export interface CanvasStudentActivitySummary {
-  page_views: number
-  participations: number
-  tardiness_breakdown?: {
-    missing: number
-    late: number
-    on_time: number
-    floating: number
-    total: number
-  }
+  page_views: Record<string, number>
+  participations: Array<{ created_at: string; url: string }>
 }
 
 export interface CanvasActivityStreamItem {
   type: string
   count: number
-  unread_count?: number
-  notification_category?: string
+  unread_count: number
 }
 
 export interface CanvasSearchResult {
   id: number
   title: string
-  type: string
+  type: 'page' | 'assignment' | 'discussion' | 'announcement'
   url?: string
-  body?: string
-  course_id?: number
+  course_id: number
 }
 
 

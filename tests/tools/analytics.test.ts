@@ -6,16 +6,14 @@ describe('analyticsTools', () => {
   function buildMockCanvas(): CanvasClient {
     return {
       analytics: {
-        searchCourseContent: vi.fn().mockResolvedValue([
-          { id: 1, title: 'Intro Page', type: 'page', course_id: 10 },
-        ]),
-        getCourseActivity: vi.fn().mockResolvedValue([
-          { date: '2024-01-01', views: 30, participations: 5 },
-        ]),
+        searchCourseContent: vi
+          .fn()
+          .mockResolvedValue([{ id: 1, title: 'Intro Page', type: 'page', course_id: 10 }]),
+        getCourseActivity: vi
+          .fn()
+          .mockResolvedValue([{ date: '2024-01-01', views: 30, participations: 5 }]),
         getStudentActivity: vi.fn().mockResolvedValue({ page_views: 80, participations: 12 }),
-        getCourseActivityStream: vi.fn().mockResolvedValue([
-          { type: 'Submission', count: 7 },
-        ]),
+        getCourseActivityStream: vi.fn().mockResolvedValue([{ type: 'Submission', count: 7 }]),
       },
     } as unknown as CanvasClient
   }
@@ -36,7 +34,9 @@ describe('analyticsTools', () => {
 
   describe('search_course_content', () => {
     it('has read-only annotations', () => {
-      const tool = analyticsTools(buildMockCanvas()).find((t) => t.name === 'search_course_content')!
+      const tool = analyticsTools(buildMockCanvas()).find(
+        (t) => t.name === 'search_course_content',
+      )!
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
@@ -71,7 +71,9 @@ describe('analyticsTools', () => {
 
   describe('get_student_analytics', () => {
     it('has read-only annotations', () => {
-      const tool = analyticsTools(buildMockCanvas()).find((t) => t.name === 'get_student_analytics')!
+      const tool = analyticsTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_student_analytics',
+      )!
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
