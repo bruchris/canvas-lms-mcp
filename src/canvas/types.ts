@@ -302,6 +302,35 @@ export interface CanvasConversation {
   participants: Array<{ id: number; name: string }>
 }
 
+// --- Accounts ---
+
+export interface CanvasAccount {
+  id: number
+  name: string
+  parent_account_id: number | null
+  root_account_id: number | null
+  uuid: string
+  default_storage_quota_mb: number
+  default_user_storage_quota_mb: number
+  default_group_storage_quota_mb: number
+  workflow_state: 'active' | 'deleted'
+}
+
+export interface CanvasAccountReport {
+  report: string
+  title: string
+  parameters_schema: Record<string, unknown>[] | null
+  last_run: {
+    id: number
+    report: string
+    status: string
+    created_at: string
+    started_at: string | null
+    ended_at: string | null
+    attachment: CanvasFile | null
+  } | null
+}
+
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {
