@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.5.0...canvas-lms-mcp-v0.5.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* **ci:** restore npm token for release publish ([#45](https://github.com/bruchris/canvas-lms-mcp/issues/45)) ([9392e7e](https://github.com/bruchris/canvas-lms-mcp/commit/9392e7e73f0bdec8b3fc385fe18e46c0384f0057))
+
+
+### CI/CD
+
+* add trusted publishing release mode ([#47](https://github.com/bruchris/canvas-lms-mcp/issues/47)) ([90e62f0](https://github.com/bruchris/canvas-lms-mcp/commit/90e62f095706ef58982f9023bd66204a85f956bb))
+
 ## [0.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.4.1...canvas-lms-mcp-v0.5.0) (2026-04-17)
 
 
