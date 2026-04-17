@@ -10,7 +10,7 @@ export class DashboardModule {
   constructor(private client: CanvasHttpClient) {}
 
   async getDashboardCards(): Promise<CanvasDashboardCard[]> {
-    return this.client.paginate<CanvasDashboardCard>('/api/v1/dashboard/dashboard_cards')
+    return this.client.request<CanvasDashboardCard[]>('/api/v1/dashboard/dashboard_cards')
   }
 
   async getTodoItems(): Promise<CanvasTodoItem[]> {
@@ -18,7 +18,7 @@ export class DashboardModule {
   }
 
   async getUpcomingEvents(): Promise<CanvasUpcomingEvent[]> {
-    return this.client.paginate<CanvasUpcomingEvent>('/api/v1/users/self/upcoming_events')
+    return this.client.request<CanvasUpcomingEvent[]>('/api/v1/users/self/upcoming_events')
   }
 
   async getMissingSubmissions(): Promise<CanvasMissingSubmission[]> {

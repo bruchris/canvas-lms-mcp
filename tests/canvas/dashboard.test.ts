@@ -15,14 +15,14 @@ describe('DashboardModule', () => {
   })
 
   it('fetches dashboard cards', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 1, shortName: 'CS101' }])
+    vi.spyOn(client, 'request').mockResolvedValueOnce([{ id: 1, shortName: 'CS101' }])
     const result = await dashboard.getDashboardCards()
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith('/api/v1/dashboard/dashboard_cards')
+    expect(client.request).toHaveBeenCalledWith('/api/v1/dashboard/dashboard_cards')
   })
 
   it('returns empty array when no dashboard cards', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    vi.spyOn(client, 'request').mockResolvedValueOnce([])
     const result = await dashboard.getDashboardCards()
     expect(result).toEqual([])
   })
@@ -43,7 +43,7 @@ describe('DashboardModule', () => {
   })
 
   it('fetches upcoming events', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+    vi.spyOn(client, 'request').mockResolvedValueOnce([
       {
         id: 1,
         title: 'Lecture',
@@ -54,11 +54,11 @@ describe('DashboardModule', () => {
     ])
     const result = await dashboard.getUpcomingEvents()
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events')
+    expect(client.request).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events')
   })
 
   it('returns empty array when no upcoming events', async () => {
-    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    vi.spyOn(client, 'request').mockResolvedValueOnce([])
     const result = await dashboard.getUpcomingEvents()
     expect(result).toEqual([])
   })
