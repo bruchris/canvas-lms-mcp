@@ -77,9 +77,8 @@ describe('EnrollmentsModule', () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(mockEnrollment)
     const result = await enrollments.remove(100, 10, 'delete')
     expect(result).toMatchObject({ id: 10 })
-    expect(client.request).toHaveBeenCalledWith(
-      '/api/v1/courses/100/enrollments/10?task=delete',
-      { method: 'DELETE' },
-    )
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments/10?task=delete', {
+      method: 'DELETE',
+    })
   })
 })
