@@ -140,7 +140,6 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         const course_id = params.course_id as number
         const assignment_id = params.assignment_id as number
         await canvas.assignments.delete(course_id, assignment_id)
-        return { success: true }
       },
     },
   ]

@@ -273,11 +273,11 @@ describe('assignmentTools', () => {
       expect(canvas.assignments.delete).toHaveBeenCalledWith(1, 101)
     })
 
-    it('returns success: true', async () => {
+    it('returns undefined', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
       const result = await tool.handler({ course_id: 1, assignment_id: 101 })
-      expect(result).toEqual({ success: true })
+      expect(result).toBeUndefined()
     })
 
     it('has a description', () => {
