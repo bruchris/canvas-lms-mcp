@@ -54,9 +54,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         const results = fulfilled.flatMap((r) => r.value)
         const warnings = settled
           .map((r, i) =>
-            r.status === 'rejected'
-              ? `${types[i]} search failed: ${formatError(r.reason)}`
-              : null,
+            r.status === 'rejected' ? `${types[i]} search failed: ${formatError(r.reason)}` : null,
           )
           .filter((w): w is string => w !== null)
 
