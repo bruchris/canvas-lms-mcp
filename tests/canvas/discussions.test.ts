@@ -75,4 +75,49 @@ describe('DiscussionsModule', () => {
       body: JSON.stringify({ message: 'My response' }),
     })
   })
+
+  it('creates a discussion topic via POST', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 20,
+      title: 'New Discussion',
+      message: 'Welcome!',
+      discussion_type: 'threaded',
+      published: false,
+    })
+    const params = {
+      title: 'New Discussion',
+      message: 'Welcome!',
+      discussion_type: 'threaded' as const,
+      published: false,
+    }
+    const result = await discussions.create(100, params)
+    expect(result).toMatchObject({ id: 20, title: 'New Discussion' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+  })
+
+  it('updates a discussion topic via PUT', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 20,
+      title: 'Updated Title',
+      published: true,
+    })
+    const params = { title: 'Updated Title', published: true }
+    const result = await discussions.update(100, 20, params)
+    expect(result).toMatchObject({ id: 20, title: 'Updated Title' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics/20', {
+      method: 'PUT',
+      body: JSON.stringify(params),
+    })
+  })
+
+  it('deletes a discussion topic via DELETE', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+    await discussions.delete(100, 20)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/discussion_topics/20', {
+      method: 'DELETE',
+    })
+  })
 })

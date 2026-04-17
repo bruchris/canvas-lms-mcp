@@ -75,7 +75,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       description: 'Create a new discussion topic in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
-        title: z.string().describe('Title of the discussion topic'),
+        title: z.string().min(1).describe('Title of the discussion topic'),
         message: z.string().optional().describe('Body text of the discussion (supports HTML)'),
         discussion_type: z
           .enum(['side_comment', 'threaded'])
@@ -123,12 +123,16 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       handler: async (params) => {
         const course_id = params.course_id as number
         const topic_id = params.topic_id as number
-        return canvas.discussions.update(course_id, topic_id, {
+        const updateParams = {
           title: params.title as string | undefined,
           message: params.message as string | undefined,
           published: params.published as boolean | undefined,
           require_initial_post: params.require_initial_post as boolean | undefined,
-        })
+        }
+        if (Object.values(updateParams).every((v) => v === undefined)) {
+          throw new Error('At least one field must be provided to update a discussion topic')
+        }
+        return canvas.discussions.update(course_id, topic_id, updateParams)
       },
     },
     {
