@@ -416,6 +416,42 @@ export interface CreateAssignmentParams {
 
 export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
 
+// --- Analytics ---
+
+export interface CanvasCourseActivitySummary {
+  date: string
+  views: number
+  participations: number
+}
+
+export interface CanvasStudentActivitySummary {
+  page_views: Record<string, number>
+  participations: Array<{ created_at: string; url: string }>
+}
+
+export interface CanvasActivityStreamItem {
+  type:
+    | 'Submission'
+    | 'DiscussionTopic'
+    | 'Announcement'
+    | 'Conversation'
+    | 'Message'
+    | 'Conference'
+    | 'Collaboration'
+    | 'AssessmentRequest'
+    | (string & {})
+  count: number
+  unread_count: number
+}
+
+export interface CourseSearchResult {
+  id: number
+  title: string
+  type: 'page' | 'assignment' | 'discussion' | 'announcement'
+  url?: string
+  course_id: number
+}
+
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {

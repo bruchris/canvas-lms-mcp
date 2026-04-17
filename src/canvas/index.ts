@@ -16,6 +16,7 @@ import { CalendarModule } from './calendar'
 import { ConversationsModule } from './conversations'
 import { PeerReviewsModule } from './peer-reviews'
 import { AccountsModule } from './accounts'
+import { AnalyticsModule } from './analytics'
 
 export class CanvasClient {
   private client: CanvasHttpClient
@@ -35,6 +36,7 @@ export class CanvasClient {
   conversations: ConversationsModule
   peerReviews: PeerReviewsModule
   accounts: AccountsModule
+  analytics: AnalyticsModule
 
   constructor(config: CanvasClientConfig) {
     this.client = new CanvasHttpClient(config)
@@ -54,6 +56,7 @@ export class CanvasClient {
     this.conversations = new ConversationsModule(this.client)
     this.peerReviews = new PeerReviewsModule(this.client)
     this.accounts = new AccountsModule(this.client)
+    this.analytics = new AnalyticsModule(this.client)
   }
 }
 
