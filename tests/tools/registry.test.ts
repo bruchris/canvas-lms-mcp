@@ -105,6 +105,12 @@ function buildFullMockCanvas(): CanvasClient {
       listUsers: async () => [],
       getReports: async () => [],
     },
+    analytics: {
+      searchCourseContent: async () => [],
+      getCourseActivity: async () => [],
+      getStudentActivity: async () => ({}),
+      getCourseActivityStream: async () => [],
+    },
   } as unknown as CanvasClient
 }
 
@@ -114,7 +120,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 76 tools across all domains', () => {
+  it('returns all 80 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -211,8 +217,13 @@ describe('getAllTools', () => {
     expect(names).toContain('list_account_courses')
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
+    // Analytics & Search (4)
+    expect(names).toContain('search_course_content')
+    expect(names).toContain('get_course_analytics')
+    expect(names).toContain('get_student_analytics')
+    expect(names).toContain('get_course_activity_stream')
 
-    expect(tools).toHaveLength(76)
+    expect(tools).toHaveLength(80)
   })
 
   it('all tools have openWorldHint: true', () => {

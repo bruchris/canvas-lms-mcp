@@ -19,6 +19,7 @@ import { calendarTools } from './calendar'
 import { conversationTools } from './conversations'
 import { peerReviewTools } from './peer-reviews'
 import { accountTools } from './accounts'
+import { analyticsTools } from './analytics'
 
 export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -39,6 +40,7 @@ export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
     ...conversationTools(canvas),
     ...peerReviewTools(canvas),
     ...accountTools(canvas),
+    ...analyticsTools(canvas),
   ]
 }
 
