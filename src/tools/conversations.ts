@@ -17,6 +17,32 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
+      name: 'get_conversation',
+      description: 'Get a single conversation with its full message thread.',
+      inputSchema: {
+        conversation_id: z.string().describe('The conversation ID'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        return canvas.conversations.get(params.conversation_id as string)
+      },
+    },
+    {
+      name: 'get_unread_count',
+      description: 'Get the number of unread conversations for the authenticated user.',
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async () => {
+        return canvas.conversations.getUnreadCount()
+      },
+    },
+    {
       name: 'send_conversation',
       description: 'Send a new conversation message to one or more recipients.',
       inputSchema: {

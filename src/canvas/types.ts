@@ -324,6 +324,24 @@ export interface CanvasConversation {
   participants: Array<{ id: number; name: string }>
 }
 
+export interface CanvasConversationMessage {
+  id: number
+  created_at: string
+  body: string
+  author_id: number
+  generated: boolean
+  media_comment?: { media_id: string; media_type: string; url: string }
+  attachments?: Array<{ id: number; filename: string; url: string }>
+}
+
+export interface CanvasConversationDetail extends CanvasConversation {
+  messages: CanvasConversationMessage[]
+}
+
+export interface CanvasConversationUnreadCount {
+  unread_count: number
+}
+
 // --- Accounts ---
 
 export interface CanvasAccount {
