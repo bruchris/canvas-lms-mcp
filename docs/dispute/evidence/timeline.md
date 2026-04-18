@@ -5,7 +5,7 @@
 | 2026-04-10 | `bruchris` published the initial Canvas LMS MCP implementation to GitHub (`bruchris/canvas-lms-mcp`, PR #5) | https://github.com/bruchris/canvas-lms-mcp/pull/5 |
 | 2026-04-13T12:43:07Z | `clm808` registered the unscoped npm name `canvas-lms-mcp` (v1.0.0) | `docs/dispute/evidence/npm-registration-timestamp.json` |
 | 2026-04-13T15:02:34Z | `bruchris` published the official v0.1.0 GitHub Release for `canvas-lms-mcp` via release-please | https://github.com/bruchris/canvas-lms-mcp/releases/tag/canvas-lms-mcp-v0.1.0 |
-| 2026-04-16 | `bruchris` renamed package to `@bruchris/canvas-lms-mcp`; npm dispute filed | This commit |
+| 2026-04-16 | `bruchris` temporarily renamed package to a scoped fallback package; npm dispute filed | This commit |
 
 ## Notes
 

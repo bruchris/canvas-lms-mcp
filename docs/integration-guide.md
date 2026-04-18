@@ -21,7 +21,7 @@ The AI client spawns `canvas-lms-mcp` as a subprocess. The MCP protocol messages
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "token",
         "CANVAS_BASE_URL": "https://school.instructure.com"
@@ -61,7 +61,7 @@ Each `POST /mcp` request creates a fresh MCP server instance with the credential
 
 ```bash
 # CLI
-npx @bruchris/canvas-lms-mcp serve \
+npx canvas-lms-mcp serve \
   --port 3001 \
   --allowed-origin https://your-app.example.com
 
@@ -135,7 +135,7 @@ Import the server factory or the standalone Canvas client directly into your Nod
 Create an MCP server instance and connect it to your own transport:
 
 ```typescript
-import { createCanvasMCPServer } from '@bruchris/canvas-lms-mcp'
+import { createCanvasMCPServer } from 'canvas-lms-mcp'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 const { server, canvas } = createCanvasMCPServer({
@@ -148,14 +148,14 @@ const transport = new StdioServerTransport()
 await server.connect(transport)
 ```
 
-The `server` is a standard `McpServer` instance with all 42 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
+The `server` is a standard `McpServer` instance with all 88 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
 
 ### Standalone Canvas Client
 
 Use the Canvas client without MCP for direct API access:
 
 ```typescript
-import { CanvasClient } from '@bruchris/canvas-lms-mcp/canvas'
+import { CanvasClient } from 'canvas-lms-mcp/canvas'
 
 const canvas = new CanvasClient({
   token: process.env.CANVAS_API_TOKEN!,
@@ -198,7 +198,7 @@ The `CanvasClient` facade exposes 14 domain modules:
 All Canvas client methods throw `CanvasApiError` on failure:
 
 ```typescript
-import { CanvasApiError } from '@bruchris/canvas-lms-mcp/canvas'
+import { CanvasApiError } from 'canvas-lms-mcp/canvas'
 
 try {
   const course = await canvas.courses.get(99999)

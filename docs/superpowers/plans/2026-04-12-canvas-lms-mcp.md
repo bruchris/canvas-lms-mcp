@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build an open-source MCP server (`bruchris/canvas-lms-mcp`) that exposes the Canvas LMS REST API as 41 MCP tools across 15 domains, with stdio and HTTP transports, publishable to npm as `canvas-lms-mcp`.
+**Goal:** Build an open-source MCP server (`bruchris/canvas-lms-mcp`) that exposes the Canvas LMS REST API as 88 MCP tools across Canvas courses, assignments, grading, content, communication, admin, analytics, student, and dashboard workflows, with stdio and HTTP transports, publishable to npm as `canvas-lms-mcp`.
 
 **Architecture:** Three layers — standalone Canvas API client (`src/canvas/`), MCP tool definitions with Zod schemas (`src/tools/`), and thin transport entry points. A `createCanvasMCPServer()` factory wires everything together. The Canvas client is independently usable as a library via the `canvas-lms-mcp/canvas` export.
 
@@ -396,7 +396,7 @@ You are the project coordinator for the canvas-lms-mcp project.
 - `docs/` — user guides
 
 ## Project Context
-This is an open-source MCP server exposing Canvas LMS API as 41 tools. Three deployment modes: stdio, HTTP, npm library. Read-heavy with selective writes for grading.
+This is an open-source MCP server exposing Canvas LMS API as 88 tools. Three deployment modes: stdio, HTTP, npm library. Read-heavy with selective writes for grading, content management, course administration, and messaging.
 ```
 
 - [ ] **Step 4: Create `.claude/agents/architect.md`**
@@ -620,56 +620,30 @@ Three layers:
 - `src/tools/` — MCP tool definitions with Zod schemas
 - `src/server.ts` — Factory wiring tools + resources
 
-## Tools (41 total — 33 read, 8 write)
+## Tools (88 total — 60 read, 28 write)
 
-### Read Tools
-| Tool | Domain | Description |
-|------|--------|-------------|
-| `health_check` | health | Verify Canvas API connectivity |
-| `list_courses` | courses | User's courses |
-| `get_course` | courses | Single course details |
-| `get_syllabus` | courses | Course syllabus content |
-| `list_assignments` | assignments | Assignments for a course |
-| `get_assignment` | assignments | Single assignment details |
-| `list_assignment_groups` | assignments | Grouped assignments |
-| `list_submissions` | submissions | Submissions for an assignment |
-| `get_submission` | submissions | Single submission detail |
-| `list_rubrics` | rubrics | All rubrics in a course |
-| `get_rubric` | rubrics | Full rubric with criteria |
-| `get_rubric_assessment` | rubrics | Existing assessment |
-| `get_quiz` | quizzes | Quiz metadata |
-| `list_quiz_submissions` | quizzes | Quiz submissions |
-| `get_quiz_questions` | quizzes | Question definitions |
-| `get_quiz_submission_answers` | quizzes | Student's answers |
-| `list_files` | files | Files in a course |
-| `list_folders` | files | Folder structure |
-| `get_file` | files | File metadata + URL |
-| `list_students` | users | Students in a course |
-| `get_user` | users | User profile |
-| `get_user_profile` | users | Own profile |
-| `list_groups` | groups | Course groups |
-| `list_group_members` | groups | Group members |
-| `list_enrollments` | enrollments | User's enrollments |
-| `list_modules` | modules | Course modules |
-| `get_module` | modules | Module details |
-| `list_module_items` | modules | Module items |
-| `list_pages` | pages | Course pages |
-| `get_page` | pages | Page content |
-| `list_discussions` | discussions | Discussion topics |
-| `get_discussion` | discussions | Discussion with entries |
-| `list_announcements` | discussions | Announcements |
-| `list_calendar_events` | calendar | Calendar events |
-| `list_conversations` | conversations | Inbox messages |
-
-### Write Tools
-| Tool | Domain | Description |
-|------|--------|-------------|
-| `grade_submission` | submissions | Post a grade |
-| `comment_on_submission` | submissions | Post a comment with optional file |
-| `submit_rubric_assessment` | rubrics | Grade via rubric |
-| `score_quiz_question` | quizzes | Score open-ended question |
-| `post_discussion_entry` | discussions | Post to discussion |
-| `send_conversation` | conversations | Send message |
+| Domain | Tools |
+|--------|-------|
+| health | `health_check` |
+| courses | `list_courses`, `get_course`, `get_syllabus`, `create_course`, `update_course` |
+| assignments | `list_assignments`, `get_assignment`, `list_assignment_groups`, `create_assignment`, `update_assignment`, `delete_assignment` |
+| submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
+| rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
+| quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
+| files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
+| users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
+| groups | `list_groups`, `list_group_members` |
+| enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
+| discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
+| modules | `list_modules`, `get_module`, `list_module_items`, `create_module`, `update_module`, `create_module_item` |
+| pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
+| calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
+| conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
+| peer-reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
+| accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
+| analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
+| student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
+| dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
 ## Development
 
@@ -794,9 +768,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm install --global npm@^11.5.1
+      - run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
 ```
 
 - [ ] **Step 3: Create `release-please-config.json`**
@@ -2682,17 +2655,17 @@ pnpm vitest run
 Add a test in `tests/server.test.ts`:
 
 ```typescript
-it('registers all 41 tools', () => {
+it('registers all 88 tools', () => {
   const { canvas } = createCanvasMCPServer({
     token: 'test',
     baseUrl: 'https://canvas.example.com',
   })
   const tools = getAllTools(canvas)
-  expect(tools).toHaveLength(41)
+  expect(tools).toHaveLength(88)
 })
 ```
 
-Expected: All PASS, 41 tools registered
+Expected: All PASS, 88 tools registered
 
 - [ ] **Step 5: Commit**
 
@@ -3140,7 +3113,7 @@ Expected: All entry points present in dist/
 pnpm vitest run tests/server.test.ts
 ```
 
-Expected: 41 tools registered
+Expected: 88 tools registered
 
 - [ ] **Step 4: Push to GitHub**
 
@@ -3171,11 +3144,11 @@ git push origin v0.1.0-rc.1
 | 4 | Canvas HTTP client + types | — |
 | 5 | Courses module + facade | — |
 | 6 | MCP server factory + tool types | — |
-| 7 | Health + course tools | 4 tools |
+| 7 | Health + course tools | 6 tools |
 | 8 | Assignments + submissions modules | — |
-| 9 | Assignment + submission tools | 7 tools |
+| 9 | Assignment + submission tools | 10 tools |
 | 10 | All remaining canvas modules | — |
-| 11 | All remaining MCP tools | 30 tools |
+| 11 | All remaining MCP tools | 72 tools |
 | 12 | MCP resources | 2 resources |
 | 13 | CLI + stdio transport | — |
 | 14 | HTTP transport | — |
@@ -3183,4 +3156,4 @@ git push origin v0.1.0-rc.1
 | 16 | Documentation | — |
 | 17 | Final verification | — |
 
-**Total: 41 tools, 2 resources, 3 transports, 17 tasks**
+**Total: 88 tools, 2 resources, 3 transports, 17 tasks**

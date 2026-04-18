@@ -66,7 +66,7 @@ Posts a reply to a discussion topic. Supports HTML formatting.
 
 ## Write Operations Reference
 
-The server includes 6 write tools. All require appropriate Canvas permissions.
+The server includes 28 write tools. All require appropriate Canvas permissions.
 
 | Operation | Tool | What It Does | Reversible? |
 |-----------|------|--------------|-------------|

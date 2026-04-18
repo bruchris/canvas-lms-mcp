@@ -3,11 +3,12 @@
 name: Canvas LMS MCP
 description: >
   The TypeScript MCP 1.x server for Canvas LMS. Connect Claude Desktop, Cursor,
-  VS Code, Gemini CLI, Codex, or any MCP-compatible AI agent to your Canvas instance
-  with 95 tools across 20 domains: courses, assignments, submissions, rubrics,
-  quizzes, grades, discussions, modules, pages, files, users, enrollments, groups,
-  calendar, conversations, accounts, analytics, student self-service, dashboard,
-  and notifications. Three deployment modes: stdio, HTTP, and library import.
+  VS Code, or any MCP-compatible AI agent to your Canvas instance with 88 tools
+  across 20 domains: health, courses, assignments, submissions, rubrics,
+  quizzes, files, users, groups, enrollments, discussions, modules, pages,
+  calendar, conversations, peer reviews, accounts, analytics, student
+  workflows, and dashboard. Three deployment modes: stdio, HTTP, and library
+  import.
 
 startCommand:
   type: stdio
@@ -32,7 +33,7 @@ configSchema:
 commandFunction: |-
   (config) => ({
     command: 'npx',
-    args: ['-y', '@bruchris/canvas-lms-mcp'],
+    args: ['-y', 'canvas-lms-mcp'],
     env: {
       CANVAS_API_TOKEN: config.canvasApiToken,
       CANVAS_BASE_URL: config.canvasBaseUrl

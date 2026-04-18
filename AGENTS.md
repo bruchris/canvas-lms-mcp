@@ -6,10 +6,10 @@ Guide for AI agents consuming or contributing to `canvas-lms-mcp`.
 
 ```bash
 # Run with npx (no install needed)
-npx @bruchris/canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url https://school.instructure.com/api/v1
+npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url https://school.instructure.com/api/v1
 
 # Or install globally
-npm install -g @bruchris/canvas-lms-mcp
+npm install -g canvas-lms-mcp
 canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
 ```
 
@@ -18,7 +18,7 @@ Environment variables are also supported:
 ```bash
 export CANVAS_API_TOKEN=your_token_here
 export CANVAS_BASE_URL=https://school.instructure.com/api/v1
-npx @bruchris/canvas-lms-mcp
+npx canvas-lms-mcp
 ```
 
 ## Architecture
@@ -57,118 +57,30 @@ AI Agent  -->  MCP Transport (stdio/HTTP)
 
 ## Tool Inventory
 
-41 tools total: 33 read-only, 8 write operations.
+88 tools total: 60 read-only, 28 write operations.
 
-### Courses (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_courses` | read | List courses for the authenticated user |
-| `get_course` | read | Get a single course by ID |
-| `list_course_students` | read | List students enrolled in a course |
-
-### Assignments (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_assignments` | read | List all assignments in a course |
-| `get_assignment` | read | Get a single assignment by ID |
-| `create_assignment` | write | Create a new assignment in a course |
-
-### Submissions (5 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_submissions` | read | List submissions for an assignment |
-| `get_submission` | read | Get a single submission by user and assignment |
-| `get_submission_comments` | read | Get comments on a submission |
-| `grade_submission` | write | Post a grade for a submission |
-| `comment_on_submission` | write | Add a comment to a submission |
-
-### Rubrics (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_rubrics` | read | List rubrics in a course |
-| `get_rubric` | read | Get a single rubric with full criteria |
-| `assess_with_rubric` | write | Submit a rubric assessment for a submission |
-
-### Quizzes (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_quizzes` | read | List quizzes in a course |
-| `get_quiz` | read | Get a single quiz by ID |
-| `get_quiz_submissions` | read | List submissions for a quiz |
-
-### Files (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_files` | read | List files in a course or folder |
-| `get_file` | read | Get file metadata and download URL |
-| `list_folders` | read | List folders in a course |
-
-### Users (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `get_user` | read | Get a user profile by ID |
-| `get_user_profile` | read | Get detailed profile for a user |
-| `list_user_courses` | read | List courses a user is enrolled in |
-
-### Groups (2 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_groups` | read | List groups in a course |
-| `get_group_members` | read | List members of a group |
-
-### Enrollments (2 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_enrollments` | read | List enrollments in a course |
-| `enroll_user` | write | Enroll a user in a course |
-
-### Discussions (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_discussions` | read | List discussion topics in a course |
-| `get_discussion` | read | Get a discussion topic with entries |
-| `post_discussion_entry` | write | Post a reply to a discussion topic |
-
-### Modules (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_modules` | read | List modules in a course |
-| `get_module` | read | Get a single module by ID |
-| `list_module_items` | read | List items within a module |
-
-### Pages (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_pages` | read | List wiki pages in a course |
-| `get_page` | read | Get a single wiki page by URL slug |
-| `update_page` | write | Update a wiki page's content |
-
-### Calendar (2 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_calendar_events` | read | List calendar events for a course or user |
-| `create_calendar_event` | write | Create a new calendar event |
-
-### Conversations (3 tools)
-
-| Tool | Type | Description |
-| --- | --- | --- |
-| `list_conversations` | read | List inbox conversations |
-| `get_conversation` | read | Get a single conversation with messages |
-| `send_message` | read | Get message details (read-only preview) |
+| Domain | Tools |
+| --- | --- |
+| Health | `health_check` |
+| Courses | `list_courses`, `get_course`, `get_syllabus`, `create_course`, `update_course` |
+| Assignments | `list_assignments`, `get_assignment`, `list_assignment_groups`, `create_assignment`, `update_assignment`, `delete_assignment` |
+| Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
+| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
+| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
+| Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
+| Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
+| Groups | `list_groups`, `list_group_members` |
+| Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
+| Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `create_module`, `update_module`, `create_module_item` |
+| Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
+| Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
+| Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
+| Peer Reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
+| Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
+| Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
+| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
+| Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
 ## Tool Annotations
 
@@ -239,7 +151,7 @@ ci: add Node 24 to CI matrix
 The Canvas client can be used independently of MCP:
 
 ```typescript
-import { CanvasClient } from '@bruchris/canvas-lms-mcp/canvas'
+import { CanvasClient } from 'canvas-lms-mcp/canvas'
 
 const canvas = new CanvasClient({
   token: process.env.CANVAS_API_TOKEN!,

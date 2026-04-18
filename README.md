@@ -3,21 +3,21 @@
 > The TypeScript MCP server for Canvas LMS.
 
 [![CI](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bruchris/canvas-lms-mcp/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/%40bruchris%2Fcanvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
+[![npm](https://img.shields.io/npm/v/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![npm downloads](https://img.shields.io/npm/dw/@bruchris/canvas-lms-mcp)](https://www.npmjs.com/package/@bruchris/canvas-lms-mcp)
+[![npm downloads](https://img.shields.io/npm/dw/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
 
-MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade and comment from any AI agent.
+MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-95 tools across 20 Canvas domains. Three deployment modes: stdio, HTTP, and library import.
+88 tools across Canvas courses, assignments, submissions, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
-| | @bruchris/canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
+| | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 95 | 80+ | 54 |
+| Tools | 88 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -34,7 +34,7 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 ### 2. One Command Setup
 
 ```bash
-npx add-mcp @bruchris/canvas-lms-mcp
+npx add-mcp canvas-lms-mcp
 ```
 
 This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.) and configures them. You will be prompted for your Canvas API token and base URL.
@@ -44,25 +44,25 @@ This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.)
 **Claude Code**
 
 ```bash
-claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y @bruchris/canvas-lms-mcp
+claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y canvas-lms-mcp
 ```
 
 **VS Code**
 
 ```bash
-code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","@bruchris/canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
+code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
 ```
 
 **Gemini CLI**
 
 ```bash
-gemini mcp add canvas-lms npx @bruchris/canvas-lms-mcp
+gemini mcp add canvas-lms npx canvas-lms-mcp
 ```
 
 **Codex CLI**
 
 ```bash
-codex mcp add canvas-lms -- npx @bruchris/canvas-lms-mcp
+codex mcp add canvas-lms -- npx canvas-lms-mcp
 ```
 
 <details>
@@ -77,7 +77,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -96,7 +96,7 @@ Add to `.cursor/mcp.json` in your project:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -115,7 +115,7 @@ Add to your VS Code settings (`settings.json`):
   "mcp.servers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -134,7 +134,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "canvas-lms": {
       "command": "npx",
-      "args": ["-y", "@bruchris/canvas-lms-mcp"],
+      "args": ["-y", "canvas-lms-mcp"],
       "env": {
         "CANVAS_API_TOKEN": "your-token-here",
         "CANVAS_BASE_URL": "https://your-institution.instructure.com"
@@ -149,7 +149,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 Run the server in HTTP mode, then point your client at the endpoint:
 
 ```bash
-npx @bruchris/canvas-lms-mcp serve --port 3001 \
+npx canvas-lms-mcp serve --port 3001 \
   --token your-token-here \
   --base-url https://your-institution.instructure.com
 ```
@@ -173,102 +173,32 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### Read-Only Tools (68)
+### All Registered Tools (88)
 
-| Category | Tool | Description |
-|----------|------|-------------|
-| Health | `health_check` | Check if the Canvas API is reachable and token is valid |
-| Courses | `list_courses` | List courses (optionally filter by enrollment state) |
-| Courses | `get_course` | Get course details including term and student count |
-| Courses | `get_syllabus` | Get the syllabus HTML for a course |
-| Assignments | `list_assignments` | List all assignments in a course |
-| Assignments | `get_assignment` | Get details for a single assignment |
-| Assignments | `list_assignment_groups` | List assignment groups (Homework, Exams, etc.) |
-| Submissions | `list_submissions` | List all submissions for an assignment |
-| Submissions | `get_submission` | Get a specific student's submission with comments |
-| Rubrics | `list_rubrics` | List all rubrics in a course |
-| Rubrics | `get_rubric` | Get rubric details including criteria |
-| Rubrics | `get_rubric_assessment` | Get rubric assessment for a student submission |
-| Quizzes | `list_quizzes` | List all quizzes in a course |
-| Quizzes | `get_quiz` | Get details for a single quiz |
-| Quizzes | `list_quiz_submissions` | List all submissions for a quiz |
-| Quizzes | `list_quiz_questions` | List all questions in a quiz |
-| Quizzes | `get_quiz_submission_answers` | Get a student's quiz answers |
-| Files | `list_files` | List all files in a course |
-| Files | `list_folders` | List all folders in a course |
-| Files | `get_file` | Get file metadata including download URL |
-| Users | `list_students` | List all students enrolled in a course |
-| Users | `get_user` | Get details for a single user |
-| Users | `get_profile` | Get the authenticated user's profile |
-| Users | `search_users` | Search users by name or email |
-| Users | `list_course_users` | List all users in a course by enrollment type |
-| Groups | `list_groups` | List all groups in a course |
-| Groups | `list_group_members` | List all members of a group |
-| Enrollments | `list_enrollments` | List enrollments for the authenticated user |
-| Discussions | `list_discussions` | List all discussion topics in a course |
-| Discussions | `get_discussion` | Get details for a discussion topic |
-| Discussions | `list_announcements` | List all announcements in a course |
-| Modules | `list_modules` | List all modules in a course |
-| Modules | `get_module` | Get details for a single module |
-| Modules | `list_module_items` | List all items within a module |
-| Pages | `list_pages` | List all wiki pages in a course |
-| Pages | `get_page` | Get a wiki page by its URL slug |
-| Calendar | `list_calendar_events` | List calendar events for a course |
-| Conversations | `list_conversations` | List inbox messages for the authenticated user |
-| Conversations | `get_conversation` | Get a specific conversation thread |
-| Conversations | `get_conversation_unread_count` | Get unread conversation count |
-| Peer Reviews | `list_peer_reviews` | List all peer reviews for an assignment in a course |
-| Peer Reviews | `get_submission_peer_reviews` | List peer reviews assigned to a specific submission |
-| Accounts | `get_account` | Get details for a Canvas account |
-| Accounts | `list_accounts` | List accounts the user has access to |
-| Accounts | `list_sub_accounts` | List sub-accounts under an account |
-| Accounts | `list_account_courses` | List all courses in an account |
-| Accounts | `list_account_users` | List all users in an account |
-| Accounts | `get_account_reports` | Get available reports for an account |
-| Analytics | `search_course_content` | Search content across a course |
-| Analytics | `get_course_analytics` | Get course-level analytics and statistics |
-| Analytics | `get_student_analytics` | Get per-student analytics for a course |
-| Analytics | `get_course_activity_stream` | Get recent activity stream for a course |
-| Student | `get_my_courses` | Get the current student's enrolled courses |
-| Student | `get_my_grades` | Get the current student's grades across courses |
-| Student | `get_my_submissions` | Get the current student's submissions |
-| Student | `get_my_upcoming_assignments` | Get upcoming assignments for the current student |
-| Dashboard | `get_dashboard_cards` | Get dashboard course cards |
-| Dashboard | `get_todo_items` | Get todo items for the authenticated user |
-| Dashboard | `get_upcoming_events` | Get upcoming calendar events |
-| Dashboard | `get_missing_submissions` | Get missing submissions for the authenticated user |
+| Category | Tools |
+|----------|-------|
+| Health | `health_check` |
+| Courses | `list_courses`, `get_course`, `get_syllabus`, `create_course`, `update_course` |
+| Assignments | `list_assignments`, `get_assignment`, `list_assignment_groups`, `create_assignment`, `update_assignment`, `delete_assignment` |
+| Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
+| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
+| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
+| Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
+| Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
+| Groups | `list_groups`, `list_group_members` |
+| Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
+| Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `create_module`, `update_module`, `create_module_item` |
+| Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
+| Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
+| Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
+| Peer Reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
+| Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
+| Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
+| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
+| Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
-### Write Tools (27)
-
-| Category | Tool | Description | Idempotent |
-|----------|------|-------------|------------|
-| Courses | `create_course` | Create a new course | No |
-| Courses | `update_course` | Update course settings and details | Yes |
-| Assignments | `create_assignment` | Create a new assignment | No |
-| Assignments | `update_assignment` | Update an existing assignment | Yes |
-| Assignments | `delete_assignment` | Delete an assignment | No |
-| Submissions | `grade_submission` | Post or update a grade for a submission | Yes |
-| Submissions | `comment_on_submission` | Add a text comment to a submission | No |
-| Rubrics | `submit_rubric_assessment` | Submit rubric scores and comments per criterion | Yes |
-| Quizzes | `score_quiz_question` | Score a specific quiz question | Yes |
-| Files | `upload_file` | Upload a file to a course | No |
-| Files | `delete_file` | Delete a file | No |
-| Enrollments | `enroll_user` | Enroll a user in a course | No |
-| Enrollments | `remove_enrollment` | Remove an enrollment from a course | No |
-| Discussions | `post_discussion_entry` | Post a reply to a discussion topic | No |
-| Discussions | `create_discussion` | Create a new discussion topic | No |
-| Discussions | `update_discussion` | Update an existing discussion topic | Yes |
-| Discussions | `delete_discussion` | Delete a discussion topic | No |
-| Modules | `create_module` | Create a new module in a course | No |
-| Modules | `update_module` | Update an existing module | Yes |
-| Modules | `create_module_item` | Add an item to a module | No |
-| Pages | `create_page` | Create a new wiki page | No |
-| Pages | `update_page` | Update an existing wiki page | Yes |
-| Pages | `delete_page` | Delete a wiki page | No |
-| Calendar | `create_calendar_event` | Create a new calendar event | No |
-| Calendar | `update_calendar_event` | Update an existing calendar event | Yes |
-| Conversations | `send_conversation` | Send a message to one or more recipients | No |
-| Peer Reviews | `create_peer_review` | Assign a user to peer-review a submission | No |
+60 tools are read-only and 28 tools perform Canvas write operations.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -286,7 +216,7 @@ All write tools require appropriate Canvas permissions. Canvas enforces its own 
 For local AI clients like Claude Desktop, Cursor, and VS Code. The server communicates over stdin/stdout.
 
 ```bash
-npx @bruchris/canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
+npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
 ```
 
 ### HTTP
@@ -294,7 +224,7 @@ npx @bruchris/canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_U
 For web-based clients or hosted services. Starts an HTTP server with Streamable HTTP transport.
 
 ```bash
-npx @bruchris/canvas-lms-mcp serve \
+npx canvas-lms-mcp serve \
   --token $CANVAS_API_TOKEN \
   --base-url $CANVAS_BASE_URL \
   --port 3001 \
@@ -329,7 +259,7 @@ services:
 Use the server factory directly in your own Node.js application:
 
 ```typescript
-import { createCanvasMCPServer } from '@bruchris/canvas-lms-mcp'
+import { createCanvasMCPServer } from 'canvas-lms-mcp'
 
 const { server, canvas } = createCanvasMCPServer({
   token: userToken,
@@ -340,7 +270,7 @@ const { server, canvas } = createCanvasMCPServer({
 Or use the Canvas client standalone (no MCP dependency):
 
 ```typescript
-import { CanvasClient } from '@bruchris/canvas-lms-mcp/canvas'
+import { CanvasClient } from 'canvas-lms-mcp/canvas'
 
 const canvas = new CanvasClient({
   token: userToken,
@@ -375,11 +305,18 @@ const courses = await canvas.courses.list()
 pnpm install       # Install dependencies
 pnpm dev           # Watch mode build
 pnpm build         # Production build
-pnpm test          # Run tests (507 tests)
+pnpm test          # Run tests (294 tests)
 pnpm lint          # ESLint + Prettier check
 pnpm lint:fix      # Auto-fix lint issues
 pnpm typecheck     # TypeScript strict type check
 ```
+
+### Dependency audit
+
+The `pnpm.overrides.hono` entry pins `hono` to `4.12.14` because
+`@modelcontextprotocol/sdk@1.29.0` allows vulnerable `hono <4.12.14`
+versions. Remove the override when the MCP SDK publishes a release that
+depends on a patched `hono` range.
 
 ### Architecture
 
@@ -394,6 +331,8 @@ src/cli.ts        CLI argument parser
 ```
 
 ### Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validation workflow.
 
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feat/my-feature`)
