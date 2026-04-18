@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.0...canvas-lms-mcp-v1.1.0) (2026-04-18)
+## [1.1.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.0...canvas-lms-mcp-v1.1.1) (2026-04-18)
 
 
 ### Documentation
