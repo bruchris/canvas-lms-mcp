@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.0...canvas-lms-mcp-v1.1.1) (2026-04-18)
+
+
+### Documentation
+
+* update tool counts from 46 to 95 across README, npm, and Smithery ([#53](https://github.com/bruchris/canvas-lms-mcp/issues/53)) ([c60b917](https://github.com/bruchris/canvas-lms-mcp/commit/c60b91768c8acaed82994966ed91dc5ce4177cd8))
+
 ## [1.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v0.6.0...canvas-lms-mcp-v1.1.0) (2026-04-17)
 
 
