@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.1...canvas-lms-mcp-v1.2.0) (2026-04-19)
+
+
+### Features
+
+* add mcpName for Official MCP Registry publishing ([#55](https://github.com/bruchris/canvas-lms-mcp/issues/55)) ([8392979](https://github.com/bruchris/canvas-lms-mcp/commit/839297924a97bc9fe938f1f76814d78bad709487))
+
 ## [1.1.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.0...canvas-lms-mcp-v1.1.1) (2026-04-18)
 
 
