@@ -3,10 +3,11 @@
 **Date:** 2026-04-19  
 **Scope:** Compare `bruchris/canvas-lms-mcp` against `vishalsachdev/canvas-mcp` and identify the highest-value agent/tooling improvements for this repo.  
 **Comparison baseline:** `vishalsachdev/canvas-mcp` `main` branch as observed on 2026-04-19 via GitHub repo metadata, `AGENTS.md`, `tools/TOOL_MANIFEST.json`, `tools/README.md`, and repository tree.
+**Companion analysis:** [Skill Tooling Opportunities vs `canvas-mcp`](../analysis/2026-04-19-skill-tooling-opportunities-vs-canvas-mcp.md)
 
 ## Executive Summary
 
-`canvas-lms-mcp` is already stronger on core server architecture than `vishalsachdev/canvas-mcp`: it has a cleaner three-layer TypeScript design, a standalone reusable Canvas client export, and materially broader first-class tool coverage (88 tools vs the comparison repo's 21 tools documented in `tools/TOOL_MANIFEST.json` version `1.0.6`).
+`canvas-lms-mcp` is already stronger on core server architecture than `vishalsachdev/canvas-mcp`: it has a cleaner three-layer TypeScript design, a standalone reusable Canvas client export, and a comparable runtime tool count (88 tools, matching the comparison repo's 88 registered tools, only 21 of which are surfaced in `tools/TOOL_MANIFEST.json` version `1.0.6`).
 
 The main gap is not raw Canvas coverage. The gap is **agent-facing packaging**:
 
