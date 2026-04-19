@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.1...canvas-lms-mcp-v1.2.2) (2026-04-19)
+
+
+### Documentation
+
+* add skill-focused tooling opportunities brief ([#58](https://github.com/bruchris/canvas-lms-mcp/issues/58)) ([ec6463f](https://github.com/bruchris/canvas-lms-mcp/commit/ec6463f0f5137d3c423589ebac486c3d90e1cde4))
+
 ## [1.2.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.0...canvas-lms-mcp-v1.2.1) (2026-04-19)
 
 
