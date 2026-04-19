@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.0...canvas-lms-mcp-v1.2.1) (2026-04-19)
+
+
+### Documentation
+
+* add hosted-service feasibility note ([#57](https://github.com/bruchris/canvas-lms-mcp/issues/57)) ([5074f8c](https://github.com/bruchris/canvas-lms-mcp/commit/5074f8c6dbb53b42ebe2e2d3072d2d720c387034))
+* add skill tooling comparison against canvas-mcp ([#60](https://github.com/bruchris/canvas-lms-mcp/issues/60)) ([8095109](https://github.com/bruchris/canvas-lms-mcp/commit/8095109abb7f29f13fe7a6b77655c1e0af552463))
+
 ## [1.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.1.1...canvas-lms-mcp-v1.2.0) (2026-04-19)
 
 
