@@ -396,6 +396,135 @@ export interface CanvasConversationUnreadCount {
   unread_count: number
 }
 
+// --- Outcomes ---
+
+export type CanvasOutcomeContextType = 'account' | 'course'
+
+export interface CanvasOutcomeRating {
+  description: string
+  points: number
+  mastery?: boolean
+  color?: string | null
+}
+
+export interface CanvasOutcome {
+  id: number
+  url: string
+  context_id: number | null
+  context_type: 'Account' | 'Course' | 'Global' | (string & {})
+  title: string
+  display_name?: string | null
+  description?: string
+  vendor_guid?: string | null
+  points_possible?: number
+  mastery_points?: number | null
+  calculation_method?: string | null
+  calculation_int?: number | null
+  ratings?: CanvasOutcomeRating[]
+}
+
+export interface CanvasOutcomeGroup {
+  id: number
+  url: string
+  context_id: number | null
+  context_type: 'Account' | 'Course' | 'Global' | (string & {})
+  title: string
+  description?: string | null
+  vendor_guid?: string | null
+  subgroups_url?: string
+  outcomes_url?: string
+  can_edit?: boolean
+}
+
+export interface CanvasOutcomeLink {
+  id: number | string
+  url?: string
+  context_id?: number | null
+  context_type?: 'Account' | 'Course' | 'Global' | (string & {})
+  outcome_group?: CanvasOutcomeGroup | null
+  outcome?: CanvasOutcome | null
+  assessed?: boolean
+}
+
+export interface CanvasOutcomeAlignment {
+  id: number
+  assignment_id: number | null
+  assessment_id: number | null
+  submission_types?: string | null
+  url?: string | null
+  title: string
+}
+
+export interface CanvasOutcomeResult {
+  id: number
+  score: number | null
+  submitted_or_assessed_at: string | null
+  links: {
+    user: string | number
+    learning_outcome: string | number
+    alignment: string | number
+  }
+  percent: number | null
+}
+
+export interface CanvasOutcomeResultsResponse {
+  outcome_results: CanvasOutcomeResult[]
+  linked?: {
+    users?: CanvasUser[]
+    outcomes?: CanvasOutcome[]
+    outcome_groups?: CanvasOutcomeGroup[]
+    alignments?: CanvasOutcomeAlignment[]
+  }
+}
+
+export interface CanvasOutcomeRollupScore {
+  score: number | null
+  count: number
+  links: {
+    outcome: string | number
+  }
+}
+
+export interface CanvasOutcomeRollup {
+  scores: CanvasOutcomeRollupScore[] | null
+  name: string
+  links: {
+    course?: number
+    user?: number
+    section?: number
+  }
+}
+
+export interface CanvasOutcomeRollupsResponse {
+  rollups: CanvasOutcomeRollup[]
+  linked?: {
+    users?: CanvasUser[]
+    outcomes?: CanvasOutcome[]
+    outcome_groups?: CanvasOutcomeGroup[]
+    courses?: CanvasCourse[]
+    sections?: Array<{ id: number; name: string }>
+  }
+}
+
+export interface CanvasOutcomeContributingScoresResponse {
+  scores: Array<Record<string, unknown>>
+  linked?: {
+    users?: CanvasUser[]
+    outcomes?: CanvasOutcome[]
+    outcome_groups?: CanvasOutcomeGroup[]
+    alignments?: CanvasOutcomeAlignment[]
+  }
+}
+
+export interface CanvasOutcomeMasteryDistributionResponse {
+  linked?: {
+    outcomes?: CanvasOutcome[]
+    outcome_groups?: CanvasOutcomeGroup[]
+    alignments?: CanvasOutcomeAlignment[]
+  }
+  outcomes?: Array<Record<string, unknown>>
+}
+
 // --- Accounts ---
 
 export interface CanvasAccount {

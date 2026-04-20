@@ -57,7 +57,7 @@ AI Agent  -->  MCP Transport (stdio/HTTP)
 
 ## Tool Inventory
 
-88 tools total: 60 read-only, 28 write operations.
+100 tools total: 72 read-only, 28 write operations.
 
 | Domain | Tools |
 | --- | --- |
@@ -79,6 +79,7 @@ AI Agent  -->  MCP Transport (stdio/HTTP)
 | Peer Reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
 | Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
 | Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
+| Outcomes | `get_root_outcome_group`, `list_outcome_groups`, `list_outcome_group_links`, `get_outcome_group`, `list_outcome_group_outcomes`, `list_outcome_group_subgroups`, `get_outcome`, `get_outcome_alignments`, `get_outcome_results`, `get_outcome_rollups`, `get_outcome_contributing_scores`, `get_outcome_mastery_distribution` |
 | Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 

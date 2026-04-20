@@ -10,7 +10,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-88 tools across Canvas courses, assignments, submissions, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
+100 tools across Canvas courses, assignments, submissions, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
@@ -173,7 +173,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (88)
+### All Registered Tools (100)
 
 | Category | Tools |
 |----------|-------|
@@ -195,10 +195,11 @@ Once configured, try these prompts with your AI client:
 | Peer Reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
 | Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
 | Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
+| Outcomes | `get_root_outcome_group`, `list_outcome_groups`, `list_outcome_group_links`, `get_outcome_group`, `list_outcome_group_outcomes`, `list_outcome_group_subgroups`, `get_outcome`, `get_outcome_alignments`, `get_outcome_results`, `get_outcome_rollups`, `get_outcome_contributing_scores`, `get_outcome_mastery_distribution` |
 | Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
-60 tools are read-only and 28 tools perform Canvas write operations.
+72 tools are read-only and 28 tools perform Canvas write operations.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 

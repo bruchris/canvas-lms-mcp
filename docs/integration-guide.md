@@ -148,7 +148,7 @@ const transport = new StdioServerTransport()
 await server.connect(transport)
 ```
 
-The `server` is a standard `McpServer` instance with all 88 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
+The `server` is a standard `McpServer` instance with all 100 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
 
 ### Standalone Canvas Client
 
