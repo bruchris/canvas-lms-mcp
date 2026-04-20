@@ -1,0 +1,1241 @@
+{
+  "schemaVersion": "1.0",
+  "packageName": "canvas-lms-mcp",
+  "toolCount": 100,
+  "tools": [
+    {
+      "name": "health_check",
+      "domain": "health",
+      "description": "Check if the Canvas API is reachable and the token is valid. Returns ok/error status.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_courses",
+      "domain": "courses",
+      "description": "List courses for the authenticated user. Optionally filter by enrollment state.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_course",
+      "domain": "courses",
+      "description": "Get details for a single course by ID, including term and total student count.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_syllabus",
+      "domain": "courses",
+      "description": "Get the syllabus HTML body for a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_course",
+      "domain": "courses",
+      "description": "Create a new course in a Canvas account. Returns the created course object.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_course",
+      "domain": "courses",
+      "description": "Update an existing course. Only provided fields are changed; omitted fields are left as-is.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_assignments",
+      "domain": "assignments",
+      "description": "List all assignments in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "get_assignment",
+      "domain": "assignments",
+      "description": "Get details for a single assignment by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "list_assignment_groups",
+      "domain": "assignments",
+      "description": "List assignment groups (categories like Homework, Exams) in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_assignment",
+      "domain": "assignments",
+      "description": "Create a new assignment in a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_assignment",
+      "domain": "assignments",
+      "description": "Update an existing assignment in a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_assignment",
+      "domain": "assignments",
+      "description": "Delete an assignment from a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_submissions",
+      "domain": "submissions",
+      "description": "List all submissions for an assignment in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "get_submission",
+      "domain": "submissions",
+      "description": "Get a single submission for a specific user on an assignment, including comments.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "grade_submission",
+      "domain": "submissions",
+      "description": "Post or update a grade for a submission. Requires grading permissions.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "comment_on_submission",
+      "domain": "submissions",
+      "description": "Add a text comment to a submission.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "list_rubrics",
+      "domain": "rubrics",
+      "description": "List all rubrics in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_rubric",
+      "domain": "rubrics",
+      "description": "Get details for a single rubric by ID, including criteria.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "get_rubric_assessment",
+      "domain": "rubrics",
+      "description": "Get the rubric assessment for a specific student submission on an assignment.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "submit_rubric_assessment",
+      "domain": "rubrics",
+      "description": "Submit a rubric assessment with scores and comments for each criterion.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
+    },
+    {
+      "name": "list_quizzes",
+      "domain": "quizzes",
+      "description": "List all quizzes in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_quiz",
+      "domain": "quizzes",
+      "description": "Get details for a single quiz by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_quiz_submissions",
+      "domain": "quizzes",
+      "description": "List all submissions for a quiz.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_quiz_questions",
+      "domain": "quizzes",
+      "description": "List all questions in a quiz.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_quiz_submission_answers",
+      "domain": "quizzes",
+      "description": "Get a student's answers for a quiz submission.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "score_quiz_question",
+      "domain": "quizzes",
+      "description": "Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_files",
+      "domain": "files",
+      "description": "List all files in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_folders",
+      "domain": "files",
+      "description": "List all folders in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_file",
+      "domain": "files",
+      "description": "Get metadata for a single file by ID, including download URL.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "upload_file",
+      "domain": "files",
+      "description": "Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_file",
+      "domain": "files",
+      "description": "Delete a file by ID. This action is permanent.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_students",
+      "domain": "users",
+      "description": "List all students enrolled in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_user",
+      "domain": "users",
+      "description": "Get details for a single user by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_profile",
+      "domain": "users",
+      "description": "Get the profile of the currently authenticated user.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "search_users",
+      "domain": "users",
+      "description": "Search for users in a Canvas account by name, login, or email.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_course_users",
+      "domain": "users",
+      "description": "List all users in a course, optionally filtered by enrollment type.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_groups",
+      "domain": "groups",
+      "description": "List all groups in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_group_members",
+      "domain": "groups",
+      "description": "List all members of a group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_enrollments",
+      "domain": "enrollments",
+      "description": "List all enrollments for the authenticated user across courses.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "enroll_user",
+      "domain": "enrollments",
+      "description": "Enroll a user in a course with a specified role.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "remove_enrollment",
+      "domain": "enrollments",
+      "description": "Remove or conclude an enrollment from a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_discussions",
+      "domain": "discussions",
+      "description": "List all discussion topics in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_discussion",
+      "domain": "discussions",
+      "description": "Get details for a single discussion topic by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_announcements",
+      "domain": "discussions",
+      "description": "List all announcements in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "post_discussion_entry",
+      "domain": "discussions",
+      "description": "Post a new entry (reply) to a discussion topic.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_discussion",
+      "domain": "discussions",
+      "description": "Create a new discussion topic in a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_discussion",
+      "domain": "discussions",
+      "description": "Update an existing discussion topic.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_discussion",
+      "domain": "discussions",
+      "description": "Delete a discussion topic from a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_modules",
+      "domain": "modules",
+      "description": "List all modules in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_module",
+      "domain": "modules",
+      "description": "Get details for a single module by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_module_items",
+      "domain": "modules",
+      "description": "List all items within a module.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_module",
+      "domain": "modules",
+      "description": "Create a new module in a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_module",
+      "domain": "modules",
+      "description": "Update an existing module (rename, reposition, publish/unpublish).",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_module_item",
+      "domain": "modules",
+      "description": "Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader) to a module.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_pages",
+      "domain": "pages",
+      "description": "List all wiki pages in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_page",
+      "domain": "pages",
+      "description": "Get a single wiki page by its URL slug.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_page",
+      "domain": "pages",
+      "description": "Create a new wiki page in a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_page",
+      "domain": "pages",
+      "description": "Update an existing wiki page.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_page",
+      "domain": "pages",
+      "description": "Delete a wiki page from a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_calendar_events",
+      "domain": "calendar",
+      "description": "List calendar events for a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_calendar_event",
+      "domain": "calendar",
+      "description": "Create a new calendar event in Canvas.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_calendar_event",
+      "domain": "calendar",
+      "description": "Update an existing calendar event. Only provided fields are changed.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_conversations",
+      "domain": "conversations",
+      "description": "List conversations (inbox messages) for the authenticated user.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_conversation",
+      "domain": "conversations",
+      "description": "Get a single conversation with its full message thread.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_conversation_unread_count",
+      "domain": "conversations",
+      "description": "Get the number of unread conversations for the authenticated user.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "send_conversation",
+      "domain": "conversations",
+      "description": "Send a new conversation message to one or more recipients.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_peer_reviews",
+      "domain": "peer_reviews",
+      "description": "List all peer reviews for an assignment in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_submission_peer_reviews",
+      "domain": "peer_reviews",
+      "description": "List peer reviews assigned to a specific submission.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_peer_review",
+      "domain": "peer_reviews",
+      "description": "Assign a user to peer-review a submission.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_peer_review",
+      "domain": "peer_reviews",
+      "description": "Remove a peer review assignment from a submission.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_account",
+      "domain": "accounts",
+      "description": "Get details for a Canvas account by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_accounts",
+      "domain": "accounts",
+      "description": "List all accounts accessible to the authenticated user.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_sub_accounts",
+      "domain": "accounts",
+      "description": "List sub-accounts under a given Canvas account.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_account_courses",
+      "domain": "accounts",
+      "description": "List courses under a given Canvas account.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_account_users",
+      "domain": "accounts",
+      "description": "List users in a Canvas account.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_account_reports",
+      "domain": "accounts",
+      "description": "List available report types for a Canvas account.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "search_course_content",
+      "domain": "analytics",
+      "description": "Search for content within a course. Searches pages, assignments, discussions, and announcements by keyword.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_course_analytics",
+      "domain": "analytics",
+      "description": "Get course-level activity analytics. Returns daily page view and participation counts.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_student_analytics",
+      "domain": "analytics",
+      "description": "Get per-student activity analytics for a course. Returns page views, participations, and submission timeline for a specific student.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_course_activity_stream",
+      "domain": "analytics",
+      "description": "Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_root_outcome_group",
+      "domain": "outcomes",
+      "description": "Get the root outcome group for an account or course context.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_outcome_groups",
+      "domain": "outcomes",
+      "description": "List all outcome groups for an account or course context.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_outcome_group_links",
+      "domain": "outcomes",
+      "description": "List all outcome links in an account or course context.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_group",
+      "domain": "outcomes",
+      "description": "Get details for a specific outcome group in an account or course context.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_outcome_group_outcomes",
+      "domain": "outcomes",
+      "description": "List the linked outcomes directly under a specific outcome group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_outcome_group_subgroups",
+      "domain": "outcomes",
+      "description": "List the immediate child outcome groups under a specific outcome group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome",
+      "domain": "outcomes",
+      "description": "Get the full details for a specific learning outcome by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_alignments",
+      "domain": "outcomes",
+      "description": "Get outcome alignments for a course, optionally filtered to a specific student or assignment.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_results",
+      "domain": "outcomes",
+      "description": "Get per-student outcome results for a course, with optional outcome, student, and alignment filters.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_rollups",
+      "domain": "outcomes",
+      "description": "Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_contributing_scores",
+      "domain": "outcomes",
+      "description": "Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_outcome_mastery_distribution",
+      "domain": "outcomes",
+      "description": "Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_my_courses",
+      "domain": "student",
+      "description": "List active courses for the authenticated student.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_my_grades",
+      "domain": "student",
+      "description": "Get grade data for the authenticated student. If course_id is omitted, returns grades across all enrolled courses.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_my_submissions",
+      "domain": "student",
+      "description": "List all submissions for the authenticated student in a course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_my_upcoming_assignments",
+      "domain": "student",
+      "description": "List upcoming assignment events for the authenticated student.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_dashboard_cards",
+      "domain": "dashboard",
+      "description": "Get the current user's dashboard course cards with position, color, and image.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_todo_items",
+      "domain": "dashboard",
+      "description": "Get the current user's to-do items, including upcoming assignments and grading tasks.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_upcoming_events",
+      "domain": "dashboard",
+      "description": "Get the current user's upcoming calendar events and assignments.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [
+        "student-weekly-planning"
+      ]
+    },
+    {
+      "name": "get_missing_submissions",
+      "domain": "dashboard",
+      "description": "Get assignments with missing submissions for the current user.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    }
+  ]
+}

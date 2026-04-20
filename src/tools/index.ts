@@ -2,53 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
+import { toolDomainCatalog } from './catalog'
 import { formatError } from './errors'
-import { healthTools } from './health'
-import { courseTools } from './courses'
-import { assignmentTools } from './assignments'
-import { submissionTools } from './submissions'
-import { rubricTools } from './rubrics'
-import { quizTools } from './quizzes'
-import { fileTools } from './files'
-import { userTools } from './users'
-import { groupTools } from './groups'
-import { enrollmentTools } from './enrollments'
-import { discussionTools } from './discussions'
-import { moduleTools } from './modules'
-import { pageTools } from './pages'
-import { calendarTools } from './calendar'
-import { conversationTools } from './conversations'
-import { peerReviewTools } from './peer-reviews'
-import { accountTools } from './accounts'
-import { analyticsTools } from './analytics'
-import { studentTools } from './student'
-import { dashboardTools } from './dashboard'
-import { outcomeTools } from './outcomes'
 
 export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
-  return [
-    ...healthTools(canvas),
-    ...courseTools(canvas),
-    ...assignmentTools(canvas),
-    ...submissionTools(canvas),
-    ...rubricTools(canvas),
-    ...quizTools(canvas),
-    ...fileTools(canvas),
-    ...userTools(canvas),
-    ...groupTools(canvas),
-    ...enrollmentTools(canvas),
-    ...discussionTools(canvas),
-    ...moduleTools(canvas),
-    ...pageTools(canvas),
-    ...calendarTools(canvas),
-    ...conversationTools(canvas),
-    ...peerReviewTools(canvas),
-    ...accountTools(canvas),
-    ...analyticsTools(canvas),
-    ...outcomeTools(canvas),
-    ...studentTools(canvas),
-    ...dashboardTools(canvas),
-  ]
+  return toolDomainCatalog.flatMap((registration) => registration.getTools(canvas))
 }
 
 export function registerAllTools(server: McpServer, canvas: CanvasClient): void {

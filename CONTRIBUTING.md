@@ -60,6 +60,15 @@ When adding a new Canvas capability:
 4. Register the tools in `src/tools/index.ts`.
 5. Add tests covering success cases, errors, and pagination when relevant.
 
+If you add, remove, rename, or reclassify tools or workflow catalog entries, regenerate the
+agent-discovery artifacts before opening the PR:
+
+```bash
+pnpm generate:manifests
+```
+
+The committed files in `docs/generated/` are expected to stay in sync with the live registry.
+
 ## Pull Requests
 
 - Use a clear title and explain the user-facing impact.
