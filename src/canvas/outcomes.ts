@@ -16,10 +16,7 @@ export const OUTCOME_DETAIL_LEVELS = ['abbrev', 'full'] as const
 export const OUTCOME_ROLLUP_AGGREGATE_STATS = ['mean', 'median'] as const
 export const OUTCOME_ROLLUP_SORT_BY = ['student', 'outcome'] as const
 export const OUTCOME_SORT_ORDER = ['asc', 'desc'] as const
-export const OUTCOME_EXCLUDE_OPTIONS = [
-  'missing_user_rollups',
-  'missing_outcome_results',
-] as const
+export const OUTCOME_EXCLUDE_OPTIONS = ['missing_user_rollups', 'missing_outcome_results'] as const
 
 type ContextPathSuffix = 'outcome_groups' | 'outcome_group_links' | 'root_outcome_group'
 
@@ -89,7 +86,10 @@ export class OutcomesModule {
     )
   }
 
-  async getOutcome(outcomeId: number, options?: { add_defaults?: boolean }): Promise<CanvasOutcome> {
+  async getOutcome(
+    outcomeId: number,
+    options?: { add_defaults?: boolean },
+  ): Promise<CanvasOutcome> {
     return this.client.request<CanvasOutcome>(
       this.withQuery(`/api/v1/outcomes/${outcomeId}`, {
         add_defaults: options?.add_defaults,

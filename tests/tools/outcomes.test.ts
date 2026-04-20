@@ -128,9 +128,7 @@ describe('outcomeTools', () => {
 
   it('delegates get_outcome_mastery_distribution filters', async () => {
     const canvas = buildMockCanvas()
-    const tool = outcomeTools(canvas).find(
-      (t) => t.name === 'get_outcome_mastery_distribution',
-    )!
+    const tool = outcomeTools(canvas).find((t) => t.name === 'get_outcome_mastery_distribution')!
     await tool.handler({
       course_id: 42,
       exclude: ['missing_outcome_results'],
