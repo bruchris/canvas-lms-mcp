@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.3.0...canvas-lms-mcp-v1.4.0) (2026-04-20)
+
+
+### Features
+
+* add generated discovery manifests ([#65](https://github.com/bruchris/canvas-lms-mcp/issues/65)) ([689cd9b](https://github.com/bruchris/canvas-lms-mcp/commit/689cd9b5a24a485fc8cfc985e5db473fc7927b21))
+
 ## [1.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.2...canvas-lms-mcp-v1.3.0) (2026-04-20)
 
 
