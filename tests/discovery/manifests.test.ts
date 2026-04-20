@@ -1,0 +1,97 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { buildToolManifest, buildWorkflowManifest } from '../../src/discovery/manifests'
+
+describe('tool manifest generation', () => {
+  it('serializes the registered tool surface with discovery metadata', () => {
+    const manifest = buildToolManifest()
+
+    expect(manifest.schemaVersion).toBe('1.0')
+    expect(manifest.tools).toHaveLength(100)
+    expect(manifest.tools.find((tool) => tool.name === 'grade_submission')).toEqual({
+      name: 'grade_submission',
+      domain: 'submissions',
+      description: 'Post or update a grade for a submission. Requires grading permissions.',
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      access: 'write',
+      primaryAudience: 'educator',
+      relatedWorkflows: ['educator-assignment-review'],
+    })
+    expect(manifest.tools.find((tool) => tool.name === 'get_outcome')).toEqual({
+      name: 'get_outcome',
+      domain: 'outcomes',
+      description: 'Get the full details for a specific learning outcome by ID.',
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      access: 'read',
+      primaryAudience: 'educator',
+      relatedWorkflows: [],
+    })
+  })
+
+  it('matches the committed generated JSON artifact', () => {
+    const generated = buildToolManifest()
+    const committed = JSON.parse(readFileSync(resolve('docs/generated/tool-manifest.json'), 'utf8'))
+
+    expect(committed).toEqual(generated)
+  })
+})
+
+describe('workflow manifest generation', () => {
+  it('links workflows to related tools through a stable schema', () => {
+    const manifest = buildWorkflowManifest()
+
+    expect(manifest.schemaVersion).toBe('1.0')
+    expect(manifest.workflows).toEqual([
+      {
+        id: 'educator-assignment-review',
+        title: 'Educator Assignment Review',
+        description: 'Review an assignment, inspect submissions, apply grades, and leave feedback.',
+        primaryAudience: 'educator',
+        status: 'proposed',
+        relatedTools: [
+          'list_assignments',
+          'get_assignment',
+          'list_submissions',
+          'get_submission',
+          'get_rubric',
+          'grade_submission',
+          'comment_on_submission',
+          'submit_rubric_assessment',
+        ],
+      },
+      {
+        id: 'student-weekly-planning',
+        title: 'Student Weekly Planning',
+        description:
+          'Review dashboard items, upcoming deadlines, and current course load for weekly planning.',
+        primaryAudience: 'student',
+        status: 'proposed',
+        relatedTools: [
+          'get_dashboard_cards',
+          'get_todo_items',
+          'get_upcoming_events',
+          'get_my_upcoming_assignments',
+          'get_my_courses',
+          'get_my_grades',
+        ],
+      },
+    ])
+  })
+
+  it('matches the committed generated JSON artifact', () => {
+    const generated = buildWorkflowManifest()
+    const committed = JSON.parse(
+      readFileSync(resolve('docs/generated/workflow-manifest.json'), 'utf8'),
+    )
+
+    expect(committed).toEqual(generated)
+  })
+})

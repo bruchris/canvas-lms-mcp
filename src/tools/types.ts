@@ -1,5 +1,7 @@
 import type { z } from 'zod'
 
+export type ToolAudience = 'student' | 'educator' | 'admin' | 'shared'
+
 export interface ToolAnnotations {
   readOnlyHint?: boolean
   destructiveHint?: boolean
