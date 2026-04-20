@@ -23,6 +23,7 @@ import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
 import { studentTools } from './student'
 import { dashboardTools } from './dashboard'
+import { outcomeTools } from './outcomes'
 
 export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -44,6 +45,7 @@ export function getAllTools(canvas: CanvasClient): ToolDefinition[] {
     ...peerReviewTools(canvas),
     ...accountTools(canvas),
     ...analyticsTools(canvas),
+    ...outcomeTools(canvas),
     ...studentTools(canvas),
     ...dashboardTools(canvas),
   ]

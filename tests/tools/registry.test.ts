@@ -118,6 +118,20 @@ function buildFullMockCanvas(): CanvasClient {
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
     },
+    outcomes: {
+      getRootOutcomeGroup: async () => ({}),
+      listOutcomeGroups: async () => [],
+      listOutcomeGroupLinks: async () => [],
+      getOutcomeGroup: async () => ({}),
+      listGroupOutcomes: async () => [],
+      listGroupSubgroups: async () => [],
+      getOutcome: async () => ({}),
+      getOutcomeAlignments: async () => [],
+      getOutcomeResults: async () => ({ outcome_results: [] }),
+      getOutcomeRollups: async () => ({ rollups: [] }),
+      getOutcomeContributingScores: async () => ({ scores: [] }),
+      getOutcomeMasteryDistribution: async () => ({ outcomes: [] }),
+    },
     dashboard: {
       getDashboardCards: async () => [],
       getTodoItems: async () => [],
@@ -133,7 +147,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 88 tools across all domains', () => {
+  it('returns all 100 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -235,6 +249,19 @@ describe('getAllTools', () => {
     expect(names).toContain('get_course_analytics')
     expect(names).toContain('get_student_analytics')
     expect(names).toContain('get_course_activity_stream')
+    // Outcomes (12)
+    expect(names).toContain('get_root_outcome_group')
+    expect(names).toContain('list_outcome_groups')
+    expect(names).toContain('list_outcome_group_links')
+    expect(names).toContain('get_outcome_group')
+    expect(names).toContain('list_outcome_group_outcomes')
+    expect(names).toContain('list_outcome_group_subgroups')
+    expect(names).toContain('get_outcome')
+    expect(names).toContain('get_outcome_alignments')
+    expect(names).toContain('get_outcome_results')
+    expect(names).toContain('get_outcome_rollups')
+    expect(names).toContain('get_outcome_contributing_scores')
+    expect(names).toContain('get_outcome_mastery_distribution')
     // Student (4)
     expect(names).toContain('get_my_courses')
     expect(names).toContain('get_my_grades')
@@ -246,7 +273,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(88)
+    expect(tools).toHaveLength(100)
   })
 
   it('all tools have openWorldHint: true', () => {
