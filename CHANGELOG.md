@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.2...canvas-lms-mcp-v1.3.0) (2026-04-20)
+
+
+### Features
+
+* add read-only outcomes tools ([#63](https://github.com/bruchris/canvas-lms-mcp/issues/63)) ([49ff1ba](https://github.com/bruchris/canvas-lms-mcp/commit/49ff1bafaceb9b895ecdf1b0e9007fd0e509f41a))
+
+
+### Documentation
+
+* add ChatGPT app compatibility mode design spec ([#62](https://github.com/bruchris/canvas-lms-mcp/issues/62)) ([6d5dab8](https://github.com/bruchris/canvas-lms-mcp/commit/6d5dab8481788f93da7b585d114d2bf6f09abb54))
+
 ## [1.2.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.2.1...canvas-lms-mcp-v1.2.2) (2026-04-19)
 
 
