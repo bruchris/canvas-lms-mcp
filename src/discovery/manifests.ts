@@ -1,6 +1,7 @@
-import { toolDomainCatalog } from '../tools/catalog'
+import type { CanvasClient } from '../canvas'
+import { toolDomainCatalog, type ToolDomainRegistration } from '../tools/catalog'
 import type { ToolAnnotations, ToolAudience, ToolDefinition } from '../tools/types'
-import { toolAudienceOverrides, workflowCatalog } from './catalog'
+import { toolAudienceOverrides, workflowCatalog, type WorkflowCatalogEntry } from './catalog'
 
 export interface ToolManifestEntry {
   name: string
@@ -31,10 +32,31 @@ interface RegisteredToolContext {
   defaultPrimaryAudience: ToolAudience
 }
 
-function getRegisteredToolContexts(): RegisteredToolContext[] {
-  const canvas = {} as never
+export interface ManifestBuildOptions {
+  toolCatalog?: readonly ToolDomainRegistration[]
+  workflowCatalog?: readonly WorkflowCatalogEntry[]
+  toolAudienceOverrides?: Readonly<Record<string, ToolAudience>>
+}
 
-  return toolDomainCatalog.flatMap((registration) =>
+function createManifestCanvasProxy(): CanvasClient {
+  return new Proxy(
+    {},
+    {
+      get(_target, property) {
+        throw new Error(
+          `Manifest generation accessed Canvas client during tool registration via "${String(property)}".`,
+        )
+      },
+    },
+  ) as CanvasClient
+}
+
+function getRegisteredToolContexts(
+  registrations: readonly ToolDomainRegistration[] = toolDomainCatalog,
+): RegisteredToolContext[] {
+  const canvas = createManifestCanvasProxy()
+
+  return registrations.flatMap((registration) =>
     registration.getTools(canvas).map((tool) => ({
       tool,
       domain: registration.domain,
@@ -43,8 +65,17 @@ function getRegisteredToolContexts(): RegisteredToolContext[] {
   )
 }
 
-function getAccess(annotations: ToolAnnotations): 'read' | 'write' {
-  return annotations.destructiveHint ? 'write' : 'read'
+function getAccess(toolName: string, annotations: ToolAnnotations): 'read' | 'write' {
+  const isReadOnly = annotations.readOnlyHint === true
+  const isDestructive = annotations.destructiveHint === true
+
+  if (isReadOnly === isDestructive) {
+    throw new Error(
+      `Tool "${toolName}" must declare exactly one of readOnlyHint or destructiveHint.`,
+    )
+  }
+
+  return isDestructive ? 'write' : 'read'
 }
 
 function compactAnnotations(annotations: ToolAnnotations): ToolAnnotations {
@@ -66,18 +97,28 @@ function compactAnnotations(annotations: ToolAnnotations): ToolAnnotations {
   return compacted
 }
 
-function getRelatedWorkflowIds(toolName: string): string[] {
-  return workflowCatalog
+function getRelatedWorkflowIds(
+  toolName: string,
+  workflows: readonly WorkflowCatalogEntry[] = workflowCatalog,
+): string[] {
+  return workflows
     .filter((workflow) => workflow.relatedTools.includes(toolName))
     .map((workflow) => workflow.id)
 }
 
-function getPrimaryAudience(toolName: string, defaultPrimaryAudience: ToolAudience): ToolAudience {
-  return toolAudienceOverrides[toolName] ?? defaultPrimaryAudience
+function getPrimaryAudience(
+  toolName: string,
+  defaultPrimaryAudience: ToolAudience,
+  audienceOverrides: Readonly<Record<string, ToolAudience>> = toolAudienceOverrides,
+): ToolAudience {
+  return audienceOverrides[toolName] ?? defaultPrimaryAudience
 }
 
-function assertWorkflowLinksExist(toolNames: Set<string>): void {
-  for (const workflow of workflowCatalog) {
+function assertWorkflowLinksExist(
+  toolNames: Set<string>,
+  workflows: readonly WorkflowCatalogEntry[] = workflowCatalog,
+): void {
+  for (const workflow of workflows) {
     for (const relatedTool of workflow.relatedTools) {
       if (!toolNames.has(relatedTool)) {
         throw new Error(`Workflow "${workflow.id}" references unknown tool "${relatedTool}".`)
@@ -86,20 +127,36 @@ function assertWorkflowLinksExist(toolNames: Set<string>): void {
   }
 }
 
-export function buildToolManifest(): ToolManifestDocument {
-  const registeredTools = getRegisteredToolContexts()
+function assertAudienceOverrideLinksExist(
+  toolNames: Set<string>,
+  audienceOverrides: Readonly<Record<string, ToolAudience>> = toolAudienceOverrides,
+): void {
+  for (const toolName of Object.keys(audienceOverrides)) {
+    if (!toolNames.has(toolName)) {
+      throw new Error(`Audience override references unknown tool "${toolName}".`)
+    }
+  }
+}
+
+export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManifestDocument {
+  const registeredTools = getRegisteredToolContexts(options.toolCatalog)
   const toolNames = new Set(registeredTools.map(({ tool }) => tool.name))
 
-  assertWorkflowLinksExist(toolNames)
+  assertAudienceOverrideLinksExist(toolNames, options.toolAudienceOverrides)
+  assertWorkflowLinksExist(toolNames, options.workflowCatalog)
 
   const tools = registeredTools.map(({ tool, domain, defaultPrimaryAudience }) => ({
     name: tool.name,
     domain,
     description: tool.description,
     annotations: compactAnnotations(tool.annotations),
-    access: getAccess(tool.annotations),
-    primaryAudience: getPrimaryAudience(tool.name, defaultPrimaryAudience),
-    relatedWorkflows: getRelatedWorkflowIds(tool.name),
+    access: getAccess(tool.name, tool.annotations),
+    primaryAudience: getPrimaryAudience(
+      tool.name,
+      defaultPrimaryAudience,
+      options.toolAudienceOverrides,
+    ),
+    relatedWorkflows: getRelatedWorkflowIds(tool.name, options.workflowCatalog),
   }))
 
   return {
@@ -110,15 +167,17 @@ export function buildToolManifest(): ToolManifestDocument {
   }
 }
 
-export function buildWorkflowManifest(): WorkflowManifestDocument {
-  const toolManifest = buildToolManifest()
-  const toolNames = new Set(toolManifest.tools.map((tool) => tool.name))
+export function buildWorkflowManifest(
+  options: ManifestBuildOptions = {},
+): WorkflowManifestDocument {
+  const registeredTools = getRegisteredToolContexts(options.toolCatalog)
+  const toolNames = new Set(registeredTools.map(({ tool }) => tool.name))
 
-  assertWorkflowLinksExist(toolNames)
+  assertWorkflowLinksExist(toolNames, options.workflowCatalog)
 
   return {
     schemaVersion: '1.0',
-    workflowCount: workflowCatalog.length,
-    workflows: workflowCatalog,
+    workflowCount: (options.workflowCatalog ?? workflowCatalog).length,
+    workflows: options.workflowCatalog ?? workflowCatalog,
   }
 }

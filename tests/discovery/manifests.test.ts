@@ -2,6 +2,33 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildToolManifest, buildWorkflowManifest } from '../../src/discovery/manifests'
+import type { ToolDomainRegistration } from '../../src/tools/catalog'
+import type { ToolAudience, ToolDefinition } from '../../src/tools/types'
+
+function createTool(
+  name: string,
+  annotations: ToolDefinition['annotations'],
+  description = `${name} description`,
+): ToolDefinition {
+  return {
+    name,
+    description,
+    inputSchema: {},
+    annotations,
+    handler: async () => undefined,
+  }
+}
+
+function createRegistration(
+  tool: ToolDefinition,
+  defaultPrimaryAudience: ToolAudience = 'shared',
+): ToolDomainRegistration {
+  return {
+    domain: 'test',
+    defaultPrimaryAudience,
+    getTools: () => [tool],
+  }
+}
 
 describe('tool manifest generation', () => {
   it('serializes the registered tool surface with discovery metadata', () => {
@@ -41,6 +68,69 @@ describe('tool manifest generation', () => {
     const committed = JSON.parse(readFileSync(resolve('docs/generated/tool-manifest.json'), 'utf8'))
 
     expect(committed).toEqual(generated)
+  })
+
+  it('fails when an audience override references an unknown tool', () => {
+    expect(() =>
+      buildToolManifest({
+        toolCatalog: [createRegistration(createTool('known_tool', { readOnlyHint: true }))],
+        toolAudienceOverrides: {
+          missing_tool: 'student',
+        },
+      }),
+    ).toThrow('Audience override references unknown tool "missing_tool".')
+  })
+
+  it('fails when a tool omits both readOnlyHint and destructiveHint', () => {
+    expect(() =>
+      buildToolManifest({
+        toolCatalog: [
+          createRegistration(
+            createTool('ambiguous_tool', {
+              openWorldHint: true,
+            }),
+          ),
+        ],
+        toolAudienceOverrides: {},
+        workflowCatalog: [],
+      }),
+    ).toThrow('Tool "ambiguous_tool" must declare exactly one of readOnlyHint or destructiveHint.')
+  })
+
+  it('fails when a tool declares both readOnlyHint and destructiveHint', () => {
+    expect(() =>
+      buildToolManifest({
+        toolCatalog: [
+          createRegistration(
+            createTool('contradictory_tool', {
+              readOnlyHint: true,
+              destructiveHint: true,
+            }),
+          ),
+        ],
+        toolAudienceOverrides: {},
+        workflowCatalog: [],
+      }),
+    ).toThrow(
+      'Tool "contradictory_tool" must declare exactly one of readOnlyHint or destructiveHint.',
+    )
+  })
+
+  it('fails when tool registration touches the Canvas client during manifest generation', () => {
+    expect(() =>
+      buildToolManifest({
+        toolCatalog: [
+          {
+            domain: 'test',
+            defaultPrimaryAudience: 'shared',
+            getTools: (canvas) => {
+              void canvas.users
+              return [createTool('health_check', { readOnlyHint: true })]
+            },
+          },
+        ],
+      }),
+    ).toThrow('Manifest generation accessed Canvas client during tool registration via "users".')
   })
 })
 
@@ -93,5 +183,23 @@ describe('workflow manifest generation', () => {
     )
 
     expect(committed).toEqual(generated)
+  })
+
+  it('fails when a workflow references an unknown tool', () => {
+    expect(() =>
+      buildWorkflowManifest({
+        toolCatalog: [createRegistration(createTool('known_tool', { readOnlyHint: true }))],
+        workflowCatalog: [
+          {
+            id: 'bad-workflow',
+            title: 'Bad Workflow',
+            description: 'References a missing tool.',
+            primaryAudience: 'student',
+            status: 'proposed',
+            relatedTools: ['missing_tool'],
+          },
+        ],
+      }),
+    ).toThrow('Workflow "bad-workflow" references unknown tool "missing_tool".')
   })
 })
