@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.4.1...canvas-lms-mcp-v1.4.2) (2026-04-21)
+
+
+### Documentation
+
+* add first workflow packs ([#70](https://github.com/bruchris/canvas-lms-mcp/issues/70)) ([2f0944d](https://github.com/bruchris/canvas-lms-mcp/commit/2f0944d8d7963a12e4d914e4d84301f2f8e8f1fe))
+
 ## [1.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.4.0...canvas-lms-mcp-v1.4.1) (2026-04-21)
 
 
