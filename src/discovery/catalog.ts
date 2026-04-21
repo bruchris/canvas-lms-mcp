@@ -6,6 +6,7 @@ export interface WorkflowCatalogEntry {
   description: string
   primaryAudience: ToolAudience
   status: 'proposed' | 'available'
+  documentationPath: string
   relatedTools: string[]
 }
 
@@ -15,13 +16,15 @@ export const workflowCatalog: readonly WorkflowCatalogEntry[] = [
     title: 'Educator Assignment Review',
     description: 'Review an assignment, inspect submissions, apply grades, and leave feedback.',
     primaryAudience: 'educator',
-    status: 'proposed',
+    status: 'available',
+    documentationPath: 'docs/workflows/educator-assignment-review.md',
     relatedTools: [
       'list_assignments',
       'get_assignment',
       'list_submissions',
       'get_submission',
       'get_rubric',
+      'get_rubric_assessment',
       'grade_submission',
       'comment_on_submission',
       'submit_rubric_assessment',
@@ -33,7 +36,8 @@ export const workflowCatalog: readonly WorkflowCatalogEntry[] = [
     description:
       'Review dashboard items, upcoming deadlines, and current course load for weekly planning.',
     primaryAudience: 'student',
-    status: 'proposed',
+    status: 'available',
+    documentationPath: 'docs/workflows/student-weekly-planning.md',
     relatedTools: [
       'get_dashboard_cards',
       'get_todo_items',
