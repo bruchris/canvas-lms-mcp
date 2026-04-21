@@ -347,6 +347,9 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validatio
 - [Student Guide](docs/student-guide.md) -- Token setup, AI client configuration, 10 example prompts
 - [Educator Guide](docs/educator-guide.md) -- Grading workflows, write operations, privacy considerations
 - [Integration Guide](docs/integration-guide.md) -- Three integration patterns with code examples
+- [Agent Discovery](docs/agent-discovery.md) -- Generated tool/workflow manifests and workflow-pack index
+- [Educator Assignment Review Workflow](docs/workflows/educator-assignment-review.md) -- Read-first grading flow with write-safety guidance
+- [Student Weekly Planning Workflow](docs/workflows/student-weekly-planning.md) -- Read-only weekly planning sequence for students
 
 ## License
 

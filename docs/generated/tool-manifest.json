@@ -247,7 +247,9 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [
+        "educator-assignment-review"
+      ]
     },
     {
       "name": "submit_rubric_assessment",
