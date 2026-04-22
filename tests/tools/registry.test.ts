@@ -48,6 +48,12 @@ function buildFullMockCanvas(): CanvasClient {
       upload: async () => ({}),
       delete: async () => undefined,
     },
+    gradebookHistory: {
+      listDays: async () => [],
+      getDay: async () => [],
+      listSubmissions: async () => [],
+      getFeed: async () => [],
+    },
     users: {
       listStudents: async () => [],
       get: async () => ({}),
@@ -147,7 +153,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 100 tools across all domains', () => {
+  it('returns all 104 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -189,6 +195,11 @@ describe('getAllTools', () => {
     expect(names).toContain('get_file')
     expect(names).toContain('upload_file')
     expect(names).toContain('delete_file')
+    // Gradebook History (4)
+    expect(names).toContain('list_gradebook_history_days')
+    expect(names).toContain('get_gradebook_history_day')
+    expect(names).toContain('list_gradebook_history_submissions')
+    expect(names).toContain('get_gradebook_history_feed')
     // Users (5)
     expect(names).toContain('list_students')
     expect(names).toContain('get_user')
@@ -273,7 +284,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(100)
+    expect(tools).toHaveLength(104)
   })
 
   it('all tools have openWorldHint: true', () => {

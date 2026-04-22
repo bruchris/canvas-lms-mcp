@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { CanvasClient, CanvasHttpClient, CanvasApiError } from '../../src/canvas/index'
 import { CoursesModule } from '../../src/canvas/courses'
+import { GradebookHistoryModule } from '../../src/canvas/gradebook-history'
 
 describe('CanvasClient facade', () => {
   it('creates a CanvasClient with courses module', () => {
@@ -10,6 +11,15 @@ describe('CanvasClient facade', () => {
     })
 
     expect(client.courses).toBeInstanceOf(CoursesModule)
+  })
+
+  it('creates a CanvasClient with gradebookHistory module', () => {
+    const client = new CanvasClient({
+      token: 'test-token',
+      baseUrl: 'https://canvas.example.com',
+    })
+
+    expect(client.gradebookHistory).toBeInstanceOf(GradebookHistoryModule)
   })
 
   it('re-exports CanvasHttpClient', () => {
