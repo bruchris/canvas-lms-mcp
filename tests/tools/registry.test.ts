@@ -65,6 +65,7 @@ function buildFullMockCanvas(): CanvasClient {
     groups: { list: async () => [], listMembers: async () => [] },
     enrollments: {
       list: async () => [],
+      listForCourse: async () => [],
       enroll: async () => ({}),
       remove: async () => ({}),
       listMyGrades: async () => [],
@@ -153,7 +154,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 104 tools across all domains', () => {
+  it('returns all 105 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -209,8 +210,9 @@ describe('getAllTools', () => {
     // Groups (2)
     expect(names).toContain('list_groups')
     expect(names).toContain('list_group_members')
-    // Enrollments (3)
+    // Enrollments (4)
     expect(names).toContain('list_enrollments')
+    expect(names).toContain('list_course_enrollments')
     expect(names).toContain('enroll_user')
     expect(names).toContain('remove_enrollment')
     // Discussions (7)
@@ -284,7 +286,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(104)
+    expect(tools).toHaveLength(105)
   })
 
   it('all tools have openWorldHint: true', () => {

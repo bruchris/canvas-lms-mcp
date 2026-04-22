@@ -49,7 +49,23 @@ describe('SubmissionsModule', () => {
       const result = await submissions.list(1, 10)
       expect(result).toEqual(mockSubmissions)
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/1/assignments/10/submissions', {
-        'include[]': 'submission_comments',
+        include: ['submission_comments'],
+      })
+    })
+
+    it('forwards explicit include[] plus student_ids and workflow_state filters', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.list(1, 10, {
+        include: ['user', 'rubric_assessment'],
+        student_ids: [5, 6],
+        workflow_state: 'submitted',
+        grouped: true,
+      })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/1/assignments/10/submissions', {
+        include: ['user', 'rubric_assessment'],
+        student_ids: [5, 6],
+        workflow_state: 'submitted',
+        grouped: true,
       })
     })
 
@@ -90,7 +106,8 @@ describe('SubmissionsModule', () => {
       const result = await submissions.get(1, 10, 100)
       expect(result).toEqual(mockSubmission)
       expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/1/assignments/10/submissions/100?include[]=submission_comments',
+        '/api/v1/courses/1/assignments/10/submissions/100',
+        { query: { include: ['submission_comments'] } },
       )
     })
 
@@ -110,7 +127,29 @@ describe('SubmissionsModule', () => {
 
       await submissions.get(42, 20, 300)
       expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/42/assignments/20/submissions/300?include[]=submission_comments',
+        '/api/v1/courses/42/assignments/20/submissions/300',
+        { query: { include: ['submission_comments'] } },
+      )
+    })
+
+    it('honors caller-provided include', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        id: 1,
+        assignment_id: 10,
+        user_id: 100,
+        submitted_at: null,
+        score: null,
+        grade: null,
+        body: null,
+        url: null,
+        attempt: null,
+        workflow_state: 'submitted',
+      })
+
+      await submissions.get(1, 10, 100, { include: ['rubric_assessment', 'user'] })
+      expect(client.request).toHaveBeenCalledWith(
+        '/api/v1/courses/1/assignments/10/submissions/100',
+        { query: { include: ['rubric_assessment', 'user'] } },
       )
     })
   })
@@ -169,11 +208,11 @@ describe('SubmissionsModule', () => {
   })
 
   describe('listMy', () => {
-    it('fetches submissions for self with student_ids[]=self', async () => {
+    it('fetches submissions for self with student_ids=[self]', async () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
       await submissions.listMy(10)
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
-        'student_ids[]': 'self',
+        student_ids: ['self'],
       })
     })
 
@@ -181,7 +220,7 @@ describe('SubmissionsModule', () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
       await submissions.listMy(99)
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/99/students/submissions', {
-        'student_ids[]': 'self',
+        student_ids: ['self'],
       })
     })
   })

@@ -16,7 +16,7 @@ describe('CoursesModule', () => {
   })
 
   describe('list', () => {
-    it('lists courses with pagination', async () => {
+    it('lists courses with default include[]=term', async () => {
       const mockCourses: CanvasCourse[] = [
         { id: 1, name: 'CS 101', course_code: 'CS101', workflow_state: 'available' },
         { id: 2, name: 'Math 201', course_code: 'MATH201', workflow_state: 'available' },
@@ -27,7 +27,7 @@ describe('CoursesModule', () => {
       const result = await courses.list()
       expect(result).toEqual(mockCourses)
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses', {
-        'include[]': 'term',
+        include: ['term'],
       })
     })
 
@@ -36,17 +36,29 @@ describe('CoursesModule', () => {
 
       await courses.list({ enrollment_state: 'completed' })
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses', {
-        'include[]': 'term',
+        include: ['term'],
         enrollment_state: 'completed',
       })
     })
 
-    it('omits enrollment_state when not provided', async () => {
+    it('honors a caller-provided include list', async () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
-
-      await courses.list()
+      await courses.list({ include: ['teachers', 'total_students'] })
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses', {
-        'include[]': 'term',
+        include: ['teachers', 'total_students'],
+      })
+    })
+
+    it('forwards state[] and exclude_blueprint_courses', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await courses.list({
+        state: ['available', 'completed'],
+        exclude_blueprint_courses: true,
+      })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses', {
+        include: ['term'],
+        state: ['available', 'completed'],
+        exclude_blueprint_courses: true,
       })
     })
 
@@ -59,7 +71,7 @@ describe('CoursesModule', () => {
   })
 
   describe('get', () => {
-    it('gets a single course with term and total_students includes', async () => {
+    it('gets a single course with default include=[term, total_students]', async () => {
       const mockCourse: CanvasCourse = {
         id: 1,
         name: 'CS 101',
@@ -73,12 +85,12 @@ describe('CoursesModule', () => {
 
       const result = await courses.get(1)
       expect(result).toEqual(mockCourse)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/1?include[]=term&include[]=total_students',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1', {
+        query: { include: ['term', 'total_students'] },
+      })
     })
 
-    it('constructs correct URL for different course IDs', async () => {
+    it('honors caller-provided include', async () => {
       vi.spyOn(client, 'request').mockResolvedValueOnce({
         id: 42,
         name: 'Art 300',
@@ -86,10 +98,10 @@ describe('CoursesModule', () => {
         workflow_state: 'available',
       })
 
-      await courses.get(42)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/42?include[]=term&include[]=total_students',
-      )
+      await courses.get(42, { include: ['teachers', 'permissions'], teacher_limit: 5 })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42', {
+        query: { include: ['teachers', 'permissions'], teacher_limit: 5 },
+      })
     })
   })
 
@@ -107,7 +119,9 @@ describe('CoursesModule', () => {
 
       const result = await courses.getSyllabus(1)
       expect(result).toBe('<p>Welcome to CS 101</p>')
-      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1?include[]=syllabus_body')
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1', {
+        query: { include: ['syllabus_body'] },
+      })
     })
 
     it('returns null when syllabus_body is undefined', async () => {
@@ -133,7 +147,9 @@ describe('CoursesModule', () => {
       })
 
       await courses.getSyllabus(99)
-      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/99?include[]=syllabus_body')
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/99', {
+        query: { include: ['syllabus_body'] },
+      })
     })
   })
 

@@ -22,7 +22,7 @@ describe('UsersModule', () => {
     const result = await users.listStudents(100)
     expect(result).toHaveLength(2)
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {
-      'enrollment_type[]': 'student',
+      enrollment_type: ['student'],
     })
   })
 
@@ -59,11 +59,20 @@ describe('UsersModule', () => {
 
   it('searches users with sort and order', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 1, name: 'Alice' }])
-    await users.searchUsers(1, 'alice', 'username', 'asc')
+    await users.searchUsers(1, 'alice', { sort: 'username', order: 'asc' })
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', {
       search_term: 'alice',
       sort: 'username',
       order: 'asc',
+    })
+  })
+
+  it('forwards include on search', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await users.searchUsers(1, 'alice', { include: ['email', 'last_login'] })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', {
+      search_term: 'alice',
+      include: ['email', 'last_login'],
     })
   })
 
@@ -77,12 +86,54 @@ describe('UsersModule', () => {
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {})
   })
 
-  it('lists course users filtered by enrollment type', async () => {
+  it('lists course users filtered by enrollment type (array)', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([{ id: 2, name: 'Bob' }])
-    await users.listCourseUsers(100, 'teacher')
+    await users.listCourseUsers(100, { enrollment_type: ['teacher'] })
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {
-      'enrollment_type[]': 'teacher',
+      enrollment_type: ['teacher'],
     })
+  })
+
+  it('accepts a single string for enrollment_type and wraps it as an array', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await users.listCourseUsers(100, { enrollment_type: 'ta' })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {
+      enrollment_type: ['ta'],
+    })
+  })
+
+  it('forwards include, enrollment_state, user_ids, search_term, sort/order', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await users.listCourseUsers(100, {
+      enrollment_type: ['student'],
+      enrollment_state: ['active', 'invited'],
+      include: ['email', 'enrollments'],
+      user_ids: [10, 'sis_user_id:abc'],
+      search_term: 'alice',
+      sort: 'last_login',
+      order: 'desc',
+      enrollment_role_id: 42,
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {
+      enrollment_type: ['student'],
+      enrollment_state: ['active', 'invited'],
+      include: ['email', 'enrollments'],
+      user_ids: [10, 'sis_user_id:abc'],
+      search_term: 'alice',
+      sort: 'last_login',
+      order: 'desc',
+      enrollment_role_id: 42,
+    })
+  })
+
+  it('drops empty arrays so Canvas does not receive empty include[]', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await users.listCourseUsers(100, {
+      include: [],
+      enrollment_state: [],
+      user_ids: [],
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {})
   })
 
   it('fetches upcoming assignment events filtered by type=Assignment', async () => {

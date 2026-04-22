@@ -27,7 +27,39 @@ describe('EnrollmentsModule', () => {
     ])
     const result = await enrollments.list()
     expect(result).toHaveLength(1)
-    expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/enrollments')
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/enrollments', {})
+  })
+
+  it('forwards include and filters when listing user enrollments', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await enrollments.list({
+      type: ['StudentEnrollment'],
+      state: ['active'],
+      include: ['grades', 'current_points'],
+      grading_period_id: 7,
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/enrollments', {
+      type: ['StudentEnrollment'],
+      state: ['active'],
+      include: ['grades', 'current_points'],
+      grading_period_id: 7,
+    })
+  })
+
+  it('lists course-scoped enrollments with filters', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await enrollments.listForCourse(100, {
+      type: ['StudentEnrollment', 'TeacherEnrollment'],
+      state: ['active'],
+      include: ['grades', 'avatar_url'],
+      user_id: 'self',
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      type: ['StudentEnrollment', 'TeacherEnrollment'],
+      state: ['active'],
+      include: ['grades', 'avatar_url'],
+      user_id: 'self',
+    })
   })
 
   it('returns empty array when no enrollments', async () => {
@@ -87,7 +119,7 @@ describe('EnrollmentsModule', () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
       await enrollments.listMyGrades()
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/users/self/enrollments', {
-        'include[]': 'grades',
+        include: ['grades'],
       })
     })
 
@@ -96,7 +128,7 @@ describe('EnrollmentsModule', () => {
       await enrollments.listMyGrades(42)
       expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/42/enrollments', {
         user_id: 'self',
-        'include[]': 'grades',
+        include: ['grades'],
       })
     })
   })
