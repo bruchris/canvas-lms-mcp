@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.4.2...canvas-lms-mcp-v1.5.0) (2026-04-22)
+
+
+### Features
+
+* add read-only gradebook history tools ([#73](https://github.com/bruchris/canvas-lms-mcp/issues/73)) ([ebfbd0d](https://github.com/bruchris/canvas-lms-mcp/commit/ebfbd0de65b670f87bdcb444f025c4b51281c0c0))
+
+
+### Documentation
+
+* add Canvas authentication modes design ([#72](https://github.com/bruchris/canvas-lms-mcp/issues/72)) ([c803867](https://github.com/bruchris/canvas-lms-mcp/commit/c8038676cdd194233e1a29c544e72a2d8533429d))
+
 ## [1.4.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.4.1...canvas-lms-mcp-v1.4.2) (2026-04-21)
 
 
