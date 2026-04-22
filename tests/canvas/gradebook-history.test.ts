@@ -49,9 +49,7 @@ describe('GradebookHistoryModule', () => {
       const result = await gradebookHistory.getDay(42, '2026-04-20')
 
       expect(result).toEqual(mockGraders)
-      expect(client.request).toHaveBeenCalledWith(
-        '/api/v1/courses/42/gradebook_history/2026-04-20',
-      )
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/gradebook_history/2026-04-20')
     })
 
     it('encodes special characters in the date path segment', async () => {

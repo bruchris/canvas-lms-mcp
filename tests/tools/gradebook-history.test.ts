@@ -90,7 +90,9 @@ describe('gradebookHistoryTools', () => {
 
   it('delegates list_gradebook_history_days to canvas.gradebookHistory.listDays', async () => {
     const canvas = buildMockCanvas()
-    const tool = gradebookHistoryTools(canvas).find((t) => t.name === 'list_gradebook_history_days')!
+    const tool = gradebookHistoryTools(canvas).find(
+      (t) => t.name === 'list_gradebook_history_days',
+    )!
 
     const result = await tool.handler({ course_id: 42 })
 
