@@ -9,6 +9,7 @@ import { dashboardTools } from './dashboard'
 import { discussionTools } from './discussions'
 import { enrollmentTools } from './enrollments'
 import { fileTools } from './files'
+import { gradebookHistoryTools } from './gradebook-history'
 import { groupTools } from './groups'
 import { healthTools } from './health'
 import { moduleTools } from './modules'
@@ -63,6 +64,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'files',
     defaultPrimaryAudience: 'shared',
     getTools: fileTools,
+  },
+  {
+    domain: 'gradebook_history',
+    defaultPrimaryAudience: 'educator',
+    getTools: gradebookHistoryTools,
   },
   {
     domain: 'users',

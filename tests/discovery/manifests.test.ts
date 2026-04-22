@@ -35,7 +35,7 @@ describe('tool manifest generation', () => {
     const manifest = buildToolManifest()
 
     expect(manifest.schemaVersion).toBe('1.0')
-    expect(manifest.tools).toHaveLength(100)
+    expect(manifest.tools).toHaveLength(104)
     expect(manifest.tools.find((tool) => tool.name === 'grade_submission')).toEqual({
       name: 'grade_submission',
       domain: 'submissions',
@@ -48,6 +48,19 @@ describe('tool manifest generation', () => {
       access: 'write',
       primaryAudience: 'educator',
       relatedWorkflows: ['educator-assignment-review'],
+    })
+    expect(manifest.tools.find((tool) => tool.name === 'get_gradebook_history_feed')).toEqual({
+      name: 'get_gradebook_history_feed',
+      domain: 'gradebook_history',
+      description:
+        'Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.',
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      access: 'read',
+      primaryAudience: 'educator',
+      relatedWorkflows: [],
     })
     expect(manifest.tools.find((tool) => tool.name === 'get_outcome')).toEqual({
       name: 'get_outcome',

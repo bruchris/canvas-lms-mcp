@@ -148,7 +148,7 @@ const transport = new StdioServerTransport()
 await server.connect(transport)
 ```
 
-The `server` is a standard `McpServer` instance with all 100 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
+The `server` is a standard `McpServer` instance with all 104 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
 
 ### Standalone Canvas Client
 
@@ -174,7 +174,7 @@ await canvas.submissions.comment(courseId, assignmentId, userId, 'Great work!')
 
 ### Available Canvas Client Modules
 
-The `CanvasClient` facade exposes 14 domain modules:
+The `CanvasClient` facade exposes domain modules for every registered Canvas API area:
 
 | Module | Methods |
 |--------|---------|
@@ -184,6 +184,7 @@ The `CanvasClient` facade exposes 14 domain modules:
 | `canvas.rubrics` | `list(courseId)`, `get(courseId, id)`, `getAssessment(...)`, `submitAssessment(...)` |
 | `canvas.quizzes` | `list(courseId)`, `get(courseId, id)`, `listSubmissions(...)`, `listQuestions(...)`, `getSubmissionAnswers(id)`, `scoreQuestion(...)` |
 | `canvas.files` | `listFiles(courseId)`, `listFolders(courseId)`, `get(courseId, id)` |
+| `canvas.gradebookHistory` | `listDays(courseId)`, `getDay(courseId, date)`, `listSubmissions(...)`, `getFeed(...)` |
 | `canvas.users` | `listStudents(courseId)`, `get(id)`, `getProfile()` |
 | `canvas.groups` | `list(courseId)`, `listMembers(groupId)` |
 | `canvas.enrollments` | `list()` |

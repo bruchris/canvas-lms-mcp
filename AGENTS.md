@@ -28,7 +28,7 @@ Three-layer design with strict separation of concerns:
 ```
 Layer 1: src/canvas/       Standalone Canvas REST API client
                            Pure fetch, no MCP dependency, independently importable
-                           14 modular classes composed into CanvasClient facade
+                           Modular classes composed into CanvasClient facade
 
 Layer 2: src/tools/        MCP tool definitions
                            Each domain exports (canvas: CanvasClient) => ToolDefinition[]
@@ -57,7 +57,7 @@ AI Agent  -->  MCP Transport (stdio/HTTP)
 
 ## Tool Inventory
 
-100 tools total: 72 read-only, 28 write operations.
+104 tools total: 76 read-only, 28 write operations.
 
 | Domain | Tools |
 | --- | --- |
@@ -68,6 +68,7 @@ AI Agent  -->  MCP Transport (stdio/HTTP)
 | Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
 | Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
 | Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
+| Gradebook History | `list_gradebook_history_days`, `get_gradebook_history_day`, `list_gradebook_history_submissions`, `get_gradebook_history_feed` |
 | Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |

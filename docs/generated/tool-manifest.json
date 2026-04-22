@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 100,
+  "toolCount": 104,
   "tools": [
     {
       "name": "health_check",
@@ -397,6 +397,54 @@
       },
       "access": "write",
       "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_gradebook_history_days",
+      "domain": "gradebook_history",
+      "description": "List the dates in a course gradebook history that contain grading activity, grouped by grader and assignment.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_gradebook_history_day",
+      "domain": "gradebook_history",
+      "description": "Get the graders and assignment IDs that had gradebook activity on a specific course date.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_gradebook_history_submissions",
+      "domain": "gradebook_history",
+      "description": "List versioned submission history for one grader and assignment on a specific gradebook history date.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_gradebook_history_feed",
+      "domain": "gradebook_history",
+      "description": "Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     },
     {

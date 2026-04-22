@@ -142,6 +142,41 @@ export interface CanvasSubmissionComment {
   created_at: string
 }
 
+export interface CanvasGradebookHistoryGrader {
+  id: number
+  name: string
+  assignments: number[]
+}
+
+export interface CanvasGradebookHistoryDay {
+  date: string
+  graders: CanvasGradebookHistoryGrader[]
+}
+
+export interface CanvasGradebookHistorySubmissionVersion extends CanvasSubmission {
+  assignment_name?: string
+  current_grade?: string | null
+  current_graded_at?: string | null
+  current_grader?: string | null
+  grade_matches_current_submission?: boolean
+  graded_at?: string | null
+  grader?: string | null
+  grader_id?: number | null
+  new_grade?: string | null
+  new_graded_at?: string | null
+  new_grader?: string | null
+  previous_grade?: string | null
+  previous_graded_at?: string | null
+  previous_grader?: string | null
+  user_name?: string
+  submission_type?: string | null
+}
+
+export interface CanvasGradebookHistorySubmission {
+  submission_id: number
+  versions: CanvasGradebookHistorySubmissionVersion[] | null
+}
+
 // --- Rubrics ---
 
 export interface CanvasRubric {
