@@ -105,14 +105,26 @@ describe('userTools', () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'search_users')!
       await tool.handler({ account_id: 1, search_term: 'alice' })
-      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', undefined, undefined)
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {})
     })
 
     it('passes optional sort and order', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'search_users')!
       await tool.handler({ account_id: 1, search_term: 'alice', sort: 'username', order: 'asc' })
-      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', 'username', 'asc')
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {
+        sort: 'username',
+        order: 'asc',
+      })
+    })
+
+    it('forwards include[] to search', async () => {
+      const canvas = buildMockCanvas()
+      const tool = userTools(canvas).find((t) => t.name === 'search_users')!
+      await tool.handler({ account_id: 1, search_term: 'alice', include: ['email', 'last_login'] })
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {
+        include: ['email', 'last_login'],
+      })
     })
   })
 
@@ -122,18 +134,42 @@ describe('userTools', () => {
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
     })
 
-    it('delegates to canvas.users.listCourseUsers', async () => {
+    it('delegates to canvas.users.listCourseUsers with empty options when none provided', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
       await tool.handler({ course_id: 100 })
-      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, undefined)
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {})
     })
 
-    it('passes optional enrollment_type', async () => {
+    it('forwards enrollment_type as an array', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
-      await tool.handler({ course_id: 100, enrollment_type: 'teacher' })
-      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, 'teacher')
+      await tool.handler({ course_id: 100, enrollment_type: ['teacher'] })
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {
+        enrollment_type: ['teacher'],
+      })
+    })
+
+    it('forwards include[], enrollment_state, user_ids, sort, and search_term', async () => {
+      const canvas = buildMockCanvas()
+      const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
+      await tool.handler({
+        course_id: 100,
+        include: ['email', 'enrollments'],
+        enrollment_state: ['active'],
+        user_ids: [1, 2],
+        search_term: 'alice',
+        sort: 'last_login',
+        order: 'desc',
+      })
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {
+        include: ['email', 'enrollments'],
+        enrollment_state: ['active'],
+        user_ids: [1, 2],
+        search_term: 'alice',
+        sort: 'last_login',
+        order: 'desc',
+      })
     })
   })
 })

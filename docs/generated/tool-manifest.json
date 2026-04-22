@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 104,
+  "toolCount": 105,
   "tools": [
     {
       "name": "health_check",
@@ -18,7 +18,7 @@
     {
       "name": "list_courses",
       "domain": "courses",
-      "description": "List courses for the authenticated user. Optionally filter by enrollment state.",
+      "description": "List courses for the authenticated user. `include` adds optional fields (teachers, total_students, term, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller’s enrollment state.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -30,7 +30,7 @@
     {
       "name": "get_course",
       "domain": "courses",
-      "description": "Get details for a single course by ID, including term and total student count.",
+      "description": "Get details for a single course. Defaults to requesting `term` and `total_students`. Pass `include` to replace the default set with custom Canvas include[] fields (teachers, permissions, syllabus_body, sections, etc.).",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -79,7 +79,7 @@
     {
       "name": "list_assignments",
       "domain": "assignments",
-      "description": "List all assignments in a course.",
+      "description": "List all assignments in a course. Use `include` to request submission, all_dates, overrides, score_statistics, etc. Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -93,7 +93,7 @@
     {
       "name": "get_assignment",
       "domain": "assignments",
-      "description": "Get details for a single assignment by ID.",
+      "description": "Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -107,7 +107,7 @@
     {
       "name": "list_assignment_groups",
       "domain": "assignments",
-      "description": "List assignment groups (categories like Homework, Exams) in a course.",
+      "description": "List assignment groups (categories like Homework, Exams) in a course. Use `include=assignments` to nest assignments under each group; other includes add submission, overrides, score_statistics, etc.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -157,7 +157,7 @@
     {
       "name": "list_submissions",
       "domain": "submissions",
-      "description": "List all submissions for an assignment in a course.",
+      "description": "List all submissions for an assignment. Use `include` to attach user, assignment, rubric_assessment, submission_history, or visibility. Filter with `student_ids`, `workflow_state`, or `grading_period_id`. Defaults to including submission_comments.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -171,7 +171,7 @@
     {
       "name": "get_submission",
       "domain": "submissions",
-      "description": "Get a single submission for a specific user on an assignment, including comments.",
+      "description": "Get a single submission for a specific user on an assignment. Defaults to including submission_comments. Pass `include` to add rubric_assessment, submission_history, visibility, course, user, or read_status.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -486,7 +486,7 @@
     {
       "name": "search_users",
       "domain": "users",
-      "description": "Search for users in a Canvas account by name, login, or email.",
+      "description": "Search for users in a Canvas account by name, login, or email. Use `include` to request email, last_login, avatar_url, time_zone, or uuid in the response.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -498,7 +498,7 @@
     {
       "name": "list_course_users",
       "domain": "users",
-      "description": "List all users in a course, optionally filtered by enrollment type.",
+      "description": "List users in a course with optional Canvas filters. Use `include` to request email, enrollments, avatar_url, bio, and other fields otherwise omitted from the default response. Use `enrollment_type` / `enrollment_state` to narrow by role or status, `search_term` to filter by name/login, `user_ids` to fetch a specific subset, and `sort`/`order` to control ordering.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -534,7 +534,19 @@
     {
       "name": "list_enrollments",
       "domain": "enrollments",
-      "description": "List all enrollments for the authenticated user across courses.",
+      "description": "List all enrollments for the authenticated user across courses. Optional filters and includes mirror Canvas `GET /users/self/enrollments`.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_course_enrollments",
+      "domain": "enrollments",
+      "description": "List enrollments within a specific course with Canvas filters. Use `include=grades` / `include=current_points` for richer grade data, `type[]` to limit to a role, and `user_id` to focus on a single user.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

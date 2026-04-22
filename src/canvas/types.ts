@@ -25,6 +25,68 @@ export interface CanvasCourse {
   syllabus_body?: string
   term?: CanvasTerm
   enrollments?: CanvasEnrollment[]
+  account_id?: number
+  root_account_id?: number
+  is_public?: boolean
+  is_public_to_auth_users?: boolean
+  public_syllabus?: boolean
+  public_syllabus_to_auth?: boolean
+  public_description?: string | null
+  storage_quota_mb?: number
+  storage_quota_used_mb?: number
+  hide_final_grades?: boolean
+  license?: string | null
+  allow_student_assignment_edits?: boolean
+  allow_wiki_comments?: boolean
+  allow_student_forum_attachments?: boolean
+  open_enrollment?: boolean
+  self_enrollment?: boolean
+  restrict_enrollments_to_course_dates?: boolean
+  course_format?: string | null
+  access_restricted_by_date?: boolean
+  time_zone?: string
+  blueprint?: boolean
+  template?: boolean
+  created_at?: string
+  start_at?: string | null
+  end_at?: string | null
+  default_view?: string
+  locale?: string
+  apply_assignment_group_weights?: boolean
+  permissions?: Record<string, boolean>
+  sections?: CanvasCourseSection[]
+  teachers?: Array<{
+    id: number
+    anonymous_id?: string
+    display_name: string
+    avatar_image_url?: string | null
+    html_url?: string
+    pronouns?: string | null
+  }>
+  course_progress?: CanvasCourseProgress
+  image_download_url?: string | null
+  banner_image_download_url?: string | null
+  concluded?: boolean
+  post_manually?: boolean
+}
+
+export interface CanvasCourseSection {
+  id: number
+  name: string
+  start_at?: string | null
+  end_at?: string | null
+  created_at?: string
+  restrict_enrollments_to_section_dates?: boolean
+  nonxlist_course_id?: number | null
+  sis_section_id?: string | null
+  sis_course_id?: string | null
+}
+
+export interface CanvasCourseProgress {
+  requirement_count: number
+  requirement_completed_count: number
+  next_requirement_url?: string | null
+  completed_at?: string | null
 }
 
 export interface CanvasTerm {
@@ -47,9 +109,30 @@ export interface CanvasEnrollment {
   user_id: number
   type: string
   role: string
+  role_id?: number
   enrollment_state: string
   created_at?: string
+  updated_at?: string
+  start_at?: string | null
+  end_at?: string | null
+  course_section_id?: number
+  last_activity_at?: string | null
+  last_attended_at?: string | null
+  total_activity_time?: number
+  html_url?: string
+  sis_account_id?: string | null
+  sis_course_id?: string | null
+  sis_section_id?: string | null
+  sis_user_id?: string | null
   grades?: CanvasEnrollmentGrades
+  user?: CanvasUser
+  current_points?: number | null
+  locked?: boolean
+  can_be_removed?: boolean
+  avatar_url?: string
+  observed_users?: CanvasUser[]
+  group_ids?: number[]
+  uuid?: string
 }
 
 export interface CreateCourseParams {
@@ -76,6 +159,8 @@ export interface CanvasAssignment {
   name: string
   description: string | null
   due_at: string | null
+  unlock_at?: string | null
+  lock_at?: string | null
   points_possible: number
   grading_type: string
   submission_types: string[]
@@ -84,6 +169,56 @@ export interface CanvasAssignment {
   group_category_id?: number | null
   quiz_id?: number | null
   allowed_attempts: number
+  assignment_group_id?: number
+  position?: number
+  muted?: boolean
+  published?: boolean
+  only_visible_to_overrides?: boolean
+  locked_for_user?: boolean
+  html_url?: string
+  all_dates?: CanvasAssignmentDate[]
+  overrides?: CanvasAssignmentOverride[]
+  submission?: CanvasSubmission | CanvasSubmission[]
+  has_submitted_submissions?: boolean
+  needs_grading_count?: number
+  can_edit?: boolean
+  score_statistics?: {
+    min: number
+    max: number
+    mean: number
+    upper_q?: number
+    median?: number
+    lower_q?: number
+  }
+  assignment_visibility?: number[]
+  is_quiz_assignment?: boolean
+  in_closed_grading_period?: boolean
+  post_to_sis?: boolean
+  integration_id?: string | null
+  integration_data?: Record<string, unknown>
+}
+
+export interface CanvasAssignmentDate {
+  id?: number
+  base?: boolean
+  title?: string
+  due_at: string | null
+  unlock_at: string | null
+  lock_at: string | null
+}
+
+export interface CanvasAssignmentOverride {
+  id: number
+  assignment_id: number
+  title: string
+  due_at?: string | null
+  unlock_at?: string | null
+  lock_at?: string | null
+  all_day?: boolean
+  all_day_date?: string | null
+  student_ids?: number[]
+  group_id?: number
+  course_section_id?: number
 }
 
 export interface CanvasAssignmentGroup {
@@ -91,7 +226,15 @@ export interface CanvasAssignmentGroup {
   name: string
   position: number
   group_weight: number
+  sis_source_id?: string | null
+  integration_data?: Record<string, unknown>
+  rules?: {
+    drop_lowest?: number
+    drop_highest?: number
+    never_drop?: number[]
+  }
   assignments?: CanvasAssignment[]
+  any_assignment_in_closed_grading_period?: boolean
 }
 
 export interface CanvasUpcomingEvent {
@@ -113,16 +256,42 @@ export interface CanvasSubmission {
   id: number
   assignment_id: number
   user_id: number
+  grader_id?: number | null
   submitted_at: string | null
+  graded_at?: string | null
+  posted_at?: string | null
   score: number | null
+  entered_score?: number | null
   grade: string | null
+  entered_grade?: string | null
   body: string | null
   url: string | null
   attempt: number | null
   workflow_state: string
+  late?: boolean
+  missing?: boolean
+  late_policy_status?: string | null
+  points_deducted?: number | null
+  seconds_late?: number
+  excused?: boolean | null
+  grade_matches_current_submission?: boolean
+  assignment_visible?: boolean
+  anonymous_id?: string
+  preview_url?: string
+  html_url?: string
+  read_status?: 'read' | 'unread'
   custom_grade_status_id?: number | null
   attachments?: CanvasAttachment[]
   submission_comments?: CanvasSubmissionComment[]
+  submission_history?: CanvasSubmission[]
+  rubric_assessment?: Record<
+    string,
+    { points?: number | null; comments?: string | null; rating_id?: string | null }
+  >
+  user?: CanvasUser
+  assignment?: CanvasAssignment
+  course?: CanvasCourse
+  group?: CanvasGroup
 }
 
 export interface CanvasAttachment {
@@ -284,9 +453,25 @@ export interface CanvasFileUploadInfo {
 export interface CanvasUser {
   id: number
   name: string
+  sortable_name?: string
+  short_name?: string
   login_id?: string
+  sis_user_id?: string | null
+  integration_id?: string | null
   email?: string
   avatar_url?: string
+  time_zone?: string
+  locale?: string | null
+  last_login?: string | null
+  bio?: string | null
+  pronouns?: string | null
+  uuid?: string
+  created_at?: string
+  effective_locale?: string
+  enrollments?: CanvasEnrollment[]
+  permissions?: Record<string, boolean>
+  custom_links?: Array<{ text: string; url: string; tool_id?: string; icon_class?: string }>
+  locked?: boolean
 }
 
 export interface CanvasUserProfile {

@@ -1,41 +1,120 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type {
+  CourseEnrollmentState,
+  CourseGetInclude,
+  CourseListInclude,
+  CourseWorkflowState,
+  GetCourseOptions,
+  ListCoursesOptions,
+} from '../canvas/courses'
 import type { ToolDefinition } from './types'
+
+const COURSE_LIST_INCLUDE = [
+  'needs_grading_count',
+  'syllabus_body',
+  'public_description',
+  'total_scores',
+  'current_grading_period_scores',
+  'grading_periods',
+  'term',
+  'account',
+  'course_progress',
+  'sections',
+  'storage_quota_used_mb',
+  'total_students',
+  'passback_status',
+  'favorites',
+  'teachers',
+  'observed_users',
+  'tabs',
+  'course_image',
+  'banner_image',
+  'concluded',
+  'lti_context_id',
+  'post_manually',
+] as const
+
+const COURSE_GET_INCLUDE = [...COURSE_LIST_INCLUDE, 'all_courses', 'permissions'] as const
+
+const COURSE_WORKFLOW_STATE = ['unpublished', 'available', 'completed', 'deleted'] as const
+
+const COURSE_ENROLLMENT_STATE = ['active', 'invited_or_pending', 'completed'] as const
 
 export function courseTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_courses',
       description:
-        'List courses for the authenticated user. Optionally filter by enrollment state.',
+        'List courses for the authenticated user. `include` adds optional fields (teachers, total_students, term, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller’s enrollment state.',
       inputSchema: {
         enrollment_state: z
-          .enum(['active', 'completed', 'all'])
+          .enum(COURSE_ENROLLMENT_STATE)
           .optional()
-          .describe('Filter courses by enrollment state'),
+          .describe('Filter courses by the caller’s enrollment state'),
+        state: z
+          .array(z.enum(COURSE_WORKFLOW_STATE))
+          .optional()
+          .describe('Filter by course workflow state'),
+        enrollment_role_id: z
+          .number()
+          .int()
+          .optional()
+          .describe('Filter by specific enrollment role ID'),
+        include: z
+          .array(z.enum(COURSE_LIST_INCLUDE))
+          .optional()
+          .describe('Extra fields to include on each course (Canvas include[] param)'),
+        exclude_blueprint_courses: z
+          .boolean()
+          .optional()
+          .describe('Exclude blueprint courses from the results'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const enrollment_state = params.enrollment_state as string | undefined
-        return canvas.courses.list({ enrollment_state })
+        const opts: ListCoursesOptions = {}
+        if (params.enrollment_state !== undefined)
+          opts.enrollment_state = params.enrollment_state as CourseEnrollmentState
+        if (params.state !== undefined)
+          opts.state = params.state as ReadonlyArray<CourseWorkflowState>
+        if (params.enrollment_role_id !== undefined)
+          opts.enrollment_role_id = params.enrollment_role_id as number
+        if (params.include !== undefined)
+          opts.include = params.include as ReadonlyArray<CourseListInclude>
+        if (params.exclude_blueprint_courses !== undefined)
+          opts.exclude_blueprint_courses = params.exclude_blueprint_courses as boolean
+        return canvas.courses.list(opts)
       },
     },
     {
       name: 'get_course',
-      description: 'Get details for a single course by ID, including term and total student count.',
+      description:
+        'Get details for a single course. Defaults to requesting `term` and `total_students`. Pass `include` to replace the default set with custom Canvas include[] fields (teachers, permissions, syllabus_body, sections, etc.).',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
+        include: z
+          .array(z.enum(COURSE_GET_INCLUDE))
+          .optional()
+          .describe('Extra fields to include on the course (Canvas include[] param)'),
+        teacher_limit: z
+          .number()
+          .int()
+          .optional()
+          .describe('Limit on the number of teachers returned when include=teachers'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        return canvas.courses.get(course_id)
+        const opts: GetCourseOptions = {}
+        if (params.include !== undefined)
+          opts.include = params.include as ReadonlyArray<CourseGetInclude>
+        if (params.teacher_limit !== undefined) opts.teacher_limit = params.teacher_limit as number
+        return canvas.courses.get(params.course_id as number, opts)
       },
     },
     {

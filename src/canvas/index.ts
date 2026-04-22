@@ -70,4 +70,7 @@ export class CanvasClient {
 }
 
 export { CanvasHttpClient, CanvasApiError } from './client'
+export type { CanvasRequestOptions } from './client'
+export { appendCanvasQuery, toCanvasQuery } from './query'
+export type { CanvasQueryParams, CanvasQueryPrimitive, CanvasQueryValue } from './query'
 export type * from './types'

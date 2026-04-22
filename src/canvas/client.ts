@@ -1,3 +1,4 @@
+import { appendCanvasQuery, type CanvasQueryParams } from './query'
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
 export class CanvasApiError extends Error {
@@ -14,6 +15,15 @@ export class CanvasApiError extends Error {
 
 const DEFAULT_MAX_PAGINATION_PAGES = 1000
 const USER_AGENT = 'canvas-lms-mcp/1.0'
+
+export interface CanvasRequestOptions extends RequestInit {
+  /**
+   * Query params to append to the endpoint URL. Arrays produce repeated
+   * `key[]=v1&key[]=v2` entries (the convention Canvas uses for `include[]`).
+   * Preserves any query string already present on the endpoint.
+   */
+  query?: CanvasQueryParams
+}
 
 export class CanvasHttpClient {
   private token: string
@@ -35,11 +45,17 @@ export class CanvasHttpClient {
    * Returns `undefined` (typed as `T`) when Canvas responds with 204 No Content,
    * which is the expected response for DELETE operations.
    */
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this._baseUrl}${endpoint}`
+  async request<T>(endpoint: string, options: CanvasRequestOptions = {}): Promise<T> {
+    const { query, ...init } = options
+    let url = endpoint.startsWith('http') ? endpoint : `${this._baseUrl}${endpoint}`
+    if (query) {
+      const parsed = new URL(url)
+      appendCanvasQuery(parsed.searchParams, query)
+      url = parsed.toString()
+    }
 
-    const method = (options.method ?? 'GET').toUpperCase()
-    if (options.body != null && (method === 'GET' || method === 'HEAD')) {
+    const method = (init.method ?? 'GET').toUpperCase()
+    if (init.body != null && (method === 'GET' || method === 'HEAD')) {
       throw new Error(
         `GET requests must not include a body (Canvas CloudFront CDN rejects them with 403): ${endpoint}`,
       )
@@ -49,15 +65,15 @@ export class CanvasHttpClient {
       Authorization: `Bearer ${this.token}`,
       'User-Agent': USER_AGENT,
     }
-    if (options.body) {
+    if (init.body) {
       headers['Content-Type'] = 'application/json'
     }
 
     const response = await fetch(url, {
-      ...options,
+      ...init,
       headers: {
         ...headers,
-        ...options.headers,
+        ...init.headers,
       },
     })
 
@@ -75,14 +91,12 @@ export class CanvasHttpClient {
     return response.json() as Promise<T>
   }
 
-  async paginate<T>(endpoint: string, params?: Record<string, string>): Promise<T[]> {
+  async paginate<T>(endpoint: string, params?: CanvasQueryParams): Promise<T[]> {
     const url = new URL(`${this._baseUrl}${endpoint}`)
-    url.searchParams.set('per_page', '100')
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        url.searchParams.set(key, value)
-      }
+    if (!url.searchParams.has('per_page')) {
+      url.searchParams.set('per_page', '100')
     }
+    appendCanvasQuery(url.searchParams, params)
 
     const results: T[] = []
     let nextUrl: string | null = url.toString()
@@ -116,15 +130,13 @@ export class CanvasHttpClient {
   async paginateEnvelope<T>(
     endpoint: string,
     envelopeKey: string,
-    params?: Record<string, string>,
+    params?: CanvasQueryParams,
   ): Promise<T[]> {
     const url = new URL(`${this._baseUrl}${endpoint}`)
-    url.searchParams.set('per_page', '100')
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        url.searchParams.set(key, value)
-      }
+    if (!url.searchParams.has('per_page')) {
+      url.searchParams.set('per_page', '100')
     }
+    appendCanvasQuery(url.searchParams, params)
 
     const results: T[] = []
     let nextUrl: string | null = url.toString()

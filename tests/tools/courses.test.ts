@@ -103,11 +103,20 @@ describe('courseTools', () => {
       expect(tool.inputSchema).toHaveProperty('course_id')
     })
 
-    it('calls canvas.courses.get with the course_id', async () => {
+    it('calls canvas.courses.get with the course_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
       await tool.handler({ course_id: 42 })
-      expect(canvas.courses.get).toHaveBeenCalledWith(42)
+      expect(canvas.courses.get).toHaveBeenCalledWith(42, {})
+    })
+
+    it('forwards include[] to canvas.courses.get', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
+      await tool.handler({ course_id: 42, include: ['teachers', 'permissions'] })
+      expect(canvas.courses.get).toHaveBeenCalledWith(42, {
+        include: ['teachers', 'permissions'],
+      })
     })
 
     it('returns the course from Canvas', async () => {

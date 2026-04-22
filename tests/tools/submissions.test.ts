@@ -63,11 +63,28 @@ describe('submissionTools', () => {
       expect(tool.inputSchema).toHaveProperty('assignment_id')
     })
 
-    it('calls canvas.submissions.list with course_id and assignment_id', async () => {
+    it('calls canvas.submissions.list with course_id, assignment_id, and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
       await tool.handler({ course_id: 1, assignment_id: 101 })
-      expect(canvas.submissions.list).toHaveBeenCalledWith(1, 101)
+      expect(canvas.submissions.list).toHaveBeenCalledWith(1, 101, {})
+    })
+
+    it('forwards include[] and filters', async () => {
+      const canvas = buildMockCanvas()
+      const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
+      await tool.handler({
+        course_id: 1,
+        assignment_id: 101,
+        include: ['user', 'rubric_assessment'],
+        student_ids: [5, 6],
+        workflow_state: 'submitted',
+      })
+      expect(canvas.submissions.list).toHaveBeenCalledWith(1, 101, {
+        include: ['user', 'rubric_assessment'],
+        student_ids: [5, 6],
+        workflow_state: 'submitted',
+      })
     })
 
     it('returns the submission list from Canvas', async () => {
@@ -102,11 +119,25 @@ describe('submissionTools', () => {
       expect(tool.inputSchema).toHaveProperty('user_id')
     })
 
-    it('calls canvas.submissions.get with all three IDs', async () => {
+    it('calls canvas.submissions.get with all three IDs and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'get_submission')!
       await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5 })
-      expect(canvas.submissions.get).toHaveBeenCalledWith(1, 101, 5)
+      expect(canvas.submissions.get).toHaveBeenCalledWith(1, 101, 5, {})
+    })
+
+    it('forwards include[] to canvas.submissions.get', async () => {
+      const canvas = buildMockCanvas()
+      const tool = submissionTools(canvas).find((t) => t.name === 'get_submission')!
+      await tool.handler({
+        course_id: 1,
+        assignment_id: 101,
+        user_id: 5,
+        include: ['rubric_assessment', 'user'],
+      })
+      expect(canvas.submissions.get).toHaveBeenCalledWith(1, 101, 5, {
+        include: ['rubric_assessment', 'user'],
+      })
     })
 
     it('returns the submission from Canvas', async () => {
