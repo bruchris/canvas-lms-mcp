@@ -1,0 +1,37 @@
+# Overlay patches for users endpoints.
+#
+# The merge step in scripts/canvas-spec/generate.ts performs a deep merge:
+# any key set here overrides the same key in spec/canvas/prototype.yaml.
+# Arrays of scalars replace (not concatenate) to make it easy to
+# narrow/expand enums precisely. Arrays of objects inside `parameters`
+# match by `name + in` and merge field-by-field.
+#
+# Demonstrates two patterns from issue #78:
+#  1. Add the `uuid` value to the account-users `include[]` enum that the
+#     hand-authored source omitted. In the full migration this pattern also
+#     fixes places where Canvas's spec undercounts the actual enum.
+#  2. Add `primary_email` to the User schema, mimicking the response-shape
+#     tightening that issue #78 calls out (workaround for
+#     instructure/canvas-lms#2583). In the full migration this also
+#     narrows loose `unknown` response types for endpoints the MCP uses.
+
+components:
+  schemas:
+    User:
+      properties:
+        primary_email:
+          type: string
+
+paths:
+  /api/v1/accounts/{account_id}/users:
+    get:
+      parameters:
+        - name: include[]
+          in: query
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [email, last_login, avatar_url, time_zone, uuid]
