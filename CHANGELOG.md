@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.6.0...canvas-lms-mcp-v1.7.0) (2026-04-23)
+
+
+### Features
+
+* scoped generated Canvas client prototype for users domain ([#78](https://github.com/bruchris/canvas-lms-mcp/issues/78)) ([#79](https://github.com/bruchris/canvas-lms-mcp/issues/79)) ([5db44ba](https://github.com/bruchris/canvas-lms-mcp/commit/5db44bac33ac3ffb560ddf8380d95df0fa1ac886))
+
 ## [1.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.5.0...canvas-lms-mcp-v1.6.0) (2026-04-22)
 
 
