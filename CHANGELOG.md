@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.5.0...canvas-lms-mcp-v1.6.0) (2026-04-22)
+
+
+### Features
+
+* expose Canvas include[] and standard query params on list/get tools ([#76](https://github.com/bruchris/canvas-lms-mcp/issues/76)) ([54eaff2](https://github.com/bruchris/canvas-lms-mcp/commit/54eaff29d75b093467d72fa98493c13e6ffada43))
+
 ## [1.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.4.2...canvas-lms-mcp-v1.5.0) (2026-04-22)
 
 
