@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.7.0...canvas-lms-mcp-v1.8.0) (2026-04-24)
+
+
+### Features
+
+* publish TypeScript declarations (.d.ts) with npm package ([#82](https://github.com/bruchris/canvas-lms-mcp/issues/82)) ([4adab2c](https://github.com/bruchris/canvas-lms-mcp/commit/4adab2cb125d1455a7866f87f8a83663092d6791))
+
+
+### Miscellaneous
+
+* **deps:** bump dev dependencies (vitest, eslint, prettier, typescript, typescript-eslint) ([#81](https://github.com/bruchris/canvas-lms-mcp/issues/81)) ([fb43774](https://github.com/bruchris/canvas-lms-mcp/commit/fb43774b16943971f5de47dd3b4aff9cb2e05cd2))
+
 ## [1.7.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.6.0...canvas-lms-mcp-v1.7.0) (2026-04-23)
 
 
