@@ -167,7 +167,12 @@ describe('outcomeTools', () => {
   it('delegates list_outcome_group_outcomes with optional style', async () => {
     const canvas = buildMockCanvas()
     const tool = outcomeTools(canvas).find((t) => t.name === 'list_outcome_group_outcomes')!
-    await tool.handler({ context_type: 'course', context_id: 42, outcome_group_id: 15, outcome_style: 'full' })
+    await tool.handler({
+      context_type: 'course',
+      context_id: 42,
+      outcome_group_id: 15,
+      outcome_style: 'full',
+    })
     expect(canvas.outcomes.listGroupOutcomes).toHaveBeenCalledWith('course', 42, 15, {
       outcome_style: 'full',
     })
