@@ -4,20 +4,25 @@
   "mcpName": "io.github.bruchris/canvas-lms-mcp",
   "description": "TypeScript MCP 1.x server for Canvas LMS — 104 tools across Canvas courses, assignments, grades, gradebook history, quizzes, outcomes, discussions, admin workflows, and more.",
   "type": "module",
+  "types": "./dist/server.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/server.d.ts",
       "import": "./dist/server.js",
       "require": "./dist/server.cjs"
     },
     "./stdio": {
+      "types": "./dist/stdio.d.ts",
       "import": "./dist/stdio.js",
       "require": "./dist/stdio.cjs"
     },
     "./http": {
+      "types": "./dist/http.d.ts",
       "import": "./dist/http.js",
       "require": "./dist/http.cjs"
     },
     "./canvas": {
+      "types": "./dist/canvas/index.d.ts",
       "import": "./dist/canvas/index.js",
       "require": "./dist/canvas/index.cjs"
     }
@@ -31,7 +36,7 @@
   ],
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json",
     "generate:manifests": "tsx scripts/generate-manifests.ts",
     "canvas:spec:generate": "tsx scripts/canvas-spec/generate.ts",
     "test": "vitest run",
