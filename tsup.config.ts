@@ -9,7 +9,7 @@ export default defineConfig({
     'canvas/index': 'src/canvas/index.ts',
   },
   format: ['esm', 'cjs'],
-  dts: false, // TODO: enable once tsup supports TypeScript 6 DTS generation
+  dts: false,
   clean: true,
   splitting: true,
   sourcemap: true,
