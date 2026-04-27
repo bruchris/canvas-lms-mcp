@@ -158,6 +158,22 @@ The MCP endpoint is `http://localhost:3001/mcp`. Per-request credentials can be 
 
 </details>
 
+## Agent Skills
+
+Install reusable Canvas workflows into Claude Code, Cursor, GitHub Copilot, Cline, and 40+ other AI agents:
+
+```bash
+npx skills add bruchris/canvas-lms-mcp
+```
+
+| Skill | Description |
+|-------|-------------|
+| `canvas-at-risk-students` | Surface students with missing assignments or declining grades and send targeted outreach |
+| `canvas-gradebook-audit` | Inspect the full grade-change audit trail — who changed what grade, when, and by how much |
+| `canvas-outcome-tracker` | Track learning outcome mastery and class-wide proficiency for accreditation and program review |
+
+Skills are markdown workflow files (no extra dependencies). They work with the MCP server you already have installed. See the [`skills/` directory](./skills/) for the full list.
+
 ## Example Prompts
 
 Once configured, try these prompts with your AI client:
