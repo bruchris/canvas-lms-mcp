@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.8.0...canvas-lms-mcp-v1.8.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* read User-Agent and MCP server version from package.json ([#86](https://github.com/bruchris/canvas-lms-mcp/issues/86)) ([e417e8b](https://github.com/bruchris/canvas-lms-mcp/commit/e417e8b4144f4122ee23021cd7807e87781cd01b))
+
 ## [1.8.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.7.0...canvas-lms-mcp-v1.8.0) (2026-04-24)
 
 
