@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { version } from '../../package.json'
 import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
 describe('CanvasHttpClient', () => {
@@ -32,7 +33,7 @@ describe('CanvasHttpClient', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token',
-            'User-Agent': 'canvas-lms-mcp/1.0',
+            'User-Agent': `canvas-lms-mcp/${version}`,
           }),
         }),
       )
