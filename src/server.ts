@@ -1,3 +1,4 @@
+import { version } from '../package.json'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient } from './canvas'
 import { registerAllTools } from './tools'
@@ -21,7 +22,7 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
 
   const server = new McpServer({
     name: 'canvas-lms-mcp',
-    version: '1.0.0',
+    version,
   })
 
   registerAllTools(server, canvas)

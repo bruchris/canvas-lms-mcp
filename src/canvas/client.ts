@@ -1,3 +1,4 @@
+import { version } from '../../package.json'
 import { appendCanvasQuery, type CanvasQueryParams } from './query'
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
@@ -14,7 +15,7 @@ export class CanvasApiError extends Error {
 }
 
 const DEFAULT_MAX_PAGINATION_PAGES = 1000
-const USER_AGENT = 'canvas-lms-mcp/1.0'
+const USER_AGENT = `canvas-lms-mcp/${version}`
 
 export interface CanvasRequestOptions extends RequestInit {
   /**
