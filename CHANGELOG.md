@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.8.1...canvas-lms-mcp-v1.9.0) (2026-04-27)
+
+
+### Features
+
+* add Canvas agent skills bundle for skills.sh distribution ([#90](https://github.com/bruchris/canvas-lms-mcp/issues/90)) ([178901f](https://github.com/bruchris/canvas-lms-mcp/commit/178901f313211b4e12f390acd53f5315b26928dd)), closes [#88](https://github.com/bruchris/canvas-lms-mcp/issues/88)
+
 ## [1.8.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.8.0...canvas-lms-mcp-v1.8.1) (2026-04-27)
 
 
