@@ -12,6 +12,22 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 
 104 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
+## Agent Skills
+
+Install pre-built AI agent workflows for common Canvas tasks:
+
+```bash
+npx skills add bruchris/canvas-lms-mcp
+```
+
+Available skills:
+
+- **`canvas-at-risk-students`** — Identify struggling students and send outreach messages. Trigger phrases: "who's falling behind", "at-risk students", "students need help"
+- **`canvas-gradebook-audit`** — Trace grade changes before posting finals. Trigger phrases: "who changed grades", "grade history", "grade integrity check"
+- **`canvas-outcome-tracker`** — Generate outcome mastery and accreditation reports. Trigger phrases: "outcome mastery", "accreditation report", "which outcomes are students failing"
+
+Browse all skills at [skills.sh/bruchris/canvas-lms-mcp](https://skills.sh/bruchris/canvas-lms-mcp).
+
 ## Comparison
 
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
