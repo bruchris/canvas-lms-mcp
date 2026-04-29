@@ -47,6 +47,7 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       upload: async () => ({}),
       delete: async () => undefined,
+      download: async () => ({}),
     },
     gradebookHistory: {
       listDays: async () => [],
@@ -190,12 +191,13 @@ describe('getAllTools', () => {
     expect(names).toContain('list_quiz_questions')
     expect(names).toContain('get_quiz_submission_answers')
     expect(names).toContain('score_quiz_question')
-    // Files (5)
+    // Files (6)
     expect(names).toContain('list_files')
     expect(names).toContain('list_folders')
     expect(names).toContain('get_file')
     expect(names).toContain('upload_file')
     expect(names).toContain('delete_file')
+    expect(names).toContain('download_file')
     // Gradebook History (4)
     expect(names).toContain('list_gradebook_history_days')
     expect(names).toContain('get_gradebook_history_day')
@@ -286,7 +288,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(105)
+    expect(tools).toHaveLength(106)
   })
 
   it('all tools have openWorldHint: true', () => {

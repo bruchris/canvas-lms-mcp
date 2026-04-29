@@ -24,6 +24,14 @@ describe('fileTools', () => {
     folders_count: 2,
   }
 
+  const mockDownloadedFile = {
+    type: 'text' as const,
+    filename: 'syllabus.pdf',
+    contentType: 'text/plain',
+    size: 5,
+    text: 'hello',
+  }
+
   function buildMockCanvas(): CanvasClient {
     return {
       files: {
@@ -32,17 +40,25 @@ describe('fileTools', () => {
         get: vi.fn().mockResolvedValue(mockFile),
         upload: vi.fn().mockResolvedValue(mockFile),
         delete: vi.fn().mockResolvedValue(mockFile),
+        download: vi.fn().mockResolvedValue(mockDownloadedFile),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
-    expect(fileTools(buildMockCanvas())).toHaveLength(5)
+  it('returns an array with 6 tool definitions', () => {
+    expect(fileTools(buildMockCanvas())).toHaveLength(6)
   })
 
   it('exports tools with correct names', () => {
     const names = fileTools(buildMockCanvas()).map((t) => t.name)
-    expect(names).toEqual(['list_files', 'list_folders', 'get_file', 'upload_file', 'delete_file'])
+    expect(names).toEqual([
+      'list_files',
+      'list_folders',
+      'get_file',
+      'upload_file',
+      'delete_file',
+      'download_file',
+    ])
   })
 
   describe('list_files', () => {
@@ -145,6 +161,28 @@ describe('fileTools', () => {
       const result = await tool.handler({ file_id: 99 })
       expect(canvas.files.delete).toHaveBeenCalledWith(99)
       expect(result).toMatchObject({ id: mockFile.id })
+    })
+  })
+
+  describe('download_file', () => {
+    it('has read-only annotations', () => {
+      const tool = fileTools(buildMockCanvas()).find((t) => t.name === 'download_file')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.files.download with file_id and optional course_id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = fileTools(canvas).find((t) => t.name === 'download_file')!
+      const result = await tool.handler({ file_id: 42, course_id: 7 })
+      expect(canvas.files.download).toHaveBeenCalledWith(42, 7)
+      expect(result).toEqual(mockDownloadedFile)
+    })
+
+    it('passes undefined course_id when not provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = fileTools(canvas).find((t) => t.name === 'download_file')!
+      await tool.handler({ file_id: 42 })
+      expect(canvas.files.download).toHaveBeenCalledWith(42, undefined)
     })
   })
 })

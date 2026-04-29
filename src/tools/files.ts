@@ -93,5 +93,26 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         return canvas.files.delete(file_id)
       },
     },
+    {
+      name: 'download_file',
+      description:
+        'Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.',
+      inputSchema: {
+        file_id: z.number().describe('The Canvas file ID'),
+        course_id: z
+          .number()
+          .optional()
+          .describe('Optional Canvas course ID to scope the file lookup'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const file_id = params.file_id as number
+        const course_id = params.course_id as number | undefined
+        return canvas.files.download(file_id, course_id)
+      },
+    },
   ]
 }
