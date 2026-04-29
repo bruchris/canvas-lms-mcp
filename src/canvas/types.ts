@@ -457,6 +457,15 @@ export interface CanvasFileUploadInfo {
   upload_params: Record<string, string>
 }
 
+export interface DownloadedFile {
+  type: 'text' | 'resource'
+  filename: string
+  contentType: string
+  size: number
+  text?: string
+  base64?: string
+}
+
 // --- Users ---
 
 export interface CanvasUser {

@@ -1,5 +1,19 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasFile, CanvasFileUploadInfo, CanvasFolder } from './types'
+import type { CanvasFile, CanvasFileUploadInfo, CanvasFolder, DownloadedFile } from './types'
+
+const MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024 // 10 MB
+
+const TEXT_CONTENT_TYPES = new Set([
+  'application/json',
+  'application/xml',
+  'application/javascript',
+  'application/x-javascript',
+])
+
+function isTextContentType(contentType: string): boolean {
+  const base = (contentType.split(';')[0] ?? '').trim().toLowerCase()
+  return base.startsWith('text/') || TEXT_CONTENT_TYPES.has(base)
+}
 
 export class FilesModule {
   constructor(private client: CanvasHttpClient) {}
@@ -112,6 +126,63 @@ export class FilesModule {
       )
     }
     return parsed as CanvasFile
+  }
+
+  async download(fileId: number, courseId?: number): Promise<DownloadedFile> {
+    const endpoint =
+      courseId != null ? `/api/v1/courses/${courseId}/files/${fileId}` : `/api/v1/files/${fileId}`
+    const meta = await this.client.request<CanvasFile>(endpoint)
+
+    if (meta.size > MAX_DOWNLOAD_BYTES) {
+      throw new Error(
+        `File too large to download (${meta.size.toLocaleString()} bytes; limit is 10 MB)`,
+      )
+    }
+
+    const response = await fetch(meta.url)
+    if (!response.ok) {
+      throw new Error(`Failed to download file content (HTTP ${response.status})`)
+    }
+
+    const contentLengthHeader = response.headers.get('content-length')
+    if (contentLengthHeader != null) {
+      const declared = parseInt(contentLengthHeader, 10)
+      if (!isNaN(declared) && declared > MAX_DOWNLOAD_BYTES) {
+        throw new Error(
+          `File too large to download (${declared.toLocaleString()} bytes declared; limit is 10 MB)`,
+        )
+      }
+    }
+
+    const contentType = (
+      (response.headers.get('content-type') ?? meta.content_type).split(';')[0] ?? ''
+    ).trim()
+    const filename = meta.display_name ?? meta.filename ?? `file-${fileId}`
+    const buffer = await response.arrayBuffer()
+
+    if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
+      throw new Error(
+        `File too large to download (${buffer.byteLength.toLocaleString()} bytes; limit is 10 MB)`,
+      )
+    }
+
+    if (isTextContentType(contentType)) {
+      return {
+        type: 'text',
+        filename,
+        contentType,
+        size: buffer.byteLength,
+        text: Buffer.from(buffer).toString('utf-8'),
+      }
+    }
+
+    return {
+      type: 'resource',
+      filename,
+      contentType,
+      size: buffer.byteLength,
+      base64: Buffer.from(buffer).toString('base64'),
+    }
   }
 
   async delete(fileId: number): Promise<CanvasFile> {

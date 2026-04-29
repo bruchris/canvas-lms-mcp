@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 105,
+  "toolCount": 106,
   "tools": [
     {
       "name": "health_check",
@@ -396,6 +396,18 @@
         "openWorldHint": true
       },
       "access": "write",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "download_file",
+      "domain": "files",
+      "description": "Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
       "primaryAudience": "shared",
       "relatedWorkflows": []
     },
