@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.9.0...canvas-lms-mcp-v1.10.0) (2026-04-29)
+
+
+### Features
+
+* **files:** add download_file MCP tool to fetch file content ([#92](https://github.com/bruchris/canvas-lms-mcp/issues/92)) ([ba90e0d](https://github.com/bruchris/canvas-lms-mcp/commit/ba90e0db8c469c1b3b25eb92e879358beadc8437))
+
 ## [1.9.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.8.1...canvas-lms-mcp-v1.9.0) (2026-04-27)
 
 
