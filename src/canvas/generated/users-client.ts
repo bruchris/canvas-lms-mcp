@@ -16,6 +16,7 @@
  *     header that don't fit openapi-fetch's path-templated API surface.
  */
 import createClient, { type Middleware } from 'openapi-fetch'
+import { version } from '../../../package.json'
 import { CanvasApiError } from '../client'
 import type {
   CanvasClientConfig,
@@ -37,7 +38,7 @@ import type {
 import type { paths } from './types'
 
 const DEFAULT_MAX_PAGINATION_PAGES = 1000
-const USER_AGENT = 'canvas-lms-mcp/1.0'
+const USER_AGENT = `canvas-lms-mcp/${version}`
 const DEFAULT_PER_PAGE = 100
 
 type OpenApiClient = ReturnType<typeof createClient<paths>>
