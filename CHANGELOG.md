@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.11.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.10.1...canvas-lms-mcp-v1.11.0) (2026-05-01)
+
+
+### Features
+
+* **skills:** add Batch 2 Canvas skill files (discussion, quiz, pulse, syllabus) ([#101](https://github.com/bruchris/canvas-lms-mcp/issues/101)) ([ca7203f](https://github.com/bruchris/canvas-lms-mcp/commit/ca7203fd09a78ef8b3c636cb1aaec092a3762946))
+* **skills:** add Batch 3 Canvas skill files (peer-review-tracker, admin-roster) ([#102](https://github.com/bruchris/canvas-lms-mcp/issues/102)) ([88ed233](https://github.com/bruchris/canvas-lms-mcp/commit/88ed2338bbd6d0c705fcf1a57da5a470e957ff5f))
+
+
+### Documentation
+
+* **skills:** add 5 P0 skill files — batch 1 (BRU-804) ([#100](https://github.com/bruchris/canvas-lms-mcp/issues/100)) ([ed780ff](https://github.com/bruchris/canvas-lms-mcp/commit/ed780ff77293e23715a2a68b1d3250b830e40685))
+* **skills:** plan for canvas skills catalog expansion (BRU-801) ([#98](https://github.com/bruchris/canvas-lms-mcp/issues/98)) ([c6004ab](https://github.com/bruchris/canvas-lms-mcp/commit/c6004ab970e0e7ea14d27842121abd48bda3d5ee))
+
 ## [1.10.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.10.0...canvas-lms-mcp-v1.10.1) (2026-05-01)
 
 
