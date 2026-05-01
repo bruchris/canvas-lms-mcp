@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { version } from '../../package.json'
 import { GeneratedUsersModule } from '../../src/canvas/generated/users-client'
 import { CanvasApiError } from '../../src/canvas/client'
 
@@ -54,7 +55,7 @@ describe('GeneratedUsersModule', () => {
       await users.get(1)
       const headers = lastCallHeaders()
       expect(headers.get('Authorization')).toBe('Bearer test-token')
-      expect(headers.get('User-Agent')).toMatch(/canvas-lms-mcp/)
+      expect(headers.get('User-Agent')).toBe(`canvas-lms-mcp/${version}`)
     })
 
     it('resolves requests against the configured base URL', async () => {
