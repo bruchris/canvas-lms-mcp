@@ -1,13 +1,12 @@
 import { CanvasHttpClient } from './client'
-import type { CanvasClientConfig, GeneratedClientDomain } from './types'
+import type { CanvasClientConfig } from './types'
 import { CoursesModule } from './courses'
 import { AssignmentsModule } from './assignments'
 import { SubmissionsModule } from './submissions'
 import { RubricsModule } from './rubrics'
 import { QuizzesModule } from './quizzes'
 import { FilesModule } from './files'
-import { UsersModule, type UsersModuleApi } from './users'
-import { GeneratedUsersModule } from './generated/users-client'
+import { UsersModule } from './users'
 import { GroupsModule } from './groups'
 import { EnrollmentsModule } from './enrollments'
 import { DiscussionsModule } from './discussions'
@@ -30,7 +29,7 @@ export class CanvasClient {
   rubrics: RubricsModule
   quizzes: QuizzesModule
   files: FilesModule
-  users: UsersModuleApi
+  users: UsersModule
   groups: GroupsModule
   enrollments: EnrollmentsModule
   discussions: DiscussionsModule
@@ -53,9 +52,7 @@ export class CanvasClient {
     this.rubrics = new RubricsModule(this.client)
     this.quizzes = new QuizzesModule(this.client)
     this.files = new FilesModule(this.client)
-    this.users = isGeneratedEnabled(config.useGeneratedClient, 'users')
-      ? new GeneratedUsersModule(config)
-      : new UsersModule(this.client)
+    this.users = new UsersModule(this.client)
     this.groups = new GroupsModule(this.client)
     this.enrollments = new EnrollmentsModule(this.client)
     this.discussions = new DiscussionsModule(this.client)
@@ -72,16 +69,6 @@ export class CanvasClient {
   }
 }
 
-function isGeneratedEnabled(
-  flag: CanvasClientConfig['useGeneratedClient'],
-  domain: GeneratedClientDomain,
-): boolean {
-  if (flag === true) return true
-  if (Array.isArray(flag)) return (flag as readonly GeneratedClientDomain[]).includes(domain)
-  return false
-}
-
-export { GeneratedUsersModule } from './generated/users-client'
 export { CanvasHttpClient, CanvasApiError } from './client'
 export type { CanvasRequestOptions } from './client'
 export { appendCanvasQuery, toCanvasQuery } from './query'

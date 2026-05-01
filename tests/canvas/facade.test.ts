@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  CanvasClient,
-  CanvasHttpClient,
-  CanvasApiError,
-  GeneratedUsersModule,
-} from '../../src/canvas/index'
+import { CanvasClient, CanvasHttpClient, CanvasApiError } from '../../src/canvas/index'
 import { CoursesModule } from '../../src/canvas/courses'
 import { GradebookHistoryModule } from '../../src/canvas/gradebook-history'
 import { UsersModule } from '../../src/canvas/users'
@@ -44,38 +39,10 @@ describe('CanvasClient facade', () => {
     expect(error).toBeInstanceOf(CanvasApiError)
   })
 
-  it('uses the hand-written UsersModule by default', () => {
+  it('uses the hand-written UsersModule', () => {
     const client = new CanvasClient({
       token: 'test-token',
       baseUrl: 'https://canvas.example.com',
-    })
-    expect(client.users).toBeInstanceOf(UsersModule)
-    expect(client.users).not.toBeInstanceOf(GeneratedUsersModule)
-  })
-
-  it('uses GeneratedUsersModule when useGeneratedClient=true', () => {
-    const client = new CanvasClient({
-      token: 'test-token',
-      baseUrl: 'https://canvas.example.com',
-      useGeneratedClient: true,
-    })
-    expect(client.users).toBeInstanceOf(GeneratedUsersModule)
-  })
-
-  it('uses GeneratedUsersModule when useGeneratedClient=["users"]', () => {
-    const client = new CanvasClient({
-      token: 'test-token',
-      baseUrl: 'https://canvas.example.com',
-      useGeneratedClient: ['users'],
-    })
-    expect(client.users).toBeInstanceOf(GeneratedUsersModule)
-  })
-
-  it('falls back to hand-written module when flag list omits users', () => {
-    const client = new CanvasClient({
-      token: 'test-token',
-      baseUrl: 'https://canvas.example.com',
-      useGeneratedClient: [],
     })
     expect(client.users).toBeInstanceOf(UsersModule)
   })

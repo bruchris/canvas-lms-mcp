@@ -38,7 +38,6 @@
     "dev": "tsup --watch",
     "build": "tsup && tsc -p tsconfig.build.json",
     "generate:manifests": "tsx scripts/generate-manifests.ts",
-    "canvas:spec:generate": "tsx scripts/canvas-spec/generate.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/ tests/ && prettier --check src/ tests/",
@@ -86,7 +85,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "openapi-fetch": "^0.17.0",
     "zod": "^4.4.1"
   },
   "devDependencies": {
@@ -98,13 +96,11 @@
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.3",
     "tsup": "^8.5.1",
     "tsx": "^4.20.6",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.1",
-    "vitest": "^4.1.5",
-    "yaml": "^2.8.3"
+    "vitest": "^4.1.5"
   }
 }
