@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.10.0...canvas-lms-mcp-v1.10.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* **users:** read User-Agent version from package.json in generated client ([#94](https://github.com/bruchris/canvas-lms-mcp/issues/94)) ([54e3308](https://github.com/bruchris/canvas-lms-mcp/commit/54e3308a8b3e99b57399569bb93b97b43d2cd1d3))
+
+
+### Miscellaneous
+
+* **canvas:** retire generated client prototype ([#97](https://github.com/bruchris/canvas-lms-mcp/issues/97)) ([bad1a22](https://github.com/bruchris/canvas-lms-mcp/commit/bad1a223f18a6568ddef591d81e421ab734c34b9)), closes [#78](https://github.com/bruchris/canvas-lms-mcp/issues/78)
+* **deps:** bump typescript-eslint to 8.59.1, zod to 4.4.1 ([#95](https://github.com/bruchris/canvas-lms-mcp/issues/95)) ([e6b403d](https://github.com/bruchris/canvas-lms-mcp/commit/e6b403dee4aacdb3bfe82e6d74c4422ecc253a2d))
+
 ## [1.10.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.9.0...canvas-lms-mcp-v1.10.0) (2026-04-29)
 
 
