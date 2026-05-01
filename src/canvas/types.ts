@@ -4,16 +4,7 @@ export interface CanvasClientConfig {
   token: string
   baseUrl: string
   maxPaginationPages?: number
-  /**
-   * Enable the prototype generated-client implementation for selected
-   * domains (see GitHub issue #78). Currently only `users` is wired up;
-   * pass `true` as a shorthand for all supported domains, or an explicit
-   * list. Default: hand-written modules are used everywhere.
-   */
-  useGeneratedClient?: boolean | readonly GeneratedClientDomain[]
 }
-
-export type GeneratedClientDomain = 'users'
 
 // --- Error ---
 

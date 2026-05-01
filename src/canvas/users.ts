@@ -39,25 +39,7 @@ export interface SearchUsersOptions {
   include?: ReadonlyArray<SearchUserInclude>
 }
 
-/**
- * Public interface for the users module. Lets `CanvasClient` swap between
- * the hand-written `UsersModule` and the prototype generated-client
- * implementation (see GitHub issue #78) without tool callers caring.
- */
-export interface UsersModuleApi {
-  listStudents(courseId: number): Promise<CanvasUser[]>
-  get(userId: number): Promise<CanvasUser>
-  getProfile(): Promise<CanvasUserProfile>
-  searchUsers(
-    accountId: number,
-    searchTerm: string,
-    opts?: SearchUsersOptions,
-  ): Promise<CanvasUser[]>
-  listCourseUsers(courseId: number, opts?: ListCourseUsersOptions): Promise<CanvasUser[]>
-  getUpcomingAssignments(): Promise<CanvasUpcomingEvent[]>
-}
-
-export class UsersModule implements UsersModuleApi {
+export class UsersModule {
   constructor(private client: CanvasHttpClient) {}
 
   async listStudents(courseId: number): Promise<CanvasUser[]> {
