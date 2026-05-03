@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.11.0...canvas-lms-mcp-v1.11.1) (2026-05-02)
+
+
+### Documentation
+
+* **skills:** add skills.sh publication research notes ([#103](https://github.com/bruchris/canvas-lms-mcp/issues/103)) ([eea34d0](https://github.com/bruchris/canvas-lms-mcp/commit/eea34d01c49da0077ae45442d2cf39cec2e4f084))
+
 ## [1.11.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.10.1...canvas-lms-mcp-v1.11.0) (2026-05-01)
 
 
