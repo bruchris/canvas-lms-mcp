@@ -294,7 +294,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_assignment',
-      description: 'Delete an assignment from a course.',
+      description: 'Delete an assignment from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         assignment_id: z.number().describe('The Canvas assignment ID to delete'),

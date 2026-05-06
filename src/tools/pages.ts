@@ -94,7 +94,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_page',
-      description: 'Delete a wiki page from a course.',
+      description: 'Delete a wiki page from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug to delete'),

@@ -137,7 +137,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_discussion',
-      description: 'Delete a discussion topic from a course.',
+      description: 'Delete a discussion topic from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         topic_id: z.number().describe('The Canvas discussion topic ID to delete'),
