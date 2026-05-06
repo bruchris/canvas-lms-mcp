@@ -63,7 +63,7 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_peer_review',
-      description: 'Remove a peer review assignment from a submission.',
+      description: 'Remove a peer review assignment from a submission. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         assignment_id: z.number().describe('The Canvas assignment ID'),

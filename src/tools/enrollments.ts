@@ -178,7 +178,8 @@ export function enrollmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'remove_enrollment',
-      description: 'Remove or conclude an enrollment from a course.',
+      description:
+        "Remove or conclude an enrollment from a course. The 'delete' task is permanent; 'conclude' and 'deactivate' are reversible.",
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
         enrollment_id: z.number().describe('The enrollment ID to remove'),
