@@ -144,7 +144,7 @@
     {
       "name": "delete_assignment",
       "domain": "assignments",
-      "description": "Delete an assignment from a course.",
+      "description": "Delete an assignment from a course. This action is permanent.",
       "annotations": {
         "destructiveHint": true,
         "idempotentHint": true,
@@ -594,7 +594,7 @@
     {
       "name": "remove_enrollment",
       "domain": "enrollments",
-      "description": "Remove or conclude an enrollment from a course.",
+      "description": "Remove or conclude an enrollment from a course. The 'delete' task is permanent; 'conclude' and 'deactivate' are reversible.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -678,7 +678,7 @@
     {
       "name": "delete_discussion",
       "domain": "discussions",
-      "description": "Delete a discussion topic from a course.",
+      "description": "Delete a discussion topic from a course. This action is permanent.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -810,7 +810,7 @@
     {
       "name": "delete_page",
       "domain": "pages",
-      "description": "Delete a wiki page from a course.",
+      "description": "Delete a wiki page from a course. This action is permanent.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -942,7 +942,7 @@
     {
       "name": "delete_peer_review",
       "domain": "peer_reviews",
-      "description": "Remove a peer review assignment from a submission.",
+      "description": "Remove a peer review assignment from a submission. This action is permanent.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
