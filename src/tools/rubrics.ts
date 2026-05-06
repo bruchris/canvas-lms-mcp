@@ -1,5 +1,10 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type {
+  RubricAssociationInput,
+  RubricCriterionInput,
+  RubricCreateInput,
+} from '../canvas/rubrics'
 import type { ToolDefinition } from './types'
 
 export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
@@ -85,6 +90,57 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
           comments: string
         }>
         return canvas.rubrics.submitAssessment(course_id, association_id, data)
+      },
+    },
+    {
+      name: 'create_rubric',
+      description:
+        'Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        title: z.string().describe('The rubric title'),
+        criteria: z
+          .array(
+            z.object({
+              description: z.string().describe('Criterion description'),
+              points: z.number().describe('Maximum points for this criterion'),
+              ratings: z
+                .array(
+                  z.object({
+                    description: z.string().describe('Rating level description'),
+                    points: z.number().describe('Points for this rating level'),
+                  }),
+                )
+                .min(2, 'Each criterion must have at least 2 rating levels')
+                .describe('Rating levels for this criterion (highest to lowest)'),
+            }),
+          )
+          .min(1, 'At least one criterion is required')
+          .describe('Rubric criteria'),
+        association: z
+          .object({
+            assignment_id: z.number().describe('Assignment ID to link this rubric to'),
+            use_for_grading: z
+              .boolean()
+              .optional()
+              .describe('Whether to use this rubric for grading'),
+            purpose: z.string().optional().describe('Purpose of the association (e.g., "grading")'),
+          })
+          .optional()
+          .describe('Optional assignment association'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const rubric: RubricCreateInput = {
+          title: params.title as string,
+          criteria: params.criteria as RubricCriterionInput[],
+        }
+        const association = params.association as RubricAssociationInput | undefined
+        return canvas.rubrics.create(course_id, rubric, association)
       },
     },
   ]

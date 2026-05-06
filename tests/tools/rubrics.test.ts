@@ -38,13 +38,14 @@ describe('rubricTools', () => {
         get: vi.fn().mockResolvedValue(mockRubric),
         getAssessment: vi.fn().mockResolvedValue(mockSubmission),
         submitAssessment: vi.fn().mockResolvedValue(mockAssessment),
+        create: vi.fn().mockResolvedValue(mockRubric),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 4 tool definitions', () => {
+  it('returns an array with 5 tool definitions', () => {
     const tools = rubricTools(buildMockCanvas())
-    expect(tools).toHaveLength(4)
+    expect(tools).toHaveLength(5)
   })
 
   it('exports tools with correct names', () => {
@@ -54,6 +55,7 @@ describe('rubricTools', () => {
       'get_rubric',
       'get_rubric_assessment',
       'submit_rubric_assessment',
+      'create_rubric',
     ])
   })
 
@@ -119,6 +121,57 @@ describe('rubricTools', () => {
       const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
       await tool.handler({ course_id: 1, association_id: 10, data })
       expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith(1, 10, data)
+    })
+  })
+
+  describe('create_rubric', () => {
+    const validCriteria = [
+      {
+        description: 'Content Quality',
+        points: 10,
+        ratings: [
+          { description: 'Excellent', points: 10 },
+          { description: 'Poor', points: 0 },
+        ],
+      },
+    ]
+
+    it('has destructive and openWorld annotations', () => {
+      const tool = rubricTools(buildMockCanvas()).find((t) => t.name === 'create_rubric')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.rubrics.create without association', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
+      const result = await tool.handler({
+        course_id: 1,
+        title: 'Essay Rubric',
+        criteria: validCriteria,
+      })
+      expect(canvas.rubrics.create).toHaveBeenCalledWith(
+        1,
+        { title: 'Essay Rubric', criteria: validCriteria },
+        undefined,
+      )
+      expect(result).toEqual(mockRubric)
+    })
+
+    it('delegates to canvas.rubrics.create with association', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
+      const association = { assignment_id: 55, use_for_grading: true, purpose: 'grading' }
+      await tool.handler({
+        course_id: 1,
+        title: 'Essay Rubric',
+        criteria: validCriteria,
+        association,
+      })
+      expect(canvas.rubrics.create).toHaveBeenCalledWith(
+        1,
+        { title: 'Essay Rubric', criteria: validCriteria },
+        association,
+      )
     })
   })
 })
