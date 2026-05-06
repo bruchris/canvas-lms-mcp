@@ -32,6 +32,7 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       getAssessment: async () => ({}),
       submitAssessment: async () => ({}),
+      create: async () => ({}),
     },
     quizzes: {
       list: async () => [],
@@ -155,7 +156,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 105 tools across all domains', () => {
+  it('returns all 106 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -179,11 +180,12 @@ describe('getAllTools', () => {
     expect(names).toContain('get_submission')
     expect(names).toContain('grade_submission')
     expect(names).toContain('comment_on_submission')
-    // Rubrics (4)
+    // Rubrics (5)
     expect(names).toContain('list_rubrics')
     expect(names).toContain('get_rubric')
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
+    expect(names).toContain('create_rubric')
     // Quizzes (6)
     expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
@@ -288,7 +290,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
 
-    expect(tools).toHaveLength(106)
+    expect(tools).toHaveLength(107)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -306,6 +308,7 @@ describe('getAllTools', () => {
       'grade_submission',
       'comment_on_submission',
       'submit_rubric_assessment',
+      'create_rubric',
       'score_quiz_question',
       'post_discussion_entry',
       'create_discussion',
@@ -344,6 +347,7 @@ describe('getAllTools', () => {
       'grade_submission',
       'comment_on_submission',
       'submit_rubric_assessment',
+      'create_rubric',
       'score_quiz_question',
       'post_discussion_entry',
       'create_discussion',

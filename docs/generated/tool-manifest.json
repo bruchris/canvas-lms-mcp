@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 106,
+  "toolCount": 107,
   "tools": [
     {
       "name": "health_check",
@@ -265,6 +265,18 @@
       "relatedWorkflows": [
         "educator-assignment-review"
       ]
+    },
+    {
+      "name": "create_rubric",
+      "domain": "rubrics",
+      "description": "Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
     },
     {
       "name": "list_quizzes",
