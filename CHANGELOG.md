@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.12.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.11.1...canvas-lms-mcp-v1.12.0) (2026-05-06)
+
+
+### Features
+
+* **rubrics:** add create_rubric tool with bracket-notation form-data ([#106](https://github.com/bruchris/canvas-lms-mcp/issues/106)) ([e53946e](https://github.com/bruchris/canvas-lms-mcp/commit/e53946e893c13c547079ed4835ba8126d5447e97))
+
+
+### Bug Fixes
+
+* **tests:** update registry test description to 107 tools ([#108](https://github.com/bruchris/canvas-lms-mcp/issues/108)) ([19ce048](https://github.com/bruchris/canvas-lms-mcp/commit/19ce0480d11298c665dbf819e9208ef0880975cb))
+
+
+### Documentation
+
+* **tools:** add permanence notes to delete-tool descriptions ([#105](https://github.com/bruchris/canvas-lms-mcp/issues/105)) ([dba4397](https://github.com/bruchris/canvas-lms-mcp/commit/dba4397bf36b8403d13c1b8facf1c641725a3167))
+
 ## [1.11.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.11.0...canvas-lms-mcp-v1.11.1) (2026-05-02)
 
 
