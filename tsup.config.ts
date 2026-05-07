@@ -5,6 +5,7 @@ export default defineConfig({
     server: 'src/server.ts',
     stdio: 'src/stdio.ts',
     http: 'src/http.ts',
+    init: 'src/init.ts',
     cli: 'src/cli.ts',
     'canvas/index': 'src/canvas/index.ts',
   },
