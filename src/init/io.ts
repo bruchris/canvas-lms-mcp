@@ -101,16 +101,16 @@ export function createMemoryFileSystem(initial?: Record<string, string>): Memory
       if (opts?.recursive !== false) {
         // Walk parents — supports both / and \ separators.
         const parts = path.split(/[\\/]/).filter(Boolean)
-        let acc = path.startsWith('/') ? '' : ''
+        let acc = ''
         const sep = path.includes('\\') ? '\\' : '/'
-        if (path.startsWith('/')) acc = ''
         for (const part of parts) {
-          acc =
-            acc.length === 0 && path.startsWith('/')
-              ? `/${part}`
-              : acc
-                ? `${acc}${sep}${part}`
-                : part
+          if (acc.length === 0 && path.startsWith('/')) {
+            acc = `/${part}`
+          } else if (acc) {
+            acc = `${acc}${sep}${part}`
+          } else {
+            acc = part
+          }
           dirs.add(acc)
         }
       } else {
