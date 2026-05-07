@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.13.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.12.0...canvas-lms-mcp-v1.13.0) (2026-05-07)
+
+
+### Features
+
+* **init:** add CLI wizard core infrastructure (BRU-952) ([#112](https://github.com/bruchris/canvas-lms-mcp/issues/112)) ([8515259](https://github.com/bruchris/canvas-lms-mcp/commit/8515259c971e5d3fcf11c1711a8c41f6265b9993))
+
+
+### Bug Fixes
+
+* **init:** remove dead-code ternary and redundant if in mkdir [BRU-954] ([#113](https://github.com/bruchris/canvas-lms-mcp/issues/113)) ([fcbd015](https://github.com/bruchris/canvas-lms-mcp/commit/fcbd015ec485f37014549e104a0510bc9e312d4f))
+
+
+### Documentation
+
+* **specs:** design CLI setup wizard (npx canvas-lms-mcp init) [BRU-785] ([#109](https://github.com/bruchris/canvas-lms-mcp/issues/109)) ([171d5de](https://github.com/bruchris/canvas-lms-mcp/commit/171d5dec6499679e5d68e7a84d707e1532d49371))
+* **specs:** rename --version flag to --pin in CLI wizard spec [BRU-785] ([#111](https://github.com/bruchris/canvas-lms-mcp/issues/111)) ([7f9a0dc](https://github.com/bruchris/canvas-lms-mcp/commit/7f9a0dc2a08f53b9d0fc317f9bbcc1ae5b61a5a6))
+
 ## [1.12.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.11.1...canvas-lms-mcp-v1.12.0) (2026-05-06)
 
 
