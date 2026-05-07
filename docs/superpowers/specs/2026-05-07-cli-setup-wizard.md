@@ -41,7 +41,7 @@ This document is design-only. It does not change current implementation.
 
 ```
 npx canvas-lms-mcp init [--client <id>...] [--token <t>] [--base-url <u>]
-                        [--server-name <name>] [--version <semver>]
+                        [--server-name <name>] [--pin <semver>]
                         [--non-interactive] [--dry-run] [--no-backup]
                         [--yes]
 ```
@@ -193,9 +193,16 @@ documentation/wizard mismatch.
 ### Version pinning
 
 By default the wizard writes `args: ["-y", "canvas-lms-mcp"]` — unpinned, the
-same as our README. With `--version <semver>` it writes
+same as our README. With `--pin <semver>` it writes
 `canvas-lms-mcp@<semver>`. Rationale: most users want auto-upgrade; users with
 production setups want pinning, and they explicitly opt in.
+
+The flag is `--pin`, not `--version`, because `--version` is the conventional
+way to ask any CLI to print its own version (e.g.,
+`npx canvas-lms-mcp --version` should print `1.12.0`, not configure pinning).
+Reusing `--version` here would silently shadow that convention. We reserve
+`--version` / `-v` for the version-print subcommand whenever Task 1 wires
+`init`'s argv parser.
 
 ## Inputs
 
@@ -205,7 +212,7 @@ production setups want pinning, and they explicitly opt in.
 | Canvas API token | `--token` flag → `CANVAS_API_TOKEN` env → prompt (masked input) | yes | non-empty; live-pinged against `/api/v1/users/self` (see Validation) |
 | Selected clients | `--client <id>` (repeatable) → multiselect prompt | yes | at least one; each must be in `clients.ts` |
 | Server entry name | `--server-name` flag → defaults to `canvas-lms` | no | matches `/^[a-z][a-z0-9-]{0,40}$/` |
-| Pinned version | `--version` flag → unpinned | no | parses as semver |
+| Pinned version | `--pin` flag → unpinned | no | parses as semver |
 
 The token prompt uses `prompts`'s `password` type so the value is not echoed
 or saved to shell history. We never persist the token anywhere except into the
