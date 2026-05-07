@@ -1,9 +1,15 @@
+# Usage: trigger `workflow_dispatch` with backfill_tags=all (or comma-separated tags) to re-enrich past releases.
 name: Release
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      backfill_tags:
+        description: 'Tags to backfill AI notes (all, or comma-separated: canvas-lms-mcp-v1.0.0,canvas-lms-mcp-v1.5.0)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -44,3 +50,81 @@ jobs:
 
       - name: Publish to npm with Trusted Publisher OIDC
         run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
+
+  enhance-notes:
+    name: AI Release Notes
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch and enrich release notes
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VERSION_TAG: ${{ needs.release-please.outputs.tag_name }}
+          SKIP_AI_RELEASE_NOTES: ${{ vars.SKIP_AI_RELEASE_NOTES }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$VERSION_TAG" --json body --jq '.body' > /tmp/release-notes-raw.md
+          RELEASE_BODY=$(cat /tmp/release-notes-raw.md) node scripts/enrich-release-notes.mjs > /tmp/enriched-notes.md
+          if [ -s /tmp/enriched-notes.md ]; then
+            gh release edit "$VERSION_TAG" --notes-file /tmp/enriched-notes.md
+            echo "Release notes enriched successfully for $VERSION_TAG."
+          else
+            echo "Enrichment skipped or empty — keeping original notes for $VERSION_TAG."
+          fi
+
+  backfill:
+    name: Backfill Release Notes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.backfill_tags != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Backfill AI enrichment for selected tags
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SKIP_AI_RELEASE_NOTES: ${{ vars.SKIP_AI_RELEASE_NOTES }}
+          GH_TOKEN: ${{ github.token }}
+          BACKFILL_TAGS: ${{ inputs.backfill_tags }}
+        run: |
+          if [ "$BACKFILL_TAGS" = "all" ]; then
+            TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
+          else
+            TAGS=$(echo "$BACKFILL_TAGS" | tr ',' '\n')
+          fi
+
+          for TAG in $TAGS; do
+            echo "--- Processing $TAG ---"
+            BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null) || { echo "  $TAG not found, skipping."; continue; }
+
+            if echo "$BODY" | grep -q '## ✨ Highlights'; then
+              echo "  $TAG already enriched — skipping."
+              continue
+            fi
+
+            export RELEASE_BODY="$BODY"
+            export VERSION_TAG="$TAG"
+            node scripts/enrich-release-notes.mjs > /tmp/enriched-notes.md
+            unset RELEASE_BODY VERSION_TAG
+
+            if [ -s /tmp/enriched-notes.md ]; then
+              gh release edit "$TAG" --notes-file /tmp/enriched-notes.md
+              echo "  $TAG enriched successfully."
+            else
+              echo "  $TAG enrichment empty or skipped — keeping original."
+            fi
+
+            sleep 2
+          done

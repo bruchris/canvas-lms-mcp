@@ -2,12 +2,12 @@
 /**
  * enrich-release-notes.mjs
  *
- * Calls Claude Haiku to enrich release-please-generated notes in a
- * more engaging, human-readable voice, then prints the result to stdout.
+ * Calls Claude Sonnet to enrich release-please-generated notes in a
+ * HeroUI-style voice, then prints the result to stdout.
  *
  * Environment variables:
  *   RELEASE_BODY        — raw release notes markdown (required)
- *   VERSION_TAG         — release version tag, e.g. "canvas-lms-mcp-v0.2.0"
+ *   VERSION_TAG         — release version tag, e.g. "canvas-lms-mcp-v1.3.0"
  *   ANTHROPIC_API_KEY   — Anthropic API key (if absent, exits 0 with warning)
  *   SKIP_AI_RELEASE_NOTES — set to "true" to skip enrichment entirely
  */
@@ -34,22 +34,38 @@ if (!RELEASE_BODY || !RELEASE_BODY.trim()) {
   process.exit(0);
 }
 
-const SYSTEM_PROMPT = `You are a technical writer helping improve software release notes.
-Your job is to enrich auto-generated release notes so they are more readable and informative for developers and end users.
+const SYSTEM_PROMPT = `You are a developer-experience writer producing GitHub release notes for canvas-lms-mcp, a Model Context Protocol (MCP) server that connects Canvas LMS to LLM clients such as Claude Desktop, Cursor, and ChatGPT. Your audience is developers building integrations between Canvas LMS and AI tools — NOT Canvas LMS instructors or students.
 
 Rules you MUST follow:
-- Rewrite the bullet points in an engaging, human-tone voice
-- Add a short "Highlights" summary at the top (2–4 sentences) capturing what this release is about
-- Group related changes when it makes sense
-- Add context where commit messages are cryptic or terse
-- Preserve ALL technical details — enrichment is additive, never replacement
-- DO NOT invent features or changes not present in the original notes
-- DO NOT use marketing fluff ("blazing fast", "game-changing", "revolutionary", etc.)
-- DO NOT remove attribution to commit authors or PR links
-- DO NOT change version numbers, dates, or any factual details
-- Output valid markdown only — no preamble, no explanation, no code fences around the full output`;
+- Do NOT invent features, fixes, or improvements not present in the raw notes
+- Do NOT remove PR links, commit links, or other attribution
+- Do NOT change version numbers, dates, or factual details
+- Output markdown only — no preamble, no explanation, no code fences wrapping the entire output`;
 
-const USER_PROMPT = `Please enrich the following release notes for version ${VERSION_TAG}:
+const USER_PROMPT = `Rewrite the following raw release-please changelog for ${VERSION_TAG} into engaging, scannable release notes.
+
+Required structure (omit any section that has no entries from the raw notes):
+
+1. **Opening paragraph** (no heading): 2-3 sentences. Lead with developer/integrator impact — how this release improves the experience of someone building with this MCP server. Mention the 1-2 most significant changes and why they matter.
+
+2. **## ✨ Highlights** — 3-5 bullets of the most impactful changes. Each bullet: emoji prefix, **bold lead-in**, one sentence explaining *why it matters* to integrators. End each bullet with the PR link (#NNN).
+
+3. **Emoji-prefixed detail sections** (include all entries from the raw notes; add brief context where non-obvious; omit sections with no entries):
+   - ## 🚀 New Features
+   - ## 🎨 Improvements
+   - ## 🐛 Bug Fixes
+   - ## ⚡ Performance
+   - ## 🔧 Code Refactoring
+   - ## 🧪 Tests
+   - ## 🚢 CI & Release Pipeline
+   - ## 📚 Documentation
+   - ## ⏪ Reverts
+
+4. **## 👥 Contributors** — @-mention PR authors visible in the raw notes; if none identifiable, write "Thanks to everyone who contributed to this release!"
+
+5. **Full Changelog** — preserve the compare URL link verbatim if release-please included it; otherwise omit this section.
+
+Raw release notes:
 
 ---
 ${RELEASE_BODY}
@@ -66,14 +82,14 @@ async function enrichReleaseNotes() {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: USER_PROMPT },
         ],
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (err) {
     process.stderr.write(`[enrich-release-notes] Network error calling Anthropic API: ${err?.message ?? String(err)}\n`);
@@ -105,7 +121,9 @@ async function enrichReleaseNotes() {
     process.exit(0);
   }
 
-  if (enriched.trim().length < RELEASE_BODY.trim().length * 0.5) {
+  // HeroUI-style prompt reorganises content rather than expanding it, so allow output
+  // down to 40% of raw length before flagging as suspiciously short.
+  if (enriched.trim().length < RELEASE_BODY.trim().length * 0.4) {
     process.stderr.write('[enrich-release-notes] Enriched content suspiciously short — skipping.\n');
     process.exit(0);
   }
