@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.13.0...canvas-lms-mcp-v1.14.0) (2026-05-07)
+
+
+### Features
+
+* **release:** chain AI enrichment as needs: job with backfill support [BRU-969] ([#115](https://github.com/bruchris/canvas-lms-mcp/issues/115)) ([58f5e86](https://github.com/bruchris/canvas-lms-mcp/commit/58f5e8654986962bd97b101987407e54f202bf35))
+
+
+### Bug Fixes
+
+* **ci:** remove workflow_dispatch clause from npm-publish if-gate ([#117](https://github.com/bruchris/canvas-lms-mcp/issues/117)) ([7de1839](https://github.com/bruchris/canvas-lms-mcp/commit/7de1839370f9bcd98df220fda0642a2875edd538))
+
 ## [1.13.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.12.0...canvas-lms-mcp-v1.13.0) (2026-05-07)
 
 
