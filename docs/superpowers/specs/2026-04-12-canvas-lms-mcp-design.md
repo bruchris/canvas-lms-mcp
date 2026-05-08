@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-88 tools across Canvas courses, assignments, submissions, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, student workflows, dashboard, and health checks.
+107 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks.
 
 ### Tool Pattern
 
@@ -332,7 +332,7 @@ All errors returned as structured MCP content, never thrown:
 | `grade_submission` | write | Post a grade to a submission |
 | `comment_on_submission` | write | Post a comment, optionally with a file attachment (uses Canvas's comment file upload workflow — not general file uploads) |
 
-#### Rubrics (4 tools)
+#### Rubrics (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -340,6 +340,7 @@ All errors returned as structured MCP content, never thrown:
 | `get_rubric` | read | Full rubric with criteria/ratings |
 | `get_rubric_assessment` | read | Existing assessment for a submission |
 | `submit_rubric_assessment` | write | Grade via rubric criteria |
+| `create_rubric` | write | Create a new rubric in a course with criteria and rating levels |
 
 #### Quizzes (6 tools)
 
@@ -352,13 +353,14 @@ All errors returned as structured MCP content, never thrown:
 | `get_quiz_submission_answers` | read | Student's answered questions |
 | `score_quiz_question` | write | Score an essay/open-ended question |
 
-#### Files (5 tools)
+#### Files (6 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_files` | read | Files in a course |
 | `list_folders` | read | Folder structure |
 | `get_file` | read | File metadata + download URL |
+| `download_file` | read | Download file content by ID (text returned as-is; binary as base64) |
 | `upload_file` | write | Upload a file to a course folder |
 | `delete_file` | write | Delete a file |
 
@@ -379,11 +381,12 @@ All errors returned as structured MCP content, never thrown:
 | `list_groups` | read | Course groups |
 | `list_group_members` | read | Members of a group |
 
-#### Enrollments (3 tools)
+#### Enrollments (4 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_enrollments` | read | User's enrollments across courses |
+| `list_course_enrollments` | read | Enrollments within a specific course with role and grade filters |
 | `enroll_user` | write | Enroll a user in a course |
 | `remove_enrollment` | write | Remove or conclude an enrollment |
 
@@ -408,7 +411,7 @@ All errors returned as structured MCP content, never thrown:
 | `update_page` | write | Update a wiki page |
 | `delete_page` | write | Delete a wiki page |
 
-#### Discussions (4 tools)
+#### Discussions (7 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -484,7 +487,33 @@ All errors returned as structured MCP content, never thrown:
 | `get_upcoming_events` | read | Current user's upcoming events |
 | `get_missing_submissions` | read | Current user's missing submissions |
 
-**Totals: 88 tools (60 read, 28 write)**
+#### Gradebook History (4 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_gradebook_history_days` | read | Dates in a course gradebook history that contain grading activity |
+| `get_gradebook_history_day` | read | Graders and assignment IDs that had activity on a specific date |
+| `list_gradebook_history_submissions` | read | Versioned submission history for one grader and assignment on a date |
+| `get_gradebook_history_feed` | read | Paginated gradebook history feed, optionally filtered by assignment or user |
+
+#### Outcomes (12 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_root_outcome_group` | read | Root outcome group for an account or course context |
+| `list_outcome_groups` | read | All outcome groups for an account or course context |
+| `list_outcome_group_links` | read | All outcome links in an account or course context |
+| `get_outcome_group` | read | Details for a specific outcome group |
+| `list_outcome_group_outcomes` | read | Outcomes linked into a specific outcome group |
+| `list_outcome_group_subgroups` | read | Subgroups of a specific outcome group |
+| `get_outcome` | read | Single outcome definition |
+| `get_outcome_alignments` | read | Alignments for an outcome in a course |
+| `get_outcome_results` | read | Raw outcome results for a course |
+| `get_outcome_rollups` | read | Outcome rollups (summary scores) for a course |
+| `get_outcome_contributing_scores` | read | Scores contributing to an outcome rollup for a user |
+| `get_outcome_mastery_distribution` | read | Distribution of mastery levels across students for an outcome |
+
+**Totals: 107 tools (78 read, 29 write)**
 
 ## MCP Resources
 
