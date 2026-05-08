@@ -80,7 +80,8 @@
   "packageManager": "pnpm@10.11.0",
   "pnpm": {
     "overrides": {
-      "hono": "4.12.14"
+      "hono": "^4.12.16",
+      "ip-address": "^10.1.1"
     }
   },
   "dependencies": {
