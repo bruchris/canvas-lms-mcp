@@ -2,7 +2,7 @@
   "name": "canvas-lms-mcp",
   "version": "1.14.1",
   "mcpName": "io.github.bruchris/canvas-lms-mcp",
-  "description": "TypeScript MCP 1.x server for Canvas LMS — 104 tools across Canvas courses, assignments, grades, gradebook history, quizzes, outcomes, discussions, admin workflows, and more.",
+  "description": "TypeScript MCP 1.x server for Canvas LMS — 107 tools across Canvas courses, assignments, grades, gradebook history, quizzes, outcomes, discussions, admin workflows, and more.",
   "type": "module",
   "types": "./dist/server.d.ts",
   "exports": {
@@ -80,7 +80,8 @@
   "packageManager": "pnpm@10.11.0",
   "pnpm": {
     "overrides": {
-      "hono": "4.12.14"
+      "hono": "^4.12.16",
+      "ip-address": "^10.1.1"
     }
   },
   "dependencies": {
