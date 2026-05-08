@@ -20,9 +20,9 @@ export function createHttpHandler(defaultConfig: {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, X-Canvas-Token, Mcp-Session-Id, Mcp-Protocol-Version',
+      'Content-Type, X-Canvas-Token, Mcp-Protocol-Version',
     )
-    res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id, Mcp-Protocol-Version')
+    res.setHeader('Access-Control-Expose-Headers', 'Mcp-Protocol-Version')
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204)

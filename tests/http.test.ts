@@ -109,6 +109,14 @@ describe('createHttpHandler', () => {
       await handler(req, res)
       expect(res._status).toBe(204)
     })
+
+    it('does not advertise Mcp-Session-Id in CORS preflight (SEP-2567)', async () => {
+      const req = createMockReq({ method: 'OPTIONS', url: '/mcp' })
+      const res = createMockRes()
+      await handler(req, res)
+      expect(res._headers['access-control-allow-headers']).not.toContain('Mcp-Session-Id')
+      expect(res._headers['access-control-expose-headers']).not.toContain('Mcp-Session-Id')
+    })
   })
 
   describe('/health', () => {
