@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.14.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.1...canvas-lms-mcp-v1.14.2) (2026-05-08)
+
+
+### Miscellaneous
+
+* **deps:** bump dev dependencies (eslint, [@typescript-eslint](https://github.com/typescript-eslint), @types/node, zod) ([#121](https://github.com/bruchris/canvas-lms-mcp/issues/121)) ([1a8a957](https://github.com/bruchris/canvas-lms-mcp/commit/1a8a957fbc608c9db67e76055973f8712d052177))
+* **deps:** bump hono and ip-address overrides for moderate advisories ([#120](https://github.com/bruchris/canvas-lms-mcp/issues/120)) ([6299d14](https://github.com/bruchris/canvas-lms-mcp/commit/6299d1458790dd9d56e5859ac8ab9fe79a074e7e))
+
+
+### Documentation
+
+* reconcile tool inventory documentation ([#122](https://github.com/bruchris/canvas-lms-mcp/issues/122)) ([7e58f84](https://github.com/bruchris/canvas-lms-mcp/commit/7e58f84cccc25bfb721d1c37a181f4362454c4cb))
+
 ## [1.14.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.0...canvas-lms-mcp-v1.14.1) (2026-05-08)
 
 
