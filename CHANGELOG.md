@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.0...canvas-lms-mcp-v1.14.1) (2026-05-08)
+
+
+### Miscellaneous
+
+* **http:** drop dead Mcp-Session-Id from CORS headers ([#118](https://github.com/bruchris/canvas-lms-mcp/issues/118)) ([4bebc07](https://github.com/bruchris/canvas-lms-mcp/commit/4bebc07961b2888bddd5aa522acd44a2a1c9703f))
+
 ## [1.14.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.13.0...canvas-lms-mcp-v1.14.0) (2026-05-07)
 
 
