@@ -20,6 +20,7 @@ import { AnalyticsModule } from './analytics'
 import { DashboardModule } from './dashboard'
 import { OutcomesModule } from './outcomes'
 import { GradebookHistoryModule } from './gradebook-history'
+import { NewQuizzesModule } from './new-quizzes'
 
 export class CanvasClient {
   private client: CanvasHttpClient
@@ -43,6 +44,7 @@ export class CanvasClient {
   dashboard: DashboardModule
   outcomes: OutcomesModule
   gradebookHistory: GradebookHistoryModule
+  newQuizzes: NewQuizzesModule
 
   constructor(config: CanvasClientConfig) {
     this.client = new CanvasHttpClient(config)
@@ -66,6 +68,7 @@ export class CanvasClient {
     this.dashboard = new DashboardModule(this.client)
     this.outcomes = new OutcomesModule(this.client)
     this.gradebookHistory = new GradebookHistoryModule(this.client)
+    this.newQuizzes = new NewQuizzesModule(this.client)
   }
 }
 
