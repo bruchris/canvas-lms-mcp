@@ -892,6 +892,36 @@ export interface CanvasMissingSubmission {
   html_url: string
 }
 
+// --- New Quizzes ---
+
+export interface CanvasNewQuiz {
+  id: number
+  title: string
+  instructions: string | null
+  points_possible: number
+  due_at: string | null
+  unlock_at: string | null
+  lock_at: string | null
+  published: boolean
+  assignment_id: number
+}
+
+export interface CanvasNewQuizItem {
+  id: string
+  position: number
+  points_possible: number
+  entry_type: 'Item' | 'Stimulus'
+  entry: {
+    interaction_type_slug: string
+    item_body: string
+    interaction_data: Record<string, unknown>
+    properties: Record<string, unknown>
+    scoring_data?: Record<string, unknown>
+    scoring_algorithm?: string
+    feedback?: Record<string, unknown>
+  }
+}
+
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {
