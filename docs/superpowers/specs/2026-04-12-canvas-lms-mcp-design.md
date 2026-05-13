@@ -888,4 +888,10 @@ This project differentiates by:
 5. **Three integration patterns** — dev-time MCP, shared client library, runtime MCP for agentic features
 6. **Grading-focused writes** — safer default than full CRUD
 7. **Skills.sh integration** (v1.1) — pre-built grading workflows
+
+## Subsequent Specs
+
+| Spec | Topic |
+|------|-------|
+| [2026-05-13-new-quizzes-tools.md](./2026-05-13-new-quizzes-tools.md) | New Quizzes (LTI) domain design — 8 tools for creating and managing New Quizzes and quiz items |
 8. **OAuth support** (v1.2) — for LTI/OAuth app integration

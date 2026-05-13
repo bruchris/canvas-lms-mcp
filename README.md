@@ -10,14 +10,14 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-107 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
+115 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 107 | 80+ | 54 |
+| Tools | 115 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -189,7 +189,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (104)
+### All Registered Tools (115)
 
 | Category | Tools |
 |----------|-------|
@@ -199,6 +199,7 @@ Once configured, try these prompts with your AI client:
 | Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
 | Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
 | Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
+| New Quizzes (LTI) | `create_new_quiz`, `update_new_quiz`, `delete_new_quiz`, `list_new_quiz_items`, `get_new_quiz_item`, `create_new_quiz_item`, `update_new_quiz_item`, `delete_new_quiz_item` |
 | Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
 | Gradebook History | `list_gradebook_history_days`, `get_gradebook_history_day`, `list_gradebook_history_submissions`, `get_gradebook_history_feed` |
 | Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
@@ -216,9 +217,13 @@ Once configured, try these prompts with your AI client:
 | Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
-78 tools are read-only and 29 tools perform Canvas write operations.
+80 tools are read-only and 35 tools perform Canvas write operations.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
+
+### Bulk operations
+
+Canvas applies rate limits per-user. When creating many New Quizzes items (e.g., RAG-generated quizzes), call the tools serially rather than in parallel. For >50 items, chunk and pause between batches. If you hit a rate-limit error, wait a few seconds and retry.
 
 ### MCP Resources (2)
 
