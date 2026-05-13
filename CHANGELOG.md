@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.15.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.2...canvas-lms-mcp-v1.15.0) (2026-05-13)
+
+
+### Features
+
+* **canvas:** add NewQuizzesModule client + types + facade wiring [BRU-1045] ([#127](https://github.com/bruchris/canvas-lms-mcp/issues/127)) ([f7083c1](https://github.com/bruchris/canvas-lms-mcp/commit/f7083c1beb4fb3b3925fdb980efa1d8f6b2a5a04))
+* **tools:** add New Quizzes MCP tools + formatError LTI discriminator [BRU-1046] ([#128](https://github.com/bruchris/canvas-lms-mcp/issues/128)) ([11da0a8](https://github.com/bruchris/canvas-lms-mcp/commit/11da0a8f3ac5ff6d1650bfee4942ddf32e60f081))
+
+
+### Documentation
+
+* New Quizzes README + spec linkage + headline fix [BRU-1047] ([#129](https://github.com/bruchris/canvas-lms-mcp/issues/129)) ([5835054](https://github.com/bruchris/canvas-lms-mcp/commit/5835054c2bb6e88ebbf432190909c762a1d4854e))
+* **spec:** add New Quizzes API tool design [BRU-1044] ([#125](https://github.com/bruchris/canvas-lms-mcp/issues/125)) ([4692477](https://github.com/bruchris/canvas-lms-mcp/commit/469247709d1233c2cfa4ed56b59cf25c399dbe21))
+
 ## [1.14.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.1...canvas-lms-mcp-v1.14.2) (2026-05-08)
 
 
