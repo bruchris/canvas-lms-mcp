@@ -15,7 +15,7 @@ This spec covers **design only**. Implementation is broken into Developer-sized 
 
 ### In-scope (V1)
 
-Seven tools across one new domain module:
+Eight tools across one new domain module:
 
 | Tool | Verb | Endpoint |
 |---|---|---|
