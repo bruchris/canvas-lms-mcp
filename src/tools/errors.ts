@@ -4,6 +4,23 @@ export function formatError(error: unknown): string {
   if (error instanceof CanvasApiError) {
     const status = error.status
     const message = error.message
+
+    // LTI not enabled: Canvas returns "Tool not configured" for /api/quiz/v1/ when New Quizzes
+    // LTI isn't enabled on the instance. A real 404 on a valid endpoint won't include this phrase.
+    const ltiMarkers = ['Tool not configured', 'tool is not configured']
+    const looksLikeLtiNotEnabled =
+      error.endpoint.startsWith('/api/quiz/v1/') &&
+      (status === 404 || status === 401) &&
+      ltiMarkers.some((m) => message.toLowerCase().includes(m.toLowerCase()))
+    if (looksLikeLtiNotEnabled) {
+      return 'New Quizzes is not enabled on this Canvas instance. Ask a Canvas admin to enable the "New Quizzes" LTI tool, or use the Classic quiz tools (list_quizzes / get_quiz) instead.'
+    }
+
+    // Rate-limit on New Quizzes: 403 + body containing "Rate Limit Exceeded"
+    if (status === 403 && message.toLowerCase().includes('rate limit exceeded')) {
+      return 'Canvas rate-limit hit. Wait a few seconds and retry, or chunk your bulk operation.'
+    }
+
     switch (status) {
       case 401:
         return 'Canvas token is invalid or expired'

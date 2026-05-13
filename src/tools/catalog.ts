@@ -17,6 +17,7 @@ import { outcomeTools } from './outcomes'
 import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
+import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
 import { submissionTools } from './submissions'
@@ -59,6 +60,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'quizzes',
     defaultPrimaryAudience: 'educator',
     getTools: quizTools,
+  },
+  {
+    domain: 'new_quizzes',
+    defaultPrimaryAudience: 'educator',
+    getTools: newQuizTools,
   },
   {
     domain: 'files',

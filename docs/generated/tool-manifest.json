@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 107,
+  "toolCount": 115,
   "tools": [
     {
       "name": "health_check",
@@ -342,6 +342,106 @@
       "name": "score_quiz_question",
       "domain": "quizzes",
       "description": "Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_new_quiz",
+      "domain": "new_quizzes",
+      "description": "Create a New Quiz (LTI) in a Canvas course. New Quizzes is the modern quiz engine; for Classic quizzes use create_quiz.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_new_quiz",
+      "domain": "new_quizzes",
+      "description": "Update an existing New Quiz (LTI) in a Canvas course.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_new_quiz",
+      "domain": "new_quizzes",
+      "description": "Delete a New Quiz (LTI) from a Canvas course. This action is permanent. Use assignment_id (not quiz_id).",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_new_quiz_items",
+      "domain": "new_quizzes",
+      "description": "List all items (questions) in a New Quiz (LTI).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_new_quiz_item",
+      "domain": "new_quizzes",
+      "description": "Get a single item (question) from a New Quiz (LTI) by item ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_new_quiz_item",
+      "domain": "new_quizzes",
+      "description": "Create an item (question) in a New Quiz (LTI). Supports 5 types: choice (MCQ), true-false, essay, matching, numeric. Canvas may rate-limit rapid sequential creates. Call serially (not in parallel). For >50 items, chunk and pause between batches.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_new_quiz_item",
+      "domain": "new_quizzes",
+      "description": "Update an existing item (question) in a New Quiz (LTI). All fields are optional; supply only what changes. Canvas may rate-limit rapid sequential updates. Call serially (not in parallel). For >50 items, chunk and pause between batches.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_new_quiz_item",
+      "domain": "new_quizzes",
+      "description": "Delete an item (question) from a New Quiz (LTI). This action is permanent.",
       "annotations": {
         "destructiveHint": true,
         "idempotentHint": true,
