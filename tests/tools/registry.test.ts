@@ -147,6 +147,16 @@ function buildFullMockCanvas(): CanvasClient {
       getUpcomingEvents: async () => [],
       getMissingSubmissions: async () => [],
     },
+    newQuizzes: {
+      create: async () => ({}),
+      update: async () => ({}),
+      delete: async () => undefined,
+      listItems: async () => [],
+      getItem: async () => ({}),
+      createItem: async () => ({}),
+      updateItem: async () => ({}),
+      deleteItem: async () => undefined,
+    },
   } as unknown as CanvasClient
 }
 
@@ -156,7 +166,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 107 tools across all domains', () => {
+  it('returns all 115 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -289,8 +299,17 @@ describe('getAllTools', () => {
     expect(names).toContain('get_todo_items')
     expect(names).toContain('get_upcoming_events')
     expect(names).toContain('get_missing_submissions')
+    // New Quizzes (8)
+    expect(names).toContain('create_new_quiz')
+    expect(names).toContain('update_new_quiz')
+    expect(names).toContain('delete_new_quiz')
+    expect(names).toContain('list_new_quiz_items')
+    expect(names).toContain('get_new_quiz_item')
+    expect(names).toContain('create_new_quiz_item')
+    expect(names).toContain('update_new_quiz_item')
+    expect(names).toContain('delete_new_quiz_item')
 
-    expect(tools).toHaveLength(107)
+    expect(tools).toHaveLength(115)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -331,6 +350,12 @@ describe('getAllTools', () => {
       'update_calendar_event',
       'create_course',
       'update_course',
+      'create_new_quiz',
+      'update_new_quiz',
+      'delete_new_quiz',
+      'create_new_quiz_item',
+      'update_new_quiz_item',
+      'delete_new_quiz_item',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -370,6 +395,12 @@ describe('getAllTools', () => {
       'update_calendar_event',
       'create_course',
       'update_course',
+      'create_new_quiz',
+      'update_new_quiz',
+      'delete_new_quiz',
+      'create_new_quiz_item',
+      'update_new_quiz_item',
+      'delete_new_quiz_item',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {
