@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.15.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.0...canvas-lms-mcp-v1.15.1) (2026-05-15)
+
+
+### Miscellaneous
+
+* **deps:** bump dev dependencies (eslint, typescript-eslint, vitest, @types/node, tsx, zod) ([#131](https://github.com/bruchris/canvas-lms-mcp/issues/131)) ([491756d](https://github.com/bruchris/canvas-lms-mcp/commit/491756d0307263ce640a240f2a621cd97d25f470))
+* **deps:** override fast-uri to ^3.1.2 for GHSA-v39h-62p7-jpjc ([#130](https://github.com/bruchris/canvas-lms-mcp/issues/130)) ([8ebb321](https://github.com/bruchris/canvas-lms-mcp/commit/8ebb321d6a1fe1622a3df6b6c4d22597484b69ee))
+
+
+### Documentation
+
+* **spec:** reconcile tool inventory to 115 + document New Quizzes domain ([#133](https://github.com/bruchris/canvas-lms-mcp/issues/133)) ([68e19db](https://github.com/bruchris/canvas-lms-mcp/commit/68e19dbcb53a0704dca9dff0995e9b2bacd1b20f))
+
 ## [1.15.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.14.2...canvas-lms-mcp-v1.15.0) (2026-05-13)
 
 
