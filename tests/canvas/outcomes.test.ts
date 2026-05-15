@@ -93,6 +93,19 @@ describe('OutcomesModule', () => {
     )
   })
 
+  it('gets outcome results with no options — no query string appended', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ outcome_results: [] })
+    await outcomes.getOutcomeResults(42)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/outcome_results')
+  })
+
+  it('omits include[]=alignments when include_alignments is false', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ outcome_results: [] })
+    await outcomes.getOutcomeResults(42, { include_alignments: false })
+    const url = vi.mocked(client.request).mock.calls[0][0] as string
+    expect(url).not.toContain('alignments')
+  })
+
   it('gets outcome rollups with aggregate, filters, and sorting options', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({ rollups: [] })
     await outcomes.getOutcomeRollups(42, {
@@ -112,6 +125,19 @@ describe('OutcomesModule', () => {
     )
   })
 
+  it('gets outcome rollups with no options — no query string appended', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ rollups: [] })
+    await outcomes.getOutcomeRollups(42)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/outcome_rollups')
+  })
+
+  it('omits include[]=courses when include_courses is false', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ rollups: [] })
+    await outcomes.getOutcomeRollups(42, { include_courses: false })
+    const url = vi.mocked(client.request).mock.calls[0][0] as string
+    expect(url).not.toContain('include')
+  })
+
   it('gets contributing scores for a specific outcome', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({ scores: [] })
     await outcomes.getOutcomeContributingScores(42, 8, {
@@ -122,6 +148,12 @@ describe('OutcomesModule', () => {
     expect(client.request).toHaveBeenCalledWith(
       '/api/v1/courses/42/outcomes/8/contributing_scores?user_ids%5B%5D=10&only_assignment_alignments=true&show_unpublished_assignments=true',
     )
+  })
+
+  it('gets contributing scores with no options — no query string appended', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ scores: [] })
+    await outcomes.getOutcomeContributingScores(42, 8)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/outcomes/8/contributing_scores')
   })
 
   it('gets outcome mastery distribution with alignment distributions', async () => {
@@ -138,5 +170,18 @@ describe('OutcomesModule', () => {
     expect(client.request).toHaveBeenCalledWith(
       '/api/v1/courses/42/outcome_mastery_distribution?exclude%5B%5D=missing_outcome_results&outcome_ids%5B%5D=8&student_ids%5B%5D=10&include%5B%5D=alignment_distributions&only_assignment_alignments=true&show_unpublished_assignments=true&add_defaults=true',
     )
+  })
+
+  it('gets outcome mastery distribution with no options — no query string appended', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ outcomes: [] })
+    await outcomes.getOutcomeMasteryDistribution(42)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/outcome_mastery_distribution')
+  })
+
+  it('omits include[]=alignment_distributions when include_alignment_distributions is false', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ outcomes: [] })
+    await outcomes.getOutcomeMasteryDistribution(42, { include_alignment_distributions: false })
+    const url = vi.mocked(client.request).mock.calls[0][0] as string
+    expect(url).not.toContain('alignment_distributions')
   })
 })
