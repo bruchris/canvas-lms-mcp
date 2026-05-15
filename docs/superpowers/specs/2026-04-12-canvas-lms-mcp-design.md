@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-107 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks.
+115 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks.
 
 ### Tool Pattern
 
@@ -513,7 +513,22 @@ All errors returned as structured MCP content, never thrown:
 | `get_outcome_contributing_scores` | read | Scores contributing to an outcome rollup for a user |
 | `get_outcome_mastery_distribution` | read | Distribution of mastery levels across students for an outcome |
 
-**Totals: 107 tools (78 read, 29 write)**
+#### New Quizzes — LTI (8 tools)
+
+New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Classic quizzes. See the detailed API spec at [2026-05-13-new-quizzes-tools.md](2026-05-13-new-quizzes-tools.md).
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `create_new_quiz` | write | Create a New Quiz (LTI) in a Canvas course |
+| `update_new_quiz` | write | Update an existing New Quiz (LTI) |
+| `delete_new_quiz` | write | Delete a New Quiz (LTI) from a Canvas course |
+| `list_new_quiz_items` | read | List all items (questions) in a New Quiz |
+| `get_new_quiz_item` | read | Get a single item (question) from a New Quiz by item ID |
+| `create_new_quiz_item` | write | Create an item (question) in a New Quiz (supports choice, true-false, essay, matching, numeric) |
+| `update_new_quiz_item` | write | Update an existing item (question) in a New Quiz |
+| `delete_new_quiz_item` | write | Delete an item (question) from a New Quiz |
+
+**Totals: 115 tools (80 read, 35 write)**
 
 ## MCP Resources
 
