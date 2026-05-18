@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.1...canvas-lms-mcp-v1.15.2) (2026-05-18)
+
+
+### CI/CD
+
+* add MCP Registry publish step to release workflow [BRU-1144] ([#135](https://github.com/bruchris/canvas-lms-mcp/issues/135)) ([0d836ce](https://github.com/bruchris/canvas-lms-mcp/commit/0d836ce9dfc3d7f914b717c87dbf205a2bd3ba62))
+* authenticate mcp-publisher GitHub API call to avoid rate-limit [BRU-1145] ([#137](https://github.com/bruchris/canvas-lms-mcp/issues/137)) ([cd45269](https://github.com/bruchris/canvas-lms-mcp/commit/cd4526976e84b9cd8f533451befcf9335386bbca))
+
 ## [1.15.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.0...canvas-lms-mcp-v1.15.1) (2026-05-15)
 
 
