@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.bruchris/canvas-lms-mcp",
+  "description": "TypeScript MCP 1.x server for Canvas LMS — 115 tools across courses, assignments, grades, gradebook history, quizzes, New Quizzes (LTI), outcomes, discussions, admin workflows, and more.",
+  "repository": {
+    "url": "https://github.com/bruchris/canvas-lms-mcp",
+    "source": "github"
+  },
+  "version": "1.15.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "canvas-lms-mcp",
+      "version": "1.15.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CANVAS_API_TOKEN",
+          "description": "Canvas personal access token (Account → Settings → Approved Integrations → New Access Token)",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "CANVAS_BASE_URL",
+          "description": "Canvas instance API URL, e.g. https://school.instructure.com/api/v1",
+          "isRequired": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
