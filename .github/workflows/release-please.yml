@@ -51,6 +51,72 @@ jobs:
       - name: Publish to npm with Trusted Publisher OIDC
         run: npm publish --access public --no-git-checks --provenance --registry https://registry.npmjs.org/
 
+  registry-publish:
+    name: Publish to MCP Registry
+    needs: [release-please, npm-publish]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+          VERSION="${TAG##*-v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
+
+      - name: Wait for npm propagation
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Poll the npm registry up to 12 times (6 min ceiling) before calling
+          # mcp-publisher, which fetches the package to verify it exists on npm.
+          echo "Polling npm for canvas-lms-mcp@$VERSION"
+          for i in $(seq 1 12); do
+            if curl -fsSL "https://registry.npmjs.org/canvas-lms-mcp/$VERSION" >/dev/null 2>&1; then
+              echo "Attempt $i: version $VERSION visible on npm"
+              exit 0
+            fi
+            echo "Attempt $i: not yet visible, waiting 30s..."
+            sleep 30
+          done
+          echo "ERROR: npm did not surface canvas-lms-mcp@$VERSION within 6 minutes"
+          exit 1
+
+      - name: Sync server.json version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const s = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+            s.version = process.env.VERSION;
+            s.packages.forEach(p => { p.version = process.env.VERSION; });
+            fs.writeFileSync('server.json', JSON.stringify(s, null, 2) + '\n');
+          "
+          echo "server.json synced to version $VERSION"
+
+      - name: Install mcp-publisher
+        run: |
+          PUB_VER=$(curl -fsSL https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/${PUB_VER}/mcp-publisher_${OS}_${ARCH}.tar.gz" | tar xz
+          sudo mv mcp-publisher /usr/local/bin/
+          mcp-publisher --version
+
+      - name: Login to MCP Registry (OIDC)
+        run: mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        run: mcp-publisher publish
+
   enhance-notes:
     name: AI Release Notes
     needs: release-please

@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![npm downloads](https://img.shields.io/npm/dw/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.bruchris%2Fcanvas--lms--mcp-blue)](https://registry.modelcontextprotocol.io/v0/servers/io.github.bruchris%2Fcanvas-lms-mcp)
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
