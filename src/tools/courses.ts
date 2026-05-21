@@ -56,11 +56,6 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
           .array(z.enum(COURSE_WORKFLOW_STATE))
           .optional()
           .describe('Filter by course workflow state'),
-        enrollment_role_id: z
-          .number()
-          .int()
-          .optional()
-          .describe('Filter by specific enrollment role ID'),
         include: z
           .array(z.enum(COURSE_LIST_INCLUDE))
           .optional()
@@ -80,8 +75,6 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
           opts.enrollment_state = params.enrollment_state as CourseEnrollmentState
         if (params.state !== undefined)
           opts.state = params.state as ReadonlyArray<CourseWorkflowState>
-        if (params.enrollment_role_id !== undefined)
-          opts.enrollment_role_id = params.enrollment_role_id as number
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<CourseListInclude>
         if (params.exclude_blueprint_courses !== undefined)
