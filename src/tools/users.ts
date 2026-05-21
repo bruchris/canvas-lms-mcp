@@ -122,11 +122,6 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
           .array(z.enum(COURSE_USER_ENROLLMENT_STATE))
           .optional()
           .describe('Filter by enrollment state (e.g. active, invited)'),
-        enrollment_role_id: z
-          .number()
-          .int()
-          .optional()
-          .describe('Filter by a specific enrollment role ID (overrides enrollment_type)'),
         include: z
           .array(z.enum(COURSE_USER_INCLUDE))
           .optional()
@@ -153,8 +148,6 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.enrollment_state !== undefined)
           opts.enrollment_state =
             params.enrollment_state as ReadonlyArray<CourseUserEnrollmentState>
-        if (params.enrollment_role_id !== undefined)
-          opts.enrollment_role_id = params.enrollment_role_id as number
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<CourseUserInclude>
         if (params.user_ids !== undefined)
