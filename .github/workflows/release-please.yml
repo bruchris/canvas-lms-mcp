@@ -56,7 +56,6 @@ jobs:
     needs: [release-please, npm-publish]
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
       id-token: write
@@ -113,6 +112,13 @@ jobs:
 
       - name: Login to MCP Registry (OIDC)
         run: mcp-publisher login github-oidc
+
+      - name: Assert description length
+        run: |
+          DESC=$(node -e "const s=require('./server.json');process.stdout.write(s.description)")
+          LEN=${#DESC}
+          if [ "$LEN" -gt 100 ]; then echo "ERROR: server.json description is $LEN chars (limit 100): $DESC" && exit 1; fi
+          echo "OK: description is $LEN chars"
 
       - name: Publish to MCP Registry
         run: mcp-publisher publish
