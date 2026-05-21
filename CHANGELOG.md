@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.3...canvas-lms-mcp-v1.15.4) (2026-05-21)
+
+
+### Bug Fixes
+
+* **tools:** drop enrollment_role_id from list_courses to avoid empty results [GH-138] ([#139](https://github.com/bruchris/canvas-lms-mcp/issues/139)) ([cd04579](https://github.com/bruchris/canvas-lms-mcp/commit/cd045791b23ed3291d4a9b4dc84be69c298c12f9))
+
 ## [1.15.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.2...canvas-lms-mcp-v1.15.3) (2026-05-21)
 
 
