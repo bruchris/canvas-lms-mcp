@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.2...canvas-lms-mcp-v1.15.3) (2026-05-21)
+
+
+### Bug Fixes
+
+* **ci:** shorten server.json description to 78 chars; harden registry-publish job ([#140](https://github.com/bruchris/canvas-lms-mcp/issues/140)) ([7b1e803](https://github.com/bruchris/canvas-lms-mcp/commit/7b1e80338831a4d76b3b68356ab4fe09f095546d))
+
 ## [1.15.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.1...canvas-lms-mcp-v1.15.2) (2026-05-18)
 
 
