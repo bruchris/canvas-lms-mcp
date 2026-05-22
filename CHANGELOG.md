@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.4...canvas-lms-mcp-v1.15.5) (2026-05-22)
+
+
+### Miscellaneous
+
+* **deps:** bump dev deps + override brace-expansion for GHSA-jxxr-4gwj-5jf2 ([#143](https://github.com/bruchris/canvas-lms-mcp/issues/143)) ([3ddc317](https://github.com/bruchris/canvas-lms-mcp/commit/3ddc317fb743dd3c16818070297f994797d5f433))
+
 ## [1.15.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.3...canvas-lms-mcp-v1.15.4) (2026-05-21)
 
 
