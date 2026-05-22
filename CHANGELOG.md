@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.6](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.5...canvas-lms-mcp-v1.15.6) (2026-05-22)
+
+
+### Documentation
+
+* **specs:** decide init wizard scope — finish as MVP [BRU-1223] ([#144](https://github.com/bruchris/canvas-lms-mcp/issues/144)) ([24dfa60](https://github.com/bruchris/canvas-lms-mcp/commit/24dfa60763854eb3e9978167f656e54fa0da8967))
+
 ## [1.15.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.4...canvas-lms-mcp-v1.15.5) (2026-05-22)
 
 
