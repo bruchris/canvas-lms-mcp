@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 115,
+  "toolCount": 116,
   "tools": [
     {
       "name": "health_check",
@@ -821,6 +821,18 @@
       },
       "access": "read",
       "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_course_structure",
+      "domain": "modules",
+      "description": "Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     },
     {
