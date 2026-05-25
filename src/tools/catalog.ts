@@ -1,4 +1,5 @@
 import type { CanvasClient } from '../canvas'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
 import { assignmentTools } from './assignments'
@@ -27,7 +28,7 @@ import { userTools } from './users'
 export interface ToolDomainRegistration {
   domain: string
   defaultPrimaryAudience: ToolAudience
-  getTools: (canvas: CanvasClient) => ToolDefinition[]
+  getTools: (canvas: CanvasClient, pseudonymizer?: Pseudonymizer) => ToolDefinition[]
 }
 
 export const toolDomainCatalog: readonly ToolDomainRegistration[] = [

@@ -1,5 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
+import type {
+  CanvasOutcomeResultsResponse,
+  CanvasOutcomeRollupsResponse,
+} from '../../src/canvas/types'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { outcomeTools } from '../../src/tools/outcomes'
 
 describe('outcomeTools', () => {
@@ -209,6 +217,99 @@ describe('outcomeTools', () => {
       user_ids: [10, 'sis_user_id:xyz'],
       only_assignment_alignments: true,
       show_unpublished_assignments: false,
+    })
+  })
+
+  describe('pseudonymization', () => {
+    const mockResultsWithUsers: CanvasOutcomeResultsResponse = {
+      outcome_results: [],
+      linked: {
+        users: [
+          {
+            id: 5,
+            name: 'Alice',
+            sortable_name: 'Alice',
+            short_name: 'Alice',
+            email: 'alice@example.edu',
+          },
+        ],
+      },
+    }
+    const mockRollupsWithUsers: CanvasOutcomeRollupsResponse = {
+      rollups: [],
+      linked: {
+        users: [
+          {
+            id: 5,
+            name: 'Alice',
+            sortable_name: 'Alice',
+            short_name: 'Alice',
+            email: 'alice@example.edu',
+          },
+        ],
+      },
+    }
+
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'outcome-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    function buildCanvasWithUsers(): CanvasClient {
+      return {
+        outcomes: {
+          ...buildMockCanvas().outcomes,
+          getOutcomeResults: vi.fn().mockResolvedValue(mockResultsWithUsers),
+          getOutcomeRollups: vi.fn().mockResolvedValue(mockRollupsWithUsers),
+        },
+      } as unknown as CanvasClient
+    }
+
+    describe('get_outcome_results', () => {
+      it('pseudonymizes linked.users when enabled', async () => {
+        const tool = outcomeTools(buildCanvasWithUsers(), makePseudonymizer()).find(
+          (t) => t.name === 'get_outcome_results',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasOutcomeResultsResponse
+        expect(result.linked?.users?.[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const tool = outcomeTools(buildCanvasWithUsers(), makePseudonymizer(false)).find(
+          (t) => t.name === 'get_outcome_results',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasOutcomeResultsResponse
+        expect(result.linked?.users?.[0].name).toBe('Alice')
+      })
+    })
+
+    describe('get_outcome_rollups', () => {
+      it('pseudonymizes linked.users when enabled', async () => {
+        const tool = outcomeTools(buildCanvasWithUsers(), makePseudonymizer()).find(
+          (t) => t.name === 'get_outcome_rollups',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasOutcomeRollupsResponse
+        expect(result.linked?.users?.[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const tool = outcomeTools(buildCanvasWithUsers(), makePseudonymizer(false)).find(
+          (t) => t.name === 'get_outcome_rollups',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasOutcomeRollupsResponse
+        expect(result.linked?.users?.[0].name).toBe('Alice')
+      })
     })
   })
 })

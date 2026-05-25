@@ -1,8 +1,12 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
-export function accountTools(canvas: CanvasClient): ToolDefinition[] {
+export function accountTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'get_account',
@@ -73,9 +77,13 @@ export function accountTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.accounts.listUsers(params.account_id as number, {
+        const account_id = params.account_id as number
+        const users = await canvas.accounts.listUsers(account_id, {
           search_term: params.search_term as string | undefined,
         })
+        if (!pseudonymizer?.isEnabled()) return users
+        // Account-scoped; no course context. Use account_id as map key.
+        return pseudonymizer.anonymizeUsers(String(account_id), users)
       },
     },
     {

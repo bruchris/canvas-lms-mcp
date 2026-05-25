@@ -7,6 +7,7 @@ import type {
   ListCourseEnrollmentsOptions,
   ListUserEnrollmentsOptions,
 } from '../canvas/enrollments'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
 const ENROLLMENT_TYPE = [
@@ -41,7 +42,10 @@ const ENROLLMENT_INCLUDE = [
   'grades',
 ] as const
 
-export function enrollmentTools(canvas: CanvasClient): ToolDefinition[] {
+export function enrollmentTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'list_enrollments',
@@ -90,7 +94,11 @@ export function enrollmentTools(canvas: CanvasClient): ToolDefinition[] {
           opts.grading_period_id = params.grading_period_id as number
         if (params.enrollment_term_id !== undefined)
           opts.enrollment_term_id = params.enrollment_term_id as number
-        return canvas.enrollments.list(opts)
+        const enrollments = await canvas.enrollments.list(opts)
+        if (!pseudonymizer?.isEnabled()) return enrollments
+        return Promise.all(
+          enrollments.map((e) => pseudonymizer.anonymizeEnrollment(e.course_id, e)),
+        )
       },
     },
     {
@@ -129,6 +137,7 @@ export function enrollmentTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const course_id = params.course_id as number
         const opts: ListCourseEnrollmentsOptions = {}
         if (params.type !== undefined) opts.type = params.type as ReadonlyArray<EnrollmentType>
         if (params.state !== undefined) opts.state = params.state as ReadonlyArray<EnrollmentState>
@@ -140,7 +149,9 @@ export function enrollmentTools(canvas: CanvasClient): ToolDefinition[] {
           opts.grading_period_id = params.grading_period_id as number
         if (params.enrollment_term_id !== undefined)
           opts.enrollment_term_id = params.enrollment_term_id as number
-        return canvas.enrollments.listForCourse(params.course_id as number, opts)
+        const enrollments = await canvas.enrollments.listForCourse(course_id, opts)
+        if (!pseudonymizer?.isEnabled()) return enrollments
+        return Promise.all(enrollments.map((e) => pseudonymizer.anonymizeEnrollment(course_id, e)))
       },
     },
     {

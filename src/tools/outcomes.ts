@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import {
   OUTCOME_CONTEXT_TYPES,
@@ -10,7 +11,10 @@ import {
   OUTCOME_SORT_ORDER,
 } from '../canvas/outcomes'
 
-export function outcomeTools(canvas: CanvasClient): ToolDefinition[] {
+export function outcomeTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'get_root_outcome_group',
@@ -191,13 +195,17 @@ export function outcomeTools(canvas: CanvasClient): ToolDefinition[] {
           .describe('Include hidden outcomes when Canvas supports it.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
-      handler: async (params) =>
-        canvas.outcomes.getOutcomeResults(params.course_id as number, {
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const response = await canvas.outcomes.getOutcomeResults(course_id, {
           user_ids: params.user_ids as Array<number | string> | undefined,
           outcome_ids: params.outcome_ids as number[] | undefined,
           include_alignments: params.include_alignments as boolean | undefined,
           include_hidden: params.include_hidden as boolean | undefined,
-        }),
+        })
+        if (!pseudonymizer?.isEnabled()) return response
+        return pseudonymizer.anonymizeOutcomeResults(course_id, response)
+      },
     },
     {
       name: 'get_outcome_rollups',
@@ -247,8 +255,9 @@ export function outcomeTools(canvas: CanvasClient): ToolDefinition[] {
           .describe('Include default mastery colors and levels when Canvas supports it.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
-      handler: async (params) =>
-        canvas.outcomes.getOutcomeRollups(params.course_id as number, {
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const response = await canvas.outcomes.getOutcomeRollups(course_id, {
           aggregate: params.aggregate as 'course' | undefined,
           aggregate_stat: params.aggregate_stat as 'mean' | 'median' | undefined,
           user_ids: params.user_ids as Array<number | string> | undefined,
@@ -261,7 +270,10 @@ export function outcomeTools(canvas: CanvasClient): ToolDefinition[] {
           sort_outcome_id: params.sort_outcome_id as number | undefined,
           sort_order: params.sort_order as 'asc' | 'desc' | undefined,
           add_defaults: params.add_defaults as boolean | undefined,
-        }),
+        })
+        if (!pseudonymizer?.isEnabled()) return response
+        return pseudonymizer.anonymizeOutcomeResults(course_id, response)
+      },
     },
     {
       name: 'get_outcome_contributing_scores',

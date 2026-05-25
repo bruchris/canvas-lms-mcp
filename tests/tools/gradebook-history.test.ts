@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasGradebookHistoryDay,
@@ -35,6 +39,8 @@ describe('gradebookHistoryTools', () => {
           workflow_state: 'graded',
           new_grade: '95',
           previous_grade: '90',
+          user_name: 'Alice Student',
+          current_grader: 'Prof Smith',
         },
       ],
     },
@@ -52,6 +58,8 @@ describe('gradebookHistoryTools', () => {
       attempt: 1,
       workflow_state: 'graded',
       assignment_name: 'Essay 1',
+      user_name: 'Alice Student',
+      current_grader: 'Prof Smith',
     },
   ]
 
@@ -143,6 +151,92 @@ describe('gradebookHistoryTools', () => {
       assignment_id: 101,
       user_id: 12,
       ascending: true,
+    })
+  })
+
+  describe('pseudonymization', () => {
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'gbhist-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    describe('list_gradebook_history_submissions', () => {
+      it('pseudonymizes user_name when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = gradebookHistoryTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_gradebook_history_submissions',
+        )!
+        const result = (await tool.handler({
+          course_id: 42,
+          date: '2026-04-20',
+          grader_id: 7,
+          assignment_id: 101,
+        })) as CanvasGradebookHistorySubmission[]
+        expect(result[0].versions![0].user_name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real user_name when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = gradebookHistoryTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_gradebook_history_submissions',
+        )!
+        const result = (await tool.handler({
+          course_id: 42,
+          date: '2026-04-20',
+          grader_id: 7,
+          assignment_id: 101,
+        })) as CanvasGradebookHistorySubmission[]
+        expect(result[0].versions![0].user_name).toBe('Alice Student')
+      })
+
+      it('does not pseudonymize grader names', async () => {
+        const canvas = buildMockCanvas()
+        const tool = gradebookHistoryTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_gradebook_history_submissions',
+        )!
+        const result = (await tool.handler({
+          course_id: 42,
+          date: '2026-04-20',
+          grader_id: 7,
+          assignment_id: 101,
+        })) as CanvasGradebookHistorySubmission[]
+        expect(result[0].versions![0].current_grader).toBe('Prof Smith')
+      })
+    })
+
+    describe('get_gradebook_history_feed', () => {
+      it('pseudonymizes user_name when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = gradebookHistoryTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'get_gradebook_history_feed',
+        )!
+        const result = (await tool.handler({
+          course_id: 42,
+        })) as CanvasGradebookHistorySubmissionVersion[]
+        expect(result[0].user_name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real user_name when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = gradebookHistoryTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'get_gradebook_history_feed',
+        )!
+        const result = (await tool.handler({
+          course_id: 42,
+        })) as CanvasGradebookHistorySubmissionVersion[]
+        expect(result[0].user_name).toBe('Alice Student')
+      })
     })
   })
 })

@@ -9,6 +9,7 @@ import type {
   SearchUsersOptions,
   UserSort,
 } from '../canvas/users'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
 const COURSE_USER_ENROLLMENT_TYPE = ['student', 'teacher', 'ta', 'observer', 'designer'] as const
@@ -33,7 +34,7 @@ const COURSE_USER_INCLUDE = [
 const USER_SORT = ['username', 'email', 'sis_id', 'integration_id', 'last_login'] as const
 const SEARCH_USER_INCLUDE = ['email', 'last_login', 'avatar_url', 'time_zone', 'uuid'] as const
 
-export function userTools(canvas: CanvasClient): ToolDefinition[] {
+export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
   return [
     {
       name: 'list_students',
@@ -47,7 +48,9 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const course_id = params.course_id as number
-        return canvas.users.listStudents(course_id)
+        const users = await canvas.users.listStudents(course_id)
+        if (!pseudonymizer?.isEnabled()) return users
+        return pseudonymizer.anonymizeUsers(course_id, users)
       },
     },
     {
@@ -61,8 +64,11 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const user_id = params.user_id as number
-        return canvas.users.get(user_id)
+        const user = await canvas.users.get(params.user_id as number)
+        if (!pseudonymizer?.isEnabled()) return user
+        // No course context — unknown role defaults to pseudonymize (conservative).
+        // '_global' is the map key so pseudonyms are stable across calls.
+        return pseudonymizer.anonymizeUser('_global', user)
       },
     },
     {
@@ -74,6 +80,7 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async () => {
+        // get_profile is the token owner — never pseudonymize self.
         return canvas.users.getProfile()
       },
     },
@@ -96,16 +103,16 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const account_id = params.account_id as number
         const opts: SearchUsersOptions = {}
         if (params.sort !== undefined) opts.sort = params.sort as UserSort
         if (params.order !== undefined) opts.order = params.order as 'asc' | 'desc'
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<SearchUserInclude>
-        return canvas.users.searchUsers(
-          params.account_id as number,
-          params.search_term as string,
-          opts,
-        )
+        const users = await canvas.users.searchUsers(account_id, params.search_term as string, opts)
+        if (!pseudonymizer?.isEnabled()) return users
+        // Account-scoped; no course context. Use account_id as map key.
+        return pseudonymizer.anonymizeUsers(String(account_id), users)
       },
     },
     {
@@ -142,6 +149,7 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const course_id = params.course_id as number
         const opts: ListCourseUsersOptions = {}
         if (params.enrollment_type !== undefined)
           opts.enrollment_type = params.enrollment_type as ReadonlyArray<CourseUserEnrollmentType>
@@ -155,7 +163,9 @@ export function userTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.search_term !== undefined) opts.search_term = params.search_term as string
         if (params.sort !== undefined) opts.sort = params.sort as UserSort
         if (params.order !== undefined) opts.order = params.order as 'asc' | 'desc'
-        return canvas.users.listCourseUsers(params.course_id as number, opts)
+        const users = await canvas.users.listCourseUsers(course_id, opts)
+        if (!pseudonymizer?.isEnabled()) return users
+        return pseudonymizer.anonymizeUsers(course_id, users)
       },
     },
   ]

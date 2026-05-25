@@ -1,6 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasSubmission } from '../../src/canvas/types'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { submissionTools } from '../../src/tools/submissions'
 
 describe('submissionTools', () => {
@@ -247,6 +251,106 @@ describe('submissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'comment_on_submission')!
       expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('pseudonymization', () => {
+    const submissionWithUser: CanvasSubmission = {
+      ...mockSubmission,
+      user: {
+        id: 5,
+        name: 'Alice',
+        sortable_name: 'Alice',
+        short_name: 'Alice',
+        email: 'alice@example.edu',
+        sis_user_id: 'SIS-5',
+      },
+      submission_comments: [
+        {
+          id: 301,
+          author_id: 5,
+          author_name: 'Alice',
+          comment: 'Good feedback',
+          created_at: '2026-04-11T10:00:00Z',
+        },
+      ],
+    }
+
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'submission-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    function buildCanvasWithUser(): CanvasClient {
+      return {
+        submissions: {
+          list: vi.fn().mockResolvedValue([submissionWithUser]),
+          get: vi.fn().mockResolvedValue(submissionWithUser),
+          grade: vi.fn().mockResolvedValue(submissionWithUser),
+          comment: vi.fn().mockResolvedValue(submissionWithUser),
+        },
+      } as unknown as CanvasClient
+    }
+
+    describe('list_submissions', () => {
+      it('pseudonymizes embedded user when enabled', async () => {
+        const tool = submissionTools(buildCanvasWithUser(), makePseudonymizer()).find(
+          (t) => t.name === 'list_submissions',
+        )!
+        const result = (await tool.handler({
+          course_id: 1,
+          assignment_id: 101,
+        })) as CanvasSubmission[]
+        expect(result[0].user?.name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const tool = submissionTools(buildCanvasWithUser(), makePseudonymizer(false)).find(
+          (t) => t.name === 'list_submissions',
+        )!
+        const result = (await tool.handler({
+          course_id: 1,
+          assignment_id: 101,
+        })) as CanvasSubmission[]
+        expect(result[0].user?.name).toBe('Alice')
+      })
+    })
+
+    describe('get_submission', () => {
+      it('pseudonymizes embedded user when enabled', async () => {
+        const tool = submissionTools(buildCanvasWithUser(), makePseudonymizer()).find(
+          (t) => t.name === 'get_submission',
+        )!
+        const result = (await tool.handler({
+          course_id: 1,
+          assignment_id: 101,
+          user_id: 5,
+        })) as CanvasSubmission
+        expect(result.user?.name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const tool = submissionTools(buildCanvasWithUser(), makePseudonymizer(false)).find(
+          (t) => t.name === 'get_submission',
+        )!
+        const result = (await tool.handler({
+          course_id: 1,
+          assignment_id: 101,
+          user_id: 5,
+        })) as CanvasSubmission
+        expect(result.user?.name).toBe('Alice')
+      })
     })
   })
 })
