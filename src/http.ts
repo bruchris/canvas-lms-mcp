@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 
@@ -8,6 +9,13 @@ export function createHttpHandler(defaultConfig: {
   baseUrl?: string
   allowedOrigin?: string
 }) {
+  // Process-wide pseudonymizer keyed on the configured base URL. Pseudonyms
+  // are stable across requests because every fresh MCP server reuses this
+  // instance and its on-disk map.
+  const pseudonymizer = defaultConfig.baseUrl
+    ? new Pseudonymizer({ baseUrl: defaultConfig.baseUrl })
+    : undefined
+
   return async (
     req: import('node:http').IncomingMessage,
     res: import('node:http').ServerResponse,
@@ -72,8 +80,10 @@ export function createHttpHandler(defaultConfig: {
       return
     }
 
-    // Fresh MCP server per request (per-request credentials)
-    const { server } = createCanvasMCPServer({ token, baseUrl })
+    // Fresh MCP server per request (per-request credentials); the pseudonymizer
+    // is the singleton constructed above so pseudonyms remain stable across
+    // requests for this host.
+    const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer })
 
     try {
       const transport = new StreamableHTTPServerTransport({

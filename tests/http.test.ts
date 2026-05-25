@@ -207,10 +207,12 @@ describe('createHttpHandler', () => {
       const req = createMockReq({ method: 'POST', url: '/mcp' })
       const res = createMockRes()
       await handler(req, res)
-      expect(createCanvasMCPServer).toHaveBeenCalledWith({
-        token: 'test-token',
-        baseUrl: 'https://canvas.example.com/api/v1',
-      })
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: 'test-token',
+          baseUrl: 'https://canvas.example.com/api/v1',
+        }),
+      )
     })
   })
 })
