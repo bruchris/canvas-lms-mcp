@@ -1,5 +1,6 @@
 import { homedir } from 'node:os'
 import { posix as posixPath, win32 as winPath } from 'node:path'
+import type { FileSystem } from './io'
 
 export type ClientId =
   | 'claude-desktop'
@@ -127,4 +128,19 @@ export function currentPathEnv(): PathEnv {
     home: homedir(),
     appData: process.env.APPDATA,
   }
+}
+
+export async function detectInstalled(fs: FileSystem, env: PathEnv): Promise<Set<ClientId>> {
+  const installed = new Set<ClientId>()
+  for (const client of CLIENTS) {
+    let path: string
+    try {
+      path = client.resolvePath(env)
+    } catch {
+      // Missing platform env (e.g., %APPDATA% on Windows) — treat as not installed.
+      continue
+    }
+    if (await fs.exists(path)) installed.add(client.id)
+  }
+  return installed
 }
