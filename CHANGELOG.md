@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.6...canvas-lms-mcp-v1.16.0) (2026-05-25)
+
+
+### Features
+
+* **init:** config writers for JSON/TOML client configs [BRU-1223] ([#147](https://github.com/bruchris/canvas-lms-mcp/issues/147)) ([21bdc35](https://github.com/bruchris/canvas-lms-mcp/commit/21bdc35bd3a60b612fa7dcda7eebf101a77d0107))
+* **init:** wizard orchestration with Canvas token validation [BRU-1223] ([#150](https://github.com/bruchris/canvas-lms-mcp/issues/150)) ([8c15700](https://github.com/bruchris/canvas-lms-mcp/commit/8c157002b29e1369aec80525f6324f3af989a0f9))
+
+
+### Documentation
+
+* replace per-client setup with canvas-lms-mcp init wizard [BRU-1223] ([#148](https://github.com/bruchris/canvas-lms-mcp/issues/148)) ([c73b31a](https://github.com/bruchris/canvas-lms-mcp/commit/c73b31a76a8ee9ee15c16d3376ccc3430f2c5375))
+
 ## [1.15.6](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.5...canvas-lms-mcp-v1.15.6) (2026-05-22)
 
 
