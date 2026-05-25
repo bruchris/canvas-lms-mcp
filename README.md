@@ -32,132 +32,17 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 4. Give it a name (e.g., "MCP Server") and click **Generate Token**
 5. Copy the token immediately -- you won't see it again
 
-### 2. One Command Setup
+### 2. Run the Setup Wizard
 
 ```bash
-npx add-mcp canvas-lms-mcp
+npx canvas-lms-mcp init
 ```
 
-This auto-detects your installed AI clients (Claude Code, Cursor, VS Code, etc.) and configures them. You will be prompted for your Canvas API token and base URL.
+The wizard detects your installed AI clients (Claude Desktop, Cursor, VS Code, Windsurf, Codex, Continue, Claude Code), prompts for your Canvas token and base URL, validates the credentials against your Canvas instance, and writes the config for every client you select.
 
-### Client-Specific Commands
+`add-mcp` is also supported as a generic alternative: `npx add-mcp canvas-lms-mcp`.
 
-**Claude Code**
-
-```bash
-claude mcp add canvas-lms --env CANVAS_API_TOKEN=your-token --env CANVAS_BASE_URL=https://school.instructure.com -- npx -y canvas-lms-mcp
-```
-
-**VS Code**
-
-```bash
-code --add-mcp '{"name":"canvas-lms","command":"npx","args":["-y","canvas-lms-mcp"],"env":{"CANVAS_API_TOKEN":"your-token","CANVAS_BASE_URL":"https://school.instructure.com"}}'
-```
-
-**Gemini CLI**
-
-```bash
-gemini mcp add canvas-lms npx canvas-lms-mcp
-```
-
-**Codex CLI**
-
-```bash
-codex mcp add canvas-lms -- npx canvas-lms-mcp
-```
-
-<details>
-<summary>Manual Configuration</summary>
-
-#### Claude Desktop
-
-Add to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "canvas-lms": {
-      "command": "npx",
-      "args": ["-y", "canvas-lms-mcp"],
-      "env": {
-        "CANVAS_API_TOKEN": "your-token-here",
-        "CANVAS_BASE_URL": "https://your-institution.instructure.com"
-      }
-    }
-  }
-}
-```
-
-#### Cursor
-
-Add to `.cursor/mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "canvas-lms": {
-      "command": "npx",
-      "args": ["-y", "canvas-lms-mcp"],
-      "env": {
-        "CANVAS_API_TOKEN": "your-token-here",
-        "CANVAS_BASE_URL": "https://your-institution.instructure.com"
-      }
-    }
-  }
-}
-```
-
-#### VS Code
-
-Add to your VS Code settings (`settings.json`):
-
-```json
-{
-  "mcp.servers": {
-    "canvas-lms": {
-      "command": "npx",
-      "args": ["-y", "canvas-lms-mcp"],
-      "env": {
-        "CANVAS_API_TOKEN": "your-token-here",
-        "CANVAS_BASE_URL": "https://your-institution.instructure.com"
-      }
-    }
-  }
-}
-```
-
-#### Windsurf
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "canvas-lms": {
-      "command": "npx",
-      "args": ["-y", "canvas-lms-mcp"],
-      "env": {
-        "CANVAS_API_TOKEN": "your-token-here",
-        "CANVAS_BASE_URL": "https://your-institution.instructure.com"
-      }
-    }
-  }
-}
-```
-
-#### ChatGPT / HTTP Clients
-
-Run the server in HTTP mode, then point your client at the endpoint:
-
-```bash
-npx canvas-lms-mcp serve --port 3001 \
-  --token your-token-here \
-  --base-url https://your-institution.instructure.com
-```
-
-The MCP endpoint is `http://localhost:3001/mcp`. Per-request credentials can be passed via `X-Canvas-Token` and `X-Canvas-Base-URL` headers.
-
-</details>
+For clients not yet supported by the wizard, or if you prefer editing config files by hand, see [docs/manual-setup.md](./docs/manual-setup.md).
 
 ## Agent Skills
 
@@ -366,6 +251,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validatio
 
 ## Guides
 
+- [Manual Setup](docs/manual-setup.md) -- Per-client JSON/TOML config snippets for Claude Desktop, Cursor, VS Code, Windsurf, Codex, Continue, Claude Code, and HTTP clients
 - [Getting Started](docs/getting-started.md) -- Step-by-step setup for non-developers: token, config, first query, troubleshooting
 - [Student Guide](docs/student-guide.md) -- Token setup, AI client configuration, 10 example prompts
 - [Educator Guide](docs/educator-guide.md) -- Grading workflows, write operations, privacy considerations
