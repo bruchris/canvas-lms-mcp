@@ -1,4 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasAccount,
@@ -6,6 +9,7 @@ import type {
   CanvasCourse,
   CanvasUser,
 } from '../../src/canvas/types'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { accountTools } from '../../src/tools/accounts'
 
 describe('accountTools', () => {
@@ -142,6 +146,44 @@ describe('accountTools', () => {
       const tool = accountTools(canvas).find((t) => t.name === 'get_account_reports')!
       await tool.handler({ account_id: 1 })
       expect(canvas.accounts.getReports).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('pseudonymization', () => {
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'account-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    describe('list_account_users', () => {
+      it('pseudonymizes user names when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = accountTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_account_users',
+        )!
+        const result = (await tool.handler({ account_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = accountTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_account_users',
+        )!
+        const result = (await tool.handler({ account_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toBe('Alice')
+      })
     })
   })
 })

@@ -1,6 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasUser, CanvasUserProfile } from '../../src/canvas/types'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { userTools } from '../../src/tools/users'
 
 describe('userTools', () => {
@@ -169,6 +173,106 @@ describe('userTools', () => {
         search_term: 'alice',
         sort: 'last_login',
         order: 'desc',
+      })
+    })
+  })
+
+  describe('pseudonymization', () => {
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'users-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    describe('list_students', () => {
+      it('pseudonymizes names and emails when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'list_students')!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toMatch(/^Student \d+$/)
+        expect(result[0].email).toMatch(/@anon\.invalid$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_students',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toBe('Alice')
+      })
+    })
+
+    describe('get_user', () => {
+      it('pseudonymizes the user when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'get_user')!
+        const result = (await tool.handler({ user_id: 5 })) as CanvasUser
+        expect(result.name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real name when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer(false)).find((t) => t.name === 'get_user')!
+        const result = (await tool.handler({ user_id: 5 })) as CanvasUser
+        expect(result.name).toBe('Alice')
+      })
+    })
+
+    describe('get_profile', () => {
+      it('never pseudonymizes the authenticated user profile', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'get_profile')!
+        const result = (await tool.handler({})) as CanvasUserProfile
+        expect(result.name).toBe('Alice')
+      })
+    })
+
+    describe('search_users', () => {
+      it('pseudonymizes users when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'search_users')!
+        const result = (await tool.handler({ account_id: 1, search_term: 'alice' })) as CanvasUser[]
+        expect(result[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'search_users',
+        )!
+        const result = (await tool.handler({ account_id: 1, search_term: 'alice' })) as CanvasUser[]
+        expect(result[0].name).toBe('Alice')
+      })
+    })
+
+    describe('list_course_users', () => {
+      it('pseudonymizes users when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_course_users',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = userTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_course_users',
+        )!
+        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toBe('Alice')
       })
     })
   })

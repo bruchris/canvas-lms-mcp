@@ -1,8 +1,12 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
-export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
+export function conversationTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'list_conversations',
@@ -13,7 +17,9 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async () => {
-        return canvas.conversations.list()
+        const conversations = await canvas.conversations.list()
+        if (!pseudonymizer?.isEnabled()) return conversations
+        return Promise.all(conversations.map((c) => pseudonymizer.anonymizeConversation(c)))
       },
     },
     {
@@ -27,7 +33,9 @@ export function conversationTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.conversations.get(params.conversation_id as number)
+        const conversation = await canvas.conversations.get(params.conversation_id as number)
+        if (!pseudonymizer?.isEnabled()) return conversation
+        return pseudonymizer.anonymizeConversation(conversation)
       },
     },
     {

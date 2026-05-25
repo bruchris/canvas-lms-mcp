@@ -1,4 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasConversation,
@@ -127,6 +131,68 @@ describe('conversationTools', () => {
         body: 'Hi there!',
       })
       expect(canvas.conversations.send).toHaveBeenCalledWith(['5'], 'Hello', 'Hi there!')
+    })
+  })
+
+  describe('pseudonymization', () => {
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'conv-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    describe('list_conversations', () => {
+      it('pseudonymizes participant names when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = conversationTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_conversations',
+        )!
+        const result = (await tool.handler({})) as CanvasConversation[]
+        for (const p of result[0].participants) {
+          expect(p.name).toMatch(/^Person \d+$/)
+        }
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = conversationTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_conversations',
+        )!
+        const result = (await tool.handler({})) as CanvasConversation[]
+        expect(result[0].participants.map((p) => p.name)).toEqual(['Alice', 'Bob'])
+      })
+    })
+
+    describe('get_conversation', () => {
+      it('pseudonymizes participant names when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = conversationTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'get_conversation',
+        )!
+        const result = (await tool.handler({ conversation_id: 1 })) as CanvasConversationDetail
+        for (const p of result.participants) {
+          expect(p.name).toMatch(/^Person \d+$/)
+        }
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = conversationTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'get_conversation',
+        )!
+        const result = (await tool.handler({ conversation_id: 1 })) as CanvasConversationDetail
+        expect(result.participants.map((p) => p.name)).toEqual(['Alice', 'Bob'])
+      })
     })
   })
 })

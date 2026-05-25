@@ -11,7 +11,9 @@ const PSEUDONYM_META_NOTE =
   'Student names and contact info in this response have been replaced with stable pseudonyms (CANVAS_PSEUDONYMIZE_STUDENTS=true). Real names are not available to this tool.'
 
 export function getAllTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
-  const domainTools = toolDomainCatalog.flatMap((registration) => registration.getTools(canvas))
+  const domainTools = toolDomainCatalog.flatMap((registration) =>
+    registration.getTools(canvas, pseudonymizer),
+  )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
   return [...domainTools, ...conditional]
 }

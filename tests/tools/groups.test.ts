@@ -1,4 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasGroup, CanvasUser } from '../../src/canvas/types'
 import { groupTools } from '../../src/tools/groups'
@@ -67,6 +71,44 @@ describe('groupTools', () => {
       const tool = groupTools(canvas).find((t) => t.name === 'list_group_members')!
       await tool.handler({ group_id: 1 })
       expect(canvas.groups.listMembers).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('pseudonymization', () => {
+    let tmpDir: string
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), 'group-tool-'))
+    })
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true })
+    })
+
+    function makePseudonymizer(enabled = true) {
+      return new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpDir,
+        env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+      })
+    }
+
+    describe('list_group_members', () => {
+      it('pseudonymizes member names when enabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = groupTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_group_members',
+        )!
+        const result = (await tool.handler({ group_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toMatch(/^Student \d+$/)
+      })
+
+      it('passes through real names when disabled', async () => {
+        const canvas = buildMockCanvas()
+        const tool = groupTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_group_members',
+        )!
+        const result = (await tool.handler({ group_id: 1 })) as CanvasUser[]
+        expect(result[0].name).toBe('Alice')
+      })
     })
   })
 })

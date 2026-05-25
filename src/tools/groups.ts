@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
-export function groupTools(canvas: CanvasClient): ToolDefinition[] {
+export function groupTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
   return [
     {
       name: 'list_groups',
@@ -31,7 +32,10 @@ export function groupTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const group_id = params.group_id as number
-        return canvas.groups.listMembers(group_id)
+        const users = await canvas.groups.listMembers(group_id)
+        if (!pseudonymizer?.isEnabled()) return users
+        // No course context — use group_id as map key (group members share a pseudonym pool).
+        return pseudonymizer.anonymizeUsers(`_group_${group_id}`, users)
       },
     },
   ]

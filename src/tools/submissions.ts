@@ -7,6 +7,7 @@ import type {
   SubmissionListInclude,
   SubmissionWorkflowState,
 } from '../canvas/submissions'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
 const SUBMISSION_LIST_INCLUDE = [
@@ -34,7 +35,10 @@ const SUBMISSION_GET_INCLUDE = [
 
 const SUBMISSION_WORKFLOW_STATE = ['submitted', 'unsubmitted', 'graded', 'pending_review'] as const
 
-export function submissionTools(canvas: CanvasClient): ToolDefinition[] {
+export function submissionTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'list_submissions',
@@ -74,6 +78,7 @@ export function submissionTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const course_id = params.course_id as number
         const opts: ListSubmissionsOptions = {}
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<SubmissionListInclude>
@@ -86,11 +91,13 @@ export function submissionTools(canvas: CanvasClient): ToolDefinition[] {
           opts.workflow_state = params.workflow_state as SubmissionWorkflowState
         if (params.grading_period_id !== undefined)
           opts.grading_period_id = params.grading_period_id as number
-        return canvas.submissions.list(
-          params.course_id as number,
+        const submissions = await canvas.submissions.list(
+          course_id,
           params.assignment_id as number,
           opts,
         )
+        if (!pseudonymizer?.isEnabled()) return submissions
+        return Promise.all(submissions.map((s) => pseudonymizer.anonymizeSubmission(course_id, s)))
       },
     },
     {
@@ -113,15 +120,18 @@ export function submissionTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const course_id = params.course_id as number
         const opts: GetSubmissionOptions = {}
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<SubmissionGetInclude>
-        return canvas.submissions.get(
-          params.course_id as number,
+        const submission = await canvas.submissions.get(
+          course_id,
           params.assignment_id as number,
           params.user_id as number,
           opts,
         )
+        if (!pseudonymizer?.isEnabled()) return submission
+        return pseudonymizer.anonymizeSubmission(course_id, submission)
       },
     },
     {

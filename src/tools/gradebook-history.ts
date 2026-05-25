@@ -1,8 +1,34 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { CanvasGradebookHistorySubmissionVersion } from '../canvas/types'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
-export function gradebookHistoryTools(canvas: CanvasClient): ToolDefinition[] {
+// Pseudonymize the student `user_name` string on a gradebook history version.
+// The embedded `user_id` lets us assign a stable pseudonym keyed by course.
+// Grader name fields (current_grader, new_grader, previous_grader) are staff
+// and pass through unchanged per the FERPA spec.
+async function anonymizeHistoryVersion(
+  courseId: number,
+  version: CanvasGradebookHistorySubmissionVersion,
+  pseudonymizer: Pseudonymizer,
+): Promise<CanvasGradebookHistorySubmissionVersion> {
+  if (!version.user_name || !version.user_id) return version
+  // Construct a minimal CanvasUser so anonymizeUser can allocate a stable pseudonym.
+  const minimalUser = {
+    id: version.user_id,
+    name: version.user_name,
+    sortable_name: version.user_name,
+    short_name: version.user_name,
+  }
+  const pseudo = await pseudonymizer.anonymizeUser(courseId, minimalUser as never)
+  return { ...version, user_name: pseudo.name }
+}
+
+export function gradebookHistoryTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'list_gradebook_history_days',
@@ -57,7 +83,23 @@ export function gradebookHistoryTools(canvas: CanvasClient): ToolDefinition[] {
         const date = params.date as string
         const grader_id = params.grader_id as number
         const assignment_id = params.assignment_id as number
-        return canvas.gradebookHistory.listSubmissions(course_id, date, grader_id, assignment_id)
+        const submissions = await canvas.gradebookHistory.listSubmissions(
+          course_id,
+          date,
+          grader_id,
+          assignment_id,
+        )
+        if (!pseudonymizer?.isEnabled()) return submissions
+        return Promise.all(
+          submissions.map(async (s) => ({
+            ...s,
+            versions: s.versions
+              ? await Promise.all(
+                  s.versions.map((v) => anonymizeHistoryVersion(course_id, v, pseudonymizer)),
+                )
+              : s.versions,
+          })),
+        )
       },
     },
     {
@@ -85,7 +127,15 @@ export function gradebookHistoryTools(canvas: CanvasClient): ToolDefinition[] {
         const assignment_id = params.assignment_id as number | undefined
         const user_id = params.user_id as number | undefined
         const ascending = params.ascending as boolean | undefined
-        return canvas.gradebookHistory.getFeed(course_id, { assignment_id, user_id, ascending })
+        const versions = await canvas.gradebookHistory.getFeed(course_id, {
+          assignment_id,
+          user_id,
+          ascending,
+        })
+        if (!pseudonymizer?.isEnabled()) return versions
+        return Promise.all(
+          versions.map((v) => anonymizeHistoryVersion(course_id, v, pseudonymizer)),
+        )
       },
     },
   ]
