@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.17.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.16.0...canvas-lms-mcp-v1.17.0) (2026-05-25)
+
+
+### Features
+
+* **pseudonym:** add Pseudonymizer core, conditional resolve_pseudonym tool, FERPA mode [BRU-1266] ([#154](https://github.com/bruchris/canvas-lms-mcp/issues/154)) ([77dc2f7](https://github.com/bruchris/canvas-lms-mcp/commit/77dc2f710883cc424cb258d5165ae0f8ce1b4805))
+* **tools:** add get_course_structure tool (module → items tree) [BRU-1265] ([#152](https://github.com/bruchris/canvas-lms-mcp/issues/152)) ([d85d0f5](https://github.com/bruchris/canvas-lms-mcp/commit/d85d0f53decbd455aebdcbb4b35d49640b47b073))
+
+
+### Documentation
+
+* **ferpa:** design opt-in student pseudonymization mode [BRU-1264] ([#151](https://github.com/bruchris/canvas-lms-mcp/issues/151)) ([7af3c83](https://github.com/bruchris/canvas-lms-mcp/commit/7af3c831e85a298f650f47d227f04f0b0a61156c))
+
 ## [1.16.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.15.6...canvas-lms-mcp-v1.16.0) (2026-05-25)
 
 
