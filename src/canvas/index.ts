@@ -22,6 +22,18 @@ import { OutcomesModule } from './outcomes'
 import { GradebookHistoryModule } from './gradebook-history'
 import { NewQuizzesModule } from './new-quizzes'
 
+/**
+ * Standalone Canvas REST API client. Composed of modular per-domain classes
+ * sharing a `CanvasHttpClient`. Throws `CanvasApiError` on Canvas-side failures.
+ *
+ * NOTE on FERPA mode: pseudonymization is a tool-layer concern provided by the
+ * `Pseudonymizer` in `src/pseudonym/`. Library consumers that import this
+ * client directly (`canvas-lms-mcp/canvas`) bypass the MCP tool wrappers and
+ * therefore receive raw Canvas responses with real student names and contact
+ * info. If you need pseudonymized output, either use the MCP server entry
+ * points (`canvas-lms-mcp` stdio / `canvas-lms-mcp serve` HTTP) or wrap your
+ * own calls with a `Pseudonymizer` instance.
+ */
 export class CanvasClient {
   private client: CanvasHttpClient
   courses: CoursesModule

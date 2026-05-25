@@ -206,7 +206,39 @@ const courses = await canvas.courses.list()
 | `CANVAS_API_TOKEN` | Yes | Canvas personal access token |
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
+| `CANVAS_PSEUDONYMIZE_STUDENTS` | No | Set to `true` to enable [FERPA mode](#ferpa-mode-student-pseudonymization) |
+| `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | No | Set to `true` (with `CANVAS_PSEUDONYMIZE_STUDENTS=true`) to register the `resolve_pseudonym` audit tool |
+| `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
+| `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 
+## FERPA mode (student pseudonymization)
+
+Opt-in, server-side mode that replaces student names and contact info in tool output with stable pseudonyms (`Student 1`, `Student 2`, …) so structured PII never reaches the LLM. Designed for teacher / staff tokens — students running their own MCP should leave the flag off, otherwise their own data is replaced too.
+
+```bash
+CANVAS_PSEUDONYMIZE_STUDENTS=true canvas-lms-mcp serve --base-url https://school.instructure.com
+```
+
+What it does:
+
+- Replaces `name`, `short_name`, `sortable_name`, `email`, `login_id`, `sis_user_id`, `integration_id`, `avatar_url`, `bio`, `pronouns`, and `last_login` on student users.
+- Maps are stable per `(canvas-base-url, course_id)` and persisted to disk under `${XDG_DATA_HOME:-~/.local/share}/canvas-lms-mcp/pseudonyms` (Linux), `~/Library/Application Support/canvas-lms-mcp/pseudonyms` (macOS), or `%APPDATA%\canvas-lms-mcp\pseudonyms` (Windows). Override the location with `CANVAS_PSEUDONYM_DIR`.
+- `Student 7` in March is still `Student 7` in October. Dropped students are marked historical; their slot is never reused.
+- Tool responses carry `_meta.pseudonymized: true` so the agent can mention it in summaries.
+- Cannot be toggled per tool call, per HTTP header, or per session. The env flag is the only switch.
+
+What it does NOT do:
+
+- It does not scrub free text inside submission bodies, discussion messages, or page bodies — a student writing "Hi, I'm Alice" in their submission still says so. Document this for your end users.
+- It cannot re-anonymize the LLM's working memory. If the agent saw real names in a prior turn, they remain in its context.
+- It does not protect the bare `canvas-lms-mcp/canvas` library import — pseudonymization is a tool-layer concern. Embedders that use the raw Canvas client get raw data.
+- HTTP transports are process-wide: to run both modes side by side, run two server instances.
+
+Conversation participants are pseudonymized as `Person N` from a cross-course pool. If you chat with a colleague, they appear as `Person 1` rather than their name — conservative because conversations span courses and we cannot infer their role.
+
+Optional `resolve_pseudonym` reverse-lookup tool: register it only by also setting `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true`. Every call is audit-logged to stderr (and to `CANVAS_PSEUDONYM_AUDIT_LOG` if set). When the flag is off the tool is absent from `tools/list` — a prompt-injection attempt to call it fails at the protocol layer.
+
+Threat model and design rationale in [docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md](docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md).
 
 ## Development
 

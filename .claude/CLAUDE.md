@@ -102,3 +102,4 @@ Every tool must declare MCP annotations:
 3. Create `src/tools/<domain>.ts` exporting `(canvas: CanvasClient) => ToolDefinition[]` with Zod input schemas and annotations
 4. Register the domain in `getAllTools()` in `src/tools/index.ts`
 5. Write tests in `tests/<domain>.test.ts` using mocked Canvas responses
+6. **If the tool returns student PII (a `CanvasUser`, a `participants` array, or a `user_name` field), wrap it.** Inside the tool handler, route the response through the matching `pseudonymizer.anonymize*` method (`anonymizeUser` / `anonymizeUsers` / `anonymizeEnrollment` / `anonymizeSubmission` / `anonymizeConversation` / `anonymizeOutcomeResults`) AND add the tool's name to `PSEUDONYMIZER_WRAPPED_TOOLS` in `src/pseudonym/coverage.ts`. CI (`tests/pseudonym/coverage.test.ts`) fails until both are done.
