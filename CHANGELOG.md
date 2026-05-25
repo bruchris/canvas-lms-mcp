@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.17.0...canvas-lms-mcp-v1.18.0) (2026-05-25)
+
+
+### Features
+
+* **pseudonym:** wire Pseudonymizer into per-tool outputs [BRU-1268] ([#155](https://github.com/bruchris/canvas-lms-mcp/issues/155)) ([99d6153](https://github.com/bruchris/canvas-lms-mcp/commit/99d615323b03a97d321b22ff2c4bd5f8f57e9802))
+
 ## [1.17.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.16.0...canvas-lms-mcp-v1.17.0) (2026-05-25)
 
 
