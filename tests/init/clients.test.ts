@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { CLIENTS, CLIENT_IDS, getClient, type PathEnv } from '../../src/init/clients'
+import {
+  CLIENTS,
+  CLIENT_IDS,
+  detectInstalled,
+  getClient,
+  type PathEnv,
+} from '../../src/init/clients'
+import { createMemoryFileSystem } from '../../src/init/io'
 
 const linuxEnv: PathEnv = { platform: 'linux', home: '/home/alice' }
 const macEnv: PathEnv = { platform: 'darwin', home: '/Users/alice' }
@@ -106,5 +113,42 @@ describe('clients path resolution — Windows', () => {
     const winNoAppData: PathEnv = { ...winEnv, appData: undefined }
     expect(() => getClient('cursor')!.resolvePath(winNoAppData)).not.toThrow()
     expect(() => getClient('claude-code')!.resolvePath(winNoAppData)).not.toThrow()
+  })
+})
+
+describe('detectInstalled', () => {
+  it('returns an empty set when no client config files exist', async () => {
+    const fs = createMemoryFileSystem()
+    const installed = await detectInstalled(fs, linuxEnv)
+    expect(installed.size).toBe(0)
+  })
+
+  it('flags a client as installed when its config file exists', async () => {
+    const cursor = getClient('cursor')!
+    const fs = createMemoryFileSystem({
+      [cursor.resolvePath(linuxEnv)]: '{}',
+    })
+    const installed = await detectInstalled(fs, linuxEnv)
+    expect(installed.has('cursor')).toBe(true)
+    expect(installed.has('vscode')).toBe(false)
+  })
+
+  it('skips a Windows client gracefully when APPDATA is unset', async () => {
+    const winNoAppData: PathEnv = { ...winEnv, appData: undefined }
+    const fs = createMemoryFileSystem()
+    const installed = await detectInstalled(fs, winNoAppData)
+    expect(installed.has('claude-desktop')).toBe(false)
+    expect(installed.has('vscode')).toBe(false)
+  })
+
+  it('detects multiple installed clients at once', async () => {
+    const cursor = getClient('cursor')!
+    const vscode = getClient('vscode')!
+    const fs = createMemoryFileSystem({
+      [cursor.resolvePath(linuxEnv)]: '{}',
+      [vscode.resolvePath(linuxEnv)]: '{}',
+    })
+    const installed = await detectInstalled(fs, linuxEnv)
+    expect([...installed].sort()).toEqual(['cursor', 'vscode'])
   })
 })
