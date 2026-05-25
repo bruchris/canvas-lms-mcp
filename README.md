@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-115 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
+116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## Comparison
 
@@ -92,7 +92,7 @@ Once configured, try these prompts with your AI client:
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
-| Modules | `list_modules`, `get_module`, `list_module_items`, `create_module`, `update_module`, `create_module_item` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `create_module`, `update_module`, `create_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
@@ -103,7 +103,7 @@ Once configured, try these prompts with your AI client:
 | Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 
-80 tools are read-only and 35 tools perform Canvas write operations.
+81 tools are read-only and 35 tools perform Canvas write operations.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -214,7 +214,7 @@ const courses = await canvas.courses.list()
 pnpm install       # Install dependencies
 pnpm dev           # Watch mode build
 pnpm build         # Production build
-pnpm test          # Run tests (294 tests)
+pnpm test          # Run tests (768 tests)
 pnpm lint          # ESLint + Prettier check
 pnpm lint:fix      # Auto-fix lint issues
 pnpm typecheck     # TypeScript strict type check

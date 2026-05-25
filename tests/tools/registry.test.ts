@@ -85,6 +85,10 @@ function buildFullMockCanvas(): CanvasClient {
       list: async () => [],
       get: async () => ({}),
       listItems: async () => [],
+      getCourseStructure: async () => ({
+        modules: [],
+        summary: { total_modules: 0, total_items: 0, items_by_type: {} },
+      }),
       create: async () => ({}),
       update: async () => ({}),
       createItem: async () => ({}),
@@ -166,7 +170,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 115 tools across all domains', () => {
+  it('returns all 116 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -237,10 +241,11 @@ describe('getAllTools', () => {
     expect(names).toContain('create_discussion')
     expect(names).toContain('update_discussion')
     expect(names).toContain('delete_discussion')
-    // Modules (6)
+    // Modules (7)
     expect(names).toContain('list_modules')
     expect(names).toContain('get_module')
     expect(names).toContain('list_module_items')
+    expect(names).toContain('get_course_structure')
     expect(names).toContain('create_module')
     expect(names).toContain('update_module')
     expect(names).toContain('create_module_item')
@@ -309,7 +314,7 @@ describe('getAllTools', () => {
     expect(names).toContain('update_new_quiz_item')
     expect(names).toContain('delete_new_quiz_item')
 
-    expect(tools).toHaveLength(115)
+    expect(tools).toHaveLength(116)
   })
 
   it('all tools have openWorldHint: true', () => {

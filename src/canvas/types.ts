@@ -523,9 +523,42 @@ export interface CanvasModuleItem {
   type: string
   content_id?: number
   html_url?: string
+  page_url?: string
   indent?: number
   published?: boolean
   external_url?: string
+  content_details?: Record<string, unknown>
+}
+
+export interface CanvasCourseStructureModule {
+  id: number
+  name: string
+  position: number
+  state: string
+  unlock_at: string | null | undefined
+  items: Array<
+    Pick<
+      CanvasModuleItem,
+      | 'id'
+      | 'title'
+      | 'type'
+      | 'position'
+      | 'published'
+      | 'html_url'
+      | 'page_url'
+      | 'content_id'
+      | 'content_details'
+    >
+  >
+}
+
+export interface CanvasCourseStructure {
+  modules: CanvasCourseStructureModule[]
+  summary: {
+    total_modules: number
+    total_items: number
+    items_by_type: Record<string, number>
+  }
 }
 
 // --- Pages ---

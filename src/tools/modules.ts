@@ -54,6 +54,35 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
+      name: 'get_course_structure',
+      description:
+        'Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        include_published_only: z
+          .boolean()
+          .optional()
+          .describe('When true, exclude unpublished items from each module (default: false)'),
+        include_content_details: z
+          .boolean()
+          .optional()
+          .describe(
+            'When true, fetch content_details for each item (adds extra Canvas API data; default: false)',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        return canvas.modules.getCourseStructure(course_id, {
+          includePublishedOnly: params.include_published_only as boolean | undefined,
+          includeContentDetails: params.include_content_details as boolean | undefined,
+        })
+      },
+    },
+    {
       name: 'create_module',
       description: 'Create a new module in a course.',
       inputSchema: {

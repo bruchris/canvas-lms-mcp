@@ -27,12 +27,18 @@ describe('moduleTools', () => {
     published: true,
   }
 
+  const mockCourseStructure = {
+    modules: [],
+    summary: { total_modules: 0, total_items: 0, items_by_type: {} },
+  }
+
   function buildMockCanvas(): CanvasClient {
     return {
       modules: {
         list: vi.fn().mockResolvedValue([mockModule]),
         get: vi.fn().mockResolvedValue(mockModule),
         listItems: vi.fn().mockResolvedValue([mockItem]),
+        getCourseStructure: vi.fn().mockResolvedValue(mockCourseStructure),
         create: vi.fn().mockResolvedValue(mockModule),
         update: vi.fn().mockResolvedValue(mockModule),
         createItem: vi.fn().mockResolvedValue(mockItem),
@@ -40,8 +46,8 @@ describe('moduleTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 6 tool definitions', () => {
-    expect(moduleTools(buildMockCanvas())).toHaveLength(6)
+  it('returns an array with 7 tool definitions', () => {
+    expect(moduleTools(buildMockCanvas())).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -50,6 +56,7 @@ describe('moduleTools', () => {
       'list_modules',
       'get_module',
       'list_module_items',
+      'get_course_structure',
       'create_module',
       'update_module',
       'create_module_item',
@@ -95,6 +102,37 @@ describe('moduleTools', () => {
       const tool = moduleTools(canvas).find((t) => t.name === 'list_module_items')!
       await tool.handler({ course_id: 1, module_id: 1 })
       expect(canvas.modules.listItems).toHaveBeenCalledWith(1, 1)
+    })
+  })
+
+  describe('get_course_structure', () => {
+    it('has read-only annotations', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'get_course_structure')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.modules.getCourseStructure with defaults', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'get_course_structure')!
+      await tool.handler({ course_id: 1 })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+        includePublishedOnly: undefined,
+        includeContentDetails: undefined,
+      })
+    })
+
+    it('passes options through to getCourseStructure', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'get_course_structure')!
+      await tool.handler({
+        course_id: 1,
+        include_published_only: true,
+        include_content_details: true,
+      })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+        includePublishedOnly: true,
+        includeContentDetails: true,
+      })
     })
   })
 

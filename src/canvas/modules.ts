@@ -1,5 +1,5 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasModule, CanvasModuleItem } from './types'
+import type { CanvasModule, CanvasModuleItem, CanvasCourseStructure } from './types'
 
 export class ModulesModule {
   constructor(private client: CanvasHttpClient) {}
@@ -62,5 +62,59 @@ export class ModulesModule {
         body: JSON.stringify({ module_item: params }),
       },
     )
+  }
+
+  async getCourseStructure(
+    courseId: number,
+    opts: { includePublishedOnly?: boolean; includeContentDetails?: boolean } = {},
+  ): Promise<CanvasCourseStructure> {
+    const include: string[] = ['items']
+    if (opts.includeContentDetails) include.push('content_details')
+
+    const modules = await this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
+      `/api/v1/courses/${courseId}/modules`,
+      { include },
+    )
+
+    const itemsByType: Record<string, number> = {}
+    let totalItems = 0
+
+    const filteredModules = modules.map((mod) => {
+      let items = mod.items ?? []
+      if (opts.includePublishedOnly) {
+        items = items.filter((item) => item.published)
+      }
+      for (const item of items) {
+        itemsByType[item.type] = (itemsByType[item.type] ?? 0) + 1
+        totalItems++
+      }
+      return {
+        id: mod.id,
+        name: mod.name,
+        position: mod.position,
+        state: mod.state ?? (mod.published ? 'active' : 'unpublished'),
+        unlock_at: mod.unlock_at,
+        items: items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          type: item.type,
+          position: item.position,
+          published: item.published,
+          html_url: item.html_url,
+          page_url: item.page_url,
+          content_id: item.content_id,
+          content_details: item.content_details,
+        })),
+      }
+    })
+
+    return {
+      modules: filteredModules,
+      summary: {
+        total_modules: filteredModules.length,
+        total_items: totalItems,
+        items_by_type: itemsByType,
+      },
+    }
   }
 }
