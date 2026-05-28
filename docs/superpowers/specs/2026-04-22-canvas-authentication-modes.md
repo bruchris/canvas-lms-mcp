@@ -53,9 +53,9 @@ Current official guidance from Canvas and OpenAI materially narrows what is reas
 
 Sources:
 
-- Canvas OAuth2 docs: https://canvas.instructure.com/doc/api/file.oauth.html
-- Canvas developer keys docs: https://canvas.instructure.com/doc/api/file.developer_keys.html
-- Canvas token scopes docs: https://canvas.instructure.com/doc/api/api_token_scopes.html
+- Canvas OAuth2 docs: https://developerdocs.instructure.com/services/canvas/oauth2/file.oauth.md
+- Canvas developer keys docs: https://developerdocs.instructure.com/services/canvas/oauth2/file.developer_keys.md
+- Canvas token scopes docs: https://developerdocs.instructure.com/services/canvas/resources/api_token_scopes.md
 - OpenAI MCP docs: https://platform.openai.com/docs/mcp
 - OpenAI ChatGPT developer mode docs: https://platform.openai.com/docs/guides/developer-mode
 
