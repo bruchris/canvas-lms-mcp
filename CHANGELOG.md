@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.18.0...canvas-lms-mcp-v1.19.0) (2026-05-28)
+
+
+### Features
+
+* **install:** ship .mcpb bundle for one-click install [BRU-1348] ([#159](https://github.com/bruchris/canvas-lms-mcp/issues/159)) ([6051ae8](https://github.com/bruchris/canvas-lms-mcp/commit/6051ae8d72273295f263d88fb389316f5a0de32c))
+
+
+### Documentation
+
+* update Canvas API doc links to Instructure Developer Portal ([#157](https://github.com/bruchris/canvas-lms-mcp/issues/157)) ([71f8699](https://github.com/bruchris/canvas-lms-mcp/commit/71f86995b3d44c3d93d0e8240d1cccfb7eecbd49))
+
 ## [1.18.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.17.0...canvas-lms-mcp-v1.18.0) (2026-05-25)
 
 
