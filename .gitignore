@@ -4,3 +4,5 @@ dist/
 *.tsbuildinfo
 coverage/
 .DS_Store
+.mcpb-staging/
+*.mcpb

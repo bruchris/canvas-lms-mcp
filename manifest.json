@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/schemas/manifest.schema.json",
+  "manifest_version": "0.3",
+  "name": "canvas-lms-mcp",
+  "display_name": "Canvas LMS",
+  "version": "1.18.0",
+  "description": "TypeScript MCP server for Canvas LMS — 115 read+write tools across 17 domains.",
+  "long_description": "MCP server for Canvas LMS. Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.",
+  "author": {
+    "name": "Christian Bru",
+    "url": "https://github.com/bruchris"
+  },
+  "homepage": "https://github.com/bruchris/canvas-lms-mcp",
+  "documentation": "https://github.com/bruchris/canvas-lms-mcp#readme",
+  "support": "https://github.com/bruchris/canvas-lms-mcp/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bruchris/canvas-lms-mcp"
+  },
+  "license": "MIT",
+  "keywords": [
+    "canvas",
+    "canvas-lms",
+    "lms",
+    "education",
+    "grading",
+    "instructure"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/stdio.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/stdio.js"
+      ],
+      "env": {
+        "CANVAS_API_TOKEN": "${user_config.canvas_api_token}",
+        "CANVAS_BASE_URL": "${user_config.canvas_base_url}"
+      }
+    }
+  },
+  "user_config": {
+    "canvas_api_token": {
+      "type": "string",
+      "title": "Canvas API Token",
+      "description": "Personal access token from Account → Settings → Approved Integrations → New Access Token.",
+      "required": true,
+      "sensitive": true
+    },
+    "canvas_base_url": {
+      "type": "string",
+      "title": "Canvas API Base URL",
+      "description": "Your Canvas instance API URL, e.g. https://school.instructure.com/api/v1",
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.0.0"
+    }
+  }
+}
