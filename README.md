@@ -13,6 +13,16 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 
 116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
+## One-click install (Claude Desktop)
+
+1. **[Download `canvas-lms-mcp.mcpb`](https://github.com/bruchris/canvas-lms-mcp/releases/latest/download/canvas-lms-mcp.mcpb)** from the latest release.
+2. Double-click the file (or drag it into Claude Desktop's Extensions settings).
+3. When prompted, paste your Canvas API token and Canvas API base URL (e.g. `https://school.instructure.com/api/v1`).
+
+No terminal, no Node.js install, no config-file editing — Claude Desktop bundles the runtime and handles config for you. The same `.mcpb` works in Claude Code and MCP for Windows.
+
+Prefer the terminal? Use the [Quick Start](#quick-start) below.
+
 ## Comparison
 
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
