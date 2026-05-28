@@ -499,7 +499,7 @@ Task 1.
   [`2026-04-19-skill-focused-tooling-opportunities-vs-canvas-mcp.md`](./2026-04-19-skill-focused-tooling-opportunities-vs-canvas-mcp.md),
   [`2026-04-22-canvas-authentication-modes.md`](./2026-04-22-canvas-authentication-modes.md)
 - Canvas users-self endpoint:
-  https://canvas.instructure.com/doc/api/users.html#method.users.api_show
+  https://developerdocs.instructure.com/services/canvas/resources/users.md#method.users.api_show
 - MCP client config references:
   - Claude Desktop: https://modelcontextprotocol.io/quickstart/user
   - Cursor: https://docs.cursor.com/context/model-context-protocol
