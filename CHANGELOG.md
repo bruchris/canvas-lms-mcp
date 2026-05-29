@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.0...canvas-lms-mcp-v1.19.1) (2026-05-29)
+
+
+### Miscellaneous
+
+* **deps:** qs override (GHSA-q8mj-m7cp-5q26) + batch minor/patch bumps ([#160](https://github.com/bruchris/canvas-lms-mcp/issues/160)) ([9f1d205](https://github.com/bruchris/canvas-lms-mcp/commit/9f1d2056da58323dc5ec66bbb88a588e40f0e938))
+
 ## [1.19.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.18.0...canvas-lms-mcp-v1.19.0) (2026-05-28)
 
 
