@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-115 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks.
+116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. When FERPA mode is enabled (`CANVAS_PSEUDONYMIZE_STUDENTS=true`), a 117th tool — `resolve_pseudonym` — is registered conditionally (see [FERPA Mode](#ferpa-mode) below).
 
 ### Tool Pattern
 
@@ -390,13 +390,14 @@ All errors returned as structured MCP content, never thrown:
 | `enroll_user` | write | Enroll a user in a course |
 | `remove_enrollment` | write | Remove or conclude an enrollment |
 
-#### Modules (6 tools)
+#### Modules (7 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_modules` | read | Course modules |
 | `get_module` | read | Single module details |
 | `list_module_items` | read | Items within a module |
+| `get_course_structure` | read | Full course structure: all modules with their items in a single tree (PR #152 / BRU-1265) |
 | `create_module` | write | Create a module |
 | `update_module` | write | Update an existing module |
 | `create_module_item` | write | Add an item to a module |
@@ -528,7 +529,24 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `update_new_quiz_item` | write | Update an existing item (question) in a New Quiz |
 | `delete_new_quiz_item` | write | Delete an item (question) from a New Quiz |
 
-**Totals: 115 tools (80 read, 35 write)**
+**Totals: 116 tools (81 read, 35 write).** When FERPA mode is on, `resolve_pseudonym` adds a 117th tool (read).
+
+## FERPA Mode
+
+An opt-in server-side mode that pseudonymizes student personally identifiable information (PII) before it leaves the MCP server. Designed for US K-12 and higher-ed deployments where student names flowing into a third-party LLM pose compliance risk.
+
+**Activation:** set `CANVAS_PSEUDONYMIZE_STUDENTS=true` in the environment before starting the server. The flag is evaluated once at startup and cannot be overridden by any tool argument, HTTP header, or session-level negotiation.
+
+**What changes when enabled:**
+- Every tool that returns a `CanvasUser`, an enrollment, a submission, a conversation, or an outcome result routes its output through the `Pseudonymizer` before the response is sent.
+- Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
+- The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
+
+**Conditional tool `resolve_pseudonym`:** when FERPA mode is enabled, a 117th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+
+**Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
+
+Full design: [`docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md`](./2026-05-25-ferpa-pseudonymization.md).
 
 ## MCP Resources
 
