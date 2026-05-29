@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. When FERPA mode is enabled (`CANVAS_PSEUDONYMIZE_STUDENTS=true`), a 117th tool — `resolve_pseudonym` — is registered conditionally (see [FERPA Mode](#ferpa-mode) below).
+116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. A 117th tool — `resolve_pseudonym` — is registered conditionally when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set (see [FERPA Mode](#ferpa-mode) below).
 
 ### Tool Pattern
 
@@ -529,7 +529,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `update_new_quiz_item` | write | Update an existing item (question) in a New Quiz |
 | `delete_new_quiz_item` | write | Delete an item (question) from a New Quiz |
 
-**Totals: 116 tools (81 read, 35 write).** When FERPA mode is on, `resolve_pseudonym` adds a 117th tool (read).
+**Totals: 116 tools (81 read, 35 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 117th tool (read).
 
 ## FERPA Mode
 
@@ -542,7 +542,7 @@ An opt-in server-side mode that pseudonymizes student personally identifiable in
 - Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
 - The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
 
-**Conditional tool `resolve_pseudonym`:** when FERPA mode is enabled, a 117th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 117th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
 
 **Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
 
