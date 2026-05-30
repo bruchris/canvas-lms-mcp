@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.1...canvas-lms-mcp-v1.19.2) (2026-05-30)
+
+
+### Documentation
+
+* **spec:** reconcile tool inventory and add FERPA mode + new tools [BRU-1376] ([#161](https://github.com/bruchris/canvas-lms-mcp/issues/161)) ([8b1c480](https://github.com/bruchris/canvas-lms-mcp/commit/8b1c480f53ad66955e759b66f5aee6a5fe59d753))
+
 ## [1.19.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.0...canvas-lms-mcp-v1.19.1) (2026-05-29)
 
 
