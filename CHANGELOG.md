@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.2...canvas-lms-mcp-v1.20.0) (2026-06-01)
+
+
+### Features
+
+* **tools:** add fields=slim projection to list_courses and list_assignments [BRU-1418] ([#164](https://github.com/bruchris/canvas-lms-mcp/issues/164)) ([c37a961](https://github.com/bruchris/canvas-lms-mcp/commit/c37a961192359f5a673b3aac1a3dad7f28ff7c8e))
+
 ## [1.19.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.1...canvas-lms-mcp-v1.19.2) (2026-05-30)
 
 
