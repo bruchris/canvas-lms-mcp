@@ -18,7 +18,7 @@
     {
       "name": "list_courses",
       "domain": "courses",
-      "description": "List courses for the authenticated user. `include` adds optional fields (teachers, total_students, term, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller’s enrollment state.",
+      "description": "List courses for the authenticated user. Use fields=\"slim\" when enumerating courses for selection; switch to \"full\" once you have identified the target. slim returns id, name, course_code, term name, and workflow_state only. \"full\" (default) includes all Canvas fields plus `include` extras (teachers, total_students, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller's enrollment state.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -79,7 +79,7 @@
     {
       "name": "list_assignments",
       "domain": "assignments",
-      "description": "List all assignments in a course. Use `include` to request submission, all_dates, overrides, score_statistics, etc. Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.",
+      "description": "List all assignments in a course. Use fields=\"slim\" when enumerating assignments for selection; switch to \"full\" once you've identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. \"full\" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

@@ -61,13 +61,21 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_assignments',
       description:
-        'List all assignments in a course. Use `include` to request submission, all_dates, overrides, score_statistics, etc. Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.',
+        'List all assignments in a course. Use fields="slim" when enumerating assignments for selection; switch to "full" once you\'ve identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. "full" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
+        fields: z
+          .enum(['slim', 'full'])
+          .optional()
+          .describe(
+            'Projection mode: "slim" returns id/name/due_at/points_possible/published/course_id only; "full" (default) returns all fields',
+          ),
         include: z
           .array(z.enum(ASSIGNMENT_LIST_INCLUDE))
           .optional()
-          .describe('Extra fields to include on each assignment (Canvas include[] param)'),
+          .describe(
+            'Extra fields to include on each assignment (Canvas include[] param); ignored when fields="slim"',
+          ),
         search_term: z
           .string()
           .optional()
@@ -101,8 +109,9 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const slim = params.fields === 'slim'
         const opts: ListAssignmentsOptions = {}
-        if (params.include !== undefined)
+        if (!slim && params.include !== undefined)
           opts.include = params.include as ReadonlyArray<AssignmentListInclude>
         if (params.search_term !== undefined) opts.search_term = params.search_term as string
         if (params.bucket !== undefined) opts.bucket = params.bucket as AssignmentBucket
@@ -114,7 +123,16 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.needs_grading_count_by_section !== undefined)
           opts.needs_grading_count_by_section = params.needs_grading_count_by_section as boolean
         if (params.post_to_sis !== undefined) opts.post_to_sis = params.post_to_sis as boolean
-        return canvas.assignments.list(params.course_id as number, opts)
+        const assignments = await canvas.assignments.list(params.course_id as number, opts)
+        if (!slim) return assignments
+        return assignments.map((a) => ({
+          id: a.id,
+          name: a.name,
+          due_at: a.due_at,
+          points_possible: a.points_possible,
+          published: a.published,
+          course_id: a.course_id,
+        }))
       },
     },
     {

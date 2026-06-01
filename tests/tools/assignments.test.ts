@@ -71,6 +71,12 @@ describe('assignmentTools', () => {
       expect(tool.inputSchema).toHaveProperty('course_id')
     })
 
+    it('has fields in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      expect(tool.inputSchema).toHaveProperty('fields')
+    })
+
     it('calls canvas.assignments.list with the course_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
@@ -94,11 +100,53 @@ describe('assignmentTools', () => {
       })
     })
 
-    it('returns the assignment list from Canvas', async () => {
+    it('returns the assignment list from Canvas when fields is omitted (full mode)', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
       const result = await tool.handler({ course_id: 1 })
       expect(result).toEqual([mockAssignment])
+    })
+
+    it('returns the full assignment list when fields="full"', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      const result = await tool.handler({ course_id: 1, fields: 'full' })
+      expect(result).toEqual([mockAssignment])
+    })
+
+    it('returns slim projection when fields="slim"', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      const result = await tool.handler({ course_id: 1, fields: 'slim' })
+      expect(result).toEqual([
+        {
+          id: 101,
+          name: 'Homework 1',
+          due_at: '2026-05-01T23:59:00Z',
+          points_possible: 100,
+          published: undefined,
+          course_id: 1,
+        },
+      ])
+    })
+
+    it('slim mode does not include extra fields', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      const result = (await tool.handler({ course_id: 1, fields: 'slim' })) as Array<
+        Record<string, unknown>
+      >
+      expect(result[0]).not.toHaveProperty('description')
+      expect(result[0]).not.toHaveProperty('grading_type')
+      expect(result[0]).not.toHaveProperty('submission_types')
+      expect(result[0]).not.toHaveProperty('allowed_attempts')
+    })
+
+    it('slim mode ignores the include param', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      await tool.handler({ course_id: 42, fields: 'slim', include: ['submission'] })
+      expect(canvas.assignments.list).toHaveBeenCalledWith(42, {})
     })
 
     it('has a description', () => {
