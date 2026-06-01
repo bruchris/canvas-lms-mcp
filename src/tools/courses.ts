@@ -46,12 +46,18 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_courses',
       description:
-        'List courses for the authenticated user. `include` adds optional fields (teachers, total_students, term, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller’s enrollment state.',
+        'List courses for the authenticated user. Use fields="slim" when enumerating courses for selection; switch to "full" once you have identified the target. slim returns id, name, course_code, term name, and workflow_state only. "full" (default) includes all Canvas fields plus `include` extras (teachers, total_students, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller\'s enrollment state.',
       inputSchema: {
+        fields: z
+          .enum(['slim', 'full'])
+          .optional()
+          .describe(
+            'Projection mode: "slim" returns id/name/course_code/term/workflow_state only; "full" (default) returns all fields',
+          ),
         enrollment_state: z
           .enum(COURSE_ENROLLMENT_STATE)
           .optional()
-          .describe('Filter courses by the caller’s enrollment state'),
+          .describe("Filter courses by the caller's enrollment state"),
         state: z
           .array(z.enum(COURSE_WORKFLOW_STATE))
           .optional()
@@ -59,7 +65,9 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
         include: z
           .array(z.enum(COURSE_LIST_INCLUDE))
           .optional()
-          .describe('Extra fields to include on each course (Canvas include[] param)'),
+          .describe(
+            'Extra fields to include on each course (Canvas include[] param); ignored when fields="slim"',
+          ),
         exclude_blueprint_courses: z
           .boolean()
           .optional()
@@ -70,16 +78,25 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
+        const slim = params.fields === 'slim'
         const opts: ListCoursesOptions = {}
         if (params.enrollment_state !== undefined)
           opts.enrollment_state = params.enrollment_state as CourseEnrollmentState
         if (params.state !== undefined)
           opts.state = params.state as ReadonlyArray<CourseWorkflowState>
-        if (params.include !== undefined)
+        if (!slim && params.include !== undefined)
           opts.include = params.include as ReadonlyArray<CourseListInclude>
         if (params.exclude_blueprint_courses !== undefined)
           opts.exclude_blueprint_courses = params.exclude_blueprint_courses as boolean
-        return canvas.courses.list(opts)
+        const courses = await canvas.courses.list(opts)
+        if (!slim) return courses
+        return courses.map((c) => ({
+          id: c.id,
+          name: c.name,
+          course_code: c.course_code,
+          term: c.term?.name ?? null,
+          workflow_state: c.workflow_state,
+        }))
       },
     },
     {

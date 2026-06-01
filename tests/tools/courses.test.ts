@@ -59,6 +59,12 @@ describe('courseTools', () => {
       expect(tool.inputSchema).toHaveProperty('enrollment_state')
     })
 
+    it('has fields in input schema', () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      expect(tool.inputSchema).toHaveProperty('fields')
+    })
+
     it('calls canvas.courses.list with no params when none provided', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
@@ -73,11 +79,68 @@ describe('courseTools', () => {
       expect(canvas.courses.list).toHaveBeenCalledWith({ enrollment_state: 'active' })
     })
 
-    it('returns the course list from Canvas', async () => {
+    it('returns the course list from Canvas when fields is omitted (full mode)', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
       const result = await tool.handler({})
       expect(result).toEqual([mockCourse])
+    })
+
+    it('returns the full course list when fields="full"', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      const result = await tool.handler({ fields: 'full' })
+      expect(result).toEqual([mockCourse])
+    })
+
+    it('returns slim projection when fields="slim"', async () => {
+      const courseWithTerm: CanvasCourse = {
+        ...mockCourse,
+        term: { id: 5, name: 'Fall 2026', start_at: null, end_at: null },
+      }
+      const canvas = buildMockCanvas()
+      ;(canvas.courses.list as ReturnType<typeof vi.fn>).mockResolvedValue([courseWithTerm])
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      const result = await tool.handler({ fields: 'slim' })
+      expect(result).toEqual([
+        {
+          id: 1,
+          name: 'Intro to Testing',
+          course_code: 'TST101',
+          term: 'Fall 2026',
+          workflow_state: 'available',
+        },
+      ])
+    })
+
+    it('slim mode sets term to null when course has no term', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      const result = await tool.handler({ fields: 'slim' })
+      expect((result as Array<{ term: unknown }>)[0].term).toBeNull()
+    })
+
+    it('slim mode does not include extra fields', async () => {
+      const courseWithExtras: CanvasCourse = {
+        ...mockCourse,
+        total_students: 30,
+        syllabus_body: 'lots of text',
+        term: { id: 1, name: 'Spring', start_at: null, end_at: null },
+      }
+      const canvas = buildMockCanvas()
+      ;(canvas.courses.list as ReturnType<typeof vi.fn>).mockResolvedValue([courseWithExtras])
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      const result = (await tool.handler({ fields: 'slim' })) as Array<Record<string, unknown>>
+      expect(result[0]).not.toHaveProperty('total_students')
+      expect(result[0]).not.toHaveProperty('syllabus_body')
+      expect(result[0]).not.toHaveProperty('enrollment_term_id')
+    })
+
+    it('slim mode ignores the include param', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      await tool.handler({ fields: 'slim', include: ['total_students'] })
+      expect(canvas.courses.list).toHaveBeenCalledWith({})
     })
 
     it('has a description', () => {
