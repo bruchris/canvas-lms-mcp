@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.20.0...canvas-lms-mcp-v1.21.0) (2026-06-04)
+
+
+### Features
+
+* **mcpb:** expose FERPA opt-in toggles in .mcpb user_config [BRU-1470] ([#166](https://github.com/bruchris/canvas-lms-mcp/issues/166)) ([c3abfb1](https://github.com/bruchris/canvas-lms-mcp/commit/c3abfb135a6b420821ad910d0ba578c45919a31f))
+
 ## [1.20.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.19.2...canvas-lms-mcp-v1.20.0) (2026-06-01)
 
 

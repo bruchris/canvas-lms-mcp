@@ -1,6 +1,6 @@
 {
   "name": "canvas-lms-mcp",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "mcpName": "io.github.bruchris/canvas-lms-mcp",
   "description": "TypeScript MCP 1.x server for Canvas LMS — 116 tools across Canvas courses, assignments, grades, gradebook history, quizzes, New Quizzes (LTI), outcomes, discussions, admin workflows, and more.",
   "type": "module",
