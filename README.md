@@ -17,7 +17,7 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 
 1. **[Download `canvas-lms-mcp.mcpb`](https://github.com/bruchris/canvas-lms-mcp/releases/latest/download/canvas-lms-mcp.mcpb)** from the latest release.
 2. Double-click the file (or drag it into Claude Desktop's Extensions settings).
-3. When prompted, paste your Canvas API token and Canvas API base URL (e.g. `https://school.instructure.com/api/v1`).
+3. When prompted, paste your Canvas API token and Canvas API base URL (e.g. `https://school.instructure.com/api/v1`). Teachers and staff handling student data can also flip **FERPA mode — pseudonymize students** on in the same dialog ([what it does](#ferpa-mode-student-pseudonymization)).
 
 No terminal, no Node.js install, no config-file editing — Claude Desktop bundles the runtime and handles config for you. The same `.mcpb` works in Claude Code and MCP for Windows.
 
