@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "canvas-lms-mcp",
   "display_name": "Canvas LMS",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "description": "TypeScript MCP server for Canvas LMS — 115 read+write tools across 17 domains.",
   "long_description": "MCP server for Canvas LMS. Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.",
   "author": {
