@@ -40,4 +40,33 @@ describe('manifest.json (.mcpb bundle)', () => {
       expect.arrayContaining(['darwin', 'win32', 'linux']),
     )
   })
+
+  describe('FERPA pseudonymization opt-in', () => {
+    it('declares pseudonymize_students as an optional boolean defaulting off', () => {
+      expect(manifest.user_config.pseudonymize_students).toMatchObject({
+        type: 'boolean',
+        required: false,
+        default: false,
+      })
+      expect(manifest.user_config.pseudonymize_students.title).toBeTypeOf('string')
+      expect(manifest.user_config.pseudonymize_students.description).toBeTypeOf('string')
+    })
+
+    it('declares pseudonymize_reverse_lookup as an optional boolean defaulting off', () => {
+      expect(manifest.user_config.pseudonymize_reverse_lookup).toMatchObject({
+        type: 'boolean',
+        required: false,
+        default: false,
+      })
+    })
+
+    it('forwards FERPA toggles into mcp_config env vars', () => {
+      expect(manifest.server.mcp_config.env.CANVAS_PSEUDONYMIZE_STUDENTS).toBe(
+        '${user_config.pseudonymize_students}',
+      )
+      expect(manifest.server.mcp_config.env.CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP).toBe(
+        '${user_config.pseudonymize_reverse_lookup}',
+      )
+    })
+  })
 })

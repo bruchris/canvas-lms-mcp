@@ -36,7 +36,9 @@
       ],
       "env": {
         "CANVAS_API_TOKEN": "${user_config.canvas_api_token}",
-        "CANVAS_BASE_URL": "${user_config.canvas_base_url}"
+        "CANVAS_BASE_URL": "${user_config.canvas_base_url}",
+        "CANVAS_PSEUDONYMIZE_STUDENTS": "${user_config.pseudonymize_students}",
+        "CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP": "${user_config.pseudonymize_reverse_lookup}"
       }
     }
   },
@@ -53,6 +55,20 @@
       "title": "Canvas API Base URL",
       "description": "Your Canvas instance API URL, e.g. https://school.instructure.com/api/v1",
       "required": true
+    },
+    "pseudonymize_students": {
+      "type": "boolean",
+      "title": "FERPA mode — pseudonymize students",
+      "description": "Replace student names and contact info with stable pseudonyms (Student-1, Student-2, …) in tool output. Recommended whenever you share Canvas data with an AI assistant in a FERPA-protected setting.",
+      "required": false,
+      "default": false
+    },
+    "pseudonymize_reverse_lookup": {
+      "type": "boolean",
+      "title": "Allow pseudonym reverse lookup",
+      "description": "When FERPA mode is on, exposes the resolve_pseudonym tool that can map a pseudonym back to a real student. Off by default; turn on only if you explicitly need a controlled way to reveal identities.",
+      "required": false,
+      "default": false
     }
   },
   "compatibility": {
