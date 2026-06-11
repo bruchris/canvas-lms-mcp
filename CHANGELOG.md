@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.22.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.21.0...canvas-lms-mcp-v1.22.0) (2026-06-11)
+
+
+### Features
+
+* **ui:** add view_course_structure interactive MCP Apps widget [BRU-1574] ([#170](https://github.com/bruchris/canvas-lms-mcp/issues/170)) ([2b66f1c](https://github.com/bruchris/canvas-lms-mcp/commit/2b66f1c0c16bdef2aea1110dde317e92a3fab57c))
+
+
+### Documentation
+
+* **spec:** MCP Apps spike for interactive course structure UI [BRU-1573] ([#168](https://github.com/bruchris/canvas-lms-mcp/issues/168)) ([b3c3f72](https://github.com/bruchris/canvas-lms-mcp/commit/b3c3f72340aceddc25fa8576604c82d8a53c0199))
+
 ## [1.21.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.20.0...canvas-lms-mcp-v1.21.0) (2026-06-04)
 
 
