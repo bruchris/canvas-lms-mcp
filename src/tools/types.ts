@@ -9,10 +9,22 @@ export interface ToolAnnotations {
   openWorldHint?: boolean
 }
 
+export interface ToolUiCsp {
+  connectDomains?: string[]
+  resourceDomains?: string[]
+  frameDomains?: string[]
+}
+
+export interface ToolUiBinding {
+  resourceUri: string
+  csp?: ToolUiCsp
+}
+
 export interface ToolDefinition {
   name: string
   description: string
   inputSchema: Record<string, z.ZodType>
   annotations: ToolAnnotations
   handler: (params: Record<string, unknown>) => Promise<unknown>
+  ui?: ToolUiBinding
 }

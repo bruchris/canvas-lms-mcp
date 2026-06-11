@@ -2,7 +2,7 @@
   "name": "canvas-lms-mcp",
   "version": "1.21.0",
   "mcpName": "io.github.bruchris/canvas-lms-mcp",
-  "description": "TypeScript MCP 1.x server for Canvas LMS — 116 tools across Canvas courses, assignments, grades, gradebook history, quizzes, New Quizzes (LTI), outcomes, discussions, admin workflows, and more.",
+  "description": "TypeScript MCP 1.x server for Canvas LMS — 117 tools across Canvas courses, assignments, grades, gradebook history, quizzes, New Quizzes (LTI), outcomes, discussions, admin workflows, and more.",
   "type": "module",
   "types": "./dist/server.d.ts",
   "exports": {
@@ -90,6 +90,7 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "prompts": "^2.4.2",
     "zod": "^4.4.3"

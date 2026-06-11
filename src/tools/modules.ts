@@ -83,6 +83,45 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
+      // See docs/superpowers/specs/2026-06-11-mcp-apps-spike-course-structure.md.
+      // Payload is content metadata only — no student PII. If a future revision adds
+      // include_progress, instructors[], or per-student fields, this tool MUST be added
+      // to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped at the handler.
+      name: 'view_course_structure',
+      description:
+        "Interactive tree view of a course's modules and items. Returns the same payload as `get_course_structure` and additionally links to an MCP Apps UI resource that renders an explorable tree with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `get_course_structure`).",
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        include_published_only: z
+          .boolean()
+          .optional()
+          .describe('When true, exclude unpublished items (default: false)'),
+        include_content_details: z
+          .boolean()
+          .optional()
+          .describe('When true, fetch content_details for each item (default: false)'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      ui: {
+        resourceUri: 'ui://canvas-lms-mcp/course-structure.html',
+        csp: {
+          connectDomains: [],
+          resourceDomains: [],
+          frameDomains: [],
+        },
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        return canvas.modules.getCourseStructure(course_id, {
+          includePublishedOnly: params.include_published_only as boolean | undefined,
+          includeContentDetails: params.include_content_details as boolean | undefined,
+        })
+      },
+    },
+    {
       name: 'create_module',
       description: 'Create a new module in a course.',
       inputSchema: {
