@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
+117 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -28,7 +28,7 @@ Prefer the terminal? Use the [Quick Start](#quick-start) below.
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 116 | 80+ | 54 |
+| Tools | 117 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -85,7 +85,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (116)
+### All Registered Tools (117)
 
 | Category | Tools |
 |----------|-------|
@@ -102,7 +102,7 @@ Once configured, try these prompts with your AI client:
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
-| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `create_module`, `update_module`, `create_module_item` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
@@ -114,7 +114,7 @@ Once configured, try these prompts with your AI client:
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 | FERPA (conditional) | `resolve_pseudonym` — registered only when `CANVAS_PSEUDONYMIZE_STUDENTS=true` |
 
-81 tools are read-only and 35 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` adds a 117th read tool.
+82 tools are read-only and 35 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` adds a 118th read tool.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -128,6 +128,16 @@ Canvas applies rate limits per-user. When creating many New Quizzes items (e.g.,
 |----------|-------------|------|
 | Course Syllabus | `canvas://course/{courseId}/syllabus` | text/html |
 | Assignment Description | `canvas://course/{courseId}/assignment/{assignmentId}/description` | text/html |
+
+### Interactive widgets
+
+`view_course_structure` is an [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) tool: hosts that support the spec render an interactive tree explorer (collapsible modules, type-filter chips, title search, published/unpublished badges, links open in a new tab); hosts that don't fall back transparently to the same JSON payload that `get_course_structure` returns. The widget is self-contained — no external scripts, fonts, or network calls — and is shipped inline with the tool definition.
+
+| Tool | UI resource URI | Fallback |
+|------|----------------|----------|
+| `view_course_structure` | `ui://canvas-lms-mcp/course-structure.html` | Same JSON payload as `get_course_structure` |
+
+Host verification (Claude Desktop, ChatGPT, Codex fallback) is performed manually after each release, since it requires real Canvas credentials. A screenshot will be added once the first verified host pass lands.
 
 ## Deployment Modes
 

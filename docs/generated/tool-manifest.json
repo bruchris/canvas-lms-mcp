@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 116,
+  "toolCount": 117,
   "tools": [
     {
       "name": "health_check",
@@ -827,6 +827,18 @@
       "name": "get_course_structure",
       "domain": "modules",
       "description": "Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "view_course_structure",
+      "domain": "modules",
+      "description": "Interactive tree view of a course's modules and items. Returns the same payload as `get_course_structure` and additionally links to an MCP Apps UI resource that renders an explorable tree with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `get_course_structure`).",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

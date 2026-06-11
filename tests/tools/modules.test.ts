@@ -46,8 +46,8 @@ describe('moduleTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 7 tool definitions', () => {
-    expect(moduleTools(buildMockCanvas())).toHaveLength(7)
+  it('returns an array with 8 tool definitions', () => {
+    expect(moduleTools(buildMockCanvas())).toHaveLength(8)
   })
 
   it('exports tools with correct names', () => {
@@ -57,6 +57,7 @@ describe('moduleTools', () => {
       'get_module',
       'list_module_items',
       'get_course_structure',
+      'view_course_structure',
       'create_module',
       'update_module',
       'create_module_item',
@@ -133,6 +134,61 @@ describe('moduleTools', () => {
         includePublishedOnly: true,
         includeContentDetails: true,
       })
+    })
+  })
+
+  describe('view_course_structure', () => {
+    it('has read-only annotations', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'view_course_structure')!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('declares the UI resource URI', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'view_course_structure')!
+      expect(tool.ui?.resourceUri).toBe('ui://canvas-lms-mcp/course-structure.html')
+    })
+
+    it('keeps CSP empty (widget is self-contained)', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'view_course_structure')!
+      expect(tool.ui?.csp).toEqual({
+        connectDomains: [],
+        resourceDomains: [],
+        frameDomains: [],
+      })
+    })
+
+    it('delegates to canvas.modules.getCourseStructure with defaults', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'view_course_structure')!
+      await tool.handler({ course_id: 1 })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+        includePublishedOnly: undefined,
+        includeContentDetails: undefined,
+      })
+    })
+
+    it('passes options through to getCourseStructure', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'view_course_structure')!
+      await tool.handler({
+        course_id: 1,
+        include_published_only: true,
+        include_content_details: true,
+      })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+        includePublishedOnly: true,
+        includeContentDetails: true,
+      })
+    })
+
+    it('returns the same payload shape as get_course_structure', async () => {
+      const canvas = buildMockCanvas()
+      const tools = moduleTools(canvas)
+      const get = tools.find((t) => t.name === 'get_course_structure')!
+      const view = tools.find((t) => t.name === 'view_course_structure')!
+      const getResult = await get.handler({ course_id: 1 })
+      const viewResult = await view.handler({ course_id: 1 })
+      expect(viewResult).toEqual(getResult)
     })
   })
 
