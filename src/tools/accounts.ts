@@ -115,7 +115,7 @@ export function accountTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const accountId = (params.account_id as string | undefined) ?? 'self'
+        const accountId = (params.account_id as string) || 'self'
         return canvas.accounts.listNotifications(accountId)
       },
     },

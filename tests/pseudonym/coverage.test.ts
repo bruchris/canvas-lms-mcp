@@ -101,6 +101,7 @@ function buildMinimalCanvas(): CanvasClient {
       listCourses: list,
       listUsers: list,
       getReports: list,
+      listNotifications: list,
     },
     analytics: {
       searchContentType: list,

@@ -176,6 +176,13 @@ describe('accountTools', () => {
       expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('self')
     })
 
+    it('defaults account_id to "self" when an empty string is passed', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
+      await tool.handler({ account_id: '' })
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('self')
+    })
+
     it('passes account_id to canvas.accounts.listNotifications when provided', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
