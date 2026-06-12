@@ -65,4 +65,26 @@ describe('AccountsModule', () => {
     expect(result).toHaveLength(1)
     expect(client.request).toHaveBeenCalledWith('/api/v1/accounts/1/reports')
   })
+
+  it('lists account notifications for "self"', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      {
+        id: 10,
+        subject: 'System Maintenance',
+        message: 'Canvas will be offline Sunday 2–4 AM.',
+        start_at: '2026-06-14T02:00:00Z',
+        end_at: '2026-06-14T04:00:00Z',
+        icon: 'warning',
+      },
+    ])
+    const result = await accounts.listNotifications('self')
+    expect(result).toHaveLength(1)
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/self/account_notifications')
+  })
+
+  it('lists account notifications for a numeric account id', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await accounts.listNotifications('1')
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/account_notifications')
+  })
 })

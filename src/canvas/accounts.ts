@@ -1,5 +1,11 @@
 import type { CanvasHttpClient } from './client'
-import type { CanvasAccount, CanvasAccountReport, CanvasCourse, CanvasUser } from './types'
+import type {
+  CanvasAccount,
+  CanvasAccountNotification,
+  CanvasAccountReport,
+  CanvasCourse,
+  CanvasUser,
+} from './types'
 
 export class AccountsModule {
   constructor(private client: CanvasHttpClient) {}
@@ -36,5 +42,11 @@ export class AccountsModule {
 
   async getReports(accountId: number): Promise<CanvasAccountReport[]> {
     return this.client.request<CanvasAccountReport[]>(`/api/v1/accounts/${accountId}/reports`)
+  }
+
+  async listNotifications(accountId: string): Promise<CanvasAccountNotification[]> {
+    return this.client.paginate<CanvasAccountNotification>(
+      `/api/v1/accounts/${accountId}/account_notifications`,
+    )
   }
 }

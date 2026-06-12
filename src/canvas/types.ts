@@ -789,6 +789,15 @@ export interface CanvasOutcomeMasteryDistributionResponse {
 
 // --- Accounts ---
 
+export interface CanvasAccountNotification {
+  id: number
+  subject: string
+  message: string
+  start_at: string
+  end_at: string | null
+  icon: string
+}
+
 export interface CanvasAccount {
   id: number
   name: string

@@ -100,5 +100,24 @@ export function accountTools(
         return canvas.accounts.getReports(params.account_id as number)
       },
     },
+    {
+      name: 'list_account_notifications',
+      description:
+        'List active global institution-wide announcements for the current user (maintenance windows, term deadlines, policy notices).',
+      inputSchema: {
+        account_id: z
+          .string()
+          .optional()
+          .describe('Canvas account ID, or "self" for the root account (default: "self")'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const accountId = (params.account_id as string) || 'self'
+        return canvas.accounts.listNotifications(accountId)
+      },
+    },
   ]
 }
