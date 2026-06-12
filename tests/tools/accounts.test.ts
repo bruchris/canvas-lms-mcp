@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasAccount,
+  CanvasAccountNotification,
   CanvasAccountReport,
   CanvasCourse,
   CanvasUser,
@@ -49,6 +50,15 @@ describe('accountTools', () => {
     last_run: null,
   }
 
+  const mockNotification: CanvasAccountNotification = {
+    id: 10,
+    subject: 'System Maintenance',
+    message: 'Canvas will be offline Sunday 2–4 AM.',
+    start_at: '2026-06-14T02:00:00Z',
+    end_at: '2026-06-14T04:00:00Z',
+    icon: 'warning',
+  }
+
   function buildMockCanvas(): CanvasClient {
     return {
       accounts: {
@@ -58,12 +68,13 @@ describe('accountTools', () => {
         listCourses: vi.fn().mockResolvedValue([mockCourse]),
         listUsers: vi.fn().mockResolvedValue([mockUser]),
         getReports: vi.fn().mockResolvedValue([mockReport]),
+        listNotifications: vi.fn().mockResolvedValue([mockNotification]),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns 6 tool definitions', () => {
-    expect(accountTools(buildMockCanvas())).toHaveLength(6)
+  it('returns 7 tool definitions', () => {
+    expect(accountTools(buildMockCanvas())).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -75,6 +86,7 @@ describe('accountTools', () => {
       'list_account_courses',
       'list_account_users',
       'get_account_reports',
+      'list_account_notifications',
     ])
   })
 
@@ -146,6 +158,47 @@ describe('accountTools', () => {
       const tool = accountTools(canvas).find((t) => t.name === 'get_account_reports')!
       await tool.handler({ account_id: 1 })
       expect(canvas.accounts.getReports).toHaveBeenCalledWith(1)
+    })
+  })
+
+  describe('list_account_notifications', () => {
+    it('has read-only annotations', () => {
+      const tool = accountTools(buildMockCanvas()).find(
+        (t) => t.name === 'list_account_notifications',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('defaults account_id to "self" when not provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
+      await tool.handler({})
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('self')
+    })
+
+    it('passes account_id to canvas.accounts.listNotifications when provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
+      await tool.handler({ account_id: '42' })
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('42')
+    })
+
+    it('returns the notification array from Canvas', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
+      const result = (await tool.handler({})) as CanvasAccountNotification[]
+      expect(result).toHaveLength(1)
+      expect(result[0].subject).toBe('System Maintenance')
+    })
+
+    it('propagates a 404 error from Canvas', async () => {
+      const { CanvasApiError } = await import('../../src/canvas/client')
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.accounts.listNotifications).mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/v1/accounts/self/account_notifications'),
+      )
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
+      await expect(tool.handler({})).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
 

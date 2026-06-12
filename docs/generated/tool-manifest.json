@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 119,
+  "toolCount": 120,
   "tools": [
     {
       "name": "health_check",
@@ -1139,6 +1139,18 @@
       "name": "get_account_reports",
       "domain": "accounts",
       "description": "List available report types for a Canvas account.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "admin",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_account_notifications",
+      "domain": "accounts",
+      "description": "List active global institution-wide announcements for the current user (maintenance windows, term deadlines, policy notices).",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
