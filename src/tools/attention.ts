@@ -1,6 +1,11 @@
 import { z } from 'zod'
+import { CanvasApiError } from '../canvas/client'
 import type { CanvasClient } from '../canvas'
-import type { CanvasSubmission, CanvasSubmissionComment } from '../canvas/types'
+import type {
+  CanvasSubmission,
+  CanvasSubmissionComment,
+  CanvasStudentSummary,
+} from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
@@ -139,6 +144,174 @@ export function attentionTools(
           findings_count: findings.length,
           findings,
         }
+      },
+    },
+    {
+      name: 'list_students_needing_attention',
+      description:
+        'Report students who may need instructor attention based on inactivity, missing or late submissions, and low current score. Each finding lists the exact signals that fired and the thresholds used — this is a factual report, not a prediction. Requires instructor/TA permissions in the course.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        inactive_days: z
+          .number()
+          .optional()
+          .describe('Flag students with no activity in the last N days (default 7)'),
+        min_missing: z
+          .number()
+          .optional()
+          .describe('Flag students with at least N missing submissions (default 1)'),
+        min_late: z
+          .number()
+          .optional()
+          .describe('Flag students with at least N late submissions (default 3)'),
+        score_threshold: z
+          .number()
+          .optional()
+          .describe('Flag students with a current score below this value (default 70)'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const courseId = params.course_id as number
+        const inactiveDays = (params.inactive_days as number | undefined) ?? 7
+        const minMissing = (params.min_missing as number | undefined) ?? 1
+        const minLate = (params.min_late as number | undefined) ?? 3
+        const scoreThreshold = (params.score_threshold as number | undefined) ?? 70
+
+        const thresholds = {
+          inactive_days: inactiveDays,
+          min_missing: minMissing,
+          min_late: minLate,
+          score_threshold: scoreThreshold,
+        }
+
+        const rawEnrollments = await canvas.enrollments.listForCourse(courseId, {
+          type: ['StudentEnrollment'],
+          state: ['active'],
+          include: ['grades'],
+        })
+
+        const enrollments = pseudonymizer?.isEnabled()
+          ? await Promise.all(
+              rawEnrollments.map((e) => pseudonymizer.anonymizeEnrollment(courseId, e)),
+            )
+          : rawEnrollments
+
+        const summaryMap = new Map<number, CanvasStudentSummary>()
+        let analyticsAvailable = true
+        try {
+          const summaries = await canvas.analytics.getStudentSummaries(courseId)
+          for (const s of summaries) {
+            summaryMap.set(s.id, s)
+          }
+        } catch (err) {
+          if (err instanceof CanvasApiError && err.status === 404) {
+            analyticsAvailable = false
+          } else {
+            throw err
+          }
+        }
+
+        const now = Date.now()
+        const inactiveCutoffMs = inactiveDays * 24 * 60 * 60 * 1000
+        const riskOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+        const findings: object[] = []
+
+        for (const e of enrollments) {
+          const signals: object[] = []
+          const summary = summaryMap.get(e.user_id)
+
+          const lastActivityMs = e.last_activity_at ? new Date(e.last_activity_at).getTime() : null
+          if (lastActivityMs === null || now - lastActivityMs > inactiveCutoffMs) {
+            const daysSince =
+              lastActivityMs !== null
+                ? Math.floor((now - lastActivityMs) / (24 * 60 * 60 * 1000))
+                : null
+            signals.push({
+              type: 'inactive',
+              value: e.last_activity_at ?? null,
+              threshold: `${inactiveDays} days`,
+              detail:
+                daysSince !== null
+                  ? `No course activity for ${daysSince} days`
+                  : 'No course activity recorded',
+            })
+          }
+
+          const score = e.grades?.current_score ?? null
+          if (score !== null && score < scoreThreshold) {
+            signals.push({
+              type: 'low_score',
+              value: score,
+              threshold: scoreThreshold,
+              detail: `Current score ${score}%`,
+            })
+          }
+
+          if (analyticsAvailable && summary) {
+            const tb = summary.tardiness_breakdown
+            if (tb.missing >= minMissing) {
+              signals.push({
+                type: 'missing_submissions',
+                value: tb.missing,
+                threshold: minMissing,
+                detail: `${tb.missing} assignment${tb.missing === 1 ? '' : 's'} missing`,
+              })
+            }
+            if (tb.late >= minLate) {
+              signals.push({
+                type: 'late_pattern',
+                value: tb.late,
+                threshold: minLate,
+                detail: `${tb.late} assignment${tb.late === 1 ? '' : 's'} late`,
+              })
+            }
+          }
+
+          if (signals.length === 0) continue
+
+          const count = signals.length
+          const riskLevel = count >= 3 ? 'high' : count === 2 ? 'medium' : 'low'
+
+          findings.push({
+            user_id: e.user_id,
+            user_name: e.user?.name ?? null,
+            risk_level: riskLevel,
+            signals,
+            last_activity_at: e.last_activity_at ?? null,
+            current_score: score,
+            missing_count: summary?.tardiness_breakdown.missing ?? null,
+            late_count: summary?.tardiness_breakdown.late ?? null,
+          })
+        }
+
+        findings.sort((a, b) => {
+          const aRisk = (a as { risk_level: string }).risk_level
+          const bRisk = (b as { risk_level: string }).risk_level
+          const rDiff = (riskOrder[aRisk] ?? 3) - (riskOrder[bRisk] ?? 3)
+          if (rDiff !== 0) return rDiff
+          const aCount = (a as { signals: object[] }).signals.length
+          const bCount = (b as { signals: object[] }).signals.length
+          return bCount - aCount
+        })
+
+        const response: Record<string, unknown> = {
+          course_id: courseId,
+          students_scanned: enrollments.length,
+          analytics_available: analyticsAvailable,
+          thresholds_used: thresholds,
+          findings,
+        }
+
+        if (!analyticsAvailable) {
+          response.note =
+            'Analytics not available for this course. Reporting on inactivity and low score only (missing_submissions and late_pattern signals skipped).'
+        }
+
+        return response
       },
     },
   ]
