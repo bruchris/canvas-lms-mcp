@@ -131,6 +131,7 @@ function buildFullMockCanvas(): CanvasClient {
       getCourseActivity: async () => [],
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
+      getStudentSummaries: async () => [],
     },
     outcomes: {
       getRootOutcomeGroup: async () => ({}),
@@ -315,10 +316,11 @@ describe('getAllTools', () => {
     expect(names).toContain('create_new_quiz_item')
     expect(names).toContain('update_new_quiz_item')
     expect(names).toContain('delete_new_quiz_item')
-    // Attention (1)
+    // Attention (2)
     expect(names).toContain('list_submission_comments_needing_attention')
+    expect(names).toContain('list_students_needing_attention')
 
-    expect(tools).toHaveLength(118)
+    expect(tools).toHaveLength(119)
   })
 
   it('all tools have openWorldHint: true', () => {

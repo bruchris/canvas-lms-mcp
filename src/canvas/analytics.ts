@@ -3,6 +3,7 @@ import type {
   CanvasCourseActivitySummary,
   CanvasStudentActivitySummary,
   CanvasActivityStreamItem,
+  CanvasStudentSummary,
   CourseSearchResult,
 } from './types'
 
@@ -97,6 +98,12 @@ export class AnalyticsModule {
   async getCourseActivityStream(courseId: number): Promise<CanvasActivityStreamItem[]> {
     return this.client.request<CanvasActivityStreamItem[]>(
       `/api/v1/courses/${courseId}/activity_stream/summary`,
+    )
+  }
+
+  async getStudentSummaries(courseId: number): Promise<CanvasStudentSummary[]> {
+    return this.client.paginate<CanvasStudentSummary>(
+      `/api/v1/courses/${courseId}/analytics/student_summaries`,
     )
   }
 }

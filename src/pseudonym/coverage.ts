@@ -49,4 +49,5 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/attention.ts
   'list_submission_comments_needing_attention',
+  'list_students_needing_attention',
 ] as const
