@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Do not merge PRs or force-push.** You push feature branches, open PRs, and commit to your branches. CTO handles PR merging.
 
+**Exception (owner-approved 2026-06-12):** the autonomous `canvas-mcp-issue-worker` routine may squash-merge its **own** `feat/issue-*` and `docs/spec-issue-*` PRs once its multi-agent review gate, the full local validation suite (`pnpm typecheck && pnpm lint && pnpm test && pnpm build`), and the PR's CI checks have all passed. This exception covers only PRs created by that routine. **Never merge release-please PRs** (`chore(main): release …`) — releases stay human-approved.
+
 ## Commands
 
 Requires Node >=22 and pnpm.
