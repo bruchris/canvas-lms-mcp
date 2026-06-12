@@ -225,6 +225,60 @@ describe('SubmissionsModule', () => {
     })
   })
 
+  describe('listForStudents', () => {
+    it('defaults to student_ids=["all"] when no opts provided', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listForStudents(10)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
+        student_ids: ['all'],
+      })
+    })
+
+    it('uses the correct course ID in the URL', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listForStudents(99)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/99/students/submissions', {
+        student_ids: ['all'],
+      })
+    })
+
+    it('forwards include[], assignment_ids, and workflow_state', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listForStudents(10, {
+        student_ids: ['all'],
+        assignment_ids: [5, 6],
+        include: ['submission_comments', 'user', 'read_status'],
+        workflow_state: 'submitted',
+      })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
+        student_ids: ['all'],
+        assignment_ids: [5, 6],
+        include: ['submission_comments', 'user', 'read_status'],
+        workflow_state: 'submitted',
+      })
+    })
+
+    it('returns paginated submissions', async () => {
+      const mockSubs: CanvasSubmission[] = [
+        {
+          id: 1,
+          assignment_id: 5,
+          user_id: 100,
+          submitted_at: '2026-06-01T08:00:00Z',
+          score: null,
+          grade: null,
+          body: null,
+          url: null,
+          attempt: 1,
+          workflow_state: 'submitted',
+        },
+      ]
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(mockSubs)
+      const result = await submissions.listForStudents(10)
+      expect(result).toEqual(mockSubs)
+    })
+  })
+
   describe('comment', () => {
     it('posts a comment on a submission with PUT and text_comment', async () => {
       const mockResponse: CanvasSubmission = {

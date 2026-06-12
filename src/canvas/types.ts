@@ -857,6 +857,23 @@ export interface CanvasActivityStreamItem {
   unread_count: number
 }
 
+export interface CanvasStudentSummary {
+  id: number
+  page_views: number
+  max_page_views?: number
+  page_views_level?: number
+  participations: number
+  max_participations?: number
+  participations_level?: number
+  tardiness_breakdown: {
+    total: number
+    on_time: number
+    late: number
+    missing: number
+    floating: number
+  }
+}
+
 export interface CourseSearchResult {
   id: number
   title: string

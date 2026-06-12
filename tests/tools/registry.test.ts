@@ -26,6 +26,7 @@ function buildFullMockCanvas(): CanvasClient {
       grade: async () => ({}),
       comment: async () => ({}),
       listMy: async () => [],
+      listForStudents: async () => [],
     },
     rubrics: {
       list: async () => [],
@@ -130,6 +131,7 @@ function buildFullMockCanvas(): CanvasClient {
       getCourseActivity: async () => [],
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
+      getStudentSummaries: async () => [],
     },
     outcomes: {
       getRootOutcomeGroup: async () => ({}),
@@ -170,7 +172,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 117 tools across all domains', () => {
+  it('returns all 118 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -314,8 +316,11 @@ describe('getAllTools', () => {
     expect(names).toContain('create_new_quiz_item')
     expect(names).toContain('update_new_quiz_item')
     expect(names).toContain('delete_new_quiz_item')
+    // Attention (2)
+    expect(names).toContain('list_submission_comments_needing_attention')
+    expect(names).toContain('list_students_needing_attention')
 
-    expect(tools).toHaveLength(117)
+    expect(tools).toHaveLength(119)
   })
 
   it('all tools have openWorldHint: true', () => {
