@@ -25,6 +25,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'get_outcome_results',
   'get_outcome_rollups',
   'list_group_members',
+  'list_submission_comments_needing_attention',
 ])
 
 function buildMinimalCanvas(): CanvasClient {
@@ -33,7 +34,14 @@ function buildMinimalCanvas(): CanvasClient {
   return {
     courses: { list, get: noop, getSyllabus: noop, create: noop, update: noop },
     assignments: { list, get: noop, listGroups: list, create: noop, update: noop, delete: noop },
-    submissions: { list, get: noop, grade: noop, comment: noop, listMy: list },
+    submissions: {
+      list,
+      get: noop,
+      grade: noop,
+      comment: noop,
+      listMy: list,
+      listForStudents: list,
+    },
     rubrics: { list, get: noop, getAssessment: noop, submitAssessment: noop, create: noop },
     quizzes: {
       list,

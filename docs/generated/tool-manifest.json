@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 117,
+  "toolCount": 118,
   "tools": [
     {
       "name": "health_check",
@@ -1445,6 +1445,18 @@
       },
       "access": "read",
       "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_submission_comments_needing_attention",
+      "domain": "attention",
+      "description": "List submissions where the most recent comment is from the student and has not been addressed by grading or a reply — i.e. comments the instructor has likely not seen. Returns a triage list, oldest-unaddressed first. Requires instructor/TA permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     }
   ]

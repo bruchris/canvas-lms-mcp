@@ -2,6 +2,7 @@ import type { CanvasClient } from '../canvas'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
+import { attentionTools } from './attention'
 import { assignmentTools } from './assignments'
 import { calendarTools } from './calendar'
 import { conversationTools } from './conversations'
@@ -146,5 +147,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'dashboard',
     defaultPrimaryAudience: 'student',
     getTools: dashboardTools,
+  },
+  {
+    domain: 'attention',
+    defaultPrimaryAudience: 'educator',
+    getTools: attentionTools,
   },
 ]

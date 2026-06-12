@@ -46,4 +46,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/groups.ts
   'list_group_members',
+
+  // src/tools/attention.ts
+  'list_submission_comments_needing_attention',
 ] as const
