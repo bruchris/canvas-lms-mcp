@@ -73,8 +73,8 @@ describe('accountTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns 7 tool definitions', () => {
-    expect(accountTools(buildMockCanvas())).toHaveLength(7)
+  it('returns 8 tool definitions', () => {
+    expect(accountTools(buildMockCanvas())).toHaveLength(8)
   })
 
   it('exports tools with correct names', () => {
@@ -87,6 +87,7 @@ describe('accountTools', () => {
       'list_account_users',
       'get_account_reports',
       'list_account_notifications',
+      'view_account_notifications',
     ])
   })
 
@@ -206,6 +207,64 @@ describe('accountTools', () => {
       )
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_notifications')!
       await expect(tool.handler({})).rejects.toBeInstanceOf(CanvasApiError)
+    })
+  })
+
+  describe('view_account_notifications', () => {
+    it('has read-only annotations', () => {
+      const tool = accountTools(buildMockCanvas()).find(
+        (t) => t.name === 'view_account_notifications',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('declares the UI resource URI', () => {
+      const tool = accountTools(buildMockCanvas()).find(
+        (t) => t.name === 'view_account_notifications',
+      )!
+      expect(tool.ui?.resourceUri).toBe('ui://canvas-lms-mcp/account-notifications.html')
+    })
+
+    it('keeps CSP empty (widget is self-contained)', () => {
+      const tool = accountTools(buildMockCanvas()).find(
+        (t) => t.name === 'view_account_notifications',
+      )!
+      expect(tool.ui?.csp).toEqual({
+        connectDomains: [],
+        resourceDomains: [],
+        frameDomains: [],
+      })
+    })
+
+    it('defaults account_id to "self" when not provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'view_account_notifications')!
+      await tool.handler({})
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('self')
+    })
+
+    it('defaults account_id to "self" when an empty string is passed', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'view_account_notifications')!
+      await tool.handler({ account_id: '' })
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('self')
+    })
+
+    it('passes account_id to canvas.accounts.listNotifications when provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'view_account_notifications')!
+      await tool.handler({ account_id: '42' })
+      expect(canvas.accounts.listNotifications).toHaveBeenCalledWith('42')
+    })
+
+    it('returns the same payload as list_account_notifications', async () => {
+      const canvas = buildMockCanvas()
+      const tools = accountTools(canvas)
+      const list = tools.find((t) => t.name === 'list_account_notifications')!
+      const view = tools.find((t) => t.name === 'view_account_notifications')!
+      const listResult = await list.handler({})
+      const viewResult = await view.handler({})
+      expect(viewResult).toEqual(listResult)
     })
   })
 

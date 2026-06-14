@@ -119,5 +119,35 @@ export function accountTools(
         return canvas.accounts.listNotifications(accountId)
       },
     },
+    {
+      // Payload is institution-authored announcement metadata only — no student PII,
+      // so no pseudonymizer wrap is required. If a future revision adds per-user
+      // fields, this tool MUST be added to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped.
+      name: 'view_account_notifications',
+      description:
+        'Interactive panel of active institution-wide announcements. Returns the same payload as `list_account_notifications` and additionally links to an MCP Apps UI resource that renders scannable announcement cards with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `list_account_notifications`).',
+      inputSchema: {
+        account_id: z
+          .string()
+          .optional()
+          .describe('Canvas account ID, or "self" for the root account (default: "self")'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      ui: {
+        resourceUri: 'ui://canvas-lms-mcp/account-notifications.html',
+        csp: {
+          connectDomains: [],
+          resourceDomains: [],
+          frameDomains: [],
+        },
+      },
+      handler: async (params) => {
+        const accountId = (params.account_id as string) || 'self'
+        return canvas.accounts.listNotifications(accountId)
+      },
+    },
   ]
 }
