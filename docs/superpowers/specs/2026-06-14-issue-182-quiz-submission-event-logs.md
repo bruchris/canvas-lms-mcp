@@ -146,18 +146,19 @@ Add to `src/canvas/types.ts` under a new block after the existing `// --- Quizze
 export interface CanvasQuizSubmissionEvent {
   event_type: string
   created_at: string
-  event_data: Array<Record<string, string>> | null
+  event_data: Array<Record<string, unknown>> | null
 }
 
 export interface CanvasQuizSubmissionEventsResponse {
-  quiz_submission_events: CanvasQuizSubmissionEvent[]
+  quiz_submission_events: CanvasQuizSubmissionEvent[] | null
 }
 ```
 
 **Type notes**:
 
 - `event_type` covers the full Canvas event vocabulary: `session_started`, `question_answered`, `question_flagged`, `question_unflagged`, `page_blurred`, `page_focused`. It is typed as `string` (not a union) to handle future Canvas events without a type update.
-- `event_data` is `Array<Record<string, string>> | null`. For most events the array is empty; for `question_answered` it contains `[{ quiz_question_id: "N", answer: "M" }]`. The `null` case covers events where Canvas omits the field rather than returning `[]` — the implementation must handle both.
+- `event_data` is `Array<Record<string, unknown>> | null`. `Record<string, unknown>` matches the codebase convention for opaque API payloads (see `interaction_data: Record<string, unknown>` elsewhere in `types.ts`). For most events the array is empty (`[]`); for `question_answered` it contains `[{ quiz_question_id: "N", answer: "M" }]`. The `null` case covers events where Canvas omits the field entirely — the implementation must handle both.
+- `quiz_submission_events` is typed as `CanvasQuizSubmissionEvent[] | null` (nullable). This is intentional: Canvas may respond with `null` for the field when a submission has no recorded events. The `| null` here is what makes the `?? []` null-guard in the client method valid TypeScript under `strictNullChecks` — without it, the compiler would flag the guard as unreachable.
 - Do NOT add a `user_id` or user object to this type. If Canvas begins returning one, the implementation spec must be revisited for pseudonymizer wrapping at that time.
 
 ---
@@ -167,6 +168,21 @@ export interface CanvasQuizSubmissionEventsResponse {
 ### Location
 
 `src/canvas/quizzes.ts` — add a new method to the existing `QuizzesModule` class. No new module file is needed; the events endpoint is a sub-resource of quiz submissions, already in scope for this class.
+
+### Import update
+
+Update the import at the top of `src/canvas/quizzes.ts` to include the two new types:
+
+```ts
+import type {
+  CanvasQuiz,
+  CanvasQuizSubmission,
+  CanvasQuizQuestion,
+  CanvasQuizSubmissionQuestion,
+  CanvasQuizSubmissionEvent,
+  CanvasQuizSubmissionEventsResponse,
+} from './types'
+```
 
 ### Method signature
 
@@ -179,6 +195,8 @@ async getSubmissionEvents(
 ): Promise<CanvasQuizSubmissionEvent[]>
 ```
 
+**Insertion point**: append as the last method in the class, after `scoreQuestion`.
+
 ### Implementation sketch
 
 ```ts
@@ -188,21 +206,23 @@ async getSubmissionEvents(
   submissionId: number,
   attempt?: number,
 ): Promise<CanvasQuizSubmissionEvent[]> {
-  const params: Record<string, string> = {}
+  const query: CanvasQueryParams = {}
   if (attempt !== undefined) {
-    params.attempt = String(attempt)
+    query.attempt = attempt
   }
   const response = await this.client.request<CanvasQuizSubmissionEventsResponse>(
     `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions/${submissionId}/events`,
-    { params },
+    { query },
   )
   return response.quiz_submission_events ?? []
 }
 ```
 
-**Why `?? []`**: Canvas may return `{ quiz_submission_events: null }` for a submission with no recorded events (e.g., a submission created via the API rather than the quiz player). Returning `[]` is safer than throwing.
+**`CanvasRequestOptions.query`**: `CanvasHttpClient.request()` accepts `query?: CanvasQueryParams` in its options object (see `src/canvas/client.ts` line 26). `CanvasQueryParams` accepts `number` values directly — `appendCanvasQuery` handles `String()` conversion internally. No manual `String(attempt)` conversion is needed; do not construct `URLSearchParams` by hand as that bypasses auth-header injection.
 
-**`client.request` params passing**: Verify the `CanvasHttpClient.request()` signature accepts a `params` field in the options argument (see `src/canvas/client.ts`). If not, use URLSearchParams and append to the path string. The implementation must match the actual client signature — this spec does not prescribe the mechanic, only the intent.
+**Why `?? []`**: Canvas may return `{ quiz_submission_events: null }` for a submission with no recorded events (e.g., a submission created via the API rather than the quiz player). The type declaration above uses `| null` precisely so this guard is valid TypeScript under `strictNullChecks`. Returning `[]` is safer than throwing.
+
+**Import for `CanvasQueryParams`**: add `import { type CanvasQueryParams } from './query'` at the top of `src/canvas/quizzes.ts`, alongside the existing `import type { CanvasHttpClient } from './client'`.
 
 ---
 
@@ -210,7 +230,7 @@ async getSubmissionEvents(
 
 ### Location
 
-`src/tools/quizzes.ts` — add a new `ToolDefinition` to the array returned by `quizTools()`.
+`src/tools/quizzes.ts` — add a new `ToolDefinition` to the array returned by `quizTools()`. **Insertion point**: append as the last element, after the `score_quiz_question` entry.
 
 ### Tool description (exact text)
 
@@ -226,10 +246,18 @@ present them with context.
 
 ### Handler sketch
 
+Use the exact description string from the "Tool description (exact text)" section above. The handler below omits it for readability.
+
 ```ts
 {
   name: 'get_quiz_submission_events',
-  description: '...', // see above
+  description: `Get the event log for a Classic Quiz submission in chronological order. Events include
+session_started, question_answered, question_flagged, page_blurred, and page_focused.
+Use this to understand the timeline of a student's attempt. Classic Quizzes only —
+New Quizzes does not expose event logs via the Canvas REST API. Events are scoped to a
+single submission; Canvas enforces access permissions (instructors and the submitting
+student only). Do not use event logs as the sole basis for academic-integrity conclusions;
+present them with context.`,
   inputSchema: {
     course_id: z.number().describe('The Canvas course ID'),
     quiz_id: z.number().describe('The Canvas quiz ID (Classic Quizzes only)'),
@@ -250,6 +278,8 @@ present them with context.
   },
 }
 ```
+
+**Input casting**: `params.X as T` follows the existing quizzes tool pattern throughout `src/tools/quizzes.ts` — no Zod runtime parse in handlers; the MCP SDK validates at the boundary. Do not add a `z.parse()` call.
 
 No pseudonymizer call in the handler — see design unknown §2.
 
@@ -275,17 +305,35 @@ Add to the existing test file (do not create a new file):
    Assert: method returns all 3 events in order; endpoint called is
    `/api/v1/courses/1/quizzes/2/submissions/3/events` with no `attempt` param.
 
-2. **With attempt param**: mock the same response; call with `attempt: 2`. Assert the request includes `attempt=2` in query params.
+2. **With attempt param**: mock the same response; call with `attempt: 2`. Assert the exact call:
+   ```ts
+   expect(vi.mocked(client.request)).toHaveBeenCalledWith(
+     '/api/v1/courses/1/quizzes/2/submissions/3/events',
+     { query: { attempt: 2 } },
+   )
+   ```
 
 3. **Empty log case**: mock returns `{ "quiz_submission_events": [] }`. Assert method returns `[]`.
 
 4. **Null envelope case**: mock returns `{ "quiz_submission_events": null }`. Assert method returns `[]` (the `?? []` guard).
 
-5. **Error propagation**: mock `client.request` to throw `CanvasApiError` with status 403. Assert the error propagates (not caught at client layer).
+5. **Error propagation**: mock `client.request` to throw:
+   ```ts
+   new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/quizzes/2/submissions/3/events')
+   ```
+   Assert the error propagates (not caught at client layer).
 
 ### Tool tests — `tests/tools/quizzes.test.ts`
 
-Add to the existing test file:
+**Required setup changes** (before adding new test cases):
+
+1. Add `getSubmissionEvents: vi.fn().mockResolvedValue([])` to the `quizzes` sub-object inside `buildMockCanvas()` (currently lines 56–63). Without this, TypeScript will error and any test invoking the new tool will throw "not a function".
+
+2. Update the existing count assertion at line 68 from `toHaveLength(6)` to `toHaveLength(7)`.
+
+3. Append `'get_quiz_submission_events'` to the tool names array in the `'exports tools with correct names'` test (currently lines 73–80).
+
+**New test cases** — add a new `describe('get_quiz_submission_events', ...)` block:
 
 1. **Annotations**: assert `get_quiz_submission_events` has `readOnlyHint: true` and `openWorldHint: true`.
 
@@ -330,9 +378,9 @@ Subtask B depends on Subtask A being merged (or combined into one PR).
 
 ## Open questions for CTO review
 
-1. **`attempt` parameter default**: Canvas returns the latest attempt when `attempt` is omitted. Should we expose this as the default (current spec), or always require an explicit attempt number so callers are unambiguous about which attempt they're querying? Defaulting to "latest" is more ergonomic; requiring explicit is more precise for audit trails.
+1. ~~**`attempt` parameter default**~~ — **Resolved**: `attempt` is optional, defaulting to the latest attempt. This matches Canvas API behaviour and is consistent with `score_quiz_question` where `attempt` is also optional for the same endpoint family. Already encoded in the Zod schema; no CTO input needed.
 
-2. **Event vocabulary**: the known event types are `session_started`, `question_answered`, `question_flagged`, `question_unflagged`, `page_blurred`, `page_focused`. Canvas may emit additional types for proctored quizzes (e.g. camera events). The current spec types `event_type: string` (open). Confirm this is preferable to a narrower union that we'd have to maintain.
+2. ~~**Event vocabulary**~~ — **Resolved**: `event_type: string` (open string). Canvas has added event types in patch releases without API version bumps; a closed union would cause type errors on valid responses from newer Canvas instances. Already encoded in the type; no CTO input needed.
 
 3. **Single PR vs two PRs**: the change touches ~5 source lines in `types.ts`, ~15 lines in `quizzes.ts`, ~10 lines in `src/tools/quizzes.ts`, and ~40 lines of tests. This fits comfortably in a single PR. Confirm one-PR approach is fine.
 
