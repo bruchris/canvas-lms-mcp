@@ -266,6 +266,16 @@ describe('accountTools', () => {
       const viewResult = await view.handler({})
       expect(viewResult).toEqual(listResult)
     })
+
+    it('propagates a 404 error from Canvas (same as the JSON tool)', async () => {
+      const { CanvasApiError } = await import('../../src/canvas/client')
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.accounts.listNotifications).mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/v1/accounts/self/account_notifications'),
+      )
+      const tool = accountTools(canvas).find((t) => t.name === 'view_account_notifications')!
+      await expect(tool.handler({})).rejects.toBeInstanceOf(CanvasApiError)
+    })
   })
 
   describe('pseudonymization', () => {

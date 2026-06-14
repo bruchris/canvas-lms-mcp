@@ -62,7 +62,9 @@ describe('registerAccountNotificationsUI', () => {
     expect(html).toContain('DOMParser')
     expect(html).toContain('ALLOWED_TAGS')
     expect(html).toContain('DROP_TAGS')
-    // <script> must never be added to the document via innerHTML in this widget.
-    expect(html).not.toContain('.innerHTML')
+    // The widget must never inject untrusted HTML via a raw-HTML sink. This is a
+    // cheap smoke check; the sanitizer's actual behavior is verified by the policy
+    // unit tests (tests/ui/account-notifications-sanitizer.test.ts).
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/)
   })
 })

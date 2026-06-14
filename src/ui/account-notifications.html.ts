@@ -3,11 +3,20 @@
 // renders an interactive panel of institution announcements without making any
 // network requests. Announcement `message` bodies are institution-authored HTML
 // and are rendered through an allowlist sanitizer (no script execution, no remote
-// resource loads). CSP intentionally empty.
+// resource loads). The tool's `ui.csp` binding is intentionally empty; the widget
+// additionally ships a restrictive <meta> CSP as defense-in-depth.
+//
+// The sanitizer's security-critical decisions (ALLOWED_TAGS / DROP_TAGS / the URL
+// scheme allowlist) are defined once in `account-notifications-sanitizer.ts` and
+// interpolated below, so a unit test of that module guards the exact policy the
+// widget runs.
+import { ALLOWED_TAGS, DROP_TAGS, SAFE_URL_PATTERNS } from './account-notifications-sanitizer'
+
 export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Institution Announcements</title>
 <style>
@@ -173,15 +182,18 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
 
   // Allowlist sanitizer: only these inline/structural tags survive; everything else
   // is either dropped entirely (scripts, styles, embeds) or unwrapped to its text.
-  var ALLOWED_TAGS = {
-    A: 1, ABBR: 1, B: 1, BLOCKQUOTE: 1, BR: 1, CODE: 1, DD: 1, DIV: 1, DL: 1,
-    DT: 1, EM: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, HR: 1, I: 1, LI: 1,
-    OL: 1, P: 1, PRE: 1, SMALL: 1, SPAN: 1, STRONG: 1, SUB: 1, SUP: 1, U: 1, UL: 1
-  };
-  var DROP_TAGS = {
-    SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, LINK: 1, META: 1,
-    TEMPLATE: 1, NOSCRIPT: 1, FORM: 1, INPUT: 1, BUTTON: 1, IMG: 1, SVG: 1
-  };
+  // The tag lists and URL allowlist are interpolated from
+  // account-notifications-sanitizer.ts so the unit-tested policy is the one that ships.
+  function toSet(list) {
+    var set = {};
+    for (var i = 0; i < list.length; i++) set[list[i]] = 1;
+    return set;
+  }
+  var ALLOWED_TAGS = toSet(${JSON.stringify(ALLOWED_TAGS)});
+  var DROP_TAGS = toSet(${JSON.stringify(DROP_TAGS)});
+  var SAFE_URL_RES = ${JSON.stringify(SAFE_URL_PATTERNS)}.map(function (p) {
+    return new RegExp(p, 'i');
+  });
 
   function readPayload() {
     // Multi-sink probe: try documented hosts in order, fall back to a known shim variable.
@@ -257,8 +269,9 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
 
   function safeUrl(value) {
     var v = (value == null ? '' : String(value)).trim();
-    if (/^https?:\\/\\//i.test(v)) return v;
-    if (/^mailto:/i.test(v)) return v;
+    for (var i = 0; i < SAFE_URL_RES.length; i++) {
+      if (SAFE_URL_RES[i].test(v)) return v;
+    }
     return null;
   }
 
@@ -305,7 +318,9 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
   }
 
   function formatDate(iso) {
-    if (!iso) return null;
+    // Fields are institution JSON of unknown runtime type; only coerce real
+    // strings/numbers so a malformed value is omitted rather than rendered as junk.
+    if (!iso || (typeof iso !== 'string' && typeof iso !== 'number')) return null;
     var d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso);
     try {
@@ -391,9 +406,10 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
       var badgeCls = typeInfo ? typeInfo.cls : 'neutral';
       var badgeLabel = typeInfo ? typeInfo.label : (icon || 'announcement');
 
+      var subjectText = note && typeof note.subject === 'string' ? note.subject : '';
       var head = el('div', { class: 'card-head' }, [
         el('span', { class: 'type-badge ' + badgeCls, text: badgeLabel }),
-        el('span', { class: 'subject', text: (note && note.subject) || '(no subject)' })
+        el('span', { class: 'subject', text: subjectText || '(no subject)' })
       ]);
 
       var children = [head];
@@ -403,7 +419,7 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
 
       var card = el('div', { class: 'card' }, children);
       card.dataset.type = (icon || '');
-      card.dataset.subject = ((note && note.subject) || '').toLowerCase();
+      card.dataset.subject = subjectText.toLowerCase();
       cardsContainer.appendChild(card);
       cardNodes.push(card);
     });
