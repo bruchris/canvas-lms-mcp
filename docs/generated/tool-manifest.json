@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 121,
+  "toolCount": 124,
   "tools": [
     {
       "name": "health_check",
@@ -1487,6 +1487,42 @@
       "name": "list_students_needing_attention",
       "domain": "attention",
       "description": "Report students who may need instructor attention based on inactivity, missing or late submissions, and low current score. Each finding lists the exact signals that fired and the thresholds used — this is a factual report, not a prediction. Requires instructor/TA permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_content_export",
+      "domain": "content_exports",
+      "description": "Start a Canvas course content export (Common Cartridge / QTI / zip). Exports are asynchronous — this tool returns immediately with an export ID and initial workflow_state (\"created\"). Call get_content_export to poll progress and retrieve the time-limited download link when the export finishes.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_content_export",
+      "domain": "content_exports",
+      "description": "Get the status of a content export. When workflow_state is \"exported\", attachment.url contains a time-limited download link — download it promptly, as the URL expires (re-fetch to get a fresh one). Returns attachment: null while still \"created\"/\"exporting\" or on \"failed\".",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_content_exports",
+      "domain": "content_exports",
+      "description": "List all content exports for a course (most recent first).",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

@@ -993,3 +993,35 @@ export interface CanvasPeerReview {
   asset_type: 'Submission'
   workflow_state: 'assigned' | 'completed'
 }
+
+// --- Content Exports ---
+
+export type ContentExportType = 'common_cartridge' | 'qti' | 'zip'
+
+export type ContentExportWorkflowState =
+  | 'created'
+  | 'exporting'
+  | 'exported'
+  | 'failed'
+  // Canvas may emit undocumented states (e.g. 'waiting_for_external_tool'); keep the
+  // union open as a hint type without losing autocomplete on the known states.
+  | (string & {})
+
+export interface CanvasContentExportAttachment {
+  url: string
+  filename: string
+}
+
+export interface CanvasContentExport {
+  id: number
+  export_type: ContentExportType
+  workflow_state: ContentExportWorkflowState
+  /** null while 'created'; a Canvas progress URL once 'exporting'/'exported'. */
+  progress_url: string | null
+  /** Non-null (time-limited download link) only when workflow_state === 'exported'. */
+  attachment: CanvasContentExportAttachment | null
+  /** Opaque integer — the teacher/admin who initiated the export, not a student identifier. */
+  user_id?: number
+  created_at: string
+  updated_at: string
+}
