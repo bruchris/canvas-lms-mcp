@@ -103,6 +103,13 @@ describe('ContentExportsModule', () => {
     expect(client.paginate).toHaveBeenCalledWith(`/api/v1/courses/${COURSE_ID}/content_exports`)
   })
 
+  it('lists content exports for a course with no exports (empty array)', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    const result = await mod.list(COURSE_ID)
+    expect(result).toEqual([])
+    expect(client.paginate).toHaveBeenCalledWith(`/api/v1/courses/${COURSE_ID}/content_exports`)
+  })
+
   // --- Error propagation (CanvasApiError must surface, never be swallowed) ---
 
   it('surfaces a CanvasApiError with status 404 from get', async () => {
@@ -124,6 +131,18 @@ describe('ContentExportsModule', () => {
       json: async () => ({ message: 'user not authorized to perform that action' }),
     } as unknown as Response)
     await expect(mod.create(COURSE_ID, 'zip')).rejects.toMatchObject({
+      name: 'CanvasApiError',
+      status: 403,
+    })
+  })
+
+  it('surfaces a CanvasApiError with status 403 from list (paginate error branch)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: 'user not authorized to perform that action' }),
+    } as unknown as Response)
+    await expect(mod.list(COURSE_ID)).rejects.toMatchObject({
       name: 'CanvasApiError',
       status: 403,
     })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { z } from 'zod'
 import type { CanvasClient } from '../../src/canvas'
 import { contentExportsTools } from '../../src/tools/content-exports'
 import type { CanvasContentExport } from '../../src/canvas/types'
@@ -94,6 +95,26 @@ describe('contentExportsTools', () => {
       const result = await tool.handler({ course_id: 7 })
       expect(canvas.contentExports.list).toHaveBeenCalledWith(7)
       expect(result).toEqual([mockExported, mockExport])
+    })
+  })
+
+  describe('input validation', () => {
+    it('create_content_export rejects an export_type outside the enum', () => {
+      const tool = contentExportsTools(buildMockCanvas()).find(
+        (t) => t.name === 'create_content_export',
+      )!
+      const schema = z.object(tool.inputSchema)
+      expect(schema.safeParse({ course_id: 7, export_type: 'pdf' }).success).toBe(false)
+      expect(schema.safeParse({ course_id: 7, export_type: 'common_cartridge' }).success).toBe(true)
+    })
+
+    it('create_content_export rejects a missing/non-numeric course_id', () => {
+      const tool = contentExportsTools(buildMockCanvas()).find(
+        (t) => t.name === 'create_content_export',
+      )!
+      const schema = z.object(tool.inputSchema)
+      expect(schema.safeParse({ export_type: 'zip' }).success).toBe(false)
+      expect(schema.safeParse({ course_id: 'abc', export_type: 'zip' }).success).toBe(false)
     })
   })
 })
