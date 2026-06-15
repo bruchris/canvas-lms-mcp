@@ -145,6 +145,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_course',
+      audience: 'admin',
       description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
         account_id: z
@@ -182,6 +183,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_course',
+      audience: 'educator',
       description:
         'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',
       inputSchema: {

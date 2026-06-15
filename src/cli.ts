@@ -1,18 +1,31 @@
+import { parseRole } from './tools/roles'
+import type { CanvasRole } from './tools/types'
+
 export interface CliConfig {
   token: string
   baseUrl: string
   mode: 'stdio' | 'http'
   port: number
   allowedOrigin: string
+  /** Canvas role for tool filtering; undefined = register all tools. */
+  role?: CanvasRole
 }
 
 export function parseArgs(args: string[]): CliConfig {
+  const envRole = parseRole(process.env.CANVAS_ROLE)
+  if (envRole.invalid) {
+    console.warn(
+      `Unknown CANVAS_ROLE '${process.env.CANVAS_ROLE}'; ignoring and registering all tools.`,
+    )
+  }
+
   const config: CliConfig = {
     token: process.env.CANVAS_API_TOKEN ?? '',
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
     mode: 'stdio',
     port: 3001,
     allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
+    role: envRole.role,
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -34,6 +47,16 @@ export function parseArgs(args: string[]): CliConfig {
       case '--allowed-origin':
         config.allowedOrigin = args[++i] ?? 'http://localhost:3000'
         break
+      case '--role': {
+        const raw = args[++i]
+        const parsed = parseRole(raw)
+        if (parsed.invalid) {
+          console.warn(`Unknown --role value '${raw}'; ignoring and registering all tools.`)
+        }
+        // A valid --role overrides env; an invalid/`all` value falls back to all.
+        config.role = parsed.role
+        break
+      }
     }
   }
 

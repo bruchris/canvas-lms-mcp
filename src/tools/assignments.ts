@@ -60,6 +60,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_assignments',
+      audience: 'shared',
       description:
         'List all assignments in a course. Use fields="slim" when enumerating assignments for selection; switch to "full" once you\'ve identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. "full" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.',
       inputSchema: {
@@ -137,6 +138,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_assignment',
+      audience: 'shared',
       description:
         'Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.',
       inputSchema: {
@@ -181,6 +183,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_assignment_groups',
+      audience: 'shared',
       description:
         'List assignment groups (categories like Homework, Exams) in a course. Use `include=assignments` to nest assignments under each group; other includes add submission, overrides, score_statistics, etc.',
       inputSchema: {

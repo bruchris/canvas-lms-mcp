@@ -42,6 +42,7 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_peer_review',
+      audience: 'educator',
       description: 'Assign a user to peer-review a submission.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -63,6 +64,7 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_peer_review',
+      audience: 'educator',
       description: 'Remove a peer review assignment from a submission. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

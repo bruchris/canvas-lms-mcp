@@ -220,6 +220,7 @@ const courses = await canvas.courses.list()
 | `serve` | -- | stdio mode | Switch to HTTP mode |
 | `--port` | -- | `3001` | HTTP server port |
 | `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
+| `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
 
 ## Environment Variables
 
@@ -228,6 +229,7 @@ const courses = await canvas.courses.list()
 | `CANVAS_API_TOKEN` | Yes | Canvas personal access token |
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
+| `CANVAS_ROLE` | No | Filter the tool list by role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
 | `CANVAS_PSEUDONYMIZE_STUDENTS` | No | Set to `true` to enable [FERPA mode](#ferpa-mode-student-pseudonymization) |
 | `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | No | Set to `true` (with `CANVAS_PSEUDONYMIZE_STUDENTS=true`) to register the `resolve_pseudonym` audit tool |
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
@@ -261,6 +263,36 @@ Conversation participants are pseudonymized as `Person N` from a cross-course po
 Optional `resolve_pseudonym` reverse-lookup tool: register it only by also setting `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true`. Every call is audit-logged to stderr (and to `CANVAS_PSEUDONYM_AUDIT_LOG` if set). When the flag is off the tool is absent from `tools/list` — a prompt-injection attempt to call it fails at the protocol layer.
 
 Threat model and design rationale in [docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md](docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md).
+
+## Role-based tool filtering
+
+Optionally narrow the tool list to a single Canvas role so an agent sees only the tools relevant to its user. This is a **client-side UX / context-reduction filter only** — Canvas still enforces real permissions server-side. Setting `CANVAS_ROLE=admin` does **not** grant admin powers; a 403 still comes from Canvas if the token lacks the scope.
+
+```bash
+# stdio: env var or --role flag (flag wins)
+CANVAS_ROLE=student canvas-lms-mcp --base-url https://school.instructure.com
+canvas-lms-mcp --base-url https://school.instructure.com --role teacher
+```
+
+Three roles, plus the default of "unset = every tool":
+
+| `CANVAS_ROLE` | Tools exposed | Typical use |
+|---------------|---------------|-------------|
+| _(unset)_ | all (~121) | default; backwards-compatible |
+| `student` | ~46 | a student's own courses, grades, submissions, and read-only course content |
+| `teacher` | ~104 | grading, roster, content authoring, analytics |
+| `admin` | ~116 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
+
+Notes:
+
+- **Equivalent to `CANVAS_ROLE` in [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp)** — set the same value to migrate.
+- Role values are **case-insensitive**; `all` is accepted as an explicit "no filter". An unrecognised value logs a warning to stderr and registers all tools (a config typo never stops the server).
+- `teacher` / `admin` do **not** see the student-only `get_my_*` tools in v1 — they should use `list_submissions` / `get_submission` etc. instead.
+- The FERPA `resolve_pseudonym` tool is `teacher`/`admin`-only and is never exposed to `student`, even when reverse lookup is enabled.
+- **HTTP transport:** the role is read per request from the `X-Canvas-Role` header, falling back to `CANVAS_ROLE` from the server config. A valid header (or `all`) overrides the configured default; an invalid header is ignored with a warning.
+- Tool counts above are a snapshot and grow as tools are added — the authoritative guarantee is that every tool resolves to exactly one audience (enforced by `tests/tools/audience-coverage.test.ts`).
+
+Design rationale in [BRU-1530](https://github.com/bruchris/canvas-lms-mcp) (role taxonomy, why three roles, auto-detect deferred to v2).
 
 ## Development
 

@@ -9,6 +9,7 @@ describe('parseArgs', () => {
     delete process.env.CANVAS_API_TOKEN
     delete process.env.CANVAS_BASE_URL
     delete process.env.CANVAS_ALLOWED_ORIGIN
+    delete process.env.CANVAS_ROLE
   })
 
   afterEach(() => {
@@ -188,5 +189,55 @@ describe('parseArgs', () => {
     const result = parseArgs(['--token', 'my-token', '--base-url', 'https://canvas.example.com'])
 
     expect(result.allowedOrigin).toBe('https://env-origin.example.com')
+  })
+
+  describe('--role / CANVAS_ROLE', () => {
+    const base = ['--token', 'my-token', '--base-url', 'https://canvas.example.com']
+
+    it('leaves role undefined when neither flag nor env is set', () => {
+      expect(parseArgs([...base]).role).toBeUndefined()
+    })
+
+    it('parses --role into config.role', () => {
+      expect(parseArgs([...base, '--role', 'student']).role).toBe('student')
+    })
+
+    it('reads CANVAS_ROLE env, case-insensitively', () => {
+      process.env.CANVAS_ROLE = 'TEACHER'
+      expect(parseArgs([...base]).role).toBe('teacher')
+    })
+
+    it('--role overrides CANVAS_ROLE env when both are set', () => {
+      process.env.CANVAS_ROLE = 'teacher'
+      expect(parseArgs([...base, '--role', 'admin']).role).toBe('admin')
+    })
+
+    it('treats "all" as no filter without warning', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      process.env.CANVAS_ROLE = 'all'
+      expect(parseArgs([...base]).role).toBeUndefined()
+      expect(warn).not.toHaveBeenCalled()
+    })
+
+    it('warns to stderr and ignores an invalid --role value', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = parseArgs([...base, '--role', 'ta'])
+      expect(result.role).toBeUndefined()
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unknown --role value 'ta'"))
+    })
+
+    it('warns to stderr and ignores an invalid CANVAS_ROLE env value', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      process.env.CANVAS_ROLE = 'wizard'
+      const result = parseArgs([...base])
+      expect(result.role).toBeUndefined()
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unknown CANVAS_ROLE 'wizard'"))
+    })
+
+    it('an invalid --role overrides a valid env role (falls back to all)', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      process.env.CANVAS_ROLE = 'admin'
+      expect(parseArgs([...base, '--role', 'nope']).role).toBeUndefined()
+    })
   })
 })

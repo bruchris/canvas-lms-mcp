@@ -10,6 +10,7 @@ async function main() {
   const { server } = createCanvasMCPServer({
     token: config.token,
     baseUrl: config.baseUrl,
+    role: config.role,
   })
 
   const transport = new StdioServerTransport()
