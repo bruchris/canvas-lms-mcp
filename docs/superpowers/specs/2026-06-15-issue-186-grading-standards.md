@@ -345,7 +345,7 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
 }
 ```
 
-Handler note: The final `throw new Error(...)` is caught by `buildHandler` and formatted via `formatError` as a plain `Error` message with `isError: true`. No try/catch needed in this handler.
+Handler note: The final `throw new Error(...)` propagates to `buildHandler` → `formatError` → `isError: true` in the MCP response (same flow as the create handler). No try/catch needed in this handler.
 
 ### Tool 2: `create_grading_standard`
 
@@ -462,7 +462,7 @@ Handler note: The final `throw new Error(...)` is caught by `buildHandler` and f
 
 No try/catch — all errors propagate to `buildHandler` → `formatError()`.
 
-**Return value**: Returns the full `CanvasCourse` object from `canvas.courses.update()`. The response to the MCP client will include `grading_standard_id` (if Canvas echoes it on the update response).
+**Return value**: Returns the full `CanvasCourse` object from `canvas.courses.update()`. The response includes `grading_standard_id` if Canvas echoes it on the update response.
 
 ---
 
@@ -491,7 +491,7 @@ import { gradingStandardsTools } from './grading-standards'
 **No pseudonymizer wrapping required.** Grading standards contain no student PII:
 
 - `CanvasGradingStandard` fields: `id`, `title`, `context_type`, `context_id`, `grading_scheme`. None are a `CanvasUser` object, a `participants` array, or a `user_name` field. Grading standards are course-level config, not student records.
-- `apply_grading_standard_to_course` returns `CanvasCourse`. The Canvas `PUT /api/v1/courses/:id` response does NOT include an `enrollments` array by default — that requires `include[]=enrollments` which the tool never requests. The `teachers` sub-field is an array of display-name objects (instructor names), not student data.
+- `apply_grading_standard_to_course` returns `CanvasCourse`. The tool never passes `include[]=enrollments` to `canvas.courses.update()`, so the Canvas `PUT /api/v1/courses/:id` response does not include an `enrollments` array or student user objects. The `teachers` sub-field contains instructor display-name objects only.
 
 Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED_TOOLS`. The CI coverage test (`tests/pseudonym/coverage.test.ts`) must pass unchanged.
 
@@ -503,75 +503,67 @@ All tests use mocked Canvas responses. No live Canvas calls.
 
 ### Canvas client tests — `tests/canvas/grading-standards.test.ts` (new file)
 
-**Imports and fixture:**
+**Imports and setup:**
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GradingStandardsModule } from '../../src/canvas/grading-standards'
 import { CanvasHttpClient } from '../../src/canvas/client'
 import { CanvasApiError } from '../../src/canvas/client'
 
+// beforeEach:
+const client = new CanvasHttpClient({ token: 'test-token', baseUrl: 'https://canvas.example.com' })
+const module = new GradingStandardsModule(client)
+// then vi.spyOn(client, 'paginate') / vi.spyOn(client, 'request')
+// consistent with tests/canvas/courses.test.ts and tests/canvas/accounts.test.ts
+```
+
+**Fixture:**
+```ts
 const mockStandard = {
   id: 42,
   title: 'GPA 4.0 Scale',
   context_type: 'Course' as const,
   context_id: 100,
   grading_scheme: [
-    { name: 'A',  value: 0.94 },
-    { name: 'B',  value: 0.84 },
-    { name: 'F',  value: 0.00 },
+    { name: 'A', value: 0.94 },
+    { name: 'B', value: 0.84 },
+    { name: 'F', value: 0.00 },
   ],
 }
-
 const schemeEntries = [
-  { name: 'A',  value: 0.94 },
-  { name: 'B',  value: 0.84 },
-  { name: 'F',  value: 0.00 },
+  { name: 'A', value: 0.94 },
+  { name: 'B', value: 0.84 },
+  { name: 'F', value: 0.00 },
 ]
 ```
 
-**Mock pattern**: Use `vi.spyOn(client, 'paginate')` for list methods and `vi.spyOn(client, 'request')` for create methods, consistent with `tests/canvas/courses.test.ts` and `tests/canvas/accounts.test.ts`.
-
-**Case 1 — `listForCourse` happy path**: mock `client.paginate` to return `[mockStandard]`. Assert:
+**Case 1 — `listForCourse` happy path**: `vi.spyOn(client, 'paginate').mockResolvedValueOnce([mockStandard])`. Assert:
 - Returns array of length 1.
 - `client.paginate` called with `'/api/v1/courses/100/grading_standards'` (no second arg).
 
 **Case 2 — `listForCourse` empty**: mock returns `[]`. Assert method returns `[]`.
 
-**Case 3 — `listForAccount` happy path**: mock `client.paginate` to return `[mockStandard]`. Assert:
+**Case 3 — `listForAccount` happy path**: mock `client.paginate` returns `[mockStandard]`. Assert:
 - `client.paginate` called with `'/api/v1/accounts/1/grading_standards'`.
 
-**Case 4 — `createForCourse` happy path**: mock `client.request` to return `mockStandard`. Assert:
+**Case 4 — `createForCourse` happy path**: `vi.spyOn(client, 'request').mockResolvedValueOnce(mockStandard)`. Assert:
 - Returns `mockStandard`.
 - `client.request` called with `'/api/v1/courses/100/grading_standards'` and `{ method: 'POST', body: ... }`.
-- Parsed body: `{ title: 'GPA 4.0 Scale', grading_scheme_entry: [{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.00 }] }` — note key is `grading_scheme_entry` (singular), NOT `grading_scheme` (plural).
+- **Parsed body key is `grading_scheme_entry` (singular), NOT `grading_scheme` (plural)**: `JSON.parse(calledBody).grading_scheme_entry` equals `[{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.00 }]`.
 
-**Case 5 — `createForCourse` sorts entries**: call with entries in ascending value order `[{ name: 'F', value: 0.0 }, { name: 'B', value: 0.84 }, { name: 'A', value: 0.94 }]`. Assert the posted `grading_scheme_entry` is `[{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.0 }]` (descending).
+**Case 5 — `createForCourse` sorts entries**: call with `[{ name: 'F', value: 0.0 }, { name: 'B', value: 0.84 }, { name: 'A', value: 0.94 }]` (ascending). Assert posted `grading_scheme_entry` is `[{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.0 }]` (descending).
 
-**Case 6 — `createForCourse` does not mutate input**: capture a reference to the input array before the call. After the call, assert the array reference still contains the original order (ascending), confirming `[...spread]` prevents mutation.
+**Case 6 — `createForCourse` does not mutate input**: capture the input array reference before the call. After the call, assert the array is still in the original (ascending) order.
 
-**Case 7 — `createForAccount` happy path**: mock `client.request` to return `mockStandard`. Assert `client.request` called with `'/api/v1/accounts/1/grading_standards'` and `{ method: 'POST', body: ... }`.
+**Case 7 — `createForAccount` happy path**: `vi.spyOn(client, 'request').mockResolvedValueOnce(mockStandard)`. Assert `client.request` called with `'/api/v1/accounts/1/grading_standards'` and `{ method: 'POST', body: ... }`.
 
-**Case 8 — Error propagation**: mock `client.request` to throw:
-```ts
-new CanvasApiError('Forbidden', 403, '/api/v1/accounts/1/grading_standards')
-```
-Assert the error propagates from `createForAccount` (not caught at client layer).
+**Case 8 — Error propagation**: `vi.spyOn(client, 'request').mockRejectedValueOnce(new CanvasApiError('Forbidden', 403, '/api/v1/accounts/1/grading_standards'))`. Assert the error propagates from `createForAccount` (not caught at client layer).
 
 ### Facade test — `tests/canvas/facade.test.ts`
 
-Add `'gradingStandards'` to the checked module property names in the existing test. Check the current property list in `facade.test.ts` and append `'gradingStandards'`.
+Add `'gradingStandards'` to the checked module property names in the existing test. Inspect the current test to find the property array and append `'gradingStandards'`.
 
 ### Tool tests — `tests/tools/grading-standards.test.ts` (new file)
-
-**Imports and fixture:**
-```ts
-import { describe, it, expect, vi } from 'vitest'
-import type { CanvasClient } from '../../src/canvas'
-import { CanvasApiError } from '../../src/canvas/client'
-import { gradingStandardsTools } from '../../src/tools/grading-standards'
-
-const mockStandard = { /* same as above */ }
-```
 
 **`buildMockCanvas()` helper:**
 ```ts
@@ -598,17 +590,17 @@ function buildMockCanvas(): CanvasClient {
 1. Annotations: `{ readOnlyHint: true, openWorldHint: true }`.
 2. With `course_id: 100`: calls `canvas.gradingStandards.listForCourse(100)`; returns mock array.
 3. With `account_id: 1`: calls `canvas.gradingStandards.listForAccount(1)`; returns mock array.
-4. With neither ID: `await tool.handler({})` rejects with an `Error` (plain `Error`, not `CanvasApiError`).
-5. 404 propagation: mock `listForCourse` throws `new CanvasApiError('Not Found', 404, '...')`. Assert it propagates (not caught by handler).
+4. With neither ID: `await tool.handler({})` rejects with a plain `Error` (not `CanvasApiError`). `buildHandler` catches it and returns `isError: true` with the "Provide either" message.
+5. 404 propagation: mock `listForCourse` throws `new CanvasApiError('Not Found', 404, '...')`. Assert it propagates.
 
 **`create_grading_standard`:**
 1. Annotations: `{ destructiveHint: true, openWorldHint: true }`.
 2. With `course_id`: calls `canvas.gradingStandards.createForCourse(100, 'GPA 4.0 Scale', schemeEntries)`.
 3. With `account_id`: calls `canvas.gradingStandards.createForAccount(1, 'GPA 4.0 Scale', schemeEntries)`.
 4. With neither ID: rejects with a plain `Error` ("Provide either course_id or account_id.").
-5. Account-context 403: mock `createForAccount` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler **re-throws a plain `Error`** (not `CanvasApiError`) with message containing "Canvas admin permissions".
-6. Course-context 403: mock `createForCourse` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler **re-throws `CanvasApiError`** (not a plain Error) — the plain Error wrapping does NOT apply to course context.
-7. 422 from course create: mock throws `new CanvasApiError('Unprocessable', 422, '...')`. Assert `CanvasApiError` propagates (not wrapped).
+5. Account-context 403: mock `createForAccount` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler re-throws a **plain `Error`** (not `CanvasApiError`) with message containing "Canvas admin permissions".
+6. Course-context 403: mock `createForCourse` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler re-throws **`CanvasApiError`** unchanged — the plain Error wrapping does NOT apply to course context.
+7. 422 from course create: mock throws `new CanvasApiError('Unprocessable', 422, '...')`. Assert `CanvasApiError` propagates unchanged.
 
 **`apply_grading_standard_to_course`:**
 1. Annotations: `{ destructiveHint: true, openWorldHint: true }`.
@@ -618,20 +610,44 @@ function buildMockCanvas(): CanvasClient {
 
 ### Registry test — `tests/tools/registry.test.ts`
 
-Two changes:
+**Four precise changes** (the existing file has `toHaveLength(121)` for total count and two `writeToolNames` collections):
 
-1. **`buildFullMockCanvas()`**: Add a `gradingStandards` stub (called at top of the mock builder or alongside existing module stubs):
+**Change 1 — `buildFullMockCanvas()`**: Add a `gradingStandards` property alongside the existing domain stubs:
 ```ts
-gradingStandards: {
-  listForCourse: vi.fn(),
-  listForAccount: vi.fn(),
-  createForCourse: vi.fn(),
-  createForAccount: vi.fn(),
-},
+    gradingStandards: {
+      listForCourse: async () => [],
+      listForAccount: async () => [],
+      createForCourse: async () => ({}),
+      createForAccount: async () => ({}),
+    },
 ```
-Without this, `getAllTools(buildFullMockCanvas())` will throw "Cannot read properties of undefined" when `gradingStandardsTools` is called.
+Without this, `getAllTools(buildFullMockCanvas())` throws "Cannot read properties of undefined" when `gradingStandardsTools` is called.
 
-2. **Total-tool-count assertion**: Increment the existing `toHaveLength(N)` assertion by **3** (one per new tool). Check the current value in `registry.test.ts` before implementing and add 3.
+**Change 2 — tool count**: Change `expect(tools).toHaveLength(121)` to `expect(tools).toHaveLength(124)`.
+
+**Change 3 — `toContain` assertions**: Add three new `expect(names).toContain(...)` lines in the "returns all N tools" test (under a `// Grading Standards (3)` comment):
+```ts
+    // Grading Standards (3)
+    expect(names).toContain('list_grading_standards')
+    expect(names).toContain('create_grading_standard')
+    expect(names).toContain('apply_grading_standard_to_course')
+```
+
+**Change 4 — `writeToolNames` arrays**: `create_grading_standard` and `apply_grading_standard_to_course` have `destructiveHint: true`. They must be added to **both** `writeToolNames` collections in the file:
+
+In `'write tools have destructiveHint: true'`:
+```ts
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
+```
+
+In `'read tools have readOnlyHint: true'` (the `writeToolNames` Set):
+```ts
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
+```
+
+**Why Change 4 is critical**: The "read tools have readOnlyHint: true" test iterates every tool NOT in `writeToolNames` and asserts `readOnlyHint === true`. If `create_grading_standard` or `apply_grading_standard_to_course` are absent from `writeToolNames`, the test will assert they have `readOnlyHint: true` — but they have `destructiveHint: true` — and the test will **fail**. `list_grading_standards` has `readOnlyHint: true` so it does NOT need to be in `writeToolNames`.
 
 ### Pseudonymizer coverage test — `tests/pseudonym/coverage.test.ts`
 
@@ -649,25 +665,25 @@ No changes. Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED
 6. `tests/canvas/grading-standards.test.ts` — new file (8 cases).
 7. `tests/tools/grading-standards.test.ts` — new file (15 cases).
 8. `tests/canvas/facade.test.ts` — add `'gradingStandards'` to checked properties.
-9. `tests/tools/registry.test.ts` — add `gradingStandards` stub to `buildFullMockCanvas()`; increment tool count by 3.
+9. `tests/tools/registry.test.ts` — 4 changes: `gradingStandards` stub in `buildFullMockCanvas()`; count 121→124; 3 new `toContain` assertions; add 2 write tool names to both `writeToolNames` collections.
 
 ---
 
 ## Acceptance check
 
 - [x] `**design-first**` flag present in issue #186.
-- [x] Design unknown §1 (API surface): retired — list + create only; paginate (not envelope); flat POST body (no wrapper); grading_scheme_entry vs grading_scheme asymmetry documented.
-- [x] Design unknown §2 (apply to course): retired — dedicated `apply_grading_standard_to_course` tool using `canvas.courses.update()` with `grading_standard_id` param; type prerequisite (`UpdateCourseParams` change) called out explicitly.
-- [x] Design unknown §3 (value semantics): retired — lower-bound fraction 0–1, sorted descending, schemeEntrySchema defined with Zod constraints.
-- [x] Design unknown §4 (account-context permission): retired — handler catches account-403 and re-throws as plain Error with "admin permissions" message; produces `isError: true` in MCP response.
+- [x] Design unknown §1 (API surface): retired — list + create only; `client.paginate()` (not envelope); flat POST body (no `grading_standard:` wrapper); `grading_scheme_entry` vs `grading_scheme` asymmetry documented.
+- [x] Design unknown §2 (apply to course): retired — dedicated `apply_grading_standard_to_course` tool using `canvas.courses.update()` with `grading_standard_id` param; `UpdateCourseParams` change called out as prerequisite.
+- [x] Design unknown §3 (value semantics): retired — lower-bound fraction 0–1, sorted descending, `schemeEntrySchema` defined with Zod constraints.
+- [x] Design unknown §4 (account-context permission): retired — handler re-throws plain Error for account-403, `isError: true` in MCP response; course-403 propagates as `CanvasApiError`.
 - [x] Error handling consistent with codebase: no `return { error }` from handlers; all errors thrown; `buildHandler` handles all catches.
 - [x] Exact tool names, Zod schemas, Canvas endpoints, MCP annotations, and output shapes specified.
-- [x] Type additions specified with rationale.
-- [x] Client module structure and method signatures specified with verbatim code.
-- [x] CanvasClient facade wiring: three verbatim lines specified.
-- [x] Catalog: verbatim import + insertion point specified.
-- [x] Registry test: `buildFullMockCanvas()` update required — explicitly called out.
-- [x] Test plan covers: happy paths, empty list, sort order, immutability, error propagation, account-403 vs course-403 distinction, null grading_standard_id.
+- [x] Type additions specified with rationale and exact target interfaces.
+- [x] Client module: verbatim code including flat POST body and `grading_scheme_entry` key.
+- [x] CanvasClient facade wiring: three verbatim lines.
+- [x] Catalog: verbatim import + insertion point.
+- [x] Registry test: all four changes specified precisely — stub, count (121→124), `toContain` lines, both `writeToolNames` collections updated.
+- [x] Test plan: canvas client setup boilerplate, fixtures, 8 + 15 cases, body-key assertion for `grading_scheme_entry`.
 - [x] No new package dependencies.
-- [x] FERPA: no pseudonymizer wrapping required — confirmed with rationale (no CanvasUser/participants/user_name; PUT /courses response omits enrollments by default).
+- [x] FERPA: no pseudonymizer wrapping required — `PUT /courses/:id` omits enrollments by default; no `CanvasUser`/`participants`/`user_name` in any response.
 - [x] Pseudonymizer coverage test unaffected.
