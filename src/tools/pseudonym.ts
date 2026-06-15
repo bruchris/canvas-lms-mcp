@@ -20,6 +20,7 @@ export function pseudonymTools(pseudonymizer: Pseudonymizer): ToolDefinition[] {
   return [
     {
       name: 'resolve_pseudonym',
+      audience: 'educator',
       description:
         'Resolve a stable pseudonym (e.g. "Student 7") back to a Canvas user_id within a course. Use only when a teacher has explicitly asked to identify a specific student in an artifact. Every call is audit-logged.',
       inputSchema: {

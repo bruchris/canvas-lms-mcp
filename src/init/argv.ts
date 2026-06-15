@@ -1,4 +1,5 @@
 import { CLIENT_IDS, type ClientId } from './clients'
+import type { CanvasRole } from '../tools/types'
 
 export interface InitConfig {
   clients: ClientId[]
@@ -6,6 +7,12 @@ export interface InitConfig {
   baseUrl?: string
   serverName: string
   pin?: string
+  /**
+   * Role to write as CANVAS_ROLE in the generated client config. `'all'` means
+   * "explicitly every tool" (CANVAS_ROLE is omitted); undefined means the user
+   * was not asked yet (the interactive wizard will prompt).
+   */
+  role?: CanvasRole | 'all'
   nonInteractive: boolean
   dryRun: boolean
   noBackup: boolean
@@ -105,6 +112,20 @@ export function parseInitArgs(args: string[]): ParseInitResult {
         config.pin = v
         break
       }
+      case '--role': {
+        const v = requireValue(arg, args[++i])
+        if (typeof v !== 'string') return v
+        const role = v.trim().toLowerCase()
+        if (role !== 'all' && role !== 'student' && role !== 'teacher' && role !== 'admin') {
+          return {
+            ok: false,
+            message: `--role must be one of: all, student, teacher, admin (got "${v}")`,
+            flag: '--role',
+          }
+        }
+        config.role = role as CanvasRole | 'all'
+        break
+      }
       case '--non-interactive':
       case '--yes':
         config.nonInteractive = true
@@ -155,6 +176,8 @@ Options:
   --token <t>             Canvas API token (else CANVAS_API_TOKEN, else prompt)
   --base-url <u>          Canvas base URL (else CANVAS_BASE_URL, else prompt)
   --server-name <name>    MCP server entry name (default: canvas-lms)
+  --role <role>           Filter tools by Canvas role: all (default), student,
+                          teacher, or admin. Writes CANVAS_ROLE to the config.
   --pin <semver>          Pin to canvas-lms-mcp@<semver> instead of latest
   --non-interactive       Fail rather than prompt; alias --yes
   --dry-run               Print planned changes; do not write

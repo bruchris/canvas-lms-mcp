@@ -3,11 +3,14 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
+import { parseRole } from './tools/roles'
+import type { CanvasRole } from './tools/types'
 
 export function createHttpHandler(defaultConfig: {
   token?: string
   baseUrl?: string
   allowedOrigin?: string
+  role?: CanvasRole
 }) {
   // Process-wide pseudonymizer keyed on the configured base URL. Pseudonyms
   // are stable across requests because every fresh MCP server reuses this
@@ -28,7 +31,7 @@ export function createHttpHandler(defaultConfig: {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, X-Canvas-Token, Mcp-Protocol-Version',
+      'Content-Type, X-Canvas-Token, X-Canvas-Role, Mcp-Protocol-Version',
     )
     res.setHeader('Access-Control-Expose-Headers', 'Mcp-Protocol-Version')
 
@@ -69,6 +72,23 @@ export function createHttpHandler(defaultConfig: {
     const token = (req.headers['x-canvas-token'] as string) ?? defaultConfig.token
     const baseUrl = defaultConfig.baseUrl
 
+    // Per-request role: X-Canvas-Role header takes precedence over the configured
+    // env/CLI role. A valid header (or `all`) overrides; an unrecognised value is
+    // ignored with a warning so a misconfigured client can't wipe the server's
+    // configured default. The role only narrows which tools are listed — Canvas
+    // still enforces real permissions server-side.
+    let role = defaultConfig.role
+    const roleHeader = req.headers['x-canvas-role']
+    const rawRole = Array.isArray(roleHeader) ? roleHeader[0] : roleHeader
+    if (rawRole !== undefined && rawRole.trim() !== '') {
+      const parsed = parseRole(rawRole)
+      if (parsed.invalid) {
+        console.warn(`Unknown X-Canvas-Role '${rawRole}'; falling back to the configured role.`)
+      } else {
+        role = parsed.role
+      }
+    }
+
     if (!token || !baseUrl) {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(
@@ -83,7 +103,7 @@ export function createHttpHandler(defaultConfig: {
     // Fresh MCP server per request (per-request credentials); the pseudonymizer
     // is the singleton constructed above so pseudonyms remain stable across
     // requests for this host.
-    const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer })
+    const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer, role })
 
     try {
       const transport = new StreamableHTTPServerTransport({
@@ -124,6 +144,7 @@ async function main() {
       token: config.token,
       baseUrl: config.baseUrl,
       allowedOrigin: config.allowedOrigin,
+      role: config.role,
     }),
   )
 

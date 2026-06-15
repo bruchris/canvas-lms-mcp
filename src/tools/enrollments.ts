@@ -103,6 +103,7 @@ export function enrollmentTools(
     },
     {
       name: 'list_course_enrollments',
+      audience: 'educator',
       description:
         'List enrollments within a specific course with Canvas filters. Use `include=grades` / `include=current_points` for richer grade data, `type[]` to limit to a role, and `user_id` to focus on a single user.',
       inputSchema: {

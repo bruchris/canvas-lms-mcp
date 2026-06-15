@@ -146,4 +146,31 @@ describe('parseInitArgs', () => {
     expect(a.config.showHelp).toBe(true)
     expect(b.config.showHelp).toBe(true)
   })
+
+  it('parses --role for each valid role, case-insensitively', () => {
+    for (const [input, expected] of [
+      ['student', 'student'],
+      ['TEACHER', 'teacher'],
+      ['Admin', 'admin'],
+      ['all', 'all'],
+    ] as const) {
+      const r = parseInitArgs(['--role', input])
+      if (!r.ok) throw new Error(`expected ok for ${input}`)
+      expect(r.config.role).toBe(expected)
+    }
+  })
+
+  it('rejects an unknown --role value', () => {
+    const r = parseInitArgs(['--role', 'ta'])
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.flag).toBe('--role')
+    expect(r.message).toMatch(/all, student, teacher, admin/)
+  })
+
+  it('leaves role undefined when --role is absent', () => {
+    const r = parseInitArgs([])
+    if (!r.ok) throw new Error('expected ok')
+    expect(r.config.role).toBeUndefined()
+  })
 })

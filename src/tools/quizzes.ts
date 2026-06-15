@@ -6,6 +6,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_quizzes',
+      audience: 'shared',
       description: 'List all quizzes in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -21,6 +22,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_quiz',
+      audience: 'shared',
       description: 'Get details for a single quiz by ID.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

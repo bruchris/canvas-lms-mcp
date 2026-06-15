@@ -6,6 +6,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_pages',
+      audience: 'shared',
       description: 'List all wiki pages in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -21,6 +22,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_page',
+      audience: 'shared',
       description: 'Get a single wiki page by its URL slug.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

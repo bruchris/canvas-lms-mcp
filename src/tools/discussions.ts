@@ -72,6 +72,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_discussion',
+      audience: 'educator',
       description: 'Create a new discussion topic in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -104,6 +105,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_discussion',
+      audience: 'educator',
       description: 'Update an existing discussion topic.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -137,6 +139,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_discussion',
+      audience: 'educator',
       description: 'Delete a discussion topic from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

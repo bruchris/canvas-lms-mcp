@@ -1,4 +1,6 @@
 import type { InitConfig } from './argv'
+import { parseRole } from '../tools/roles'
+import type { CanvasRole } from '../tools/types'
 import {
   CLIENTS,
   detectInstalled,
@@ -52,8 +54,11 @@ export async function runWizard(deps: WizardDeps, opts: WizardOptions): Promise<
   if (!clientStep.ok) return { exitCode: 2, message: clientStep.message }
   const targets = clientStep.value
 
-  // Step 5: write
-  const entry = buildEntry(tokenStep.value, baseUrl.value, cfg.pin)
+  // Step 5: role (optional tool filtering)
+  const role = await resolveRole(deps, cfg)
+
+  // Step 6: write
+  const entry = buildEntry(tokenStep.value, baseUrl.value, cfg.pin, role)
   if (cfg.dryRun) {
     deps.log('Dry-run: skipping config writes. Would have written:')
     for (const target of targets) {
@@ -202,6 +207,27 @@ async function confirmContinue(deps: WizardDeps, hint: string): Promise<boolean>
   return ans.proceed === true
 }
 
+async function resolveRole(deps: WizardDeps, cfg: InitConfig): Promise<CanvasRole | undefined> {
+  // `--role` already supplied (incl. explicit `all`), or non-interactive: don't prompt.
+  if (cfg.role !== undefined) return cfg.role === 'all' ? undefined : cfg.role
+  if (cfg.nonInteractive) return undefined
+
+  const ans = await deps.prompts({
+    type: 'select',
+    name: 'role',
+    message: 'Filter tools by Canvas role? ("all" exposes every tool — recommended)',
+    choices: [
+      { title: 'all (every tool)', value: 'all' },
+      { title: 'student', value: 'student' },
+      { title: 'teacher', value: 'teacher' },
+      { title: 'admin', value: 'admin' },
+    ],
+    initial: 0,
+  })
+  const raw = typeof ans.role === 'string' ? ans.role : 'all'
+  return parseRole(raw).role
+}
+
 async function resolveClients(
   deps: WizardDeps,
   cfg: InitConfig,
@@ -243,14 +269,21 @@ async function resolveClients(
   return { ok: true, value: targets }
 }
 
-function buildEntry(token: string, baseUrl: string, pin: string | undefined): McpEntry {
+function buildEntry(
+  token: string,
+  baseUrl: string,
+  pin: string | undefined,
+  role: CanvasRole | undefined,
+): McpEntry {
   const pkg = pin ? `canvas-lms-mcp@${pin}` : 'canvas-lms-mcp'
+  const env: Record<string, string> = {
+    CANVAS_API_TOKEN: token,
+    CANVAS_BASE_URL: baseUrl,
+  }
+  if (role) env.CANVAS_ROLE = role
   return {
     command: 'npx',
     args: ['-y', pkg],
-    env: {
-      CANVAS_API_TOKEN: token,
-      CANVAS_BASE_URL: baseUrl,
-    },
+    env,
   }
 }

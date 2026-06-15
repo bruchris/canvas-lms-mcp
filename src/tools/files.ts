@@ -53,6 +53,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'upload_file',
+      audience: 'educator',
       description:
         'Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.',
       inputSchema: {
@@ -80,6 +81,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_file',
+      audience: 'educator',
       description: 'Delete a file by ID. This action is permanent.',
       inputSchema: {
         file_id: z.number().describe('The Canvas file ID'),
