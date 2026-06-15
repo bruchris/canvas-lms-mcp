@@ -5,6 +5,7 @@ import { analyticsTools } from './analytics'
 import { attentionTools } from './attention'
 import { assignmentTools } from './assignments'
 import { calendarTools } from './calendar'
+import { contentExportsTools } from './content-exports'
 import { conversationTools } from './conversations'
 import { courseTools } from './courses'
 import { dashboardTools } from './dashboard'
@@ -152,5 +153,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'attention',
     defaultPrimaryAudience: 'educator',
     getTools: attentionTools,
+  },
+  {
+    domain: 'content_exports',
+    defaultPrimaryAudience: 'educator',
+    getTools: contentExportsTools,
   },
 ]

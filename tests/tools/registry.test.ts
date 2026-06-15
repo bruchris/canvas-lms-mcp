@@ -164,6 +164,11 @@ function buildFullMockCanvas(): CanvasClient {
       updateItem: async () => ({}),
       deleteItem: async () => undefined,
     },
+    contentExports: {
+      create: async () => ({}),
+      get: async () => ({}),
+      list: async () => [],
+    },
   } as unknown as CanvasClient
 }
 
@@ -173,7 +178,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 121 tools across all domains', () => {
+  it('returns all 124 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -322,8 +327,12 @@ describe('getAllTools', () => {
     // Attention (2)
     expect(names).toContain('list_submission_comments_needing_attention')
     expect(names).toContain('list_students_needing_attention')
+    // Content Exports (3)
+    expect(names).toContain('create_content_export')
+    expect(names).toContain('get_content_export')
+    expect(names).toContain('list_content_exports')
 
-    expect(tools).toHaveLength(121)
+    expect(tools).toHaveLength(124)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -370,6 +379,7 @@ describe('getAllTools', () => {
       'create_new_quiz_item',
       'update_new_quiz_item',
       'delete_new_quiz_item',
+      'create_content_export',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -415,6 +425,7 @@ describe('getAllTools', () => {
       'create_new_quiz_item',
       'update_new_quiz_item',
       'delete_new_quiz_item',
+      'create_content_export',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {
