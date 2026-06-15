@@ -26,7 +26,7 @@ No student PII is involved — grading standards are course-level configuration 
 
 **Decision: List + Create for grading standards; Apply is a course-update call. No get-by-ID, update, or delete in V1.**
 
-The Canvas public REST API (as documented and historically stable) exposes four grading-standard endpoints:
+The Canvas public REST API exposes four grading-standard endpoints:
 
 ```
 GET  /api/v1/courses/:course_id/grading_standards
@@ -35,11 +35,21 @@ POST /api/v1/courses/:course_id/grading_standards
 POST /api/v1/accounts/:account_id/grading_standards
 ```
 
-There is no documented `GET /grading_standards/:id`, `PUT /grading_standards/:id`, or `DELETE /grading_standards/:id` endpoint. Canvas does not expose single-standard retrieval or mutation via the public REST API. An attempt to call a non-existent endpoint would return 404 or 405; implementing it would require undocumented API paths, which the Canvas-only product rule forbids.
+There is no documented `GET /grading_standards/:id`, `PUT /grading_standards/:id`, or `DELETE /grading_standards/:id` endpoint. An attempt to call a non-existent endpoint would return 404 or 405; implementing it would require undocumented API paths, which the Canvas-only product rule forbids.
 
-**V1 scope**: `list_grading_standards` (GET) and `create_grading_standard` (POST) against both course and account contexts. The list endpoint is paginated; use `client.paginate()`.
+**V1 scope**: `list_grading_standards` (GET) and `create_grading_standard` (POST) against both course and account contexts.
 
-If Canvas adds update/delete endpoints in a future API version, a follow-up issue should add those tools. The `CanvasGradingStandard` type will need no changes — it already captures the stable fields.
+**List endpoint response format**: The Canvas `GET /grading_standards` endpoints return a **plain JSON array** (not an envelope like `{ grading_standards: [...] }`). Use `client.paginate<CanvasGradingStandard>(path)` — not `client.paginateEnvelope()`. This matches the documented Canvas API response format.
+
+**Create endpoint POST body**: Canvas grading standards use a **flat POST body** — no `grading_standard:` wrapper key. The correct body is:
+
+```json
+{ "title": "GPA 4.0 Scale", "grading_scheme_entry": [{ "name": "A", "value": 0.94 }] }
+```
+
+This differs from other Canvas resources that use a wrapper (e.g., courses use `{ course: { name } }`). The response key is `grading_scheme` (plural); the POST body key is `grading_scheme_entry` (singular) — a known Canvas API asymmetry. The Canvas client handles this transparently.
+
+If Canvas later adds update/delete endpoints, a follow-up issue should extend this domain.
 
 ### 2. Apply-to-course: separate tool or embedded in create?
 
@@ -49,9 +59,11 @@ Reasoning:
 
 - **Workflow clarity**: Create and apply are distinct user actions. The agent can confirm the created standard's ID before wiring it. Embedding apply in create would force a one-shot flow that can't be used when applying an already-existing standard.
 - **Reuse**: Instructors who already have a standard can call `apply_grading_standard_to_course` directly with a known `grading_standard_id` from `list_grading_standards`.
-- **Minimal footprint**: The apply operation is a single field on the existing `PUT /api/v1/courses/:id` endpoint. There is no new Canvas client method needed — `courses.update()` already calls this endpoint. We add `grading_standard_id?: number | null` to `UpdateCourseParams` and `CanvasCourse` in `types.ts`, and the tool calls `canvas.courses.update(courseId, { grading_standard_id })` directly. No new module method.
+- **Minimal footprint**: The apply operation is a single field on the existing `PUT /api/v1/courses/:id` endpoint. There is no new Canvas client method needed — `courses.update()` already calls this endpoint. We add `grading_standard_id?: number | null` to `UpdateCourseParams` in `types.ts`, and the tool calls `canvas.courses.update(courseId, { grading_standard_id })` directly. No new module method.
 
-**Unset semantics**: Passing `grading_standard_id: null` removes the grading standard from the course (Canvas accepts null to clear the field). The tool accepts `null` to support unset; document this in the tool description.
+**Unset semantics**: Passing `grading_standard_id: null` removes the grading standard from the course. The tool accepts `null` to support unset; document this in the tool description.
+
+**IMPORTANT — type prerequisite**: `grading_standard_id?: number | null` MUST be added to `UpdateCourseParams` (in `src/canvas/types.ts`) before the `apply_grading_standard_to_course` tool file will compile. TypeScript strict mode will reject passing `{ grading_standard_id }` to `canvas.courses.update()` without this change. This is a cross-cutting change to an existing shared type and must be treated as a prerequisite step.
 
 ### 3. `grading_scheme_entry` value semantics
 
@@ -65,12 +77,22 @@ Canvas grading scheme entries have the shape `{ name: string, value: number }`:
 - The highest grade's lower bound is typically 0.9–0.97; the lowest grade's lower bound (e.g., "F") is `0.0`.
 - Canvas accepts entries in any order but grades them by value descending — the tool **sorts entries by value descending** before posting to ensure deterministic Canvas behaviour.
 
-**Zod validation**:
-- `name`: `z.string().min(1)` — grade name cannot be empty.
-- `value`: `z.number().min(0).max(1)` — must be a valid fraction.
-- Array: `z.array(...).min(1)` — at least one entry required.
+**Zod schema** (`schemeEntrySchema`):
+```ts
+const schemeEntrySchema = z.object({
+  name: z.string().min(1).describe('Letter grade name (e.g. "A", "B+", "F")'),
+  value: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe(
+      'Lower-bound threshold as a fraction 0–1 (e.g. 0.94 means this grade starts at 94%). ' +
+        "Canvas computes the upper bound as the next higher grade's value.",
+    ),
+})
+```
 
-**Example** (a GPA-style 4-point letter scale, passed to the tool):
+**Example** (a GPA-style 4-point letter scale):
 ```json
 [
   { "name": "A",  "value": 0.94 },
@@ -86,20 +108,46 @@ Canvas grading scheme entries have the shape `{ name: string, value: number }`:
 ]
 ```
 
-Canvas returns `grading_scheme` (plural, different key name) on the created object — document in the tool description that input key is `scheme_entries` and the Canvas response key is `grading_scheme`.
+Duplicate `value` entries are not validated by the tool (Canvas enforces uniqueness server-side with a 422). A 422 from Canvas propagates through `formatError` with the standard "Invalid data sent to Canvas" message.
 
 ### 4. Account-context permission errors
 
-**Decision: Map account-level 403 to a specific "admin required" message via a custom error handler in each tool's handler; course-level 403 falls through to the standard `formatError` message.**
+**Decision: The `create_grading_standard` handler catches account-context 403 from Canvas and re-throws it as a plain `Error` with a specific "admin required" message. Course-level 403 propagates as `CanvasApiError` to `buildHandler` → `formatError()`.**
 
-When calling `POST /api/v1/accounts/:id/grading_standards`, Canvas returns 403 if the caller lacks account admin permissions. The standard `formatError` 403 message is "You don't have permission to perform this action in this course", which is misleading for account-level operations.
+Rationale for re-throw-as-Error pattern:
 
-**Per-tool custom 403 handler**: Each grading-standards tool handler catches `CanvasApiError` with `status === 403`, checks whether an `account_id` was provided (indicating account context), and returns a context-aware message:
+- Tool handlers must never return an error payload as a "success" result (i.e., no `return { error: string }` from handlers). `buildHandler` in `src/tools/index.ts` serializes the handler's return value as `content[0].text` with `isError: undefined` — returning `{ error: string }` would produce a success-shaped MCP response, which is wrong.
+- The correct pattern for user-actionable, non-fatal errors is to throw a plain `Error` with the message. `buildHandler` catches it, calls `formatError(error)`, which returns `error.message` for plain `Error` instances, and sets `isError: true`.
+- Canvas 403 for course context already has a good `formatError` message ("You don't have permission to perform this action in this course"). Canvas 403 for account context needs a better message explaining admin requirements.
 
-- Account context 403: `"Creating grading standards at the account level requires Canvas admin permissions. Try creating the standard in a course context instead (use course_id)."`
-- All other errors (including course-context 403): fall through to standard `formatError()`.
+**Implementation** (in `create_grading_standard` handler):
+```ts
+try {
+  if (courseId !== undefined) {
+    return await canvas.gradingStandards.createForCourse(courseId, title, schemeEntries)
+  }
+  if (accountId !== undefined) {
+    return await canvas.gradingStandards.createForAccount(accountId, title, schemeEntries)
+  }
+  throw new Error('Provide either course_id or account_id.')
+} catch (error) {
+  if (
+    error instanceof CanvasApiError &&
+    error.status === 403 &&
+    accountId !== undefined
+  ) {
+    throw new Error(
+      'Creating grading standards at the account level requires Canvas admin permissions. ' +
+        'Try creating the standard in a course context instead (use course_id).',
+    )
+  }
+  throw error
+}
+```
 
-This check is in the tool handler, not the client layer.
+Import: `import { CanvasApiError } from '../canvas/client'` at the top of `src/tools/grading-standards.ts`.
+
+For all other Canvas errors (401, 404, 422, 429, 5xx), `CanvasApiError` is re-thrown to `buildHandler` → `formatError()` as usual.
 
 ---
 
@@ -139,8 +187,8 @@ Also add `grading_standard_id?: number | null` to two existing interfaces:
 ```
 
 **Type notes**:
-- `context_type` is `'Course' | 'Account'` (Canvas returns title-cased strings).
-- `grading_scheme` on the response is always present and non-null for valid standards; typed as a plain array (not nullable) because Canvas never omits it on a valid object.
+- `context_type` is `'Course' | 'Account'` (Canvas returns title-cased strings). This is a closed union per current Canvas docs; if Canvas adds new context types in the future, add to the union then.
+- `grading_scheme` on the response is always present and non-null for valid standards.
 - `grading_standard_id` on `CanvasCourse` and `UpdateCourseParams` is `number | null` to support both setting (number) and clearing (null).
 
 ---
@@ -198,23 +246,29 @@ export class GradingStandardsModule {
 }
 ```
 
-**Notes**:
-- Canvas POST body key is `grading_scheme_entry` (singular), not `grading_scheme` — this is a known Canvas API asymmetry (list/get returns `grading_scheme`, create body uses `grading_scheme_entry`). Document in the tool description; the client handles this transparently.
-- Sort before POST: `[...schemeEntries].sort(...)` creates a copy to avoid mutating the caller's array.
-- No `paginate` options needed — the grading standards lists are small (rarely >20 entries); default pagination is sufficient.
+**POST body key note**: The body uses `grading_scheme_entry` (singular) — NOT `grading_scheme` (plural). This is a Canvas API asymmetry: POST input uses `grading_scheme_entry`, GET/response uses `grading_scheme`. The body is flat (no `grading_standard:` wrapper). This contrasts with e.g. course creation (`{ course: { ... } }`); Canvas grading standards have always used the flat form.
+
+**Sort note**: `[...schemeEntries].sort(...)` creates a copy to avoid mutating the caller's array.
+
+**No `paginateEnvelope`**: List endpoints return a plain JSON array. Use `client.paginate()` only.
 
 ### Wire into `CanvasClient` facade (`src/canvas/index.ts`)
 
-Add import:
+Three changes:
+
+1. **Import** (after the existing `NewQuizzesModule` import):
 ```ts
 import { GradingStandardsModule } from './grading-standards'
 ```
 
-Add property declaration and constructor line (after `newQuizzes` entries):
+2. **Property declaration** (after `newQuizzes: NewQuizzesModule`):
 ```ts
   gradingStandards: GradingStandardsModule
-  // ...
-  this.gradingStandards = new GradingStandardsModule(this.client)
+```
+
+3. **Constructor assignment** (after `this.newQuizzes = new NewQuizzesModule(this.client)`):
+```ts
+    this.gradingStandards = new GradingStandardsModule(this.client)
 ```
 
 ---
@@ -226,7 +280,6 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
-import { formatError } from './errors'
 
 const schemeEntrySchema = z.object({
   name: z.string().min(1).describe('Letter grade name (e.g. "A", "B+", "F")'),
@@ -236,15 +289,13 @@ const schemeEntrySchema = z.object({
     .max(1)
     .describe(
       'Lower-bound threshold as a fraction 0–1 (e.g. 0.94 means this grade starts at 94%). ' +
-        'Canvas computes the upper bound as the next higher grade\'s value.',
+        "Canvas computes the upper bound as the next higher grade's value.",
     ),
 })
 
 export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
-    // list_grading_standards
-    // create_grading_standard
-    // apply_grading_standard_to_course
+    // ... three ToolDefinition objects below
   ]
 }
 ```
@@ -272,7 +323,9 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
       .int()
       .positive()
       .optional()
-      .describe('Account ID to list standards for (mutually exclusive with course_id; requires admin)'),
+      .describe(
+        'Account ID to list standards for (mutually exclusive with course_id; requires admin)',
+      ),
   },
   annotations: {
     readOnlyHint: true,
@@ -292,6 +345,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
 }
 ```
 
+Handler note: The final `throw new Error(...)` is caught by `buildHandler` and formatted via `formatError` as a plain `Error` message with `isError: true`. No try/catch needed in this handler.
+
 ### Tool 2: `create_grading_standard`
 
 ```ts
@@ -303,7 +358,7 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
     'scheme_entries is an array of { name, value } objects where value is the lower-bound ' +
     'percentage as a fraction 0–1 (e.g. { name: "A", value: 0.94 } means A ≥ 94%). ' +
     'Entries will be sorted descending by value before sending to Canvas. ' +
-    'Canvas POST key is grading_scheme_entry (singular); the returned object uses grading_scheme (plural). ' +
+    'Canvas POST body key is grading_scheme_entry (singular); the returned object uses grading_scheme (plural). ' +
     'Returns the created CanvasGradingStandard object including its id — use that id with ' +
     'apply_grading_standard_to_course to activate it on a course.',
   inputSchema: {
@@ -318,8 +373,13 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
       .int()
       .positive()
       .optional()
-      .describe('Account ID to create the standard in (requires admin; mutually exclusive with course_id)'),
-    title: z.string().min(1).describe('Display name for this grading standard (e.g. "GPA 4.0 Scale")'),
+      .describe(
+        'Account ID to create the standard in (requires admin; mutually exclusive with course_id)',
+      ),
+    title: z
+      .string()
+      .min(1)
+      .describe('Display name for this grading standard (e.g. "GPA 4.0 Scale")'),
     scheme_entries: z
       .array(schemeEntrySchema)
       .min(1)
@@ -337,7 +397,6 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
     const accountId = params.account_id as number | undefined
     const title = params.title as string
     const schemeEntries = params.scheme_entries as Array<{ name: string; value: number }>
-
     try {
       if (courseId !== undefined) {
         return await canvas.gradingStandards.createForCourse(courseId, title, schemeEntries)
@@ -352,11 +411,10 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         error.status === 403 &&
         accountId !== undefined
       ) {
-        return {
-          error:
-            'Creating grading standards at the account level requires Canvas admin permissions. ' +
+        throw new Error(
+          'Creating grading standards at the account level requires Canvas admin permissions. ' +
             'Try creating the standard in a course context instead (use course_id).',
-        }
+        )
       }
       throw error
     }
@@ -364,7 +422,10 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
 }
 ```
 
-**Error handling note**: The handler returns a structured error object `{ error: string }` rather than throwing for the account-context 403, so the outer `buildHandler` in `src/tools/index.ts` wraps it as `isError: true` content. All other errors are re-thrown and caught by `buildHandler` which calls `formatError()`. This is consistent with how other tools surface non-fatal, user-actionable errors.
+**Error handling note**: The try/catch catches account-context 403 only. It re-throws everything else (including course-context 403, 404, 422, etc.) as-is. `buildHandler` catches all thrown values and calls `formatError()`:
+- Account-context 403 → plain `Error` → `formatError` returns `error.message` → `isError: true` with the admin message.
+- Course-context 403 → `CanvasApiError(403)` → `formatError` returns "You don't have permission to perform this action in this course" → `isError: true`.
+- 422 → `CanvasApiError(422)` → `formatError` returns "Invalid data sent to Canvas: …" → `isError: true`.
 
 ### Tool 3: `apply_grading_standard_to_course`
 
@@ -383,7 +444,9 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
       .int()
       .positive()
       .nullable()
-      .describe('The grading standard ID to apply, or null to remove the current standard'),
+      .describe(
+        'The grading standard ID to apply, or null to remove the current standard',
+      ),
   },
   annotations: {
     destructiveHint: true,
@@ -397,22 +460,28 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
 }
 ```
 
+No try/catch — all errors propagate to `buildHandler` → `formatError()`.
+
+**Return value**: Returns the full `CanvasCourse` object from `canvas.courses.update()`. The response to the MCP client will include `grading_standard_id` (if Canvas echoes it on the update response).
+
 ---
 
 ## Catalog registration (`src/tools/catalog.ts`)
 
-Add import:
+Two changes:
+
+1. **Import** (after the existing `import { quizTools } from './quizzes'` line):
 ```ts
 import { gradingStandardsTools } from './grading-standards'
 ```
 
-Add entry after the `new_quizzes` entry (educator domain, primary audience `educator`):
+2. **Entry** (after the closing `}` of the `new_quizzes` entry in `toolDomainCatalog`):
 ```ts
-{
-  domain: 'grading_standards',
-  defaultPrimaryAudience: 'educator',
-  getTools: gradingStandardsTools,
-},
+  {
+    domain: 'grading_standards',
+    defaultPrimaryAudience: 'educator',
+    getTools: gradingStandardsTools,
+  },
 ```
 
 ---
@@ -421,11 +490,10 @@ Add entry after the `new_quizzes` entry (educator domain, primary audience `educ
 
 **No pseudonymizer wrapping required.** Grading standards contain no student PII:
 
-- `CanvasGradingStandard` fields: `id`, `title`, `context_type`, `context_id`, `grading_scheme`. None are `CanvasUser`, `participants`, or `user_name`.
-- `apply_grading_standard_to_course` returns `CanvasCourse`, which has a `teachers` array of display-name objects — but no student data.
-- The pseudonymizer rule triggers only on `CanvasUser` objects, `participants` arrays, or `user_name` fields. None of the three tools touch student identity fields.
+- `CanvasGradingStandard` fields: `id`, `title`, `context_type`, `context_id`, `grading_scheme`. None are a `CanvasUser` object, a `participants` array, or a `user_name` field. Grading standards are course-level config, not student records.
+- `apply_grading_standard_to_course` returns `CanvasCourse`. The Canvas `PUT /api/v1/courses/:id` response does NOT include an `enrollments` array by default — that requires `include[]=enrollments` which the tool never requests. The `teachers` sub-field is an array of display-name objects (instructor names), not student data.
 
-Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED_TOOLS`. The CI coverage test (`tests/pseudonym/coverage.test.ts`) must continue to pass unchanged. Implementation must not add these tools to the coverage list.
+Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED_TOOLS`. The CI coverage test (`tests/pseudonym/coverage.test.ts`) must pass unchanged.
 
 ---
 
@@ -435,18 +503,17 @@ All tests use mocked Canvas responses. No live Canvas calls.
 
 ### Canvas client tests — `tests/canvas/grading-standards.test.ts` (new file)
 
+**Imports and fixture:**
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GradingStandardsModule } from '../../src/canvas/grading-standards'
 import { CanvasHttpClient } from '../../src/canvas/client'
-```
+import { CanvasApiError } from '../../src/canvas/client'
 
-Mock fixture:
-```ts
 const mockStandard = {
   id: 42,
   title: 'GPA 4.0 Scale',
-  context_type: 'Course',
+  context_type: 'Course' as const,
   context_id: 100,
   grading_scheme: [
     { name: 'A',  value: 0.94 },
@@ -454,11 +521,19 @@ const mockStandard = {
     { name: 'F',  value: 0.00 },
   ],
 }
+
+const schemeEntries = [
+  { name: 'A',  value: 0.94 },
+  { name: 'B',  value: 0.84 },
+  { name: 'F',  value: 0.00 },
+]
 ```
+
+**Mock pattern**: Use `vi.spyOn(client, 'paginate')` for list methods and `vi.spyOn(client, 'request')` for create methods, consistent with `tests/canvas/courses.test.ts` and `tests/canvas/accounts.test.ts`.
 
 **Case 1 — `listForCourse` happy path**: mock `client.paginate` to return `[mockStandard]`. Assert:
 - Returns array of length 1.
-- `client.paginate` called with `'/api/v1/courses/100/grading_standards'`.
+- `client.paginate` called with `'/api/v1/courses/100/grading_standards'` (no second arg).
 
 **Case 2 — `listForCourse` empty**: mock returns `[]`. Assert method returns `[]`.
 
@@ -466,29 +541,39 @@ const mockStandard = {
 - `client.paginate` called with `'/api/v1/accounts/1/grading_standards'`.
 
 **Case 4 — `createForCourse` happy path**: mock `client.request` to return `mockStandard`. Assert:
-- Returns the created standard object.
+- Returns `mockStandard`.
 - `client.request` called with `'/api/v1/courses/100/grading_standards'` and `{ method: 'POST', body: ... }`.
-- The parsed body contains `title: 'GPA 4.0 Scale'` and `grading_scheme_entry` sorted descending by value.
+- Parsed body: `{ title: 'GPA 4.0 Scale', grading_scheme_entry: [{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.00 }] }` — note key is `grading_scheme_entry` (singular), NOT `grading_scheme` (plural).
 
-**Case 5 — `createForCourse` sorts entries**: call with entries in ascending value order (`F: 0.0`, `B: 0.84`, `A: 0.94`). Assert the posted `grading_scheme_entry` is `[{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.00 }]`. Verify the caller's original array is **not** mutated.
+**Case 5 — `createForCourse` sorts entries**: call with entries in ascending value order `[{ name: 'F', value: 0.0 }, { name: 'B', value: 0.84 }, { name: 'A', value: 0.94 }]`. Assert the posted `grading_scheme_entry` is `[{ name: 'A', value: 0.94 }, { name: 'B', value: 0.84 }, { name: 'F', value: 0.0 }]` (descending).
 
-**Case 6 — `createForCourse` does not mutate input**: pass a sorted array, capture reference before call, assert it equals the reference after call.
+**Case 6 — `createForCourse` does not mutate input**: capture a reference to the input array before the call. After the call, assert the array reference still contains the original order (ascending), confirming `[...spread]` prevents mutation.
 
-**Case 7 — `createForAccount` happy path**: mock `client.request` to return `mockStandard`. Assert `client.request` called with `'/api/v1/accounts/1/grading_standards'`.
+**Case 7 — `createForAccount` happy path**: mock `client.request` to return `mockStandard`. Assert `client.request` called with `'/api/v1/accounts/1/grading_standards'` and `{ method: 'POST', body: ... }`.
 
-**Case 8 — Error propagation**: mock `client.request` to throw `new CanvasApiError('Forbidden', 403, '/api/v1/accounts/1/grading_standards')`. Assert the error propagates from `createForAccount` (not caught at client layer).
+**Case 8 — Error propagation**: mock `client.request` to throw:
+```ts
+new CanvasApiError('Forbidden', 403, '/api/v1/accounts/1/grading_standards')
+```
+Assert the error propagates from `createForAccount` (not caught at client layer).
+
+### Facade test — `tests/canvas/facade.test.ts`
+
+Add `'gradingStandards'` to the checked module property names in the existing test. Check the current property list in `facade.test.ts` and append `'gradingStandards'`.
 
 ### Tool tests — `tests/tools/grading-standards.test.ts` (new file)
 
+**Imports and fixture:**
 ```ts
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
 import { CanvasApiError } from '../../src/canvas/client'
 import { gradingStandardsTools } from '../../src/tools/grading-standards'
+
+const mockStandard = { /* same as above */ }
 ```
 
-**`buildMockCanvas()` helper**:
-
+**`buildMockCanvas()` helper:**
 ```ts
 function buildMockCanvas(): CanvasClient {
   return {
@@ -505,78 +590,84 @@ function buildMockCanvas(): CanvasClient {
 }
 ```
 
-**Suite-level check**:
-- `gradingStandardsTools` exports exactly 3 tool definitions.
-- Tool names are `['list_grading_standards', 'create_grading_standard', 'apply_grading_standard_to_course']`.
+**Suite-level checks:**
+- `gradingStandardsTools(buildMockCanvas())` returns exactly **3** tool definitions.
+- Tool names: `['list_grading_standards', 'create_grading_standard', 'apply_grading_standard_to_course']`.
 
-**`list_grading_standards`**:
+**`list_grading_standards`:**
 1. Annotations: `{ readOnlyHint: true, openWorldHint: true }`.
-2. With `course_id`: calls `canvas.gradingStandards.listForCourse(100)`.
-3. With `account_id`: calls `canvas.gradingStandards.listForAccount(1)`.
-4. Missing both IDs: handler throws an `Error` (not a `CanvasApiError`).
-5. Error propagation — 404: mock `listForCourse` throws `CanvasApiError(404)`. Assert it propagates.
+2. With `course_id: 100`: calls `canvas.gradingStandards.listForCourse(100)`; returns mock array.
+3. With `account_id: 1`: calls `canvas.gradingStandards.listForAccount(1)`; returns mock array.
+4. With neither ID: `await tool.handler({})` rejects with an `Error` (plain `Error`, not `CanvasApiError`).
+5. 404 propagation: mock `listForCourse` throws `new CanvasApiError('Not Found', 404, '...')`. Assert it propagates (not caught by handler).
 
-**`create_grading_standard`**:
+**`create_grading_standard`:**
 1. Annotations: `{ destructiveHint: true, openWorldHint: true }`.
 2. With `course_id`: calls `canvas.gradingStandards.createForCourse(100, 'GPA 4.0 Scale', schemeEntries)`.
 3. With `account_id`: calls `canvas.gradingStandards.createForAccount(1, 'GPA 4.0 Scale', schemeEntries)`.
-4. Missing both IDs: handler throws an `Error`.
-5. Account-context 403: mock `createForAccount` throws `CanvasApiError('Forbidden', 403, ...)`. Assert handler **returns** `{ error: 'Creating grading standards at the account level requires Canvas admin permissions...' }` (does not throw).
-6. Course-context 403: mock `createForCourse` throws `CanvasApiError('Forbidden', 403, ...)`. Assert it **re-throws** (not the custom message).
-7. 422 (invalid data): mock `createForCourse` throws `CanvasApiError('Unprocessable', 422, ...)`. Assert it re-throws.
+4. With neither ID: rejects with a plain `Error` ("Provide either course_id or account_id.").
+5. Account-context 403: mock `createForAccount` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler **re-throws a plain `Error`** (not `CanvasApiError`) with message containing "Canvas admin permissions".
+6. Course-context 403: mock `createForCourse` throws `new CanvasApiError('Forbidden', 403, '...')`. Assert handler **re-throws `CanvasApiError`** (not a plain Error) — the plain Error wrapping does NOT apply to course context.
+7. 422 from course create: mock throws `new CanvasApiError('Unprocessable', 422, '...')`. Assert `CanvasApiError` propagates (not wrapped).
 
-**`apply_grading_standard_to_course`**:
+**`apply_grading_standard_to_course`:**
 1. Annotations: `{ destructiveHint: true, openWorldHint: true }`.
-2. Apply with valid ID: calls `canvas.courses.update(100, { grading_standard_id: 42 })`.
+2. Apply with ID `42`: calls `canvas.courses.update(100, { grading_standard_id: 42 })`; returns `{ id: 100, grading_standard_id: 42 }`.
 3. Remove (null): calls `canvas.courses.update(100, { grading_standard_id: null })`.
-4. Returns the updated course object from `canvas.courses.update`.
-5. Error propagation — 404: mock `canvas.courses.update` throws `CanvasApiError(404)`. Assert it propagates.
-
-### Facade test — `tests/canvas/facade.test.ts`
-
-The existing `facade.test.ts` validates that `CanvasClient` exposes all expected modules. After this implementation, add `gradingStandards` to the checked properties list. The expected delta is one added assertion (or one added element to the property array, depending on how the test is structured).
+4. 404 propagation: mock `canvas.courses.update` throws `new CanvasApiError('Not Found', 404, '...')`. Assert it propagates.
 
 ### Registry test — `tests/tools/registry.test.ts`
 
-The existing registry test likely counts total tool definitions or checks domain names. After this implementation:
-- 3 new tools added → update the total-tool-count assertion.
-- `'grading_standards'` domain added to catalog → update the domain list assertion if one exists.
+Two changes:
 
-Check `tests/tools/registry.test.ts` for the exact count assertion before implementing; do not guess the line number.
+1. **`buildFullMockCanvas()`**: Add a `gradingStandards` stub (called at top of the mock builder or alongside existing module stubs):
+```ts
+gradingStandards: {
+  listForCourse: vi.fn(),
+  listForAccount: vi.fn(),
+  createForCourse: vi.fn(),
+  createForAccount: vi.fn(),
+},
+```
+Without this, `getAllTools(buildFullMockCanvas())` will throw "Cannot read properties of undefined" when `gradingStandardsTools` is called.
+
+2. **Total-tool-count assertion**: Increment the existing `toHaveLength(N)` assertion by **3** (one per new tool). Check the current value in `registry.test.ts` before implementing and add 3.
 
 ### Pseudonymizer coverage test — `tests/pseudonym/coverage.test.ts`
 
-No changes. Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED_TOOLS`. The coverage test must pass unchanged, confirming that these tools are correctly identified as non-PII tools.
+No changes. Do NOT add any of the three new tool names to `PSEUDONYMIZER_WRAPPED_TOOLS`.
 
 ---
 
-## Implementation notes for the implementor
+## Implementation checklist for the implementor
 
-1. **Mutual exclusion (`course_id` XOR `account_id`)**: Canvas has no single combined endpoint. The tool layer handles the routing; the client layer has separate methods. This is explicit rather than relying on Canvas to reject invalid combos.
-
-2. **`grading_scheme_entry` vs `grading_scheme` asymmetry**: Canvas's POST body key (`grading_scheme_entry`, singular) differs from the response key (`grading_scheme`, plural). This is a known Canvas API quirk. Document it in the tool description; no special type gymnastics are needed — `body: JSON.stringify({ title, grading_scheme_entry: sorted })` is sufficient.
-
-3. **`apply_grading_standard_to_course` uses `canvas.courses.update`**: The implementor must add `grading_standard_id?: number | null` to `UpdateCourseParams` in `types.ts`. The `CoursesModule.update()` method already serialises `params` as `JSON.stringify({ course: params })`, so no method change is needed — just the type update.
-
-4. **Sorting in the client**: `[...schemeEntries].sort((a, b) => b.value - a.value)` creates a shallow copy before sort to avoid mutating the caller's array. The canvas client test (Case 6) verifies immutability.
-
-5. **New module count**: This adds 1 new Canvas client module and 1 new tool module. The implementation adds ~5–6 source files total (canvas module, tool module, 2 test files, type additions, catalog/index wiring). This is well within the 15-file cap.
+1. `src/canvas/types.ts` — add `CanvasGradingSchemeEntry`, `CanvasGradingStandardContextType`, `CanvasGradingStandard`; add `grading_standard_id?: number | null` to `UpdateCourseParams` and `CanvasCourse`.
+2. `src/canvas/grading-standards.ts` — new file with `GradingStandardsModule` class.
+3. `src/canvas/index.ts` — import `GradingStandardsModule`; add property + constructor line.
+4. `src/tools/grading-standards.ts` — new file with `gradingStandardsTools()`.
+5. `src/tools/catalog.ts` — import + entry for `grading_standards` domain.
+6. `tests/canvas/grading-standards.test.ts` — new file (8 cases).
+7. `tests/tools/grading-standards.test.ts` — new file (15 cases).
+8. `tests/canvas/facade.test.ts` — add `'gradingStandards'` to checked properties.
+9. `tests/tools/registry.test.ts` — add `gradingStandards` stub to `buildFullMockCanvas()`; increment tool count by 3.
 
 ---
 
 ## Acceptance check
 
 - [x] `**design-first**` flag present in issue #186.
-- [x] Design unknown §1 (API surface): retired — list + create only; no get-by-ID, update, or delete.
-- [x] Design unknown §2 (apply to course): retired — dedicated `apply_grading_standard_to_course` tool using `courses.update()` with `grading_standard_id` param.
-- [x] Design unknown §3 (value semantics): retired — lower-bound fraction 0–1, sorted descending, `grading_scheme_entry` POST key documented.
-- [x] Design unknown §4 (account-context permission): retired — custom 403 message for account-context `create_grading_standard`.
+- [x] Design unknown §1 (API surface): retired — list + create only; paginate (not envelope); flat POST body (no wrapper); grading_scheme_entry vs grading_scheme asymmetry documented.
+- [x] Design unknown §2 (apply to course): retired — dedicated `apply_grading_standard_to_course` tool using `canvas.courses.update()` with `grading_standard_id` param; type prerequisite (`UpdateCourseParams` change) called out explicitly.
+- [x] Design unknown §3 (value semantics): retired — lower-bound fraction 0–1, sorted descending, schemeEntrySchema defined with Zod constraints.
+- [x] Design unknown §4 (account-context permission): retired — handler catches account-403 and re-throws as plain Error with "admin permissions" message; produces `isError: true` in MCP response.
+- [x] Error handling consistent with codebase: no `return { error }` from handlers; all errors thrown; `buildHandler` handles all catches.
 - [x] Exact tool names, Zod schemas, Canvas endpoints, MCP annotations, and output shapes specified.
 - [x] Type additions specified with rationale.
-- [x] Client module structure and method signatures specified.
-- [x] `apply_grading_standard_to_course` routes through `canvas.courses.update()` — no new HTTP call needed.
-- [x] Test plan covers happy path, empty list, sorting, immutability, error propagation, and the account-context 403 branch.
+- [x] Client module structure and method signatures specified with verbatim code.
+- [x] CanvasClient facade wiring: three verbatim lines specified.
+- [x] Catalog: verbatim import + insertion point specified.
+- [x] Registry test: `buildFullMockCanvas()` update required — explicitly called out.
+- [x] Test plan covers: happy paths, empty list, sort order, immutability, error propagation, account-403 vs course-403 distinction, null grading_standard_id.
 - [x] No new package dependencies.
-- [x] No FERPA pseudonymizer wrapping required — confirmed and documented.
-- [x] Pseudonymizer coverage test unaffected — no additions to `PSEUDONYMIZER_WRAPPED_TOOLS`.
-- [x] Façade test and registry test update requirements noted for implementor.
+- [x] FERPA: no pseudonymizer wrapping required — confirmed with rationale (no CanvasUser/participants/user_name; PUT /courses response omits enrollments by default).
+- [x] Pseudonymizer coverage test unaffected.
