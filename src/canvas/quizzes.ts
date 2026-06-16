@@ -1,9 +1,12 @@
 import type { CanvasHttpClient } from './client'
+import { type CanvasQueryParams } from './query'
 import type {
   CanvasQuiz,
   CanvasQuizSubmission,
   CanvasQuizQuestion,
   CanvasQuizSubmissionQuestion,
+  CanvasQuizSubmissionEvent,
+  CanvasQuizSubmissionEventsResponse,
 } from './types'
 
 export class QuizzesModule {
@@ -65,5 +68,24 @@ export class QuizzesModule {
         body: JSON.stringify(body),
       },
     )
+  }
+
+  async getSubmissionEvents(
+    courseId: number,
+    quizId: number,
+    submissionId: number,
+    attempt?: number,
+  ): Promise<CanvasQuizSubmissionEvent[]> {
+    const query: CanvasQueryParams = {}
+    if (attempt !== undefined) {
+      query.attempt = attempt
+    }
+    const response = await this.client.request<CanvasQuizSubmissionEventsResponse>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions/${submissionId}/events`,
+      { query },
+    )
+    // Defensive: Canvas returns [] for an empty log; the guard also tolerates a
+    // null field without throwing. Real errors surface as CanvasApiError above.
+    return response.quiz_submission_events ?? []
   }
 }

@@ -58,6 +58,7 @@ export const toolAudienceOverrides: Readonly<Record<string, ToolAudience>> = {
   list_quizzes: 'shared',
   get_quiz: 'shared',
   list_quiz_questions: 'shared',
+  get_quiz_submission_events: 'shared',
   list_files: 'shared',
   list_folders: 'shared',
   get_file: 'shared',

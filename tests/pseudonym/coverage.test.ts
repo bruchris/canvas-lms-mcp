@@ -51,6 +51,7 @@ function buildMinimalCanvas(): CanvasClient {
       listQuestions: list,
       getSubmissionAnswers: list,
       scoreQuestion: noop,
+      getSubmissionEvents: list,
     },
     files: { list, listFolders: list, get: noop, upload: noop, delete: noop, download: noop },
     gradebookHistory: { listDays: list, getDay: list, listSubmissions: list, getFeed: list },

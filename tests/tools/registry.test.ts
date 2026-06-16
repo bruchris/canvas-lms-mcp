@@ -42,6 +42,7 @@ function buildFullMockCanvas(): CanvasClient {
       listQuestions: async () => [],
       getSubmissionAnswers: async () => [],
       scoreQuestion: async () => {},
+      getSubmissionEvents: async () => [],
     },
     files: {
       list: async () => [],
@@ -178,7 +179,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 124 tools across all domains', () => {
+  it('returns all 125 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -208,13 +209,14 @@ describe('getAllTools', () => {
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
     expect(names).toContain('create_rubric')
-    // Quizzes (6)
+    // Quizzes (7)
     expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
     expect(names).toContain('list_quiz_submissions')
     expect(names).toContain('list_quiz_questions')
     expect(names).toContain('get_quiz_submission_answers')
     expect(names).toContain('score_quiz_question')
+    expect(names).toContain('get_quiz_submission_events')
     // Files (6)
     expect(names).toContain('list_files')
     expect(names).toContain('list_folders')
@@ -332,7 +334,7 @@ describe('getAllTools', () => {
     expect(names).toContain('get_content_export')
     expect(names).toContain('list_content_exports')
 
-    expect(tools).toHaveLength(124)
+    expect(tools).toHaveLength(125)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -386,6 +388,15 @@ describe('getAllTools', () => {
       const tool = tools.find((t) => t.name === name)!
       expect(tool.annotations.destructiveHint).toBe(true)
     }
+  })
+
+  it('exposes get_quiz_submission_events to the student role (shared audience)', () => {
+    // The #182 user story serves "a student reviewing their own attempt", so the
+    // tool is tagged `shared` and must survive student-role filtering.
+    const studentTools = getAllTools(buildFullMockCanvas(), undefined, 'student').map((t) => t.name)
+    expect(studentTools).toContain('get_quiz_submission_events')
+    const teacherTools = getAllTools(buildFullMockCanvas(), undefined, 'teacher').map((t) => t.name)
+    expect(teacherTools).toContain('get_quiz_submission_events')
   })
 
   it('read tools have readOnlyHint: true', () => {

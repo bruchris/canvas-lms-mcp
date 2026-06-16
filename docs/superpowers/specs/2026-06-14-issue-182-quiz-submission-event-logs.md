@@ -4,6 +4,12 @@
 **Issue**: [bruchris/canvas-lms-mcp#182](https://github.com/bruchris/canvas-lms-mcp/issues/182)
 **Status**: Design — awaiting CTO review
 
+> **Post-implementation correction (PR #193).** Two details below were corrected against the live Canvas API during implementation; the shipped code (`src/canvas/types.ts`) is the source of truth:
+>
+> - **`event_data` is a single object or `null`, never an array.** Canvas returns e.g. `{ "answer": "42" }` or `null` (on `page_blurred` / `page_focused`). The `Array<Record<string, unknown>>` type and the `[]` / `[{…}]` examples in the sections below are incorrect; the real type is `Record<string, unknown> | null`.
+> - **Each event has a string `id`** (e.g. `"3409"`), now included on `CanvasQuizSubmissionEvent`.
+> - **Audience:** the tool is tagged `shared` (the user story serves the submitting student), so it is exposed under student-role filtering — this was not addressed in the original design.
+
 ## Purpose
 
 Add a `get_quiz_submission_events` tool that surfaces the event timeline for a Classic Quiz submission — giving an AI assistant the raw, ordered log of behavioral events (page blurs, question answers, session transitions) so the assistant can narrate them in plain language instead of leaving the instructor (or student) to decode the Canvas UI's event list unaided.

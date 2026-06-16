@@ -125,5 +125,36 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
         return { success: true }
       },
     },
+    {
+      name: 'get_quiz_submission_events',
+      // `shared`: the submitting student can read their own attempt's events
+      // (the #182 user story explicitly serves "a student reviewing their own
+      // attempt"), matching the `shared` audience on get_quiz / list_quizzes.
+      // Canvas still enforces real permissions server-side.
+      audience: 'shared',
+      description: `Get the event log for a Classic Quiz submission in chronological order. Events include session_started, question_answered, question_flagged, page_blurred, and page_focused. Use this to understand the timeline of a student's attempt. Classic Quizzes only — New Quizzes does not expose event logs via the Canvas REST API. Events are scoped to a single submission; Canvas enforces access permissions (instructors and the submitting student only). Do not use event logs as the sole basis for academic-integrity conclusions; present them with context.`,
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        quiz_id: z.number().describe('The Canvas quiz ID (Classic Quizzes only)'),
+        submission_id: z.number().describe('The quiz submission ID'),
+        attempt: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Attempt number (1-based). Omit for the most recent attempt.'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const quiz_id = params.quiz_id as number
+        const submission_id = params.submission_id as number
+        const attempt = params.attempt as number | undefined
+        return canvas.quizzes.getSubmissionEvents(course_id, quiz_id, submission_id, attempt)
+      },
+    },
   ]
 }
