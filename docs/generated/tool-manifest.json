@@ -360,7 +360,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": []
     },
     {

@@ -55,11 +55,17 @@ describe('quizTools', () => {
   }
 
   const mockEvents: CanvasQuizSubmissionEvent[] = [
-    { event_type: 'session_started', created_at: '2026-01-01T10:00:00Z', event_data: [] },
     {
+      id: '100',
+      event_type: 'session_started',
+      created_at: '2026-01-01T10:00:00Z',
+      event_data: null,
+    },
+    {
+      id: '101',
       event_type: 'question_answered',
       created_at: '2026-01-01T10:01:00Z',
-      event_data: [{ quiz_question_id: '9', answer: '2' }],
+      event_data: { quiz_question_id: '9', answer: '2' },
     },
   ]
 

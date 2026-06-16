@@ -84,6 +84,8 @@ export class QuizzesModule {
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions/${submissionId}/events`,
       { query },
     )
+    // Defensive: Canvas returns [] for an empty log; the guard also tolerates a
+    // null field without throwing. Real errors surface as CanvasApiError above.
     return response.quiz_submission_events ?? []
   }
 }

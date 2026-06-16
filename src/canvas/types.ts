@@ -422,12 +422,20 @@ export interface CanvasQuizSubmissionQuestion {
 // --- Quiz Submission Events ---
 
 export interface CanvasQuizSubmissionEvent {
+  // Canvas returns a stable per-event id as a string (e.g. "3409").
+  id: string
   event_type: string
   created_at: string
-  event_data: Array<Record<string, unknown>> | null
+  // Per the Canvas API, event_data is a single object of contextual key/value
+  // pairs (e.g. { answer: "42" } on question_answered) or null (e.g. on
+  // page_blurred / page_focused) — never an array. The keys vary by event_type,
+  // so the value bag is left opaque.
+  event_data: Record<string, unknown> | null
 }
 
 export interface CanvasQuizSubmissionEventsResponse {
+  // `| null` is a defensive allowance: Canvas returns an empty array for an
+  // empty log, but the client null-guards the field rather than assume it.
   quiz_submission_events: CanvasQuizSubmissionEvent[] | null
 }
 

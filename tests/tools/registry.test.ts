@@ -390,6 +390,15 @@ describe('getAllTools', () => {
     }
   })
 
+  it('exposes get_quiz_submission_events to the student role (shared audience)', () => {
+    // The #182 user story serves "a student reviewing their own attempt", so the
+    // tool is tagged `shared` and must survive student-role filtering.
+    const studentTools = getAllTools(buildFullMockCanvas(), undefined, 'student').map((t) => t.name)
+    expect(studentTools).toContain('get_quiz_submission_events')
+    const teacherTools = getAllTools(buildFullMockCanvas(), undefined, 'teacher').map((t) => t.name)
+    expect(teacherTools).toContain('get_quiz_submission_events')
+  })
+
   it('read tools have readOnlyHint: true', () => {
     const writeToolNames = new Set([
       'create_assignment',
