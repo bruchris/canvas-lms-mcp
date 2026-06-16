@@ -419,6 +419,18 @@ export interface CanvasQuizSubmissionQuestion {
   flagged: boolean
 }
 
+// --- Quiz Submission Events ---
+
+export interface CanvasQuizSubmissionEvent {
+  event_type: string
+  created_at: string
+  event_data: Array<Record<string, unknown>> | null
+}
+
+export interface CanvasQuizSubmissionEventsResponse {
+  quiz_submission_events: CanvasQuizSubmissionEvent[] | null
+}
+
 // --- Files ---
 
 export interface CanvasFile {

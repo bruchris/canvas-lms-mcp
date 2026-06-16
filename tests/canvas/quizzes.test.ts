@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QuizzesModule } from '../../src/canvas/quizzes'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
 describe('QuizzesModule', () => {
   let client: CanvasHttpClient
@@ -127,6 +127,61 @@ describe('QuizzesModule', () => {
           },
         ],
       }),
+    })
+  })
+
+  describe('getSubmissionEvents', () => {
+    it('returns the ordered events for a submission (no attempt)', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        quiz_submission_events: [
+          { event_type: 'session_started', created_at: '2026-01-01T10:00:00Z', event_data: [] },
+          {
+            event_type: 'question_answered',
+            created_at: '2026-01-01T10:01:00Z',
+            event_data: [{ quiz_question_id: '9', answer: '2' }],
+          },
+          { event_type: 'page_blurred', created_at: '2026-01-01T10:05:00Z', event_data: [] },
+        ],
+      })
+      const result = await quizzes.getSubmissionEvents(1, 2, 3)
+      expect(result).toHaveLength(3)
+      expect(result.map((e) => e.event_type)).toEqual([
+        'session_started',
+        'question_answered',
+        'page_blurred',
+      ])
+      expect(client.request).toHaveBeenCalledWith(
+        '/api/v1/courses/1/quizzes/2/submissions/3/events',
+        { query: {} },
+      )
+    })
+
+    it('passes the attempt query param when provided', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({ quiz_submission_events: [] })
+      await quizzes.getSubmissionEvents(1, 2, 3, 2)
+      expect(client.request).toHaveBeenCalledWith(
+        '/api/v1/courses/1/quizzes/2/submissions/3/events',
+        { query: { attempt: 2 } },
+      )
+    })
+
+    it('returns an empty array for an empty event log', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({ quiz_submission_events: [] })
+      const result = await quizzes.getSubmissionEvents(1, 2, 3)
+      expect(result).toEqual([])
+    })
+
+    it('returns an empty array when the envelope field is null', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({ quiz_submission_events: null })
+      const result = await quizzes.getSubmissionEvents(1, 2, 3)
+      expect(result).toEqual([])
+    })
+
+    it('propagates Canvas API errors', async () => {
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/quizzes/2/submissions/3/events'),
+      )
+      await expect(quizzes.getSubmissionEvents(1, 2, 3)).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
 })

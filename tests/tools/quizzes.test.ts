@@ -1,10 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import { CanvasApiError } from '../../src/canvas/client'
+import { formatError } from '../../src/tools/errors'
 import type {
   CanvasQuiz,
   CanvasQuizSubmission,
   CanvasQuizQuestion,
   CanvasQuizSubmissionQuestion,
+  CanvasQuizSubmissionEvent,
 } from '../../src/canvas/types'
 import { quizTools } from '../../src/tools/quizzes'
 
@@ -51,6 +54,15 @@ describe('quizTools', () => {
     correct: true,
   }
 
+  const mockEvents: CanvasQuizSubmissionEvent[] = [
+    { event_type: 'session_started', created_at: '2026-01-01T10:00:00Z', event_data: [] },
+    {
+      event_type: 'question_answered',
+      created_at: '2026-01-01T10:01:00Z',
+      event_data: [{ quiz_question_id: '9', answer: '2' }],
+    },
+  ]
+
   function buildMockCanvas(): CanvasClient {
     return {
       quizzes: {
@@ -60,12 +72,13 @@ describe('quizTools', () => {
         listQuestions: vi.fn().mockResolvedValue([mockQuestion]),
         getSubmissionAnswers: vi.fn().mockResolvedValue([mockSubQuestion]),
         scoreQuestion: vi.fn().mockResolvedValue(undefined),
+        getSubmissionEvents: vi.fn().mockResolvedValue([]),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 6 tool definitions', () => {
-    expect(quizTools(buildMockCanvas())).toHaveLength(6)
+  it('returns an array with 7 tool definitions', () => {
+    expect(quizTools(buildMockCanvas())).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -77,6 +90,7 @@ describe('quizTools', () => {
       'list_quiz_questions',
       'get_quiz_submission_answers',
       'score_quiz_question',
+      'get_quiz_submission_events',
     ])
   })
 
@@ -211,6 +225,66 @@ describe('quizTools', () => {
         attempt: 2,
       })
       expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, undefined, 2)
+    })
+  })
+
+  describe('get_quiz_submission_events', () => {
+    it('has read-only annotations', () => {
+      const tool = quizTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_quiz_submission_events',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('returns the events from canvas.quizzes.getSubmissionEvents', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.quizzes.getSubmissionEvents).mockResolvedValue(mockEvents)
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
+      const result = await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
+      expect(result).toEqual(mockEvents)
+    })
+
+    it('delegates to getSubmissionEvents with the attempt parameter', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
+      await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3, attempt: 1 })
+      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith(1, 2, 3, 1)
+    })
+
+    it('delegates with attempt undefined when omitted', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
+      await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
+      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith(1, 2, 3, undefined)
+    })
+
+    it('maps a 403 Canvas error to the permission message', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.quizzes.getSubmissionEvents).mockRejectedValue(
+        new CanvasApiError('Forbidden', 403, '/events'),
+      )
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
+      await expect(
+        tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 }),
+      ).rejects.toBeInstanceOf(CanvasApiError)
+      // formatError (applied by the registry handler wrapper) maps the status:
+      expect(formatError(new CanvasApiError('Forbidden', 403, '/events'))).toBe(
+        "You don't have permission to perform this action in this course",
+      )
+    })
+
+    it('maps a 404 Canvas error to the not-found message', async () => {
+      expect(formatError(new CanvasApiError('Not Found', 404, '/events'))).toBe(
+        'Course/assignment/submission not found — check the ID',
+      )
+    })
+
+    it('returns an empty array for an empty event log', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.quizzes.getSubmissionEvents).mockResolvedValue([])
+      const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
+      const result = await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
+      expect(result).toEqual([])
     })
   })
 })
