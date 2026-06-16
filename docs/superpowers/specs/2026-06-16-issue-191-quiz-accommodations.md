@@ -57,7 +57,7 @@ When `time_multiplier` is provided:
 - `extra_minutes = Math.round(quiz.time_limit * (time_multiplier - 1))` for each quiz.
 - If `quiz.time_limit` is `null` (no time limit), `extra_time` is omitted from the POST body for that quiz (the multiplier has nothing to multiply). `extra_attempts` is still applied if also provided.
 - If neither `extra_time` nor `extra_attempts` can be applied for a quiz (e.g., `time_multiplier` only + `time_limit: null` + no `extra_attempts`), the quiz's POST is skipped and recorded as `{ applied: false, skip_reason: 'no_time_limit_for_multiplier' }`.
-- Minimum computed `extra_time`: if the rounded value is `< 1`, clamp to `1` (Canvas does not accept zero or negative extension values).
+- Minimum computed `extra_time`: if the rounded value is `< 1`, clamp to `1` (Canvas does not accept zero or negative extension values). For example, a 1-minute quiz with `time_multiplier: 1.01` yields `Math.round(0.01) = 0`, clamped to 1.
 
 `time_multiplier` must be `> 1.0`. The Zod schema enforces `.min(1.01)`. Passing `≤ 1.0` is caught by Zod before any Canvas call.
 
@@ -77,7 +77,8 @@ Detailed rationale:
 
 - **Input**: Both tools accept `user_id: number` (real Canvas user ID). This is consistent with all existing write tools (`grade_submission`, `enroll_user`, etc.) — they accept real IDs, not pseudonyms. The tool descriptions instruct the caller to use `resolve_pseudonym` if pseudonymization is enabled.
 - **Response of `set_student_quiz_accommodation`**: Returns `{ results: [{quiz_id, quiz_title, applied, extra_time_minutes, extra_attempts, ...}], summary: {...} }`. No `CanvasUser` object, no `participants` array, no `user_name` field. The `user_id` input is NOT echoed in the response.
-- **Response of `list_student_quiz_accommodations`**: Returns `{ results: [{quiz_id, quiz_title, has_accommodation, extra_time_minutes, extra_attempts}], summary: {...} }`. The raw Canvas GET response (`quiz_extensions` envelope) contains `user_id` for each student who has an extension; the tool filters client-side to the requested `user_id` and strips `user_id` from each returned entry. Other students' `user_id`s are discarded without appearing in tool output.
+- **Response of `list_student_quiz_accommodations`**: Returns `{ results: [{quiz_id, quiz_title, has_accommodation, extra_time_minutes, extra_attempts}], summary: {...} }`. The raw Canvas GET response (`quiz_extensions` envelope) contains `user_id` for each student who has an extension; the tool filters client-side to the requested `user_id`, strips `user_id` from the result entry (returning only accommodation values), and discards all other students' records. The `user_id` field never appears in tool output.
+- **PII note on `CanvasQuizExtension`**: This type carries `user_id` as an internal field used only for filtering within the tool handler layer. It is never forwarded to the MCP caller. Because the output contains no `CanvasUser`, no `participants` array, and no `user_name` field, PSEUDONYMIZER_WRAPPED_TOOLS registration is correctly not required.
 - **No `PSEUDONYMIZER_WRAPPED_TOOLS` registration**: Neither tool name is added to `src/pseudonym/coverage.ts`. The CI coverage test (`tests/pseudonym/coverage.test.ts`) passes unchanged.
 
 ---
@@ -108,12 +109,14 @@ Add after the existing `CanvasQuizSubmissionQuestion` interface:
 ```ts
 export interface CanvasQuizExtension {
   user_id: number
-  extra_time: number | null
+  extra_time: number | null   // Canvas field name (minutes); tool output renames this to extra_time_minutes
   extra_attempts: number | null
 }
 ```
 
-Canvas's `POST /quizzes/:id/extensions` uses the envelope key `quiz_extensions` (array). The response and GET both use the same envelope. Canvas may also return `manually_unlocked`, `end_at`, `extend_from_now` — those are not modeled in V1.
+**Field name note**: Canvas uses `extra_time` (in minutes) in both the POST body and the GET response. The tool output renames this to `extra_time_minutes` for caller clarity. The `CanvasQuizExtension` type preserves Canvas's naming; the mapping happens in the tool handler when constructing the result objects.
+
+Canvas may also return `manually_unlocked`, `end_at`, `extend_from_now` — those are not modeled in V1.
 
 ---
 
@@ -149,7 +152,7 @@ async setExtension(
 
 **POST body key**: `quiz_extensions` (plural array). The single-element array is intentional — Canvas accepts a batch but the tool always operates per-student-per-quiz.
 
-**Zero guard**: Do not pass `extra_time: 0` to Canvas. The tool handler ensures `extra_time` is a positive integer before calling this method. If the computed value rounds to zero (e.g., a 1-minute quiz × 1.01 multiplier), clamp to 1.
+**Zero guard**: Do not pass `extra_time: 0` to Canvas. The tool handler ensures `extra_time` is a positive integer before calling this method. If the computed value rounds to zero, it is clamped to 1 (`Math.max(1, Math.round(...))`). An `undefined` `extra_time` is simply omitted from the POST body.
 
 ### Method 2: `listExtensions`
 
@@ -158,14 +161,14 @@ async listExtensions(
   courseId: number,
   quizId: number,
 ): Promise<CanvasQuizExtension[]> {
-  return this.client.paginateEnvelope<CanvasQuizExtension>(
+  const response = await this.client.request<{ quiz_extensions: CanvasQuizExtension[] }>(
     `/api/v1/courses/${courseId}/quizzes/${quizId}/extensions`,
-    'quiz_extensions',
   )
+  return response.quiz_extensions
 }
 ```
 
-**Envelope key**: `'quiz_extensions'`. Mirrors the pattern used for `listSubmissions` in the same module (`'quiz_submissions'`).
+**Why `client.request` not `paginateEnvelope`**: Canvas `GET /courses/:id/quizzes/:id/extensions` is a documented endpoint (Canvas Quiz Extensions API) that returns a single-page envelope `{ quiz_extensions: [...all extensions for this quiz...] }` without Link-header pagination. Using `paginateEnvelope` here would be incorrect — `paginateEnvelope` is designed for paginated responses with Link headers (used for `quiz_submissions`, which can span many pages). Since the extensions list for one quiz is bounded (at most one entry per enrolled student), a single `client.request` is correct and simpler.
 
 ---
 
@@ -209,6 +212,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
     'mechanism not covered by this tool. ' +
     'Only applies to quizzes that exist at call time; re-run after creating new quizzes. ' +
     'Assignment due-date overrides are not handled here (separate fast-follow feature). ' +
+    'Note: for courses with many quizzes this makes one Canvas API call per quiz. ' +
     'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
     'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
   inputSchema: {
@@ -233,7 +237,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
       .optional()
       .describe(
         'Relative time multiplier (e.g. 1.5 for 1.5× time). ' +
-          'extra_minutes = round(quiz.time_limit * (multiplier - 1)). ' +
+          'extra_minutes = round(quiz.time_limit * (multiplier - 1)), minimum 1 minute. ' +
           'Quizzes with no time limit are skipped for extra_time ' +
           '(extra_attempts is still applied if provided). ' +
           'Mutually exclusive with extra_time_minutes.',
@@ -371,7 +375,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
     'student across all Classic Quizzes in a course. Useful for auditing before or after ' +
     'calling set_student_quiz_accommodation. ' +
     'New Quizzes (quiz_type quizzes.next) are excluded. ' +
-    'Makes one GET request per Classic Quiz — may be slow for courses with many quizzes. ' +
+    'Makes one Canvas API call per Classic Quiz to read extensions — may be slow for courses with many quizzes. ' +
+    'Errors from any quiz\'s GET request propagate immediately (no per-quiz error catching). ' +
     'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
     'call resolve_pseudonym first.',
   inputSchema: {
@@ -398,13 +403,16 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
     }> = []
 
     for (const quiz of classicQuizzes) {
+      // No try/catch: errors from listExtensions propagate to buildHandler → isError: true.
+      // This differs from set_student_quiz_accommodation which catches per-quiz errors.
       const extensions = await canvas.quizzes.listExtensions(courseId, quiz.id)
       const myExt = extensions.find((e) => e.user_id === userId)
+      // Strip user_id: output only contains accommodation values, not student identifiers.
       results.push({
         quiz_id: quiz.id,
         quiz_title: quiz.title,
         has_accommodation: myExt !== undefined,
-        extra_time_minutes: myExt?.extra_time ?? null,
+        extra_time_minutes: myExt?.extra_time ?? null,  // Canvas field 'extra_time' → output 'extra_time_minutes'
         extra_attempts: myExt?.extra_attempts ?? null,
       })
     }
@@ -423,6 +431,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
 ```
 
 **PII isolation**: `listExtensions` returns all students' extensions for each quiz. The tool discards all entries where `user_id !== userId` before building the result. The returned `results` array contains only `{ quiz_id, quiz_title, has_accommodation, extra_time_minutes, extra_attempts }` — no `user_id` field appears in the output.
+
+**Error propagation**: `listExtensions` errors are NOT caught in this handler. They propagate to `buildHandler` → `formatError()` → `isError: true` in the MCP response. This is correct for the audit tool — a GET failure for any one quiz means the audit is incomplete, so it is better to surface the error immediately rather than silently skip the quiz.
 
 ---
 
@@ -452,7 +462,7 @@ import { quizAccommodationTools } from './quiz-accommodations'
 
 No changes to `src/pseudonym/coverage.ts`. Do NOT add either tool name to `PSEUDONYMIZER_WRAPPED_TOOLS`.
 
-**Rationale** (for CI audit): Neither `set_student_quiz_accommodation` nor `list_student_quiz_accommodations` returns a `CanvasUser` object, a `participants` array, or a `user_name` field. The `user_id` in `listExtensions`'s raw Canvas response is used only for client-side filtering and is discarded before the tool output is constructed. The `CanvasQuizExtension` type carries `user_id` internally in the module layer but the tool handler explicitly excludes it from the returned result shape.
+**Rationale** (for CI audit): Neither `set_student_quiz_accommodation` nor `list_student_quiz_accommodations` returns a `CanvasUser` object, a `participants` array, or a `user_name` field. The `user_id` field in `CanvasQuizExtension` (from `listExtensions`'s raw Canvas response) is used only for client-side filtering and is never surfaced in tool output — the handler explicitly constructs output objects without the `user_id` key. The PSEUDONYMIZER_WRAPPED_TOOLS invariant is satisfied because neither tool's output shape matches any of the three triggering patterns.
 
 ---
 
@@ -481,9 +491,9 @@ const mockExtension = { user_id: 42, extra_time: 20, extra_attempts: 1 }
 
 **`listExtensions` cases:**
 
-5. **Happy path**: Mock `client.paginateEnvelope` returns `[mockExtension]`. Assert `quizzes.listExtensions(100, 7)` returns `[mockExtension]`. Assert called with `('/api/v1/courses/100/quizzes/7/extensions', 'quiz_extensions')`.
+5. **Happy path**: Mock `client.request` returns `{ quiz_extensions: [mockExtension] }`. Assert `quizzes.listExtensions(100, 7)` returns `[mockExtension]`. Assert `client.request` called with `'/api/v1/courses/100/quizzes/7/extensions'` and no method/body options (default GET).
 
-6. **Empty (no accommodations)**: Mock returns `[]`. Assert method returns `[]`.
+6. **Empty (no accommodations)**: Mock `client.request` returns `{ quiz_extensions: [] }`. Assert method returns `[]`.
 
 ### Tool tests — `tests/tools/quiz-accommodations.test.ts` (new file)
 
@@ -547,14 +557,14 @@ function buildMockCanvas() {
 2. **Happy path**: Call with `{ course_id: 10, user_id: 42 }`. Mock `listExtensions` returns `[{ user_id: 42, extra_time: 20, extra_attempts: 1 }]` for quizzes 1 and 2. Assert:
    - `canvas.quizzes.listExtensions` called with `(10, 1)` and `(10, 2)` but NOT `(10, 3)` (New Quiz skipped).
    - `results[0].has_accommodation === true`, `results[0].extra_time_minutes === 20`.
-   - Result entries do NOT contain a `user_id` key.
+   - Result entries do NOT contain a `user_id` key (assert `'user_id' in results[0] === false`).
    - `summary.with_accommodation === 2`, `summary.without_accommodation === 0`.
 
 3. **No accommodation**: Mock `listExtensions` returns `[]` for all quizzes. Assert `results[0].has_accommodation === false`, `summary.with_accommodation === 0`.
 
 4. **Other student present**: Mock `listExtensions` returns `[{ user_id: 99, extra_time: 30, extra_attempts: null }]` (a different student). Assert the entry for the target user has `has_accommodation: false` (user 42 is not in the list).
 
-5. **GET error propagation**: Mock `listExtensions` throws `new CanvasApiError('Not Found', 404, '...')`. Assert the error propagates from the tool handler (not caught).
+5. **GET error propagation**: Mock `listExtensions` throws `new CanvasApiError('Not Found', 404, '...')`. Assert the error propagates from the tool handler (no try/catch wrapping `listExtensions` calls).
 
 ### Registry test — `tests/tools/registry.test.ts`
 
@@ -579,9 +589,9 @@ Add `setExtension` and `listExtensions` to the existing `quizzes` property (the 
 
 Without this, `quizAccommodationTools` calls `canvas.quizzes.setExtension` / `canvas.quizzes.listExtensions` which are `undefined` → runtime error in `getAllTools`.
 
-**Change 2 — tool count**: Change `expect(tools).toHaveLength(124)` → `expect(tools).toHaveLength(126)` and the comment `// returns all 124 tools` → `// returns all 126 tools`.
+**Change 2 — tool count**: Change `expect(tools).toHaveLength(124)` → `expect(tools).toHaveLength(126)` and the describe string `// returns all 124 tools` → `// returns all 126 tools`.
 
-**Change 3 — `toContain` assertions**: Add after the `// Content Exports (3)` block:
+**Change 3 — `toContain` assertions**: Add after the `// Content Exports (3)` block (NOT under `// Quizzes (6)` — these are a separate domain):
 
 ```ts
     // Quiz Accommodations (2)
@@ -591,12 +601,12 @@ Without this, `quizAccommodationTools` calls `canvas.quizzes.setExtension` / `ca
 
 **Change 4 — `writeToolNames` arrays**: `set_student_quiz_accommodation` has `destructiveHint: true`. Add it to **both** `writeToolNames` collections in the file:
 
-In `'write tools have destructiveHint: true'`:
+In `'write tools have destructiveHint: true'` (the array of expected write tool names):
 ```ts
       'set_student_quiz_accommodation',
 ```
 
-In `'read tools have readOnlyHint: true'` (the `writeToolNames` Set):
+In `'read tools have readOnlyHint: true'` (the `writeToolNames` Set used as an exclusion list):
 ```ts
       'set_student_quiz_accommodation',
 ```
@@ -619,7 +629,7 @@ No changes.
 4. `src/tools/catalog.ts` — import `quizAccommodationTools`; add `quiz_accommodations` domain entry.
 5. `tests/canvas/quizzes.test.ts` — add `setExtension` (4 cases) and `listExtensions` (2 cases) blocks to the existing file.
 6. `tests/tools/quiz-accommodations.test.ts` — new file (9 + 5 = 14 cases).
-7. `tests/tools/registry.test.ts` — 4 changes: `setExtension`/`listExtensions` on existing `quizzes` stub; count 124→126; 2 new `toContain` assertions; `set_student_quiz_accommodation` in both `writeToolNames` collections.
+7. `tests/tools/registry.test.ts` — 4 changes: `setExtension`/`listExtensions` on existing `quizzes` stub; count 124→126; 2 new `toContain` assertions under `// Quiz Accommodations (2)`; `set_student_quiz_accommodation` in both `writeToolNames` collections.
 
 ---
 
@@ -628,15 +638,17 @@ No changes.
 - [x] `**design-first**` flag present in issue #191.
 - [x] Design unknown §1 (Classic vs New Quizzes): retired — V1 Classic-only; `quiz_type === 'quizzes.next'` skipped; `skip_reason: 'new_quiz_not_supported'` surfaced to caller; V2 path noted.
 - [x] Design unknown §2 (Scope of accommodation): retired — quiz extra-time/attempts only in V1; due-date overrides are a separate fast-follow.
-- [x] Design unknown §3 (Time input): retired — both `extra_time_minutes` (absolute) and `time_multiplier` (relative) supported, mutually exclusive; `time_limit` field added to `CanvasQuiz`; null `time_limit` + multiplier → `skip_reason: 'no_time_limit_for_multiplier'`; minimum 1-minute clamp documented.
+- [x] Design unknown §3 (Time input): retired — both `extra_time_minutes` (absolute) and `time_multiplier` (relative) supported, mutually exclusive; `time_limit` field added to `CanvasQuiz`; null `time_limit` + multiplier → `skip_reason: 'no_time_limit_for_multiplier'`; minimum 1-minute clamp documented; clamping edge case (1-minute quiz × 1.01× = 0 → 1) documented.
 - [x] Design unknown §4 (Future quizzes): retired — limitation documented in tool description; re-run recommended; no auto-apply mechanism.
 - [x] Design unknown §5 (FERPA/pseudonymization): retired — tools take real `user_id`; caller uses `resolve_pseudonym` if needed; tool descriptions instruct this; response has no PII fields; `user_id` from `listExtensions` raw response discarded before output; no `PSEUDONYMIZER_WRAPPED_TOOLS` registration.
 - [x] Exact tool names, Zod schemas, Canvas endpoints, MCP annotations, and output shapes specified.
 - [x] Type additions specified with exact target interfaces and insertion points.
-- [x] Canvas client additions: `setExtension` (POST with `quiz_extensions` envelope, conditional field inclusion) and `listExtensions` (`paginateEnvelope` with `'quiz_extensions'`).
+- [x] Canvas client additions: `setExtension` (POST with `quiz_extensions` envelope, conditional field inclusion, zero-guard) and `listExtensions` (`client.request` single-page GET with `quiz_extensions` key — not `paginateEnvelope`, with rationale).
+- [x] `extra_time` (Canvas field name) → `extra_time_minutes` (tool output field name) mapping documented in both the type comment and the handler comments.
+- [x] Error propagation difference documented: `set_student_quiz_accommodation` catches per-quiz errors (fan-out continues); `list_student_quiz_accommodations` does NOT catch per-quiz errors (propagates to buildHandler).
 - [x] Catalog: verbatim import and insertion point.
-- [x] Registry test: all 4 changes specified precisely — 2 new mock methods on existing `quizzes` stub; count 124→126; 2 `toContain` lines; `set_student_quiz_accommodation` in both `writeToolNames` collections.
-- [x] Test plan: 6 client cases + 14 tool cases; fan-out verification, partial-failure path, empty-course path, New Quiz skipped, time_multiplier with and without time_limit, quiz_ids filter, mutual exclusion error, PII-stripped output assertion.
+- [x] Registry test: all 4 changes specified precisely — 2 new mock methods on existing `quizzes` stub; count 124→126; 2 `toContain` lines under new `// Quiz Accommodations (2)` comment (NOT under `// Quizzes (6)`); `set_student_quiz_accommodation` in both `writeToolNames` collections.
+- [x] Test plan: 6 client cases + 14 tool cases; fan-out verification, partial-failure path, empty-course path, New Quiz skipped, time_multiplier with and without time_limit, quiz_ids filter, mutual exclusion error, PII-stripped output assertion (`'user_id' in results[0] === false`), error propagation for list tool.
 - [x] No new package dependencies.
 - [x] FERPA: no pseudonymizer wrapping required; no student PII in output; caller resolution workflow documented in tool descriptions.
 - [x] Pseudonymizer coverage test unaffected.
