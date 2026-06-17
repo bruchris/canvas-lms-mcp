@@ -48,6 +48,9 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
       handler: async (params) => {
         const courseId = params.course_id as number | undefined
         const accountId = params.account_id as number | undefined
+        if (courseId !== undefined && accountId !== undefined) {
+          throw new Error('Provide either course_id or account_id, not both.')
+        }
         if (courseId !== undefined) {
           return canvas.gradingStandards.listForCourse(courseId)
         }
@@ -104,6 +107,9 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         const accountId = params.account_id as number | undefined
         const title = params.title as string
         const schemeEntries = params.scheme_entries as Array<{ name: string; value: number }>
+        if (courseId !== undefined && accountId !== undefined) {
+          throw new Error('Provide either course_id or account_id, not both.')
+        }
         try {
           if (courseId !== undefined) {
             return await canvas.gradingStandards.createForCourse(courseId, title, schemeEntries)
@@ -113,7 +119,15 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
           }
           throw new Error('Provide either course_id or account_id.')
         } catch (error) {
-          if (error instanceof CanvasApiError && error.status === 403 && accountId !== undefined) {
+          // Only re-wrap a 403 from a true account-only call. The mutual-exclusivity
+          // guard above guarantees course_id is unset here, so a course-context 403
+          // (which routes through createForCourse) keeps its own formatError message.
+          if (
+            error instanceof CanvasApiError &&
+            error.status === 403 &&
+            courseId === undefined &&
+            accountId !== undefined
+          ) {
             throw new Error(
               'Creating grading standards at the account level requires Canvas admin permissions. ' +
                 'Try creating the standard in a course context instead (use course_id).',

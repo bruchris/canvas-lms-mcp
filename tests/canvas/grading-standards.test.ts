@@ -102,12 +102,30 @@ describe('GradingStandardsModule', () => {
     ])
   })
 
-  it('createForAccount posts to the account endpoint', async () => {
+  it('createForAccount posts to the account endpoint with the singular key, without mutating input', async () => {
     const requestSpy = vi.spyOn(client, 'request').mockResolvedValueOnce(mockStandard)
-    await module.createForAccount(1, 'GPA 4.0 Scale', schemeEntries)
+    const input = [
+      { name: 'F', value: 0.0 },
+      { name: 'A', value: 0.94 },
+      { name: 'B', value: 0.84 },
+    ]
+    await module.createForAccount(1, 'GPA 4.0 Scale', input)
     const [endpoint, options] = requestSpy.mock.calls[0]
     expect(endpoint).toBe('/api/v1/accounts/1/grading_standards')
     expect(options?.method).toBe('POST')
+    const body = JSON.parse(options?.body as string)
+    expect(body.grading_scheme).toBeUndefined()
+    expect(body.grading_scheme_entry).toEqual([
+      { name: 'A', value: 0.94 },
+      { name: 'B', value: 0.84 },
+      { name: 'F', value: 0.0 },
+    ])
+    // input array order is preserved (sort operates on a copy)
+    expect(input).toEqual([
+      { name: 'F', value: 0.0 },
+      { name: 'A', value: 0.94 },
+      { name: 'B', value: 0.84 },
+    ])
   })
 
   it('propagates CanvasApiError from createForAccount (no client-layer catch)', async () => {

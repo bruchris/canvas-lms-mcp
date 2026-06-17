@@ -85,6 +85,15 @@ describe('gradingStandardsTools', () => {
       )
     })
 
+    it('throws when both course_id and account_id are provided', async () => {
+      const canvas = buildMockCanvas()
+      await expect(
+        tool(canvas, 'list_grading_standards').handler({ course_id: 100, account_id: 1 }),
+      ).rejects.toThrow('Provide either course_id or account_id, not both.')
+      expect(canvas.gradingStandards.listForCourse).not.toHaveBeenCalled()
+      expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
+    })
+
     it('propagates a 404 CanvasApiError', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.gradingStandards.listForCourse).mockRejectedValueOnce(
@@ -141,6 +150,20 @@ describe('gradingStandardsTools', () => {
           scheme_entries: schemeEntries,
         }),
       ).rejects.toThrow('Provide either course_id or account_id.')
+    })
+
+    it('throws when both course_id and account_id are provided (no API call, no admin re-wrap)', async () => {
+      const canvas = buildMockCanvas()
+      await expect(
+        tool(canvas, 'create_grading_standard').handler({
+          course_id: 100,
+          account_id: 1,
+          title: 'GPA 4.0 Scale',
+          scheme_entries: schemeEntries,
+        }),
+      ).rejects.toThrow('Provide either course_id or account_id, not both.')
+      expect(canvas.gradingStandards.createForCourse).not.toHaveBeenCalled()
+      expect(canvas.gradingStandards.createForAccount).not.toHaveBeenCalled()
     })
 
     it('re-throws an account-context 403 as a plain Error mentioning admin permissions', async () => {
