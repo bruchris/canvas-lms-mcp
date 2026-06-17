@@ -68,6 +68,7 @@ export interface CanvasCourse {
   banner_image_download_url?: string | null
   concluded?: boolean
   post_manually?: boolean
+  grading_standard_id?: number | null
 }
 
 export interface CanvasCourseSection {
@@ -150,6 +151,7 @@ export interface UpdateCourseParams {
   end_at?: string
   default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
   syllabus_body?: string
+  grading_standard_id?: number | null
 }
 
 // --- Assignments ---
@@ -847,6 +849,23 @@ export interface CanvasAccountReport {
     ended_at: string | null
     attachment: CanvasFile | null
   } | null
+}
+
+// --- Grading Standards ---
+
+export interface CanvasGradingSchemeEntry {
+  name: string
+  value: number
+}
+
+export type CanvasGradingStandardContextType = 'Course' | 'Account'
+
+export interface CanvasGradingStandard {
+  id: number
+  title: string
+  context_type: CanvasGradingStandardContextType
+  context_id: number
+  grading_scheme: CanvasGradingSchemeEntry[]
 }
 
 // --- Assignments (params) ---

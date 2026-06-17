@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 125,
+  "toolCount": 128,
   "tools": [
     {
       "name": "health_check",
@@ -1540,6 +1540,42 @@
         "openWorldHint": true
       },
       "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_grading_standards",
+      "domain": "grading_standards",
+      "description": "List grading standards available in a course or account context. Provide either course_id (to see standards scoped to a course) or account_id (to see account-level standards, requires admin access). Returns an array of grading standard objects, each with an id, title, context, and grading_scheme array of { name, value } entries.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_grading_standard",
+      "domain": "grading_standards",
+      "description": "Create a new grading standard (letter-to-percentage scheme) in a course or account context. Provide either course_id or account_id (account requires admin). scheme_entries is an array of { name, value } objects where value is the lower-bound percentage as a fraction 0–1 (e.g. { name: \"A\", value: 0.94 } means A ≥ 94%). Entries will be sorted descending by value before sending to Canvas. Canvas POST body key is grading_scheme_entry (singular); the returned object uses grading_scheme (plural). Returns the created grading standard object including its id — use that id with apply_grading_standard_to_course to activate it on a course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "apply_grading_standard_to_course",
+      "domain": "grading_standards",
+      "description": "Apply an existing grading standard to a course so the gradebook uses it. Pass the grading_standard_id returned by create_grading_standard or list_grading_standards. Pass null for grading_standard_id to remove the current grading standard from the course. Returns the updated course object.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
       "primaryAudience": "educator",
       "relatedWorkflows": []
     }
