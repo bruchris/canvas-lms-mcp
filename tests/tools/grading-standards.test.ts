@@ -180,6 +180,20 @@ describe('gradingStandardsTools', () => {
       await expect(promise).rejects.not.toBeInstanceOf(CanvasApiError)
     })
 
+    it('does NOT re-wrap an account-context rate-limit 403 (lets formatError keep its hint)', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.gradingStandards.createForAccount).mockRejectedValueOnce(
+        new CanvasApiError('Rate Limit Exceeded', 403, '/api/v1/accounts/1/grading_standards'),
+      )
+      await expect(
+        tool(canvas, 'create_grading_standard').handler({
+          account_id: 1,
+          title: 'GPA 4.0 Scale',
+          scheme_entries: schemeEntries,
+        }),
+      ).rejects.toBeInstanceOf(CanvasApiError)
+    })
+
     it('propagates a course-context 403 as CanvasApiError (no admin re-wrap)', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.gradingStandards.createForCourse).mockRejectedValueOnce(

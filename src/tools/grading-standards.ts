@@ -119,14 +119,17 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
           }
           throw new Error('Provide either course_id or account_id.')
         } catch (error) {
-          // Only re-wrap a 403 from a true account-only call. The mutual-exclusivity
-          // guard above guarantees course_id is unset here, so a course-context 403
-          // (which routes through createForCourse) keeps its own formatError message.
+          // Only re-wrap a permissions 403 from a true account-only call. The
+          // mutual-exclusivity guard above guarantees course_id is unset here, so a
+          // course-context 403 (which routes through createForCourse) keeps its own
+          // formatError message. Exclude rate-limit 403s ("Rate Limit Exceeded"),
+          // which formatError surfaces with its own "wait and retry" guidance.
           if (
             error instanceof CanvasApiError &&
             error.status === 403 &&
             courseId === undefined &&
-            accountId !== undefined
+            accountId !== undefined &&
+            !error.message.toLowerCase().includes('rate limit exceeded')
           ) {
             throw new Error(
               'Creating grading standards at the account level requires Canvas admin permissions. ' +
