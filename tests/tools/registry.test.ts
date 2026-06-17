@@ -170,6 +170,12 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       list: async () => [],
     },
+    gradingStandards: {
+      listForCourse: async () => [],
+      listForAccount: async () => [],
+      createForCourse: async () => ({}),
+      createForAccount: async () => ({}),
+    },
   } as unknown as CanvasClient
 }
 
@@ -179,7 +185,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 125 tools across all domains', () => {
+  it('returns all 128 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -333,8 +339,12 @@ describe('getAllTools', () => {
     expect(names).toContain('create_content_export')
     expect(names).toContain('get_content_export')
     expect(names).toContain('list_content_exports')
+    // Grading Standards (3)
+    expect(names).toContain('list_grading_standards')
+    expect(names).toContain('create_grading_standard')
+    expect(names).toContain('apply_grading_standard_to_course')
 
-    expect(tools).toHaveLength(125)
+    expect(tools).toHaveLength(128)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -382,6 +392,8 @@ describe('getAllTools', () => {
       'update_new_quiz_item',
       'delete_new_quiz_item',
       'create_content_export',
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -437,6 +449,8 @@ describe('getAllTools', () => {
       'update_new_quiz_item',
       'delete_new_quiz_item',
       'create_content_export',
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

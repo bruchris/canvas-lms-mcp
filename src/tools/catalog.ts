@@ -13,6 +13,7 @@ import { discussionTools } from './discussions'
 import { enrollmentTools } from './enrollments'
 import { fileTools } from './files'
 import { gradebookHistoryTools } from './gradebook-history'
+import { gradingStandardsTools } from './grading-standards'
 import { groupTools } from './groups'
 import { healthTools } from './health'
 import { moduleTools } from './modules'
@@ -158,5 +159,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'content_exports',
     defaultPrimaryAudience: 'educator',
     getTools: contentExportsTools,
+  },
+  {
+    domain: 'grading_standards',
+    defaultPrimaryAudience: 'educator',
+    getTools: gradingStandardsTools,
   },
 ]

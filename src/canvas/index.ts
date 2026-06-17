@@ -22,6 +22,7 @@ import { OutcomesModule } from './outcomes'
 import { GradebookHistoryModule } from './gradebook-history'
 import { NewQuizzesModule } from './new-quizzes'
 import { ContentExportsModule } from './content-exports'
+import { GradingStandardsModule } from './grading-standards'
 
 /**
  * Standalone Canvas REST API client. Composed of modular per-domain classes
@@ -59,6 +60,7 @@ export class CanvasClient {
   gradebookHistory: GradebookHistoryModule
   newQuizzes: NewQuizzesModule
   contentExports: ContentExportsModule
+  gradingStandards: GradingStandardsModule
 
   constructor(config: CanvasClientConfig) {
     this.client = new CanvasHttpClient(config)
@@ -84,6 +86,7 @@ export class CanvasClient {
     this.gradebookHistory = new GradebookHistoryModule(this.client)
     this.newQuizzes = new NewQuizzesModule(this.client)
     this.contentExports = new ContentExportsModule(this.client)
+    this.gradingStandards = new GradingStandardsModule(this.client)
   }
 }
 
