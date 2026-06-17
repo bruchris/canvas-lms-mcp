@@ -625,6 +625,8 @@ export interface CreateDiscussionParams {
   discussion_type?: 'side_comment' | 'threaded'
   published?: boolean
   require_initial_post?: boolean
+  is_announcement?: boolean
+  delayed_post_at?: string
 }
 
 export interface UpdateDiscussionParams {
@@ -632,6 +634,8 @@ export interface UpdateDiscussionParams {
   message?: string
   published?: boolean
   require_initial_post?: boolean
+  is_announcement?: boolean
+  delayed_post_at?: string
 }
 
 // --- Calendar ---

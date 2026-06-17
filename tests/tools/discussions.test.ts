@@ -139,6 +139,8 @@ describe('discussionTools', () => {
         discussion_type: undefined,
         published: undefined,
         require_initial_post: undefined,
+        is_announcement: undefined,
+        delayed_post_at: undefined,
       })
     })
 
@@ -159,6 +161,28 @@ describe('discussionTools', () => {
         discussion_type: 'threaded',
         published: true,
         require_initial_post: true,
+        is_announcement: undefined,
+        delayed_post_at: undefined,
+      })
+    })
+
+    it('forwards is_announcement and delayed_post_at to canvas.discussions.create', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      await tool.handler({
+        course_id: 1,
+        title: 'Course Update',
+        is_announcement: true,
+        delayed_post_at: '2026-09-01T08:00:00.000Z',
+      })
+      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+        title: 'Course Update',
+        message: undefined,
+        discussion_type: undefined,
+        published: undefined,
+        require_initial_post: undefined,
+        is_announcement: true,
+        delayed_post_at: '2026-09-01T08:00:00.000Z',
       })
     })
   })
@@ -178,6 +202,27 @@ describe('discussionTools', () => {
         message: undefined,
         published: false,
         require_initial_post: undefined,
+        is_announcement: undefined,
+        delayed_post_at: undefined,
+      })
+    })
+
+    it('forwards is_announcement and delayed_post_at to canvas.discussions.update', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      await tool.handler({
+        course_id: 1,
+        topic_id: 2,
+        is_announcement: true,
+        delayed_post_at: '2026-10-15T09:00:00.000Z',
+      })
+      expect(canvas.discussions.update).toHaveBeenCalledWith(1, 2, {
+        title: undefined,
+        message: undefined,
+        published: undefined,
+        require_initial_post: undefined,
+        is_announcement: true,
+        delayed_post_at: '2026-10-15T09:00:00.000Z',
       })
     })
   })
