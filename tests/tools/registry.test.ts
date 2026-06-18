@@ -43,6 +43,8 @@ function buildFullMockCanvas(): CanvasClient {
       getSubmissionAnswers: async () => [],
       scoreQuestion: async () => {},
       getSubmissionEvents: async () => [],
+      setExtension: async () => [],
+      listExtensions: async () => [],
     },
     files: {
       list: async () => [],
@@ -185,7 +187,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 128 tools across all domains', () => {
+  it('returns all 130 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -343,8 +345,11 @@ describe('getAllTools', () => {
     expect(names).toContain('list_grading_standards')
     expect(names).toContain('create_grading_standard')
     expect(names).toContain('apply_grading_standard_to_course')
+    // Quiz Accommodations (2)
+    expect(names).toContain('set_student_quiz_accommodation')
+    expect(names).toContain('list_student_quiz_accommodations')
 
-    expect(tools).toHaveLength(128)
+    expect(tools).toHaveLength(130)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -394,6 +399,7 @@ describe('getAllTools', () => {
       'create_content_export',
       'create_grading_standard',
       'apply_grading_standard_to_course',
+      'set_student_quiz_accommodation',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -451,6 +457,7 @@ describe('getAllTools', () => {
       'create_content_export',
       'create_grading_standard',
       'apply_grading_standard_to_course',
+      'set_student_quiz_accommodation',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

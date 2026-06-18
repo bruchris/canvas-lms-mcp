@@ -21,6 +21,7 @@ import { outcomeTools } from './outcomes'
 import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
+import { quizAccommodationTools } from './quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
@@ -164,5 +165,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'grading_standards',
     defaultPrimaryAudience: 'educator',
     getTools: gradingStandardsTools,
+  },
+  {
+    domain: 'quiz_accommodations',
+    defaultPrimaryAudience: 'educator',
+    getTools: quizAccommodationTools,
   },
 ]
