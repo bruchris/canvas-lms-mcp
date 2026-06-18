@@ -391,6 +391,7 @@ export interface CanvasQuiz {
   question_count: number
   due_at: string | null
   published: boolean
+  time_limit?: number | null // quiz duration in minutes; null if untimed
 }
 
 export interface CanvasQuizSubmission {
@@ -402,6 +403,11 @@ export interface CanvasQuizSubmission {
   score: number | null
   kept_score: number | null
   workflow_state: string
+  // Per-student accommodation stored on the submission record. Canvas sets these
+  // when a quiz extension is applied (POST .../extensions); they are the only
+  // documented way to READ a student's extra time / attempts back.
+  extra_time?: number | null // extra time in minutes
+  extra_attempts?: number | null
 }
 
 export interface CanvasQuizQuestion {
@@ -419,6 +425,13 @@ export interface CanvasQuizSubmissionQuestion {
   quiz_id: number
   answer: string | number | null
   flagged: boolean
+}
+
+export interface CanvasQuizExtension {
+  user_id: number
+  // Canvas field name (minutes); tool output renames this to extra_time_minutes.
+  extra_time: number | null
+  extra_attempts: number | null
 }
 
 // --- Quiz Submission Events ---

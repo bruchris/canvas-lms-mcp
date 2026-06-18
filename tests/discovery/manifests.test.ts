@@ -35,7 +35,7 @@ describe('tool manifest generation', () => {
     const manifest = buildToolManifest()
 
     expect(manifest.schemaVersion).toBe('1.0')
-    expect(manifest.tools).toHaveLength(128)
+    expect(manifest.tools).toHaveLength(130)
     expect(manifest.tools.find((tool) => tool.name === 'grade_submission')).toEqual({
       name: 'grade_submission',
       domain: 'submissions',

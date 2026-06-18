@@ -222,4 +222,49 @@ describe('QuizzesModule', () => {
       await expect(quizzes.getSubmissionEvents(1, 2, 3)).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
+
+  describe('setExtension', () => {
+    const mockExtension = { user_id: 42, extra_time: 20, extra_attempts: 1 }
+
+    it('posts both fields and returns the extensions', async () => {
+      const spy = vi
+        .spyOn(client, 'request')
+        .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
+      const result = await quizzes.setExtension(100, 7, 42, 20, 1)
+      expect(result).toEqual([mockExtension])
+      expect(spy).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/7/extensions', {
+        method: 'POST',
+        body: expect.any(String),
+      })
+      const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
+      expect(body).toEqual({
+        quiz_extensions: [{ user_id: 42, extra_time: 20, extra_attempts: 1 }],
+      })
+    })
+
+    it('omits extra_attempts when only extra_time is provided', async () => {
+      const spy = vi
+        .spyOn(client, 'request')
+        .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
+      await quizzes.setExtension(100, 7, 42, 30, undefined)
+      const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
+      expect(body).toEqual({ quiz_extensions: [{ user_id: 42, extra_time: 30 }] })
+    })
+
+    it('omits extra_time when only extra_attempts is provided', async () => {
+      const spy = vi
+        .spyOn(client, 'request')
+        .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
+      await quizzes.setExtension(100, 7, 42, undefined, 2)
+      const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
+      expect(body).toEqual({ quiz_extensions: [{ user_id: 42, extra_attempts: 2 }] })
+    })
+
+    it('propagates Canvas API errors', async () => {
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError('Forbidden', 403, '/api/v1/courses/100/quizzes/7/extensions'),
+      )
+      await expect(quizzes.setExtension(100, 7, 42, 20, 1)).rejects.toBeInstanceOf(CanvasApiError)
+    })
+  })
 })

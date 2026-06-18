@@ -8,6 +8,14 @@ issue: 191
 **Issue**: [bruchris/canvas-lms-mcp#191](https://github.com/bruchris/canvas-lms-mcp/issues/191)
 **Status**: Design — awaiting CTO review
 
+> **Implementation correction (2026-06-18):** Canvas exposes **no** GET endpoint for
+> quiz extensions — `QuizExtensionsController` defines only `create` (POST). The
+> `listExtensions` design below (a `GET .../extensions`) does not exist and would 404.
+> The implementation instead reads `extra_time` / `extra_attempts` from the student's
+> **quiz submission** (`GET .../quizzes/:id/submissions`, the documented field source),
+> reusing the existing `QuizzesModule.listSubmissions`. The `setExtension` POST design
+> is correct and unchanged.
+
 ---
 
 ## Purpose
