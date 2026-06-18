@@ -79,7 +79,7 @@ Rationale:
 
 Detailed rationale:
 
-- **`list_assignment_overrides`**: Returns `CanvasAssignmentOverride[]`. Each object contains `student_ids?: number[]` (numeric Canvas user IDs), `group_id?: number`, `course_section_id?: number` — no `CanvasUser` object, no `user_name` string, no `participants` array. The `student_ids` field is an array of numbers identical to what the caller originally passed in; it is not a new PII disclosure.
+- **`list_assignment_overrides`**: Returns `CanvasAssignmentOverride[]`. Canvas returns ALL overrides for an assignment — including overrides created by other instructors for other students not known to the caller. Each object contains `student_ids?: number[]` (numeric Canvas user IDs), `group_id?: number`, `course_section_id?: number` — no `CanvasUser` object, no `user_name` string, no `participants` array. Integer IDs are not within the three pseudonymizer trigger patterns (`CanvasUser` object, `user_name` string, `participants` array), so no wrapping is needed regardless of how the IDs originated.
 - **`create_assignment_override`**: Returns a single `CanvasAssignmentOverride` (same shape as above). Same reasoning.
 - **`set_student_assignment_dates`**: Returns `{ applied, skipped, failed, summary }`. Each result entry contains `{ assignment_id, assignment_name, override_id?, applied, error? }` — no student identifiers appear in the output. The `user_id` input is consumed but never echoed in the response.
 - **Caller responsibility**: All three tools accept real Canvas user IDs (`student_ids` / `user_id`). Under `CANVAS_PSEUDONYMIZE_STUDENTS=true`, the caller must first call `resolve_pseudonym` to map a pseudonym → real `user_id`. Tool descriptions instruct this.
@@ -143,7 +143,7 @@ async createOverride(
 }
 ```
 
-**POST body key**: `assignment_override` (singular, Canvas convention for single-resource creates). Canvas returns the created override as a single object (not wrapped in an envelope).
+**POST body key**: `assignment_override` (singular, Canvas convention for single-resource creates) — note this diverges from the existing `create()` method in `AssignmentsModule`, which wraps its payload as `{ assignment: params }`. The override endpoint uses a different envelope. Canvas returns the created override as a single object (not wrapped in an envelope).
 
 **Duplicate guard**: Canvas returns a `422` if a student-set override already exists for the same students. `createOverride` does not catch this — it propagates as `CanvasApiError`. The tool handler layer handles it per the decided semantics (fail entry in the fan-out, or surface directly for the primitive).
 
@@ -218,6 +218,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
     assignment_id: z.number().int().positive().describe('Canvas assignment ID'),
     student_ids: z
       .array(z.number().int().positive())
+      .min(1)
       .optional()
       .describe(
         'Real Canvas user IDs to grant the override to. ' +
@@ -432,6 +433,10 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
 
 **No student PII in output**: `applied[]` and `failed[]` entries contain `{ assignment_id, assignment_name, override_id?, applied, error? }`. The `user_id` input is NOT echoed in any output field.
 
+**Unpublished assignments**: `canvas.assignments.list()` returns all assignments visible to the caller. Instructors see both published and unpublished assignments. The fan-out does NOT filter by published status — overrides may be created on unpublished assignments. This is valid Canvas behavior: the override is ready when the assignment is published.
+
+**`assignment_ids` filter — silent drop**: When `assignment_ids` is provided, the handler filters the list returned by `canvas.assignments.list()` using a `Set`. Assignment IDs in `assignment_ids` that do not exist in the course (i.e., absent from `list()`) are silently ignored — they produce no `failed[]` entry. Callers should not rely on `summary.total_assignments` matching `assignment_ids.length`.
+
 ---
 
 ## Catalog registration (`src/tools/catalog.ts`)
@@ -535,9 +540,7 @@ function buildMockCanvas() {
 
 4. Annotations: `{ destructiveHint: true, openWorldHint: true }`.
 
-5. **Happy path — student_ids**: Call with `{ course_id: 10, assignment_id: 1, student_ids: [42], due_at: '2026-09-15T23:59:00Z' }`. Assert `canvas.assignments.createOverride` called with `(10, 1, { student_ids: [42], due_at: '2026-09-15T23:59:00Z', title: undefined })` (title omitted if not provided — verify the call args match). Assert result is the mock override object.
-
-   Wait — the handler conditionally sets title. Let me be precise: `overrideParams` only includes fields with non-undefined values. So if `title` is not passed, `overrideParams.title` is never set. The assertion should check `createOverride` was called with `(10, 1, expect.objectContaining({ student_ids: [42], due_at: '2026-09-15T23:59:00Z' }))` and NOT containing a `title` key.
+5. **Happy path — student_ids**: Call with `{ course_id: 10, assignment_id: 1, student_ids: [42], due_at: '2026-09-15T23:59:00Z' }`. Assert `canvas.assignments.createOverride` called with `(10, 1, expect.objectContaining({ student_ids: [42], due_at: '2026-09-15T23:59:00Z' }))`. Also assert the params object does NOT contain a `title` key (the handler only includes fields with non-undefined values — `title` is omitted when not provided). Assert result is the mock override object.
 
 6. **Happy path — course_section_id**: Call with `{ course_id: 10, assignment_id: 1, course_section_id: 5, due_at: '...' }`. Assert `createOverride` called with params containing `{ course_section_id: 5 }` and NOT `student_ids` or `group_id`.
 
@@ -628,7 +631,7 @@ In `'read tools have readOnlyHint: true'` Set:
 
 ### Pseudonymizer coverage test — `tests/pseudonym/coverage.test.ts`
 
-No changes.
+No changes. The minimal `buildFullMockCanvas()` mock (stubs that return empty arrays / empty objects) is safe to extend with `listOverrides` and `createOverride` because tool handlers are closures: they are not invoked at registration time (`getAllTools` only constructs the `ToolDefinition[]` array). The pseudonymizer coverage test never calls any tool handler — it only inspects `PSEUDONYMIZER_WRAPPED_TOOLS` membership — so the mock methods are never executed by this test.
 
 ### Audience coverage test — `tests/tools/audience-coverage.test.ts`
 
