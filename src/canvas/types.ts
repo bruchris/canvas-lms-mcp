@@ -403,6 +403,11 @@ export interface CanvasQuizSubmission {
   score: number | null
   kept_score: number | null
   workflow_state: string
+  // Per-student accommodation stored on the submission record. Canvas sets these
+  // when a quiz extension is applied (POST .../extensions); they are the only
+  // documented way to READ a student's extra time / attempts back.
+  extra_time?: number | null // extra time in minutes
+  extra_attempts?: number | null
 }
 
 export interface CanvasQuizQuestion {

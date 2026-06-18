@@ -44,7 +44,6 @@ function buildFullMockCanvas(): CanvasClient {
       scoreQuestion: async () => {},
       getSubmissionEvents: async () => [],
       setExtension: async () => [],
-      listExtensions: async () => [],
     },
     files: {
       list: async () => [],

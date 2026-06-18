@@ -116,18 +116,4 @@ export class QuizzesModule {
     )
     return response.quiz_extensions
   }
-
-  /**
-   * Read all quiz extensions for one Classic Quiz via
-   * `GET /courses/:id/quizzes/:id/extensions`. This endpoint returns a single,
-   * unpaginated `{ quiz_extensions: [...] }` envelope (at most one entry per
-   * enrolled student), so a single `request` is correct here — `paginateEnvelope`
-   * is for Link-header paginated responses like quiz submissions.
-   */
-  async listExtensions(courseId: number, quizId: number): Promise<CanvasQuizExtension[]> {
-    const response = await this.client.request<{ quiz_extensions: CanvasQuizExtension[] }>(
-      `/api/v1/courses/${courseId}/quizzes/${quizId}/extensions`,
-    )
-    return response.quiz_extensions
-  }
 }

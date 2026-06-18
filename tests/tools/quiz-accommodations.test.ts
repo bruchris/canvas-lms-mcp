@@ -41,9 +41,11 @@ function buildMockCanvas(): CanvasClient {
     quizzes: {
       list: vi.fn().mockResolvedValue(QUIZZES),
       setExtension: vi.fn().mockResolvedValue([{ user_id: 42, extra_time: 20, extra_attempts: 1 }]),
-      listExtensions: vi
+      // The read tool audits accommodations via quiz submissions, not a
+      // (non-existent) GET extensions endpoint.
+      listSubmissions: vi
         .fn()
-        .mockResolvedValue([{ user_id: 42, extra_time: 20, extra_attempts: 1 }]),
+        .mockResolvedValue([{ id: 5, quiz_id: 1, user_id: 42, extra_time: 20, extra_attempts: 1 }]),
     },
   } as unknown as CanvasClient
 }
@@ -306,39 +308,55 @@ describe('quizAccommodationTools', () => {
       })
     })
 
-    it('reports the student accommodation for each Classic Quiz, excluding New Quizzes', async () => {
+    it('reports the student accommodation from quiz submissions, excluding New Quizzes', async () => {
       const canvas = buildMockCanvas()
       const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
         course_id: 10,
         user_id: 42,
       })) as HandlerResult
-      const listExtensions = canvas.quizzes.listExtensions as ReturnType<typeof vi.fn>
-      expect(listExtensions).toHaveBeenCalledWith(10, 1)
-      expect(listExtensions).toHaveBeenCalledWith(10, 2)
-      expect(listExtensions).not.toHaveBeenCalledWith(10, 3)
+      const listSubmissions = canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>
+      expect(listSubmissions).toHaveBeenCalledWith(10, 1)
+      expect(listSubmissions).toHaveBeenCalledWith(10, 2)
+      expect(listSubmissions).not.toHaveBeenCalledWith(10, 3)
       expect(result.results[0].has_accommodation).toBe(true)
       expect(result.results[0].extra_time_minutes).toBe(20)
+      expect(result.results[0].extra_attempts).toBe(1)
       // Output must not echo the student identifier.
       expect('user_id' in result.results[0]).toBe(false)
       expect(result.summary.with_accommodation).toBe(2)
       expect(result.summary.without_accommodation).toBe(0)
     })
 
-    it('reports no accommodation when the student has none', async () => {
+    it('reports no accommodation when the student has no submission', async () => {
       const canvas = buildMockCanvas()
-      ;(canvas.quizzes.listExtensions as ReturnType<typeof vi.fn>).mockResolvedValue([])
+      ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockResolvedValue([])
       const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
         course_id: 10,
         user_id: 42,
       })) as HandlerResult
       expect(result.results[0].has_accommodation).toBe(false)
+      expect(result.results[0].extra_time_minutes).toBeNull()
       expect(result.summary.with_accommodation).toBe(0)
     })
 
-    it('ignores a different student present on the quiz', async () => {
+    it('treats a submission with no extension (null/zero values) as no accommodation', async () => {
       const canvas = buildMockCanvas()
-      ;(canvas.quizzes.listExtensions as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { user_id: 99, extra_time: 30, extra_attempts: null },
+      ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 5, quiz_id: 1, user_id: 42, extra_time: 0, extra_attempts: null },
+      ])
+      const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
+        course_id: 10,
+        user_id: 42,
+      })) as HandlerResult
+      expect(result.results[0].has_accommodation).toBe(false)
+      expect(result.results[0].extra_time_minutes).toBeNull()
+      expect(result.results[0].extra_attempts).toBeNull()
+    })
+
+    it('ignores another student present on the quiz', async () => {
+      const canvas = buildMockCanvas()
+      ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 9, quiz_id: 1, user_id: 99, extra_time: 30, extra_attempts: 2 },
       ])
       const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
         course_id: 10,
@@ -348,10 +366,10 @@ describe('quizAccommodationTools', () => {
       expect(result.results[0].extra_time_minutes).toBeNull()
     })
 
-    it('propagates a GET error (no per-quiz catching)', async () => {
+    it('propagates a read error (no per-quiz catching)', async () => {
       const canvas = buildMockCanvas()
-      ;(canvas.quizzes.listExtensions as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new CanvasApiError('Not Found', 404, '/extensions'),
+      ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new CanvasApiError('Not Found', 404, '/submissions'),
       )
       await expect(
         tool(canvas, 'list_student_quiz_accommodations').handler({

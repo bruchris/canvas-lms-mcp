@@ -267,23 +267,4 @@ describe('QuizzesModule', () => {
       await expect(quizzes.setExtension(100, 7, 42, 20, 1)).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
-
-  describe('listExtensions', () => {
-    const mockExtension = { user_id: 42, extra_time: 20, extra_attempts: 1 }
-
-    it('reads the extensions via a single GET request', async () => {
-      const spy = vi
-        .spyOn(client, 'request')
-        .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
-      const result = await quizzes.listExtensions(100, 7)
-      expect(result).toEqual([mockExtension])
-      expect(spy).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/7/extensions')
-    })
-
-    it('returns an empty array when no accommodations exist', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce({ quiz_extensions: [] })
-      const result = await quizzes.listExtensions(100, 7)
-      expect(result).toEqual([])
-    })
-  })
 })

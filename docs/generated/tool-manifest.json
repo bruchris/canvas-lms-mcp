@@ -1594,7 +1594,7 @@
     {
       "name": "list_student_quiz_accommodations",
       "domain": "quiz_accommodations",
-      "description": "List the current quiz accommodation (extra time and/or extra attempts) for a specific student across all Classic Quizzes in a course. Useful for auditing before or after calling set_student_quiz_accommodation. New Quizzes (quiz_type quizzes.next) are excluded. Makes one Canvas API call per Classic Quiz to read extensions — may be slow for courses with many quizzes. Errors from any quiz's GET request propagate immediately (no per-quiz error catching). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
+      "description": "List the current quiz accommodation (extra time and/or extra attempts) for a specific student across all Classic Quizzes in a course. Useful for auditing before or after calling set_student_quiz_accommodation. New Quizzes (quiz_type quizzes.next) are excluded. Reads extra_time / extra_attempts from each quiz's submission records (Canvas exposes no read endpoint for quiz extensions directly) — one Canvas API call per Classic Quiz, so it may be slow for courses with many quizzes. Errors from any quiz's read propagate immediately (no per-quiz error catching). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

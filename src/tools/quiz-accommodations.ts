@@ -199,8 +199,10 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'student across all Classic Quizzes in a course. Useful for auditing before or after ' +
         'calling set_student_quiz_accommodation. ' +
         'New Quizzes (quiz_type quizzes.next) are excluded. ' +
-        'Makes one Canvas API call per Classic Quiz to read extensions — may be slow for courses with many quizzes. ' +
-        "Errors from any quiz's GET request propagate immediately (no per-quiz error catching). " +
+        "Reads extra_time / extra_attempts from each quiz's submission records " +
+        '(Canvas exposes no read endpoint for quiz extensions directly) — one Canvas API call per ' +
+        'Classic Quiz, so it may be slow for courses with many quizzes. ' +
+        "Errors from any quiz's read propagate immediately (no per-quiz error catching). " +
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first.',
       inputSchema: {
@@ -227,19 +229,27 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         }> = []
 
         for (const quiz of classicQuizzes) {
-          // No try/catch: errors from listExtensions propagate to buildHandler →
-          // isError: true. This differs from set_student_quiz_accommodation,
-          // which catches per-quiz errors so the fan-out continues.
-          const extensions = await canvas.quizzes.listExtensions(courseId, quiz.id)
-          const myExt = extensions.find((e) => e.user_id === userId)
-          // Strip user_id: output carries only accommodation values, not student
-          // identifiers, so no pseudonymizer wrapping is required.
+          // Canvas has no GET for quiz extensions; the accommodation is stored on
+          // the student's quiz submission (extra_time / extra_attempts). No
+          // try/catch: a failed read means the audit is incomplete, so the error
+          // propagates to buildHandler (isError: true) rather than being silently
+          // skipped. This differs from set_student_quiz_accommodation, which
+          // catches per-quiz errors so the fan-out continues.
+          const submissions = await canvas.quizzes.listSubmissions(courseId, quiz.id)
+          const mySubmission = submissions.find((s) => s.user_id === userId)
+          const rawTime = mySubmission?.extra_time
+          const rawAttempts = mySubmission?.extra_attempts
+          const extraTimeMinutes = typeof rawTime === 'number' && rawTime > 0 ? rawTime : null
+          const extraAttempts =
+            typeof rawAttempts === 'number' && rawAttempts > 0 ? rawAttempts : null
+          // Output carries only accommodation values, not the student identifier,
+          // so no pseudonymizer wrapping is required.
           results.push({
             quiz_id: quiz.id,
             quiz_title: quiz.title,
-            has_accommodation: myExt !== undefined,
-            extra_time_minutes: myExt?.extra_time ?? null,
-            extra_attempts: myExt?.extra_attempts ?? null,
+            has_accommodation: extraTimeMinutes !== null || extraAttempts !== null,
+            extra_time_minutes: extraTimeMinutes,
+            extra_attempts: extraAttempts,
           })
         }
 
