@@ -94,19 +94,128 @@ describe('quizAccommodationTools', () => {
         skipped: 1,
         failed: 0,
       })
+      // The applied entry reports exactly what was requested (the user-visible contract).
+      expect(result.results[0].applied).toBe(true)
+      expect(result.results[0].extra_time_minutes).toBe(20)
+      expect(result.results[0].extra_attempts).toBeNull()
       expect(result.results[2].skip_reason).toBe('new_quiz_not_supported')
     })
 
     it('computes extra time from time_multiplier when the quiz has a time limit', async () => {
       const canvas = buildMockCanvas()
-      await tool(canvas, 'set_student_quiz_accommodation').handler({
+      const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
         course_id: 10,
         user_id: 42,
         time_multiplier: 1.5,
-      })
+      })) as HandlerResult
       const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
       // 60 * (1.5 - 1) = 30 minutes for quiz id 1.
       expect(setExtension).toHaveBeenCalledWith(10, 1, 42, 30, undefined)
+      expect(result.results[0].extra_time_minutes).toBe(30)
+    })
+
+    it('applies extra_attempts only (no extra time) across Classic Quizzes', async () => {
+      const canvas = buildMockCanvas()
+      const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
+        course_id: 10,
+        user_id: 42,
+        extra_attempts: 2,
+      })) as HandlerResult
+      const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
+      // extra_time is undefined for every quiz; only extra_attempts is sent.
+      expect(setExtension).toHaveBeenCalledWith(10, 1, 42, undefined, 2)
+      expect(setExtension).toHaveBeenCalledWith(10, 2, 42, undefined, 2)
+      expect(result.results[0].applied).toBe(true)
+      expect(result.results[0].extra_time_minutes).toBeNull()
+      expect(result.results[0].extra_attempts).toBe(2)
+      expect(result.summary.applied).toBe(2)
+    })
+
+    it('applies extra_attempts on an untimed quiz when time_multiplier has nothing to multiply', async () => {
+      // Spec §3: with time_multiplier + extra_attempts, a quiz with no time limit
+      // still gets the attempts; extra_time is simply omitted (reported as null).
+      const canvas = buildMockCanvas()
+      const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
+        course_id: 10,
+        user_id: 42,
+        time_multiplier: 1.5,
+        extra_attempts: 1,
+      })) as HandlerResult
+      const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
+      // Timed quiz (id 1): computed extra time + attempts.
+      expect(setExtension).toHaveBeenCalledWith(10, 1, 42, 30, 1)
+      // Untimed quiz (id 2): no extra time, attempts still applied — not skipped.
+      expect(setExtension).toHaveBeenCalledWith(10, 2, 42, undefined, 1)
+      expect(result.results[1].applied).toBe(true)
+      expect(result.results[1].skip_reason).toBeUndefined()
+      expect(result.results[1].extra_time_minutes).toBeNull()
+      expect(result.results[1].extra_attempts).toBe(1)
+    })
+
+    it('clamps a sub-minute computed extra time up to 1 minute', async () => {
+      // 1-minute quiz × 1.01 → round(0.01) = 0, clamped to 1 (Canvas rejects 0).
+      const canvas = buildMockCanvas()
+      ;(canvas.quizzes.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 1,
+          title: 'One-minute quiz',
+          quiz_type: 'assignment',
+          time_limit: 1,
+          published: true,
+          points_possible: 1,
+          question_count: 1,
+          due_at: null,
+        },
+      ])
+      await tool(canvas, 'set_student_quiz_accommodation').handler({
+        course_id: 10,
+        user_id: 42,
+        time_multiplier: 1.01,
+      })
+      const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
+      expect(setExtension).toHaveBeenCalledWith(10, 1, 42, 1, undefined)
+    })
+
+    it('treats a zero time_limit like an untimed quiz for time_multiplier', async () => {
+      const canvas = buildMockCanvas()
+      ;(canvas.quizzes.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: 1,
+          title: 'Zero-limit quiz',
+          quiz_type: 'assignment',
+          time_limit: 0,
+          published: true,
+          points_possible: 1,
+          question_count: 1,
+          due_at: null,
+        },
+      ])
+      const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
+        course_id: 10,
+        user_id: 42,
+        time_multiplier: 1.5,
+      })) as HandlerResult
+      const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
+      expect(setExtension).not.toHaveBeenCalled()
+      expect(result.results[0].applied).toBe(false)
+      expect(result.results[0].skip_reason).toBe('no_time_limit_for_multiplier')
+    })
+
+    it('logs and surfaces the real message for an unexpected (non-Canvas) error', async () => {
+      const canvas = buildMockCanvas()
+      const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
+      setExtension.mockRejectedValue(new TypeError('boom'))
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
+        course_id: 10,
+        user_id: 42,
+        extra_time_minutes: 20,
+      })) as HandlerResult
+      // The fan-out continues and records the actual error message, not a constant.
+      expect(result.results[0].error).toBe('boom')
+      expect(result.summary.failed).toBe(2)
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
     })
 
     it('skips a quiz with no time limit when only time_multiplier is given', async () => {

@@ -158,7 +158,17 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
             })
             appliedCount++
           } catch (err) {
-            const message = err instanceof CanvasApiError ? err.message : 'Unknown error'
+            if (!(err instanceof CanvasApiError)) {
+              // An unexpected (non-Canvas) error inside the fan-out is caught
+              // here so partial results survive — but that means it never reaches
+              // buildHandler's logging. Log it here, mirroring that boundary, so
+              // a programming bug is not reduced to an opaque per-quiz string.
+              console.error(
+                `Unexpected error applying quiz extension (course ${courseId}, quiz ${quiz.id}):`,
+                err,
+              )
+            }
+            const message = err instanceof Error ? err.message : 'Unknown error'
             results.push({
               quiz_id: quiz.id,
               quiz_title: quiz.title,
