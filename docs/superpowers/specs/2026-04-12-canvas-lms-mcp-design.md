@@ -253,7 +253,9 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-116 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, and health checks. A 117th tool — `resolve_pseudonym` — is registered conditionally when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set (see [FERPA Mode](#ferpa-mode) below).
+133 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, health checks, attention/engagement signals, content exports, grading standards, quiz accommodations, and assignment overrides. A 134th tool — `resolve_pseudonym` — is registered conditionally when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set (see [FERPA Mode](#ferpa-mode) below).
+
+> **Note:** The authoritative tool inventory is the generated manifest (`pnpm generate:manifests`); the per-domain counts below are a point-in-time snapshot as of 2026-06-19.
 
 ### Tool Pattern
 
@@ -342,7 +344,7 @@ All errors returned as structured MCP content, never thrown:
 | `submit_rubric_assessment` | write | Grade via rubric criteria |
 | `create_rubric` | write | Create a new rubric in a course with criteria and rating levels |
 
-#### Quizzes (6 tools)
+#### Quizzes (7 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -352,6 +354,7 @@ All errors returned as structured MCP content, never thrown:
 | `list_quiz_questions` | read | Question definitions |
 | `get_quiz_submission_answers` | read | Student's answered questions |
 | `score_quiz_question` | write | Score an essay/open-ended question |
+| `get_quiz_submission_events` | read | Chronological event log for a Classic Quiz submission (session_started, question_answered, page_blurred, etc.) |
 
 #### Files (6 tools)
 
@@ -390,14 +393,15 @@ All errors returned as structured MCP content, never thrown:
 | `enroll_user` | write | Enroll a user in a course |
 | `remove_enrollment` | write | Remove or conclude an enrollment |
 
-#### Modules (7 tools)
+#### Modules (8 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_modules` | read | Course modules |
 | `get_module` | read | Single module details |
 | `list_module_items` | read | Items within a module |
-| `get_course_structure` | read | Full course structure: all modules with their items in a single tree (PR #152 / BRU-1265) |
+| `get_course_structure` | read | Full course structure: all modules with their items in a single tree |
+| `view_course_structure` | read | Interactive MCP Apps tree view of modules and items (falls back to JSON on non-MCP-Apps hosts) |
 | `create_module` | write | Create a module |
 | `update_module` | write | Update an existing module |
 | `create_module_item` | write | Add an item to a module |
@@ -450,7 +454,7 @@ All errors returned as structured MCP content, never thrown:
 | `create_peer_review` | write | Assign a peer review |
 | `delete_peer_review` | write | Remove a peer review assignment |
 
-#### Accounts (6 tools)
+#### Accounts (8 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -460,6 +464,8 @@ All errors returned as structured MCP content, never thrown:
 | `list_account_courses` | read | Courses in an account |
 | `list_account_users` | read | Users in an account |
 | `get_account_reports` | read | Available account report types |
+| `list_account_notifications` | read | Active institution-wide announcements (maintenance windows, term deadlines, policy notices) |
+| `view_account_notifications` | read | Interactive MCP Apps panel of institution-wide announcements (falls back to JSON on non-MCP-Apps hosts) |
 
 #### Analytics (4 tools)
 
@@ -529,7 +535,45 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `update_new_quiz_item` | write | Update an existing item (question) in a New Quiz |
 | `delete_new_quiz_item` | write | Delete an item (question) from a New Quiz |
 
-**Totals: 116 tools (81 read, 35 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 117th tool (read).
+#### Attention (2 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_submission_comments_needing_attention` | read | Submissions where the latest comment is from the student and has not been addressed by grading or a reply — triage list, oldest-unaddressed first |
+| `list_students_needing_attention` | read | Students flagged for inactivity, missing/late submissions, or low current score; includes the specific signals and thresholds that fired |
+
+#### Content Exports (3 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `create_content_export` | write | Start a course content export (Common Cartridge / QTI / zip); returns immediately with export ID and initial state |
+| `get_content_export` | read | Poll status of a content export; when complete, attachment.url holds a time-limited download link |
+| `list_content_exports` | read | List all content exports for a course (most recent first) |
+
+#### Grading Standards (3 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_grading_standards` | read | List grading standards available in a course or account context |
+| `create_grading_standard` | write | Create a letter-to-percentage grading standard in a course or account context |
+| `apply_grading_standard_to_course` | write | Apply an existing grading standard to a course gradebook (pass null to remove) |
+
+#### Quiz Accommodations (2 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `set_student_quiz_accommodation` | write | Apply extra time and/or extra attempts to a student across all Classic Quizzes in a course |
+| `list_student_quiz_accommodations` | read | Audit current quiz accommodations for a student across all Classic Quizzes in a course |
+
+#### Assignment Overrides (3 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_assignment_overrides` | read | List all due-date / availability overrides for a specific assignment |
+| `create_assignment_override` | write | Create a due-date / availability override targeting students, a section, or a group |
+| `set_student_assignment_dates` | write | Fan a due-date / availability override for one student across all (or a subset of) assignments in a course |
+
+**Totals: 133 tools (92 read, 41 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 134th tool (read).
 
 ## FERPA Mode
 
@@ -542,7 +586,7 @@ An opt-in server-side mode that pseudonymizes student personally identifiable in
 - Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
 - The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
 
-**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 117th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 134th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
 
 **Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
 
