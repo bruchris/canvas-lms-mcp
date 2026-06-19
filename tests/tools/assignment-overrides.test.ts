@@ -297,6 +297,7 @@ describe('assignmentOverrideTools', () => {
             '/api/v1/courses/10/assignments/2/overrides',
           ),
         )
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
         course_id: 10,
@@ -309,9 +310,13 @@ describe('assignmentOverrideTools', () => {
       expect(result.failed[0].assignment_id).toBe(2)
       expect(result.failed[0].error).toBe('Unprocessable Entity')
       expect(result.applied[0].applied).toBe(true)
+      // A routine CanvasApiError (e.g. an expected 422 duplicate) is recorded
+      // quietly — it must NOT be logged, unlike the non-Canvas branch.
+      expect(errorSpy).not.toHaveBeenCalled()
       // No student identifier may leak into failed[] entries either.
       expect('user_id' in result.failed[0]).toBe(false)
       expect('student_ids' in result.failed[0]).toBe(false)
+      errorSpy.mockRestore()
     })
 
     it('logs and records non-Canvas errors without aborting the fan-out', async () => {
@@ -354,6 +359,25 @@ describe('assignmentOverrideTools', () => {
       expect(result.failed).toEqual([])
       expect(result.not_found).toEqual([999])
       expect(result.summary.not_found).toBe(1)
+    })
+
+    it('applies to nothing when every requested assignment_id is absent', async () => {
+      const canvas = buildMockCanvas()
+      const result = (await tool(canvas, 'set_student_assignment_dates').handler({
+        course_id: 10,
+        user_id: 42,
+        assignment_ids: [999],
+        due_at: '2026-09-15T23:59:00Z',
+      })) as FanOutResult
+
+      const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
+      // Nothing matches: no write is attempted, but the caller is told via not_found
+      // rather than silently believing a real fan-out occurred.
+      expect(createOverride).not.toHaveBeenCalled()
+      expect(result.summary.total_assignments).toBe(0)
+      expect(result.applied).toEqual([])
+      expect(result.failed).toEqual([])
+      expect(result.not_found).toEqual([999])
     })
 
     it('rejects an explicit empty assignment_ids array at the schema boundary', () => {
