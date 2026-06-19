@@ -145,6 +145,8 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'a 422 and that assignment appears in the failed[] list. Use list_assignment_overrides to audit first. ' +
         'Dates must be ISO 8601 strings. To shift dates by a relative amount, first call list_assignments ' +
         'with include=overrides to retrieve current dates, compute absolute timestamps, then call this tool. ' +
+        'Any assignment_ids that do not exist in the course are reported in the not_found list (they are ' +
+        'neither applied nor failed). ' +
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
@@ -156,10 +158,12 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
           .describe('Real Canvas user ID of the student to accommodate'),
         assignment_ids: z
           .array(z.number().int().positive())
+          .min(1)
           .optional()
           .describe(
-            'Limit the fan-out to these specific assignment IDs. ' +
-              'Omit to target all assignments in the course.',
+            'Limit the fan-out to these specific assignment IDs (provide at least one). ' +
+              'Omit entirely to target all assignments in the course. ' +
+              'IDs not present in the course are returned in not_found, not applied/failed.',
           ),
         title: z
           .string()
@@ -201,9 +205,14 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         }
 
         let assignments = await canvas.assignments.list(courseId)
+        const notFound: number[] = []
         if (assignmentIds && assignmentIds.length > 0) {
-          const idSet = new Set(assignmentIds)
-          assignments = assignments.filter((a) => idSet.has(a.id))
+          const requested = new Set(assignmentIds)
+          const present = new Set(assignments.map((a) => a.id))
+          for (const id of requested) {
+            if (!present.has(id)) notFound.push(id)
+          }
+          assignments = assignments.filter((a) => requested.has(a.id))
         }
 
         const applied: AssignmentOverrideResult[] = []
@@ -242,6 +251,11 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
                 err,
               )
             }
+            // failed[].error carries the raw error message (not routed through
+            // formatError) for parity with the quiz-accommodations fan-out, so
+            // the two fan-outs surface per-item errors identically. This is
+            // rawer than the primitive create_assignment_override, whose
+            // CanvasApiError reaches buildHandler/formatError directly.
             const message = err instanceof Error ? err.message : 'Unknown error'
             failed.push({
               assignment_id: assignment.id,
@@ -256,11 +270,13 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
           applied,
           skipped,
           failed,
+          not_found: notFound,
           summary: {
             total_assignments: assignments.length,
             applied: applied.length,
             skipped: skipped.length,
             failed: failed.length,
+            not_found: notFound.length,
           },
         }
       },

@@ -394,6 +394,24 @@ describe('AssignmentsModule', () => {
       })
     })
 
+    it('creates an override targeting group_id', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignmentOverride)
+
+      await assignments.createOverride(100, 10, {
+        group_id: 7,
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_override: {
+            group_id: 7,
+            due_at: '2026-09-15T23:59:00Z',
+          },
+        }),
+      })
+    })
+
     it('serializes a null due_at to remove the due date', async () => {
       vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignmentOverride)
 

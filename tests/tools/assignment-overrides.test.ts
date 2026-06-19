@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { z } from 'zod'
 import type { CanvasClient } from '../../src/canvas'
 import { CanvasApiError } from '../../src/canvas/client'
 import { assignmentOverrideTools } from '../../src/tools/assignment-overrides'
@@ -55,6 +56,7 @@ type FanOutResult = {
   applied: Array<Record<string, unknown>>
   skipped: Array<Record<string, unknown>>
   failed: Array<Record<string, unknown>>
+  not_found: number[]
   summary: Record<string, number>
 }
 
@@ -158,6 +160,21 @@ describe('assignmentOverrideTools', () => {
       expect(passedParams).toMatchObject({ course_section_id: 5 })
       expect('student_ids' in passedParams).toBe(false)
       expect('group_id' in passedParams).toBe(false)
+    })
+
+    it('creates an override targeting group_id', async () => {
+      const canvas = buildMockCanvas()
+      await tool(canvas, 'create_assignment_override').handler({
+        course_id: 10,
+        assignment_id: 1,
+        group_id: 7,
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
+      const passedParams = createOverride.mock.calls[0][2] as Record<string, unknown>
+      expect(passedParams).toMatchObject({ group_id: 7 })
+      expect('student_ids' in passedParams).toBe(false)
+      expect('course_section_id' in passedParams).toBe(false)
     })
 
     it('throws when no target is provided', async () => {
@@ -290,8 +307,66 @@ describe('assignmentOverrideTools', () => {
       expect(result.applied).toHaveLength(1)
       expect(result.failed).toHaveLength(1)
       expect(result.failed[0].assignment_id).toBe(2)
-      expect(result.failed[0].error).toBeDefined()
+      expect(result.failed[0].error).toBe('Unprocessable Entity')
       expect(result.applied[0].applied).toBe(true)
+      // No student identifier may leak into failed[] entries either.
+      expect('user_id' in result.failed[0]).toBe(false)
+      expect('student_ids' in result.failed[0]).toBe(false)
+    })
+
+    it('logs and records non-Canvas errors without aborting the fan-out', async () => {
+      const canvas = buildMockCanvas()
+      const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
+      createOverride
+        .mockResolvedValueOnce({ id: 99, assignment_id: 1, title: 'x', student_ids: [42] })
+        .mockRejectedValueOnce(new Error('boom'))
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const result = (await tool(canvas, 'set_student_assignment_dates').handler({
+        course_id: 10,
+        user_id: 42,
+        due_at: '2026-09-15T23:59:00Z',
+      })) as FanOutResult
+
+      // The non-CanvasApiError branch logs (so a programming bug is not silently
+      // swallowed) and still records the message on the failed entry.
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      expect(result.applied).toHaveLength(1)
+      expect(result.failed).toHaveLength(1)
+      expect(result.failed[0].assignment_id).toBe(2)
+      expect(result.failed[0].error).toBe('boom')
+      errorSpy.mockRestore()
+    })
+
+    it('reports requested assignment_ids absent from the course in not_found', async () => {
+      const canvas = buildMockCanvas()
+      const result = (await tool(canvas, 'set_student_assignment_dates').handler({
+        course_id: 10,
+        user_id: 42,
+        assignment_ids: [1, 999],
+        due_at: '2026-09-15T23:59:00Z',
+      })) as FanOutResult
+
+      const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
+      // Only the existing assignment (1) is fanned to; 999 is neither applied nor failed.
+      expect(createOverride).toHaveBeenCalledTimes(1)
+      expect(result.summary.total_assignments).toBe(1)
+      expect(result.failed).toEqual([])
+      expect(result.not_found).toEqual([999])
+      expect(result.summary.not_found).toBe(1)
+    })
+
+    it('rejects an explicit empty assignment_ids array at the schema boundary', () => {
+      const def = tool(buildMockCanvas(), 'set_student_assignment_dates')
+      const parsed = z.object(def.inputSchema).safeParse({
+        course_id: 10,
+        user_id: 42,
+        assignment_ids: [],
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      // An empty array must not silently mean "target all" — it is rejected so a
+      // caller scoping to zero assignments cannot accidentally fan across the course.
+      expect(parsed.success).toBe(false)
     })
 
     it('handles an empty course', async () => {
