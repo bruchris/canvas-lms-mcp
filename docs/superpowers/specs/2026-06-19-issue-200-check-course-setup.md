@@ -558,9 +558,11 @@ function buildMockCanvas(overrides?: Partial<...>) {
     Assert finding has `{ type: 'assignment', id: 4, name: 'Extra Credit' }`,
     `detail` contains `'grading_type is "points"'` and `'points_possible is 0'`.
 
-17. **Does NOT flag `not_graded` assignment with 0 points**: Default mock — `Ungraded` has
-    `grading_type: 'not_graded'` and `points_possible: 0`. Assert `Ungraded` does NOT appear in
-    `ungraded_setup` findings.
+17. **Does NOT flag `not_graded` assignment with 0 points**: Use a fixture
+    `{ id: 6, name: 'Survey', grading_type: 'not_graded', points_possible: 0, published: true, due_at: null, all_dates: [] }`.
+    Assert `Survey` does NOT appear in `ungraded_setup` findings.
+    (This fixture is `published: true` to isolate the grading_type guard specifically — if a bug
+    removed the grading_type check, the published guard would not mask the failure.)
 
 18. **Does NOT flag unpublished graded-zero assignment**: Add a mock assignment
     `{ id: 5, name: 'Draft Zero', grading_type: 'points', points_possible: 0, published: false, due_at: null, all_dates: [] }`.
