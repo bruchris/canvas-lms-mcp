@@ -113,6 +113,12 @@ async listWithItems(
 item (including unpublished ones) to detect them. A lightweight dedicated method avoids the
 intermediate projection and keeps the check handler's logic visible in one place.
 
+**Return type — inline intersection**: The return type `(CanvasModule & { items?: CanvasModuleItem[] })[]`
+uses an inline intersection exactly as `getCourseStructure` does in `src/canvas/modules.ts` line 74.
+**No change to `src/canvas/types.ts` is needed.** The `items` field exists only when
+`include[]=items` is requested; `CanvasModule` does not declare it at the base level, hence the
+optional `items?` on the intersection.
+
 **Pagination**: Canvas paginates module lists via Link headers. `client.paginate()` handles this.
 The `include[]=items` parameter causes Canvas to inline each module's items in the list response —
 no per-module `listItems()` fan-out needed.
@@ -195,7 +201,9 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
 
     /* Parallel fetch — skip API calls not needed for the active checks */
     const [course, assignments, assignmentGroups, modules] = await Promise.all([
-      canvas.courses.get(courseId),
+      activeChecks.has('assignment_group_weights')
+        ? canvas.courses.get(courseId)
+        : Promise.resolve(null),
       canvas.assignments.list(courseId, { include: ['all_dates'] }),
       activeChecks.has('assignment_group_weights')
         ? canvas.assignments.listGroups(courseId)
@@ -272,9 +280,9 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
     /* ── check: assignment_group_weights ──────────────────────────── */
     if (activeChecks.has('assignment_group_weights')) {
       const items: SetupFinding[] = []
-      if (course.apply_assignment_group_weights === true) {
+      if (course !== null && course.apply_assignment_group_weights === true) {
         const total = assignmentGroups.reduce((sum, g) => sum + (g.group_weight ?? 0), 0)
-        if (Math.abs(total - 100) > 0.01) {
+        if (Math.abs(total - 100) > 0.5) {
           items.push({
             type: 'course',
             id: courseId,
@@ -290,6 +298,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
     if (activeChecks.has('ungraded_setup')) {
       const items: SetupFinding[] = []
       for (const a of assignments) {
+        if (a.published !== true) continue
         if (a.grading_type !== 'not_graded' && a.points_possible === 0) {
           items.push({
             type: 'assignment',
@@ -320,24 +329,38 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
 
 - **`missing_due_dates` — published-only scope**: Unpublished assignments without due dates are
   intentional (content in progress). Only published assignments are flagged.
-- **`missing_due_dates` — `all_dates` presence check**: `all_dates` is included via the list
-  request (`include: ['all_dates']`). If the field is absent or empty, the assignment is
-  considered to have no dates at all and is flagged.
+- **`missing_due_dates` — `all_dates` scan includes the base entry**: Canvas includes a base date
+  entry (`base: true`) in `all_dates` that mirrors the assignment's top-level `due_at`. When
+  `a.due_at === null`, the base entry also has `due_at: null`, so including it in the `.some()`
+  scan is safe — it never causes a false negative. Any non-null `due_at` in any `all_dates` entry
+  (base or override) means the assignment has at least one due date for some audience, and the
+  check correctly produces no finding. Do NOT add a `!d.base` exclusion filter — it would break
+  detection of override-only due dates that share the base entry's structure.
 - **`unpublished_items` — unpublished parent modules skip item scanning**: An unpublished module
   hides all its items regardless of item-level publish state; reporting each item separately
   would be redundant noise.
-- **`assignment_group_weights` — floating-point tolerance**: `Math.abs(total - 100) > 0.01` allows
-  for `99.99` / `100.01` from floating-point arithmetic in Canvas group-weight values.
+- **`assignment_group_weights` — floating-point tolerance**: `Math.abs(total - 100) > 0.5` is
+  used rather than a tight 0.01 bound. Canvas stores `group_weight` as a 2-decimal-place float;
+  with N groups each rounded to 2dp, the accumulated rounding error can reach N × 0.005. For a
+  4-group course the maximum rounding error is 0.02, exceeding 0.01. A tolerance of 0.5 catches
+  genuine configuration gaps (e.g., weights summing to 85 or 90) while ignoring 2dp rounding
+  artifacts entirely.
 - **`assignment_group_weights` — skip when weighting disabled**: When
-  `apply_assignment_group_weights` is `false` or `undefined`, the check produces zero findings;
-  the per-group weights are irrelevant because Canvas ignores them. The `findings` entry still
-  appears with `items: []`.
+  `apply_assignment_group_weights` is `false` or `undefined` (or when `course` is `null` because
+  the check was omitted), the check produces zero findings; the per-group weights are irrelevant
+  because Canvas ignores them. The `findings` entry still appears with `items: []`.
+- **`ungraded_setup` — published-only scope**: Same rationale as `missing_due_dates` — a
+  draft assignment with 0 points is intentional in-progress work, not a misconfiguration.
+  Only published assignments are flagged.
 - **`ungraded_setup` — `points_possible === 0`**: Strict equality (not `<= 0`). Canvas stores
   `points_possible` as a float; negative values are not possible via the API.
-- **Parallel fetch**: All four API calls are issued via `Promise.all`. The `assignmentGroups`
-  and `modules` calls are gated on their respective `activeChecks` flags so the handler skips
-  them when those checks are omitted. `courses.get` and `assignments.list` are always fetched
-  because they are needed by at least two checks each.
+- **Parallel fetch**: `courses.get` and `listGroups` are gated together on
+  `activeChecks.has('assignment_group_weights')` — both are needed only for that check, and
+  skipping them avoids a round-trip when the check is excluded. `canvas.assignments.list` is
+  always fetched because it is needed by three of the four checks (`missing_due_dates`,
+  `unpublished_items`, `ungraded_setup`); the only case where it is wasteful is
+  `checks: ['assignment_group_weights']` alone, which is an edge case not worth complicating
+  the handler for. `canvas.modules.listWithItems` is gated on `unpublished_items`.
 
 ---
 
@@ -345,7 +368,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
 
 Two changes:
 
-### 1. Import (after `import { quizAccommodationTools } from './quiz-accommodations'`):
+### 1. Import (add to the import block; insert after `import { userTools } from './users'` which is the last import in the file):
 
 ```ts
 import { courseSetupTools } from './course-setup'
@@ -470,7 +493,7 @@ function buildMockCanvas(overrides?: Partial<...>) {
    `items` containing exactly one entry: `{ type: 'assignment', id: 1, name: 'Essay 1' }`.
    `detail` contains `'published, no due_at'`.
 
-3. **Skips unpublished assignments**: `Essay 3` (`published: false`) must NOT appear in
+3. **Skips unpublished assignments**: `Ungraded` (id: 3, `published: false`) must NOT appear in
    `missing_due_dates` findings even though `due_at` is null.
 
 4. **Skips assignment with override due date**: Override mock where `Essay 1` has
@@ -484,7 +507,7 @@ function buildMockCanvas(overrides?: Partial<...>) {
 
 **`unpublished_items` cases:**
 
-6. **Flags unpublished assignment**: Default mock has `Essay 3` (`published: false`). Assert
+6. **Flags unpublished assignment**: Default mock has `Ungraded` (id: 3, `published: false`). Assert
    finding has `{ type: 'assignment', id: 3, name: 'Ungraded' }`.
 
 7. **Flags unpublished module**: Default mock has `Week 2 (Draft)` (`published: false`). Assert
@@ -513,14 +536,20 @@ function buildMockCanvas(overrides?: Partial<...>) {
     (sum = 90). Assert `items` has one entry: `{ type: 'course', id: 10, name: 'Test Course' }`,
     `detail` contains `'sum to 90.00, not 100'`.
 
-14. **Weighting disabled — no findings**: Mock `courses.get` returns `{ apply_assignment_group_weights: false }`.
-    Assert `assignment_group_weights` finding has `items: []`.
-    Assert `canvas.assignments.listGroups` is still called (the handler fetches it; the condition
-    gate is inside the check body, not the fetch).
+14. **Weighting disabled — no findings**: Mock `courses.get` returns
+    `{ id: 10, name: 'Test Course', apply_assignment_group_weights: false }`.
+    All four default checks are active (no `checks` filter). Assert:
+    - `canvas.courses.get` IS called — because `assignment_group_weights` IS in `activeChecks`
+      (default), so the fetch gate fires.
+    - `canvas.assignments.listGroups` IS called — same reason.
+    - `assignment_group_weights` finding has `items: []` — because
+      `apply_assignment_group_weights === false` means the check body emits no finding.
 
-15. **Skips fetch when not in `checks`**: Call with
-    `{ course_id: 10, checks: ['missing_due_dates'] }`.
+15. **Skips fetches when `assignment_group_weights` not in `checks`**: Call with
+    `{ course_id: 10, checks: ['missing_due_dates', 'unpublished_items'] }`.
     Assert `canvas.assignments.listGroups` is NOT called.
+    Assert `canvas.courses.get` is NOT called — both are gated on
+    `activeChecks.has('assignment_group_weights')` at fetch time.
 
 **`ungraded_setup` cases:**
 
@@ -533,18 +562,23 @@ function buildMockCanvas(overrides?: Partial<...>) {
     `grading_type: 'not_graded'` and `points_possible: 0`. Assert `Ungraded` does NOT appear in
     `ungraded_setup` findings.
 
-18. **Does NOT flag graded assignment with >0 points**: `Essay 1` and `Essay 2` have
+18. **Does NOT flag unpublished graded-zero assignment**: Add a mock assignment
+    `{ id: 5, name: 'Draft Zero', grading_type: 'points', points_possible: 0, published: false, due_at: null, all_dates: [] }`.
+    Assert `Draft Zero` does NOT appear in `ungraded_setup` findings (published guard fires first).
+
+19. **Does NOT flag graded assignment with >0 points**: `Essay 1` and `Essay 2` have
     `points_possible > 0`. Assert neither appears in `ungraded_setup` findings.
 
 **`checks` filter integration:**
 
-19. **Subset check — only two checks run**: Call with `{ course_id: 10, checks: ['missing_due_dates', 'ungraded_setup'] }`.
+20. **Subset check — only two checks run**: Call with `{ course_id: 10, checks: ['missing_due_dates', 'ungraded_setup'] }`.
     Assert `result.summary.checks_run` has length 2.
     Assert `result.findings` has length 2.
     Assert `canvas.modules.listWithItems` is NOT called.
     Assert `canvas.assignments.listGroups` is NOT called.
+    Assert `canvas.courses.get` is NOT called.
 
-20. **`total_findings` matches item counts**: Use default mock and assert
+21. **`total_findings` matches item counts**: Use default mock and assert
     `result.summary.total_findings === result.findings.reduce((n, f) => n + f.items.length, 0)`.
 
 ### Registry test — `tests/tools/registry.test.ts` (modify existing file)
@@ -569,7 +603,7 @@ function buildMockCanvas(overrides?: Partial<...>) {
 Without this, `courseSetupTools` accesses `canvas.modules.listWithItems` which would be `undefined`
 and throw at tool registration time in `getAllTools`.
 
-**Change 2 — tool count**: Change `expect(tools).toHaveLength(130)` → `expect(tools).toHaveLength(131)`.
+**Change 2 — tool count and describe string**: Change `expect(tools).toHaveLength(130)` → `expect(tools).toHaveLength(131)`. Also update the surrounding `it('returns all 130 tools across all domains', ...)` description string to `'returns all 131 tools across all domains'`.
 
 **Change 3 — `toContain` assertion**: Add after the `// Quiz Accommodations (2)` block:
 
@@ -602,10 +636,10 @@ passes without modification.
 3. `src/tools/catalog.ts` — import `courseSetupTools`; add `course_setup` domain entry after
    `quiz_accommodations`.
 4. `tests/canvas/modules.test.ts` — add `listWithItems` (3 cases) to the existing file.
-5. `tests/tools/course-setup.test.ts` — new file (20 test cases across suite, annotation,
+5. `tests/tools/course-setup.test.ts` — new file (21 test cases across suite, annotation,
    and check-level groups).
 6. `tests/tools/registry.test.ts` — 3 changes: `listWithItems` on the existing `modules` mock;
-   count 130→131; `check_course_setup` in `toContain` block.
+   count 130→131 and update `it(...)` description string; `check_course_setup` in `toContain` block.
 
 ---
 
@@ -628,9 +662,19 @@ passes without modification.
 - [x] Canvas client addition: `listWithItems` on `ModulesModule` with exact endpoint and `client.paginate` call.
 - [x] All four check implementations specified, including Canvas field access, filter conditions,
   output item `type` values, and detail string format.
-- [x] Parallel fetch strategy with `Promise.all` and conditional fetch for `listGroups` / `listWithItems`.
-- [x] Catalog: verbatim import and insertion point after `quiz_accommodations`.
-- [x] Registry test: 3 precise changes (mock method, count, `toContain`).
-- [x] Test plan: 3 canvas client cases + 20 tool cases covering all 4 checks, filter logic,
-  parallel-fetch gating, and structural output assertions.
+- [x] `ungraded_setup` published guard added — matches `missing_due_dates` rationale; draft
+  assignments with 0 points are intentional, not misconfigured.
+- [x] `courses.get` gated on `activeChecks.has('assignment_group_weights')` — consistent with
+  stated design goal of skipping unneeded API calls; `null` guard added in handler body.
+- [x] Parallel fetch strategy with `Promise.all` and conditional fetch for `courses.get`,
+  `listGroups`, and `listWithItems`; `assignments.list` always fetched (needed by 3 of 4 checks).
+- [x] `assignment_group_weights` floating-point tolerance widened to 0.5 — handles 2dp-rounded
+  values in multi-group courses without false positives.
+- [x] `all_dates` base-entry scan behaviour explicitly documented — no spurious `!d.base` exclusion.
+- [x] `listWithItems` return-type pattern (inline intersection, no types.ts change) explicitly noted.
+- [x] Catalog: verbatim import and insertion point (after last import `userTools`).
+- [x] Registry test: 3 precise changes (mock method; count + `it(...)` description string; `toContain`).
+- [x] Test plan: 3 canvas client cases + 21 tool cases covering all 4 checks, filter logic,
+  parallel-fetch gating (including `courses.get` NOT-called assertions), published guards,
+  and structural output assertions.
 - [x] FERPA and audience coverage tests unaffected.
