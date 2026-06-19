@@ -265,7 +265,7 @@ describe('assignmentOverrideTools', () => {
 
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       expect(createOverride).toHaveBeenCalledTimes(1)
-      expect(result.summary.total_assignments).toBe(1)
+      expect(result.summary.total).toBe(1)
     })
 
     it('uses a custom title when provided', async () => {
@@ -309,7 +309,7 @@ describe('assignmentOverrideTools', () => {
       expect(result.failed).toHaveLength(1)
       expect(result.failed[0].assignment_id).toBe(2)
       expect(result.failed[0].error).toBe('Unprocessable Entity')
-      expect(result.applied[0].applied).toBe(true)
+      expect(result.applied[0].assignment_id).toBe(1)
       // A routine CanvasApiError (e.g. an expected 422 duplicate) is recorded
       // quietly — it must NOT be logged, unlike the non-Canvas branch.
       expect(errorSpy).not.toHaveBeenCalled()
@@ -355,7 +355,7 @@ describe('assignmentOverrideTools', () => {
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       // Only the existing assignment (1) is fanned to; 999 is neither applied nor failed.
       expect(createOverride).toHaveBeenCalledTimes(1)
-      expect(result.summary.total_assignments).toBe(1)
+      expect(result.summary.total).toBe(1)
       expect(result.failed).toEqual([])
       expect(result.not_found).toEqual([999])
       expect(result.summary.not_found).toBe(1)
@@ -374,7 +374,7 @@ describe('assignmentOverrideTools', () => {
       // Nothing matches: no write is attempted, but the caller is told via not_found
       // rather than silently believing a real fan-out occurred.
       expect(createOverride).not.toHaveBeenCalled()
-      expect(result.summary.total_assignments).toBe(0)
+      expect(result.summary.total).toBe(0)
       expect(result.applied).toEqual([])
       expect(result.failed).toEqual([])
       expect(result.not_found).toEqual([999])
@@ -402,7 +402,7 @@ describe('assignmentOverrideTools', () => {
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
-      expect(result.summary.total_assignments).toBe(0)
+      expect(result.summary.total).toBe(0)
       expect(result.applied).toEqual([])
       expect(result.failed).toEqual([])
     })
