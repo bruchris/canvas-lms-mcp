@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
-import { CanvasApiError } from '../canvas/client'
+import type { CanvasQuiz } from '../canvas/types'
+import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
 
 // Quiz types that the Classic Quizzes extensions API can extend. New Quizzes
@@ -10,8 +11,8 @@ const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_surve
 interface QuizAccommodationResult {
   quiz_id: number
   quiz_title: string
-  applied: boolean
-  skipped?: boolean
+  // Status (applied/skipped/failed) is conveyed by which bucket the entry lands
+  // in. skip_reason is present only on skipped[]; error only on failed[].
   skip_reason?: 'new_quiz_not_supported' | 'no_time_limit_for_multiplier'
   extra_time_minutes: number | null
   extra_attempts: number | null
@@ -30,6 +31,10 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'Only applies to quizzes that exist at call time; re-run after creating new quizzes. ' +
         'Assignment due-date overrides are not handled here (separate fast-follow feature). ' +
         'Note: for courses with many quizzes this makes one Canvas API call per quiz. ' +
+        'Partial failures are tolerated — a failure on one quiz does not abort the rest. ' +
+        'Returns the standard fan-out envelope: separated applied[], skipped[] (each with a ' +
+        'skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested ' +
+        'quiz_ids absent from the course, and a summary of counts. ' +
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
@@ -99,97 +104,77 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         }
 
         let quizzes = await canvas.quizzes.list(courseId)
+        const notFound: number[] = []
         if (quizIds && quizIds.length > 0) {
-          const idSet = new Set(quizIds)
-          quizzes = quizzes.filter((q) => idSet.has(q.id))
+          const requested = new Set(quizIds)
+          const present = new Set(quizzes.map((q) => q.id))
+          for (const id of requested) {
+            if (!present.has(id)) notFound.push(id)
+          }
+          quizzes = quizzes.filter((q) => requested.has(q.id))
         }
 
-        const results: QuizAccommodationResult[] = []
-        let appliedCount = 0
-        let skippedCount = 0
-        let failedCount = 0
-
-        for (const quiz of quizzes) {
-          if (!CLASSIC_QUIZ_TYPES.has(quiz.quiz_type)) {
-            results.push({
-              quiz_id: quiz.id,
-              quiz_title: quiz.title,
-              applied: false,
-              skipped: true,
-              skip_reason: 'new_quiz_not_supported',
-              extra_time_minutes: null,
-              extra_attempts: null,
-            })
-            skippedCount++
-            continue
-          }
-
-          let extraTime: number | undefined
-          if (extraTimeMinutes !== undefined) {
-            extraTime = extraTimeMinutes
-          } else if (timeMultiplier !== undefined) {
-            if (quiz.time_limit != null && quiz.time_limit > 0) {
-              extraTime = Math.max(1, Math.round(quiz.time_limit * (timeMultiplier - 1)))
+        // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
+        // the applied/skipped/failed envelope all live in fanOut().
+        return fanOut<CanvasQuiz, QuizAccommodationResult>({
+          items: quizzes,
+          notFound,
+          errorContext: (quiz) => `applying quiz extension (course ${courseId}, quiz ${quiz.id})`,
+          onError: (quiz, message) => ({
+            quiz_id: quiz.id,
+            quiz_title: quiz.title,
+            extra_time_minutes: null,
+            extra_attempts: null,
+            error: message,
+          }),
+          perform: async (quiz) => {
+            if (!CLASSIC_QUIZ_TYPES.has(quiz.quiz_type)) {
+              return {
+                status: 'skipped',
+                result: {
+                  quiz_id: quiz.id,
+                  quiz_title: quiz.title,
+                  skip_reason: 'new_quiz_not_supported',
+                  extra_time_minutes: null,
+                  extra_attempts: null,
+                },
+              }
             }
-          }
 
-          if (extraTime === undefined && extraAttempts === undefined) {
-            results.push({
-              quiz_id: quiz.id,
-              quiz_title: quiz.title,
-              applied: false,
-              skipped: true,
-              skip_reason: 'no_time_limit_for_multiplier',
-              extra_time_minutes: null,
-              extra_attempts: null,
-            })
-            skippedCount++
-            continue
-          }
+            let extraTime: number | undefined
+            if (extraTimeMinutes !== undefined) {
+              extraTime = extraTimeMinutes
+            } else if (timeMultiplier !== undefined) {
+              if (quiz.time_limit != null && quiz.time_limit > 0) {
+                extraTime = Math.max(1, Math.round(quiz.time_limit * (timeMultiplier - 1)))
+              }
+            }
 
-          try {
+            if (extraTime === undefined && extraAttempts === undefined) {
+              return {
+                status: 'skipped',
+                result: {
+                  quiz_id: quiz.id,
+                  quiz_title: quiz.title,
+                  skip_reason: 'no_time_limit_for_multiplier',
+                  extra_time_minutes: null,
+                  extra_attempts: null,
+                },
+              }
+            }
+
             await canvas.quizzes.setExtension(courseId, quiz.id, userId, extraTime, extraAttempts)
-            results.push({
-              quiz_id: quiz.id,
-              quiz_title: quiz.title,
-              applied: true,
-              extra_time_minutes: extraTime ?? null,
-              extra_attempts: extraAttempts ?? null,
-            })
-            appliedCount++
-          } catch (err) {
-            if (!(err instanceof CanvasApiError)) {
-              // An unexpected (non-Canvas) error inside the fan-out is caught
-              // here so partial results survive — but that means it never reaches
-              // buildHandler's logging. Log it here, mirroring that boundary, so
-              // a programming bug is not reduced to an opaque per-quiz string.
-              console.error(
-                `Unexpected error applying quiz extension (course ${courseId}, quiz ${quiz.id}):`,
-                err,
-              )
+            return {
+              status: 'applied',
+              result: {
+                quiz_id: quiz.id,
+                quiz_title: quiz.title,
+                extra_time_minutes: extraTime ?? null,
+                extra_attempts: extraAttempts ?? null,
+              },
             }
-            const message = err instanceof Error ? err.message : 'Unknown error'
-            results.push({
-              quiz_id: quiz.id,
-              quiz_title: quiz.title,
-              applied: false,
-              error: message,
-              extra_time_minutes: null,
-              extra_attempts: null,
-            })
-            failedCount++
-          }
-        }
-
-        return {
-          results,
-          summary: {
-            total_quizzes: quizzes.length,
-            applied: appliedCount,
-            skipped: skippedCount,
-            failed: failedCount,
           },
-        }
+        })
       },
     },
     {

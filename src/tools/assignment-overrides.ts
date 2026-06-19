@@ -1,14 +1,15 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
-import { CanvasApiError } from '../canvas/client'
-import type { CreateAssignmentOverrideParams } from '../canvas/types'
+import type { CanvasAssignment, CreateAssignmentOverrideParams } from '../canvas/types'
+import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
 
 interface AssignmentOverrideResult {
   assignment_id: number
   assignment_name: string
   override_id?: number
-  applied: boolean
+  // Status (applied/failed) is conveyed by which bucket the entry lands in, so
+  // no per-entry status flag is carried; `error` is present only on failed[].
   error?: string
 }
 
@@ -145,7 +146,9 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'a 422 and that assignment appears in the failed[] list. Use list_assignment_overrides to audit first. ' +
         'Dates must be ISO 8601 strings. To shift dates by a relative amount, first call list_assignments ' +
         'with include=overrides to retrieve current dates, compute absolute timestamps, then call this tool. ' +
-        'Any assignment_ids that do not exist in the course are reported in the not_found list (they are ' +
+        'Returns the standard fan-out envelope: separated applied[], skipped[] (unused in this create-only ' +
+        'version, always empty), and failed[] (each with an error) arrays, a not_found list, and a summary ' +
+        'of counts. Any assignment_ids that do not exist in the course are reported in not_found (they are ' +
         'neither applied nor failed). ' +
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
@@ -215,70 +218,44 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
           assignments = assignments.filter((a) => requested.has(a.id))
         }
 
-        const applied: AssignmentOverrideResult[] = []
-        const skipped: AssignmentOverrideResult[] = []
-        const failed: AssignmentOverrideResult[] = []
+        // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
+        // the applied/skipped/failed envelope all live in fanOut(). This tool
+        // has no skip condition yet (V1 is create-only), so skipped[] stays
+        // empty — populate it here if skip-if-exists is implemented later.
+        return fanOut<CanvasAssignment, AssignmentOverrideResult>({
+          items: assignments,
+          notFound,
+          errorContext: (assignment) =>
+            `creating assignment override (course ${courseId}, assignment ${assignment.id})`,
+          onError: (assignment, message) => ({
+            assignment_id: assignment.id,
+            assignment_name: assignment.name,
+            error: message,
+          }),
+          perform: async (assignment) => {
+            const overrideParams: CreateAssignmentOverrideParams = {
+              student_ids: [userId],
+              title,
+            }
+            if (dueAt !== undefined) overrideParams.due_at = dueAt
+            if (unlockAt !== undefined) overrideParams.unlock_at = unlockAt
+            if (lockAt !== undefined) overrideParams.lock_at = lockAt
 
-        for (const assignment of assignments) {
-          const overrideParams: CreateAssignmentOverrideParams = {
-            student_ids: [userId],
-            title,
-          }
-          if (dueAt !== undefined) overrideParams.due_at = dueAt
-          if (unlockAt !== undefined) overrideParams.unlock_at = unlockAt
-          if (lockAt !== undefined) overrideParams.lock_at = lockAt
-
-          try {
             const override = await canvas.assignments.createOverride(
               courseId,
               assignment.id,
               overrideParams,
             )
-            applied.push({
-              assignment_id: assignment.id,
-              assignment_name: assignment.name,
-              override_id: override.id,
-              applied: true,
-            })
-          } catch (err) {
-            if (!(err instanceof CanvasApiError)) {
-              // A non-Canvas error inside the fan-out is caught here so partial
-              // results survive — but that means it never reaches buildHandler's
-              // logging. Log it here, mirroring that boundary, so a programming
-              // bug is not silently reduced to an opaque per-assignment string.
-              console.error(
-                `Unexpected error creating assignment override (course ${courseId}, assignment ${assignment.id}):`,
-                err,
-              )
+            return {
+              status: 'applied',
+              result: {
+                assignment_id: assignment.id,
+                assignment_name: assignment.name,
+                override_id: override.id,
+              },
             }
-            // failed[].error carries the raw error message (not routed through
-            // formatError) for parity with the quiz-accommodations fan-out, so
-            // the two fan-outs surface per-item errors identically. This is
-            // rawer than the primitive create_assignment_override, whose
-            // CanvasApiError reaches buildHandler/formatError directly.
-            const message = err instanceof Error ? err.message : 'Unknown error'
-            failed.push({
-              assignment_id: assignment.id,
-              assignment_name: assignment.name,
-              applied: false,
-              error: message,
-            })
-          }
-        }
-
-        return {
-          applied,
-          skipped,
-          failed,
-          not_found: notFound,
-          summary: {
-            total_assignments: assignments.length,
-            applied: applied.length,
-            skipped: skipped.length,
-            failed: failed.length,
-            not_found: notFound.length,
           },
-        }
+        })
       },
     },
   ]
