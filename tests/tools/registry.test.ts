@@ -19,6 +19,8 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       delete: async () => undefined,
+      listOverrides: async () => [],
+      createOverride: async () => ({}),
     },
     submissions: {
       list: async () => [],
@@ -186,7 +188,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 130 tools across all domains', () => {
+  it('returns all 133 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -347,8 +349,12 @@ describe('getAllTools', () => {
     // Quiz Accommodations (2)
     expect(names).toContain('set_student_quiz_accommodation')
     expect(names).toContain('list_student_quiz_accommodations')
+    // Assignment Overrides (3)
+    expect(names).toContain('list_assignment_overrides')
+    expect(names).toContain('create_assignment_override')
+    expect(names).toContain('set_student_assignment_dates')
 
-    expect(tools).toHaveLength(130)
+    expect(tools).toHaveLength(133)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -399,6 +405,8 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'create_assignment_override',
+      'set_student_assignment_dates',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -457,6 +465,8 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'create_assignment_override',
+      'set_student_assignment_dates',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

@@ -4,6 +4,7 @@ import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
 import { attentionTools } from './attention'
 import { assignmentTools } from './assignments'
+import { assignmentOverrideTools } from './assignment-overrides'
 import { calendarTools } from './calendar'
 import { contentExportsTools } from './content-exports'
 import { conversationTools } from './conversations'
@@ -170,5 +171,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'quiz_accommodations',
     defaultPrimaryAudience: 'educator',
     getTools: quizAccommodationTools,
+  },
+  {
+    domain: 'assignment_overrides',
+    defaultPrimaryAudience: 'educator',
+    getTools: assignmentOverrideTools,
   },
 ]

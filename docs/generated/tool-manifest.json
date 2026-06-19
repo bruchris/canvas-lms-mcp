@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 130,
+  "toolCount": 133,
   "tools": [
     {
       "name": "health_check",
@@ -1600,6 +1600,42 @@
         "openWorldHint": true
       },
       "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_assignment_overrides",
+      "domain": "assignment_overrides",
+      "description": "List all due-date / availability overrides for a specific assignment in a course. Returns overrides targeting individual students, sections, or groups. Useful for auditing before creating a new override — Canvas returns a 422 if a student-set override already exists for the same students on the same assignment.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_assignment_override",
+      "domain": "assignment_overrides",
+      "description": "Create a due-date / availability override for a specific assignment, targeting a set of students, a course section, or a group. Exactly one of student_ids, course_section_id, or group_id must be provided. At least one date field (due_at, unlock_at, lock_at) should be provided; omit a date field to leave the corresponding date unchanged for the override target. Dates must be ISO 8601 strings (e.g. \"2026-09-15T23:59:00Z\"). Canvas returns a 422 if a student-set override already exists for the same students on this assignment — use list_assignment_overrides to audit first. Provide student_ids as real Canvas user IDs. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to resolve pseudonyms to real user IDs.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "set_student_assignment_dates",
+      "domain": "assignment_overrides",
+      "description": "Fan a due-date / availability override for a specific student across all (or a filtered subset of) assignments in a course. Creates one student-set override per assignment via the Canvas assignment overrides API. Partial failures are tolerated — a failure on one assignment does not abort the rest. Note: for courses with many assignments this makes one Canvas API call per assignment. V1 is create-only: if an override for this student already exists on an assignment, Canvas returns a 422 and that assignment appears in the failed[] list. Use list_assignment_overrides to audit first. Dates must be ISO 8601 strings. To shift dates by a relative amount, first call list_assignments with include=overrides to retrieve current dates, compute absolute timestamps, then call this tool. Any assignment_ids that do not exist in the course are reported in the not_found list (they are neither applied nor failed). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
       "primaryAudience": "educator",
       "relatedWorkflows": []
     }

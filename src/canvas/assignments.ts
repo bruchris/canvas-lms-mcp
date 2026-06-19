@@ -3,6 +3,8 @@ import type { CanvasQueryParams } from './query'
 import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
+  CanvasAssignmentOverride,
+  CreateAssignmentOverrideParams,
   CreateAssignmentParams,
   UpdateAssignmentParams,
 } from './types'
@@ -148,5 +150,25 @@ export class AssignmentsModule {
     await this.client.request<void>(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {
       method: 'DELETE',
     })
+  }
+
+  async listOverrides(courseId: number, assignmentId: number): Promise<CanvasAssignmentOverride[]> {
+    return this.client.paginate<CanvasAssignmentOverride>(
+      `/api/v1/courses/${courseId}/assignments/${assignmentId}/overrides`,
+    )
+  }
+
+  async createOverride(
+    courseId: number,
+    assignmentId: number,
+    params: CreateAssignmentOverrideParams,
+  ): Promise<CanvasAssignmentOverride> {
+    return this.client.request<CanvasAssignmentOverride>(
+      `/api/v1/courses/${courseId}/assignments/${assignmentId}/overrides`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ assignment_override: params }),
+      },
+    )
   }
 }

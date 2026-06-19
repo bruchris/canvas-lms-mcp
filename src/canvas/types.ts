@@ -894,6 +894,16 @@ export interface CreateAssignmentParams {
 
 export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
 
+export interface CreateAssignmentOverrideParams {
+  title?: string
+  student_ids?: number[]
+  group_id?: number
+  course_section_id?: number
+  due_at?: string | null
+  unlock_at?: string | null
+  lock_at?: string | null
+}
+
 // --- Analytics ---
 
 export interface CanvasCourseActivitySummary {
