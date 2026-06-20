@@ -375,7 +375,11 @@ z.object({
 
 ### Weighted percentage
 
-When `course.apply_assignment_group_weights === true`:
+**`apply_assignment_group_weights` is `boolean | undefined`** in `CanvasCourse`. Treat `undefined`
+as `false` (unweighted). Coerce: `const weighted = course.apply_assignment_group_weights ?? false`.
+The output `course.weighted` field is always a definite `boolean`.
+
+When `weighted === true`:
 
 ```
 For each group:
@@ -412,7 +416,7 @@ the discrepancy will almost always be non-zero and `matches` will be `false`. A 
 overall course grade."` The reconciliation fields are preserved for completeness but their
 `matches` value is not meaningful in this mode.
 
-When `apply_assignment_group_weights === false` (unweighted):
+When `weighted === false` (unweighted):
 - `weighted_contribution` is `null` for all groups in the output.
 - Overall = total_earned_points / total_possible_points × 100 (across all retained assignments in
   all groups, regardless of `group_weight`).
@@ -448,12 +452,12 @@ function computeGroupGrade(group, submissionsById, mode: 'current' | 'final'):
       items.push({ a, score: null, status: 'excused', pinned: false })
       continue
     if sub?.workflow_state === 'graded' && sub.score !== null:
-      items.push({ a, score: sub.score, status: 'graded', pinned: group.rules.never_drop.includes(a.id) })
+      items.push({ a, score: sub.score, status: 'graded', pinned: neverDrop.includes(a.id) })
     else if sub?.workflow_state === 'submitted' || sub?.workflow_state === 'pending_review':
-      items.push({ a, score: null, status: 'submitted', pinned: group.rules.never_drop.includes(a.id) })
+      items.push({ a, score: null, status: 'submitted', pinned: neverDrop.includes(a.id) })
     else:
-      // missing / unsubmitted
-      items.push({ a, score: null, status: 'missing', pinned: group.rules.never_drop.includes(a.id) })
+      // missing / unsubmitted / no submission record (sub === undefined)
+      items.push({ a, score: null, status: 'missing', pinned: neverDrop.includes(a.id) })
 
   // Separate excused (already excluded) from droppable candidates
   excused_items = items.filter(i => i.status === 'excused')
@@ -466,15 +470,20 @@ function computeGroupGrade(group, submissionsById, mode: 'current' | 'final'):
     // In current mode, null means "excluded" and is treated as worst score for comparison
     // In final mode, null means 0
 
+  // Safe-access group rules (CanvasAssignmentGroup.rules is optional)
+  dropHighest = group.rules?.drop_highest ?? 0
+  dropLowest = group.rules?.drop_lowest ?? 0
+  neverDrop = group.rules?.never_drop ?? []
+
   // Apply drop_highest first (Canvas documented order)
   dropped_high = []
-  if group.rules.drop_highest > 0 && droppable.length > group.rules.drop_highest:
-    [droppable, dropped_high] = applyDrop(droppable, group.rules.drop_highest, 'minimize_retained', effectiveScore, mode)
+  if dropHighest > 0 && droppable.length > dropHighest:
+    [droppable, dropped_high] = applyDrop(droppable, dropHighest, 'minimize_retained', effectiveScore, mode, group.name)
 
   // Apply drop_lowest second
   dropped_low = []
-  if group.rules.drop_lowest > 0 && droppable.length > group.rules.drop_lowest:
-    [droppable, dropped_low] = applyDrop(droppable, group.rules.drop_lowest, 'maximize_retained', effectiveScore, mode)
+  if dropLowest > 0 && droppable.length > dropLowest:
+    [droppable, dropped_low] = applyDrop(droppable, dropLowest, 'maximize_retained', effectiveScore, mode, group.name)
 
   retained = [...droppable, ...pinned]
 
@@ -512,19 +521,24 @@ function applyDrop(items, count, strategy, effectiveScore, mode):
   //   Returns all k-element subsets of `items` as arrays (order within each subset is irrelevant).
   //   Each subset is an array of k item references (not indices).
   //   Example: combinations([A,B,C], 2) → [[A,B],[A,C],[B,C]]
-  //   Implementation: standard recursive generator; no new dependencies.
-  dropped_combos = combinations(items, count)
+  //   Implementation: standard recursive generator or eager array builder; no new dependencies.
 
-  // Safety cap: C(n, k) can exceed 10_000 for large groups
-  if dropped_combos.length > 10_000:
-    return greedyDrop(items, count, strategy, effectiveScore, mode)
-    // greedyDrop: sort items by effectiveScore(i) / i.a.points_possible (ratio),
-    //   treating null as -Infinity (current mode) or 0 (final mode) for sorting.
-    // minimize_retained (drop_highest): drop the top `count` highest-ratio items.
-    // maximize_retained (drop_lowest): drop the bottom `count` lowest-ratio items.
-    // Add caveat: "Drop-rule optimisation used a greedy approximation for group '<name>'
-    //             due to the large number of assignments. Result may differ slightly from Canvas."
-    // Return [retained_items, dropped_items] same as brute-force path.
+  // Safety cap: compute C(n, k) via the binomial formula BEFORE generating.
+  // This avoids materializing a huge array only to discard it.
+  //   binomial(n, k): number — standard formula, e.g. n!/(k!(n-k)!) computed iteratively
+  if binomial(items.length, count) > 10_000:
+    return greedyDrop(items, count, strategy, effectiveScore, mode, groupName)
+    // greedyDrop(items, count, strategy, effectiveScore, mode, groupName):
+    //   Sort items by effectiveScore(i) / i.a.points_possible (ratio),
+    //   treating null as -Infinity (current mode) or 0 (final mode) for sorting purposes.
+    //   minimize_retained (drop_highest): drop the `count` highest-ratio items.
+    //   maximize_retained (drop_lowest): drop the `count` lowest-ratio items.
+    //   Assemble caveat at call site in computeGroupGrade (where groupName is in scope):
+    //     "Drop-rule optimisation used a greedy approximation for group '<groupName>'
+    //      due to the large number of assignments. Result may differ slightly from Canvas."
+    //   Return [retained_items, dropped_items].
+
+  dropped_combos = combinations(items, count)  // safe to materialise — C(n,k) ≤ 10,000
 
   // Initialize before loop (TypeScript strict: avoid uninitialized variable)
   best_retained: Item[] = items  // fallback: retain all (unreachable given guard above)
@@ -729,20 +743,17 @@ Limitations:
 
 | File | Change |
 |------|--------|
-| `src/canvas/users.ts` | Add `getSelf(): Promise<CanvasUser>` method (one-line addition to existing class) |
-| `src/canvas/index.ts` | Expose `getSelf()` (no new field needed — method is on the existing `users` module instance) |
-| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` with `explain_grade` ToolDefinition; all Canvas calls, grade-computation, `combinations()`, and `greedyDrop()` in-tree helpers |
+| `src/canvas/users.ts` | Add `getSelf(): Promise<CanvasUser>` method (one-line addition to existing `UsersModule`) |
+| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` with `explain_grade` ToolDefinition; all Canvas calls, grade-computation, `binomial()`, `combinations()`, and `greedyDrop()` in-tree helpers |
 | `src/tools/catalog.ts` | Add `grade_explanation` domain entry (`shared` audience) |
 | `src/pseudonym/coverage.ts` | Add `'explain_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
 | `tests/grade-explanation.test.ts` | **New** — fixtures A–G with mocked Canvas responses |
 
-**6 files total. No new canvas module file. No new package dependencies.** `src/canvas/users.ts`
-and `src/canvas/index.ts` are minor edits to existing files. The combination generator
-(`combinations<T>(items: T[], k: number): T[][]`) and `greedyDrop` fallback are authored in-tree
-inside `src/tools/grade-explanation.ts`.
-
-Note: `src/canvas/index.ts` requires no changes — `getSelf()` is automatically exposed via the
-`users: UsersModule` property already on `CanvasClient`; callers use `canvas.users.getSelf()`.
+**5 files total. No new canvas module file. No new package dependencies.**
+`src/canvas/index.ts` requires **no changes** — `getSelf()` is automatically exposed through the
+existing `users: UsersModule` property on `CanvasClient`; callers use `canvas.users.getSelf()`.
+The `binomial()`, `combinations<T>()`, and `greedyDrop()` utilities are authored in-tree inside
+`src/tools/grade-explanation.ts`.
 
 ---
 
