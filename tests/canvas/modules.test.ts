@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ModulesModule } from '../../src/canvas/modules'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
 describe('ModulesModule', () => {
   let client: CanvasHttpClient
@@ -171,5 +171,42 @@ describe('ModulesModule', () => {
     const result = await modules.getCourseStructure(100)
     expect(result.modules).toHaveLength(0)
     expect(result.summary).toEqual({ total_modules: 0, total_items: 0, items_by_type: {} })
+  })
+
+  describe('listWithItems', () => {
+    it('returns modules with their items inlined', async () => {
+      const fixture = [
+        {
+          id: 1,
+          name: 'Module 1',
+          position: 1,
+          items_count: 2,
+          published: true,
+          items: [
+            { id: 10, module_id: 1, title: 'Reading', position: 1, type: 'Page', published: true },
+            { id: 11, module_id: 1, title: 'Quiz 1', position: 2, type: 'Quiz', published: false },
+          ],
+        },
+      ]
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(fixture)
+      const result = await modules.listWithItems(42)
+      expect(result).toEqual(fixture)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/42/modules', {
+        include: ['items'],
+      })
+    })
+
+    it('returns an empty array for a course with no modules', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      const result = await modules.listWithItems(42)
+      expect(result).toEqual([])
+    })
+
+    it('propagates CanvasApiError from the client', async () => {
+      vi.spyOn(client, 'paginate').mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/v1/courses/42/modules'),
+      )
+      await expect(modules.listWithItems(42)).rejects.toThrow(CanvasApiError)
+    })
   })
 })

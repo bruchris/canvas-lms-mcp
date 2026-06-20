@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 133,
+  "toolCount": 134,
   "tools": [
     {
       "name": "health_check",
@@ -1636,6 +1636,18 @@
         "openWorldHint": true
       },
       "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "check_course_setup",
+      "domain": "course_setup",
+      "description": "Run a factual course-readiness report that surfaces common configuration problems — assignments missing due dates, unpublished items students will not see, gradebook weighting gaps, and graded assignments with no points. Returns findings grouped by check with a plain-language detail per item. This is a config-health report only; it does not inspect student submissions or performance (see list_students_needing_attention / get_missing_submissions for those). Requires instructor permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
       "primaryAudience": "educator",
       "relatedWorkflows": []
     }
