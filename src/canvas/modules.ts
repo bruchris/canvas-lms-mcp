@@ -8,6 +8,21 @@ export class ModulesModule {
     return this.client.paginate<CanvasModule>(`/api/v1/courses/${courseId}/modules`)
   }
 
+  /**
+   * List a course's modules with each module's items inlined via `include[]=items`.
+   * Unlike `getCourseStructure`, this returns the raw Canvas shapes (including the
+   * `published` state on every module and item, even unpublished ones), which the
+   * course-setup health check needs to detect unpublished content.
+   */
+  async listWithItems(
+    courseId: number,
+  ): Promise<(CanvasModule & { items?: CanvasModuleItem[] })[]> {
+    return this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
+      `/api/v1/courses/${courseId}/modules`,
+      { include: ['items'] },
+    )
+  }
+
   async get(courseId: number, moduleId: number): Promise<CanvasModule> {
     return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules/${moduleId}`)
   }

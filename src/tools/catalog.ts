@@ -8,6 +8,7 @@ import { assignmentOverrideTools } from './assignment-overrides'
 import { calendarTools } from './calendar'
 import { contentExportsTools } from './content-exports'
 import { conversationTools } from './conversations'
+import { courseSetupTools } from './course-setup'
 import { courseTools } from './courses'
 import { dashboardTools } from './dashboard'
 import { discussionTools } from './discussions'
@@ -176,5 +177,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'assignment_overrides',
     defaultPrimaryAudience: 'educator',
     getTools: assignmentOverrideTools,
+  },
+  {
+    domain: 'course_setup',
+    defaultPrimaryAudience: 'educator',
+    getTools: courseSetupTools,
   },
 ]
