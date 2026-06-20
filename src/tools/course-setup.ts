@@ -94,6 +94,12 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
         const results: CheckResult[] = []
 
         // ── check: missing_due_dates ──────────────────────────────────
+        // `published !== true` is deliberately conservative: only definitely-
+        // published assignments are scanned here and in ungraded_setup. An
+        // unpublished or unknown-publish-state assignment is intentional in-
+        // progress work, so it is skipped to avoid false positives (the spec's
+        // "only published assignments are flagged" rule). unpublished_items
+        // applies the inverse and surfaces those instead.
         if (activeChecks.has('missing_due_dates')) {
           const items: SetupFinding[] = []
           for (const a of assignments) {

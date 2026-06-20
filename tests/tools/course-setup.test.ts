@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import { CanvasApiError } from '../../src/canvas/client'
 import { courseSetupTools } from '../../src/tools/course-setup'
 
 interface SetupFinding {
@@ -164,6 +165,32 @@ describe('courseSetupTools', () => {
       expect(items.some((i) => i.id === 1)).toBe(false)
     })
 
+    it('still flags when all_dates is populated but every entry has a null due date', async () => {
+      // Canvas inlines a base entry (base: true) in all_dates that mirrors the
+      // top-level due_at. When due_at is null the base entry is also null, so a
+      // populated-but-all-null all_dates must NOT suppress the finding. This pins
+      // the spec's explicit warning against adding a `!d.base` exclusion filter.
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            id: 1,
+            name: 'Essay 1',
+            published: true,
+            due_at: null,
+            all_dates: [
+              { base: true, due_at: null, unlock_at: null, lock_at: null },
+              { due_at: null, unlock_at: null, lock_at: null },
+            ],
+            grading_type: 'points',
+            points_possible: 10,
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'missing_due_dates')
+      expect(items).toContainEqual(expect.objectContaining({ type: 'assignment', id: 1 }))
+    })
+
     it('is skipped when not requested but assignments are still fetched for other checks', async () => {
       const canvas = buildMockCanvas()
       const report = await run(canvas, { course_id: 10, checks: ['ungraded_setup'] })
@@ -274,6 +301,47 @@ describe('courseSetupTools', () => {
       expect(items[0].detail).toContain('sum to 90.00, not 100')
     })
 
+    it('does not flag a sum within the 0.5 rounding tolerance', async () => {
+      // Three groups each rounded to 2dp can accumulate rounding error; 99.98 is
+      // a legitimate "sums to 100" course and must not produce a false positive.
+      // Pins the spec's deliberate 0.5 tolerance against a regression to a tight bound.
+      const canvas = buildMockCanvas({
+        groups: [
+          { id: 1, name: 'A', position: 1, group_weight: 33.33 },
+          { id: 2, name: 'B', position: 2, group_weight: 33.33 },
+          { id: 3, name: 'C', position: 3, group_weight: 33.32 },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'assignment_group_weights')).toEqual([])
+    })
+
+    it('flags a sum just outside the 0.5 tolerance', async () => {
+      const canvas = buildMockCanvas({
+        groups: [
+          { id: 1, name: 'Homework', position: 1, group_weight: 49.4 },
+          { id: 2, name: 'Exams', position: 2, group_weight: 50 },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'assignment_group_weights')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain('sum to 99.40, not 100')
+    })
+
+    it('treats a group with no group_weight as contributing zero', async () => {
+      // Canvas can omit group_weight; the `?? 0` fallback must not poison the sum
+      // with NaN. Here 100 + (missing) should read as 100 → no finding.
+      const canvas = buildMockCanvas({
+        groups: [
+          { id: 1, name: 'Everything', position: 1, group_weight: 100 },
+          { id: 2, name: 'Unweighted', position: 2 },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'assignment_group_weights')).toEqual([])
+    })
+
     it('produces no finding when weighting is disabled but still fetches the data on a full run', async () => {
       const canvas = buildMockCanvas({
         course: { id: 10, name: 'Test Course', apply_assignment_group_weights: false },
@@ -363,6 +431,26 @@ describe('courseSetupTools', () => {
       expect(items.some((i) => i.id === 1)).toBe(false)
       expect(items.some((i) => i.id === 2)).toBe(false)
     })
+
+    it('does not flag an assignment whose points_possible is null', async () => {
+      // The check uses strict `=== 0`, so a null/undefined points_possible (which
+      // Canvas can return for some assignment types) does not trigger a finding.
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            id: 7,
+            name: 'No Points Field',
+            published: true,
+            due_at: '2026-09-01T23:59:00Z',
+            all_dates: [],
+            grading_type: 'points',
+            points_possible: null,
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'ungraded_setup').some((i) => i.id === 7)).toBe(false)
+    })
   })
 
   describe('checks filter', () => {
@@ -383,6 +471,20 @@ describe('courseSetupTools', () => {
       const report = await run(buildMockCanvas(), { course_id: 10 })
       const summed = report.findings.reduce((n, f) => n + f.items.length, 0)
       expect(report.summary.total_findings).toBe(summed)
+    })
+  })
+
+  describe('error propagation', () => {
+    it('rejects (does not swallow) when a Canvas fetch fails', async () => {
+      // The no-silent-failure guarantee relies on the handler re-throwing so the
+      // central catch in src/tools/index.ts can surface the error. A regression
+      // that wrapped a fetch in a swallowing try/catch (returning an empty report)
+      // would be caught here.
+      const canvas = buildMockCanvas()
+      ;(canvas.assignments.list as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new CanvasApiError('Not Found', 404, '/api/v1/courses/10/assignments'),
+      )
+      await expect(getTool(canvas).handler({ course_id: 10 })).rejects.toThrow(CanvasApiError)
     })
   })
 })
