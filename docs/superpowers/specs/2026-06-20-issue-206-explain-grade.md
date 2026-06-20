@@ -108,6 +108,7 @@ Handling:
 
 | Submission state | `current` mode (numerator / denominator) | `final` mode (numerator / denominator) | Output `status` |
 |------------------|------------------------------------------|-----------------------------------------|-----------------|
+| No submission record exists (`sub === undefined`) | excluded / excluded | 0 / points_possible | `'missing'` |
 | `excused: true` | excluded / excluded | excluded / excluded | `'excused'` |
 | `workflow_state: 'graded'` (score present, not excused) | score / points_possible | score / points_possible | `'graded'` |
 | `workflow_state: 'submitted'` (not yet graded, not excused) | excluded / excluded | 0 / points_possible | `'submitted'` |
@@ -126,6 +127,10 @@ Handling:
 
 The tool computes and exposes **both** columns so the caller can see which Canvas posted value
 they are reconciling against.
+
+**Absent submission records**: Canvas does not always return a submission record for every
+student-assignment pair. When `submissionsById[a.id]` is `undefined` (no record returned), treat
+it identically to `workflow_state: 'unsubmitted'` → status `'missing'`.
 
 ### 4. Reconciliation tolerance
 
@@ -161,13 +166,24 @@ V1 call pattern for a single student (5–6 calls):
      `"No student enrollment found for this course — Canvas posted scores are unavailable."`;
      continue computation (all `canvas_posted_*` fields will be null).
 5. Student user object (for pseudonymizer and `student.name`) — **branched**:
-   - `studentId === 'self'`: `GET /api/v1/users/self` → `canvas.users.getSelf()` (or equivalent)
+   - `studentId === 'self'`: `GET /api/v1/users/self` → `canvas.users.getSelf()`
    - `studentId` is numeric: `GET /api/v1/users/:id` → `canvas.users.get(studentId)`
+   Note: `UsersModule.getSelf()` does **not yet exist** — the implementer must add it:
+   ```ts
+   async getSelf(): Promise<CanvasUser> {
+     return this.client.request<CanvasUser>('/api/v1/users/self')
+   }
+   ```
+   This adds `src/canvas/users.ts` to the file changes list (a one-line addition; the file count
+   rises to 5).
 6. (Conditional) Grading standard: only when `course.grading_standard_id !== null`:
    - First fetch `canvas.gradingStandards.listForCourse(courseId)` and filter for
      `standard.id === course.grading_standard_id`.
-   - If not found in the course-level list (the standard may be account-scoped), fetch
+   - If not found in the course-level list (the standard may be account-scoped), AND
+     `course.account_id` is defined, fetch
      `canvas.gradingStandards.listForAccount(course.account_id)` and filter again.
+   - If `course.account_id` is undefined (rare for concluded/restricted courses), skip the
+     account fallback and proceed to the next step.
    - If still not found, `gradingStandard: null`; add caveat
      `"The course's grading standard (id: X) could not be retrieved — letter grades are unavailable."`.
 
@@ -189,15 +205,17 @@ Rationale:
 ### 7. FERPA / pseudonymization
 
 **Decision: `explain_grade` must be added to `PSEUDONYMIZER_WRAPPED_TOOLS` and must route its
-per-student user data through `pseudonymizer.anonymizeUser()`.**
+per-student user data through `pseudonymizer.anonymizeUser()` when viewing another student's data.**
 
 `explain_grade` returns `student.id` and `student.name` in the output. These are sourced from the
-`CanvasUser` object fetched in call 5. When called for a specific `student_id`, these fields
-identify a real student — this matches the trigger condition for pseudonymizer wrapping.
+`CanvasUser` object fetched in call 5. When called for a specific `student_id` (a third-party
+student's data), these fields identify a real student — this is the FERPA trigger.
 
-The tool calls `pseudonymizer.anonymizeUser(courseId, user)` on the fetched `CanvasUser`. The
-anonymized user's `name` populates `student.name`; `user.id` (unchanged by pseudonymization)
-populates `student.id`.
+**Pseudonymization is skipped when `studentId === 'self'`** (the caller is viewing their own
+grade — there is no third-party PII exposure). When `studentId` is a numeric value, call
+`pseudonymizer.anonymizeUser(courseId, user)`. The anonymized user's `name` populates
+`student.name`; `user.id` (unchanged by pseudonymization — `applyPseudonymToUser` spreads the
+original user's `id` without modification) populates `student.id`.
 
 ### 8. Audience
 
@@ -229,7 +247,7 @@ V2 can add a `grading_period_id` parameter.
 | 3a | `GET /api/v1/courses/:id/students/submissions?student_ids[]=self` | All submissions for authenticated user | `canvas.submissions.listMy(courseId)` |
 | 3b | `GET /api/v1/courses/:id/students/submissions?student_ids[]=:id` | All submissions for a specified student | `canvas.submissions.listForStudents(courseId, { student_ids: [studentId] })` |
 | 4 | `GET /api/v1/courses/:id/enrollments?user_id=:id&include[]=grades` | Canvas's posted `current_score` / `final_score` | `canvas.enrollments.listForCourse(courseId, { user_id: id, include: ['grades'] })` |
-| 5 | `GET /api/v1/users/:id` (or `/users/self`) | Student name for output + pseudonymizer | `canvas.users.get(studentId)` or `canvas.users.getSelf()` |
+| 5 | `GET /api/v1/users/:id` (or `/users/self`) | Student name for output + pseudonymizer | `canvas.users.get(studentId)` or `canvas.users.getSelf()` (**getSelf must be added to UsersModule**) |
 | 6 | `GET /api/v1/courses/:id/grading_standards` (then account fallback) | Letter mapping when `grading_standard_id !== null` | `canvas.gradingStandards.listForCourse()` / `listForAccount()` |
 
 Calls 2, 3, 4, 5 are independent of each other after call 1 resolves. Issue them as
@@ -373,12 +391,26 @@ Else:
   overall_percentage = (sum of weighted_contribution for active groups) / active_weight_sum * 100
 ```
 
-Note: `weighted_contribution` is on a 0–100 scale (group_weight × group_pct/100). Dividing by
-`active_weight_sum` and multiplying by 100 rescales to an overall percentage. Example: two groups
-with weight 30 and 70, group percentages 70% and 81.5%:
+Note: `weighted_contribution` is on a 0–`group_weight` scale (group_weight × group_pct/100).
+Dividing by `active_weight_sum` and multiplying by 100 rescales to an overall percentage. Example:
+two groups with weight 30 and 70, group percentages 70% and 81.5%:
 - contributions: 30 × 0.70 = 21, 70 × 0.815 = 57.05
 - active_weight_sum = 100
 - overall = (21 + 57.05) / 100 × 100 = 78.05%
+
+**Normalization when weights don't sum to 100**: Canvas courses should have weights summing to 100,
+but when some groups have no gradeable assignments (and thus `possible_points === 0`), they are
+excluded from `active_weight_sum`. Dividing by `active_weight_sum` (rather than always 100)
+correctly normalizes the result to the proportion of active weight — this matches Canvas's behavior.
+Example: if only the Exams group (weight 70) has assignments, `overall = 57.05 / 70 × 100 = 81.5%`.
+
+**`assignment_group_id` filter**: when the caller supplies `assignment_group_id`, only that group
+is processed. `totals.*.computed_percentage` reflects only that group's grade (not the overall
+course grade). `totals.*.canvas_posted_score` still reflects Canvas's full-course posted grade —
+the discrepancy will almost always be non-zero and `matches` will be `false`. A caveat is added:
+`"Results are filtered to assignment group '<name>' — totals reflect only this group, not the
+overall course grade."` The reconciliation fields are preserved for completeness but their
+`matches` value is not meaningful in this mode.
 
 When `apply_assignment_group_weights === false` (unweighted):
 - `weighted_contribution` is `null` for all groups in the output.
@@ -476,26 +508,38 @@ function applyDrop(items, count, strategy, effectiveScore, mode):
       p += item.a.points_possible
     return p === 0 ? null : e / p
 
-  // Generate all C(items.length, count) subsets to DROP
+  // combinations<T>(items: T[], k: number): T[][]
+  //   Returns all k-element subsets of `items` as arrays (order within each subset is irrelevant).
+  //   Each subset is an array of k item references (not indices).
+  //   Example: combinations([A,B,C], 2) → [[A,B],[A,C],[B,C]]
+  //   Implementation: standard recursive generator; no new dependencies.
   dropped_combos = combinations(items, count)
 
-  // Safety cap
+  // Safety cap: C(n, k) can exceed 10_000 for large groups
   if dropped_combos.length > 10_000:
-    // Greedy fallback — add caveat (see §1)
     return greedyDrop(items, count, strategy, effectiveScore, mode)
+    // greedyDrop: sort items by effectiveScore(i) / i.a.points_possible (ratio),
+    //   treating null as -Infinity (current mode) or 0 (final mode) for sorting.
+    // minimize_retained (drop_highest): drop the top `count` highest-ratio items.
+    // maximize_retained (drop_lowest): drop the bottom `count` lowest-ratio items.
+    // Add caveat: "Drop-rule optimisation used a greedy approximation for group '<name>'
+    //             due to the large number of assignments. Result may differ slightly from Canvas."
+    // Return [retained_items, dropped_items] same as brute-force path.
 
-  best_retained = null
-  best_pct = null
+  // Initialize before loop (TypeScript strict: avoid uninitialized variable)
+  best_retained: Item[] = items  // fallback: retain all (unreachable given guard above)
+  best_dropped: Item[] = []
+  best_pct: number | null = null
 
   for combo of dropped_combos:
-    retained = items.filter(i => i not in combo)
+    retained = items.filter(i => !combo.includes(i))
     pct = retainedPct(retained) ?? (mode === 'current' ? -Infinity : 0)
-    if best_retained === null
+    if best_pct === null
       || (strategy === 'maximize_retained' && pct > best_pct)
       || (strategy === 'minimize_retained' && pct < best_pct):
       best_retained = retained
-      best_pct = pct
       best_dropped = combo
+      best_pct = pct
 
   return [best_retained, best_dropped]
 ```
@@ -512,7 +556,8 @@ const user = studentId === 'self'
   ? await canvas.users.getSelf()
   : await canvas.users.get(studentId)
 
-const anonUser = pseudonymizer
+// Skip pseudonymization for self (viewing own data — no third-party PII)
+const anonUser = (pseudonymizer && typeof studentId === 'number')
   ? await pseudonymizer.anonymizeUser(courseId, user)
   : user
 
@@ -684,14 +729,20 @@ Limitations:
 
 | File | Change |
 |------|--------|
-| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` with `explain_grade` ToolDefinition; all Canvas calls and grade-computation logic |
+| `src/canvas/users.ts` | Add `getSelf(): Promise<CanvasUser>` method (one-line addition to existing class) |
+| `src/canvas/index.ts` | Expose `getSelf()` (no new field needed — method is on the existing `users` module instance) |
+| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` with `explain_grade` ToolDefinition; all Canvas calls, grade-computation, `combinations()`, and `greedyDrop()` in-tree helpers |
 | `src/tools/catalog.ts` | Add `grade_explanation` domain entry (`shared` audience) |
 | `src/pseudonym/coverage.ts` | Add `'explain_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
 | `tests/grade-explanation.test.ts` | **New** — fixtures A–G with mocked Canvas responses |
 
-**4 files total. No new canvas module. No new package dependencies.** The combination generator
-(`combinations(items, k)` iterator) and the greedy fallback are authored in-tree inside
-`src/tools/grade-explanation.ts` (or a private helper section of the same file).
+**6 files total. No new canvas module file. No new package dependencies.** `src/canvas/users.ts`
+and `src/canvas/index.ts` are minor edits to existing files. The combination generator
+(`combinations<T>(items: T[], k: number): T[][]`) and `greedyDrop` fallback are authored in-tree
+inside `src/tools/grade-explanation.ts`.
+
+Note: `src/canvas/index.ts` requires no changes — `getSelf()` is automatically exposed via the
+`users: UsersModule` property already on `CanvasClient`; callers use `canvas.users.getSelf()`.
 
 ---
 
