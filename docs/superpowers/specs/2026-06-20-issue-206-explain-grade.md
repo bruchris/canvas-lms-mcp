@@ -29,7 +29,8 @@ The unmet need is the weighting + drop-rule + reconciliation math.
 ### 1. Drop-rule application algorithm
 
 **Decision: brute-force combinatorial search, honoring `never_drop`, choosing the drop set that
-maximises the group's score percentage.**
+maximises the retained-set percentage for `drop_lowest`, and minimises the retained-set percentage
+for `drop_highest`.**
 
 Canvas's documented drop-rule behavior:
 
@@ -43,28 +44,47 @@ assignments — a 30/40 (75%) is less valuable to keep than a 9/10 (90%) even th
 
 **Algorithm (per group, per student):**
 
-1. Collect the group's non-excused, gradeable assignments. Mark those in `never_drop` as ineligible
-   for dropping.
-2. For `drop_lowest: N`:
-   - If all remaining droppable assignments ≤ N, drop none (cannot drop everything).
-   - Otherwise, generate all combinations C(droppable, N) and for each compute the group
-     percentage over the retained set. Choose the combination yielding the highest percentage.
-3. For `drop_highest: N`: same but choose the combination yielding the **lowest** percentage
-   (Canvas's bonus-exclusion intent).
-4. Apply both `drop_lowest` and `drop_highest` sequentially when both are set (drop_highest runs
-   first, per Canvas's documented order).
+1. Build the set of non-excused, non-`not_graded` assignments with their effective scores.
+   Mark those in `never_drop` as ineligible for dropping (`pinned`). The remainder are `droppable`.
+2. Apply `drop_highest: N` first (Canvas documented order):
+   - If `droppable.length ≤ N`, skip (cannot drop everything).
+   - If `droppable` is empty (all assignments are pinned), skip.
+   - Otherwise: generate all `C(droppable.length, N)` combinations of items to remove.
+     For each combination, compute the **retained-set percentage** over the items not in that
+     combination. Choose the combination whose retained-set percentage is **minimised** (i.e.
+     dropping these items hurts the grade the most — the "bonus exclusion" intent). Reassign
+     `droppable` to the retained items; the chosen N items are marked `drop_highest` dropped.
+3. Apply `drop_lowest: N` second, on the updated `droppable`:
+   - If `droppable.length ≤ N`, skip.
+   - If `droppable` is empty, skip.
+   - Otherwise: generate all `C(droppable.length, N)` combinations of items to remove.
+     For each combination, compute the **retained-set percentage**. Choose the combination
+     whose retained-set percentage is **maximised** (i.e. dropping these items helps the grade
+     the most). Reassign `droppable` to the retained items; the chosen N items are marked
+     `drop_lowest` dropped.
+4. Final retained set = updated `droppable` + `pinned`.
+
+**Retained-set percentage inside `applyDrop`:** When computing the candidate percentage over a
+retained set, use the same current/final semantics as the outer grade computation:
+- In **current mode**: exclude items whose effective score is `null` (ungraded/unsubmitted) from
+  both numerator and denominator. A combination consisting entirely of null-score items yields
+  `null` percentage — treated as 0 for comparison (worst outcome).
+- In **final mode**: items with `null` effective score contribute 0 to numerator and
+  `points_possible` to denominator.
 
 **Combinatorial upper bound**: Canvas assignment groups are small in practice (typically 3–30
-assignments). The worst real-world case is C(30, 3) = 4,060 combinations per group — computationally
-trivial for a Node synchronous loop. A hard safety cap of 10,000 combinations per group is enforced
-at runtime; if exceeded (pathological groups), the tool falls back to the greedy ranked sort and
-adds a caveat.
+assignments). The worst real-world case is C(30, 3) = 4,060 combinations per group —
+computationally trivial for a Node synchronous loop. A hard safety cap of **10,000 combinations
+per drop call** is enforced at runtime; if exceeded (pathological groups), the tool falls back to a
+greedy ranked sort (sort by score/points_possible, drop the worst/best N) and appends a caveat:
+`"Drop-rule optimisation used a greedy approximation for group '<name>' due to the large number of
+assignments. Result may differ slightly from Canvas."` The combination generator is written
+in-tree (no new package dependencies).
 
 **Why not greedy ranked sort?**
-A greedy approach (sort assignments by score/points_possible, drop the bottom N) is O(n log n) but
-can produce a suboptimal drop in degenerate cases (e.g. one very-high-points assignment at 50%
-outranks many low-points assignments at 60%). The brute-force approach is correct by definition and
-fast enough for the actual data sizes.
+A greedy approach (sort assignments by score/points_possible) can produce a suboptimal drop in
+degenerate cases (e.g. one very-high-points assignment at 50% vs. many low-points at 60%).
+The brute-force approach is correct by definition and fast enough for the actual data sizes.
 
 ### 2. Curves / fudge points
 
@@ -82,25 +102,30 @@ Handling:
   curve or fudge points these are not accessible via the API and cannot be reflected here."`
 - When there is no discrepancy, the curve caveat is omitted.
 
-### 3. Ungraded / excused / missing handling
+### 3. Ungraded / excused / missing / pending-review handling
 
 **Decision:**
 
-| Submission state                                              | Numerator      | Denominator                        | Notes                                |
-|---------------------------------------------------------------|----------------|------------------------------------|--------------------------------------|
-| `excused: true`                                               | excluded       | excluded                           | As if the assignment doesn't exist   |
-| `workflow_state: 'graded'` (score present, `excused: false`)  | `score`        | `points_possible` (current + final)| Normal graded assignment             |
-| `workflow_state: 'submitted'` (not yet graded)                | excluded       | excluded (current) / 0 (final)     | Submitted but awaiting grade         |
-| Missing / unsubmitted (`missing: true` or `workflow_state: 'unsubmitted'`) | 0 | excluded (current) / `points_possible` (final) | As per Canvas current/final semantics |
-| `grading_type: 'not_graded'`                                  | excluded       | excluded                           | Not-graded assignments never affect the gradebook |
+| Submission state | `current` mode (numerator / denominator) | `final` mode (numerator / denominator) | Output `status` |
+|------------------|------------------------------------------|-----------------------------------------|-----------------|
+| `excused: true` | excluded / excluded | excluded / excluded | `'excused'` |
+| `workflow_state: 'graded'` (score present, not excused) | score / points_possible | score / points_possible | `'graded'` |
+| `workflow_state: 'submitted'` (not yet graded, not excused) | excluded / excluded | 0 / points_possible | `'submitted'` |
+| `workflow_state: 'pending_review'` (quiz awaiting manual grade) | excluded / excluded | 0 / points_possible | `'submitted'` (same bucket) |
+| `missing: true` OR `workflow_state: 'unsubmitted'` (not submitted, not excused) | excluded / excluded | 0 / points_possible | `'missing'` |
+| `grading_type: 'not_graded'` | excluded / excluded | excluded / excluded | `'not_graded'` |
 
 **current vs. final semantics** (mirrors Canvas's two score columns):
 
-- **current**: only graded assignments (score present, not excused) contribute. Ungraded / unsubmitted / submitted-but-ungraded assignments are excluded from both numerator and denominator. This matches Canvas's `enrollment.grades.current_score`.
-- **final**: all non-excused, non-`not_graded` assignments contribute. Missing/unsubmitted score as 0 in the numerator but contribute `points_possible` to the denominator. This matches Canvas's `enrollment.grades.final_score`.
+- **current**: only graded assignments (score present, not excused, not `not_graded`) contribute.
+  Ungraded/unsubmitted/pending assignments are excluded from both numerator and denominator.
+  This matches Canvas's `enrollment.grades.current_score`.
+- **final**: all non-excused, non-`not_graded` assignments contribute. Ungraded/unsubmitted/
+  submitted-but-pending score as 0 in the numerator and contribute `points_possible` to the
+  denominator. This matches Canvas's `enrollment.grades.final_score`.
 
-The tool computes and exposes **both** columns so the caller can see which Canvas posted value they
-are reconciling against.
+The tool computes and exposes **both** columns so the caller can see which Canvas posted value
+they are reconciling against.
 
 ### 4. Reconciliation tolerance
 
@@ -119,53 +144,68 @@ Multi-student fan-out (all students in a course) would require: enumerate all st
 then for each student fetch their full submission list — an O(students × assignments) call count
 that can exceed 100 Canvas API calls for a large course. This is deferred to V2.
 
-V1 call pattern for a single student (self):
+V1 call pattern for a single student (5–6 calls):
 
-1. `GET /api/v1/courses/:id` → `apply_assignment_group_weights`, `grading_standard_id`
+1. `GET /api/v1/courses/:id` → `apply_assignment_group_weights`, `grading_standard_id`, `account_id`
 2. `GET /api/v1/courses/:id/assignment_groups?include[]=assignments` → groups, weights, rules
-3. `GET /api/v1/courses/:id/students/submissions?student_ids[]=:id` → all submissions for one student
-4. `GET /api/v1/courses/:id/enrollments?user_id=:id&include[]=grades` → Canvas's posted scores
-5. (conditional) `GET /api/v1/courses/:id/grading_standards` → letter mapping when `grading_standard_id` is set
+3. Submissions — **branched on `studentId`**:
+   - `studentId === 'self'`: call `canvas.submissions.listMy(courseId)`
+     (uses `student_ids[]=self` internally)
+   - `studentId` is numeric: call `canvas.submissions.listForStudents(courseId, { student_ids: [studentId] })`
+   Note: `'self'` is not a valid value in the existing `ListStudentSubmissionsOptions.student_ids`
+   type union (`ReadonlyArray<number | 'all'>`), hence the branch.
+4. Enrollment with grades — `GET /api/v1/courses/:id/enrollments?user_id=<id>&include[]=grades`
+   - `studentId === 'self'`: pass `user_id: 'self'`
+   - `studentId` is numeric: pass `user_id: studentId`
+   - If the returned array is empty (student not enrolled), set `enrollment: null`; add caveat
+     `"No student enrollment found for this course — Canvas posted scores are unavailable."`;
+     continue computation (all `canvas_posted_*` fields will be null).
+5. Student user object (for pseudonymizer and `student.name`) — **branched**:
+   - `studentId === 'self'`: `GET /api/v1/users/self` → `canvas.users.getSelf()` (or equivalent)
+   - `studentId` is numeric: `GET /api/v1/users/:id` → `canvas.users.get(studentId)`
+6. (Conditional) Grading standard: only when `course.grading_standard_id !== null`:
+   - First fetch `canvas.gradingStandards.listForCourse(courseId)` and filter for
+     `standard.id === course.grading_standard_id`.
+   - If not found in the course-level list (the standard may be account-scoped), fetch
+     `canvas.gradingStandards.listForAccount(course.account_id)` and filter again.
+   - If still not found, `gradingStandard: null`; add caveat
+     `"The course's grading standard (id: X) could not be retrieved — letter grades are unavailable."`.
 
-When `student_id` is omitted, substitute `student_ids[]=self` for call 3 and `user_id=self` for
-call 4. Canvas returns only the caller's own data in that case.
+### 6. No new canvas module — tool-layer orchestration
 
-### 6. New canvas module vs. pure tool-layer orchestration
-
-**Decision: add a new `src/canvas/grade-explanation.ts` module that fetches the raw data, and put
-all grade-computation logic in `src/tools/grade-explanation.ts`.**
+**Decision: do NOT create a new `src/canvas/grade-explanation.ts` module. All five/six Canvas
+calls are issued directly from the tool handler using existing `CanvasClient` facade methods.**
 
 Rationale:
-- The canvas module collects the four/five REST calls into one typed method, consistent with every
-  other domain module in the codebase.
-- All arithmetic (drop algorithm, weighted percentage, letter lookup) lives in the tool layer —
-  matching the pattern where canvas modules are "pure fetch, no logic" and tools are "logic + MCP
-  shape."
+- Every new canvas module receives `CanvasHttpClient` and calls `client.request()` /
+  `client.paginate()` directly. A "grade-explanation module" would only compose already-wrapped
+  methods from *other* modules — violating the "no logic in canvas layer" principle and creating
+  a confusing dependency between canvas-layer classes.
+- Tools already receive `CanvasClient` (the composed facade). Issuing the five/six calls from
+  the tool handler directly is idiomatic and keeps grade-computation logic and data-fetching
+  co-located.
+- File count drops from 7 to 5 (no new canvas module, no new `index.ts` canvas edit).
 
 ### 7. FERPA / pseudonymization
 
 **Decision: `explain_grade` must be added to `PSEUDONYMIZER_WRAPPED_TOOLS` and must route its
 per-student user data through `pseudonymizer.anonymizeUser()`.**
 
-`explain_grade` returns `student_id` and `student_name` in the output. When called for a specific
-`student_id`, these fields identify a real student. Instructors calling for another student
-receive student PII — this matches the trigger condition for pseudonymizer wrapping.
+`explain_grade` returns `student.id` and `student.name` in the output. These are sourced from the
+`CanvasUser` object fetched in call 5. When called for a specific `student_id`, these fields
+identify a real student — this matches the trigger condition for pseudonymizer wrapping.
 
-When `student_id` is omitted (self), the user object is still returned and anonymized through the
-same path (the caller is already identified; the pseudonymizer pass-through when `shouldPseudonymize`
-is false for staff roles is correct here).
-
-The `anonymizeUser(courseId, user)` method is the right call. The result's `student_id` becomes
-`user.id` after anonymization (pseudonymized records keep the opaque numeric id in the user object;
-the `student_name` field is replaced by the pseudonym).
+The tool calls `pseudonymizer.anonymizeUser(courseId, user)` on the fetched `CanvasUser`. The
+anonymized user's `name` populates `student.name`; `user.id` (unchanged by pseudonymization)
+populates `student.id`.
 
 ### 8. Audience
 
 **Decision: `audience: 'shared'`.**
 
 Both instructor persona (verify a student's grade, spot discrepancies) and student persona (verify
-their own grade) benefit from this tool. `'shared'` marks it available to both roles, overriding
-the `assignments` domain's `'educator'` default.
+their own grade) benefit from this tool. `'shared'` overrides the `assignments` domain's
+`'educator'` default.
 
 ### 9. Grading-period filtering
 
@@ -174,9 +214,7 @@ assignment groups.**
 
 Canvas supports multiple grading periods (terms within a course). When grading periods are active,
 Canvas's posted `current_score` in the enrollment may reflect only the current grading period, not
-the overall course. This is a known limitation documented in the tool description:
-`"When the course uses grading periods, the reconciliation is against the overall course grade, not
-the current grading period."`
+the overall course. This is a known limitation documented in the tool description.
 
 V2 can add a `grading_period_id` parameter.
 
@@ -184,63 +222,33 @@ V2 can add a `grading_period_id` parameter.
 
 ## Canvas API calls
 
-| # | Endpoint | Purpose | Existing module method |
-|---|----------|---------|------------------------|
-| 1 | `GET /api/v1/courses/:id` | `apply_assignment_group_weights`, `grading_standard_id`, `hide_final_grades` | `canvas.courses.get()` |
-| 2 | `GET /api/v1/courses/:id/assignment_groups?include[]=assignments` | Groups with weights, rules, and assignment list | `canvas.assignments.listGroups({ include: ['assignments'] })` |
-| 3 | `GET /api/v1/courses/:id/students/submissions?student_ids[]=:id` | All submissions for one student | `canvas.submissions.listForStudents(courseId, { student_ids: [id] })` |
-| 4 | `GET /api/v1/courses/:id/enrollments?user_id=:id&include[]=grades` | Canvas's posted `current_score` / `final_score` / `current_grade` / `final_grade` | `canvas.enrollments.listForCourse(courseId, { user_id: id, include: ['grades'] })` |
-| 5 | `GET /api/v1/courses/:id/grading_standards` | Letter mapping when `grading_standard_id !== null` | `canvas.gradingStandards.listForCourse(courseId)` |
+| # | Endpoint | Purpose | CanvasClient method |
+|---|----------|---------|---------------------|
+| 1 | `GET /api/v1/courses/:id` | `apply_assignment_group_weights`, `grading_standard_id`, `account_id` | `canvas.courses.get(courseId)` |
+| 2 | `GET /api/v1/courses/:id/assignment_groups?include[]=assignments` | Groups with weights, rules, and assignment list | `canvas.assignments.listGroups(courseId, { include: ['assignments'] })` |
+| 3a | `GET /api/v1/courses/:id/students/submissions?student_ids[]=self` | All submissions for authenticated user | `canvas.submissions.listMy(courseId)` |
+| 3b | `GET /api/v1/courses/:id/students/submissions?student_ids[]=:id` | All submissions for a specified student | `canvas.submissions.listForStudents(courseId, { student_ids: [studentId] })` |
+| 4 | `GET /api/v1/courses/:id/enrollments?user_id=:id&include[]=grades` | Canvas's posted `current_score` / `final_score` | `canvas.enrollments.listForCourse(courseId, { user_id: id, include: ['grades'] })` |
+| 5 | `GET /api/v1/users/:id` (or `/users/self`) | Student name for output + pseudonymizer | `canvas.users.get(studentId)` or `canvas.users.getSelf()` |
+| 6 | `GET /api/v1/courses/:id/grading_standards` (then account fallback) | Letter mapping when `grading_standard_id !== null` | `canvas.gradingStandards.listForCourse()` / `listForAccount()` |
 
-All five calls use existing module methods. **No new Canvas API endpoints are required.**
+Calls 2, 3, 4, 5 are independent of each other after call 1 resolves. Issue them as
+`Promise.all([call2, call3, call4, call5])`, then issue call 6 if needed.
 
----
-
-## New canvas module: `src/canvas/grade-explanation.ts`
-
-```ts
-export interface GradeExplanationInput {
-  courseId: number
-  /** Canvas user_id, or 'self' to resolve the caller's own identity. */
-  studentId: number | 'self'
-  /** Narrow output to a single group; `undefined` = all groups. */
-  assignmentGroupId?: number
-}
-
-export interface GradeExplanationRaw {
-  course: CanvasCourse
-  groups: CanvasAssignmentGroup[]  // includes assignments[]
-  submissions: CanvasSubmission[]
-  enrollment: CanvasEnrollment | null
-  gradingStandard: CanvasGradingStandard | null
-  studentId: number | 'self'
-}
-
-export class GradeExplanationModule {
-  constructor(private client: CanvasHttpClient) {}
-
-  async fetchRaw(input: GradeExplanationInput): Promise<GradeExplanationRaw>
-}
-```
-
-`fetchRaw` issues the 4–5 parallel-safe sequential fetches above and returns all raw data to the
-tool layer. The module does **no arithmetic** — all computation happens in the tool.
-
-Parallelism: calls 2, 3, 4, 5 are independent of each other (only call 1 must precede call 5 to
-know whether `grading_standard_id` is set). The implementation fires calls 2, 3, 4 as
-`Promise.all`, then fires call 5 if needed.
-
----
-
-## New types (`src/canvas/types.ts`)
-
-No new types are strictly needed — the module reuses `CanvasCourse`, `CanvasAssignmentGroup`,
-`CanvasAssignment`, `CanvasSubmission`, `CanvasEnrollment`, `CanvasGradingStandard`. The tool layer
-constructs output shapes purely in the tool file without adding to `types.ts`.
+All calls use **existing** `CanvasClient` facade methods. No new Canvas endpoints are required.
 
 ---
 
 ## Tool contract (`src/tools/grade-explanation.ts`)
+
+### Export signature
+
+```ts
+export function gradeExplanationTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[]
+```
 
 ### Tool name
 
@@ -274,7 +282,7 @@ z.object({
 }
 ```
 
-### Output shape (per invocation — always one student in V1)
+### Output shape
 
 ```ts
 {
@@ -291,26 +299,28 @@ z.object({
   groups: Array<{
     group_id: number,
     group_name: string,
-    group_weight: number,  // 0–100; equals 100/N for unweighted courses
+    group_weight: number,  // raw Canvas value (0–100); ignored in grade computation when course.weighted is false
     rules: {
-      drop_lowest: number,
-      drop_highest: number,
-      never_drop: number[],  // assignment_ids
+      drop_lowest: number,    // 0 if not set
+      drop_highest: number,   // 0 if not set
+      never_drop: number[],   // assignment_ids; empty array if not set
     },
     assignments: Array<{
       assignment_id: number,
       assignment_name: string,
       points_possible: number,
-      score: number | null,  // null if not graded / excused / not_graded
-      status: 'graded' | 'excused' | 'missing' | 'unsubmitted' | 'not_graded',
+      score: number | null,
+      // 'graded'=has a score | 'submitted'=submitted or pending_review but not graded |
+      // 'missing'=not submitted | 'excused' | 'not_graded'=grading_type:not_graded
+      status: 'graded' | 'submitted' | 'missing' | 'excused' | 'not_graded',
       dropped: boolean,
       drop_reason: 'drop_lowest' | 'drop_highest' | null,
     }>,
     current: {
       earned_points: number,
       possible_points: number,
-      percentage: number | null,  // null if possible_points === 0
-      weighted_contribution: number | null,  // group_weight * percentage / 100; null if unweighted or percentage null
+      percentage: number | null,           // null if possible_points === 0
+      weighted_contribution: number | null, // group_weight * (percentage / 100); null when unweighted or percentage null
     },
     final: {
       earned_points: number,
@@ -323,10 +333,10 @@ z.object({
     current: {
       computed_percentage: number | null,
       canvas_posted_score: number | null,
-      discrepancy: number | null,  // |computed - posted|; null if either is null
-      matches: boolean | null,     // true when discrepancy ≤ 0.5; null when not computable
-      letter: string | null,       // from grading standard; null if no standard or percentage null
-      canvas_posted_letter: string | null,  // enrollment.grades.current_grade
+      discrepancy: number | null,             // |computed - posted|; null if either is null
+      matches: boolean | null,               // true when discrepancy ≤ 0.5; null when not computable
+      letter: string | null,                 // from grading standard; null if none or percentage null
+      canvas_posted_letter: string | null,   // enrollment.grades.current_grade
     },
     final: {
       computed_percentage: number | null,
@@ -334,111 +344,181 @@ z.object({
       discrepancy: number | null,
       matches: boolean | null,
       letter: string | null,
-      canvas_posted_letter: string | null,
+      canvas_posted_letter: string | null,   // enrollment.grades.final_grade
     },
   },
-  caveats: string[],  // human-readable disclaimers (curves, grading periods, etc.)
+  caveats: string[],
 }
-```
-
-### Weighted percentage calculation
-
-When `course.apply_assignment_group_weights === true`:
-
-```
-group_percentage = earned_points / possible_points * 100
-weighted_contribution = group_weight * (group_percentage / 100)
-overall_percentage = sum(weighted_contribution) / sum(group_weight for groups with possible_points > 0) * 100
-```
-
-When `apply_assignment_group_weights === false` (unweighted), all groups contribute equally by
-points; the overall percentage is simply total_earned / total_possible * 100 across all groups.
-
-### Letter grade lookup
-
-The grading scheme entries are sorted descending by `value` (Canvas stores them as decimals, e.g.
-0.9 for 90%). To map `percentage` to a letter:
-
-```
-for each entry in grading_scheme (sorted descending by value):
-  if percentage / 100 >= entry.value:
-    return entry.name
-return grading_scheme[last].name  // below the lowest cutoff
 ```
 
 ---
 
-## Grade computation algorithm (pseudocode)
+## Grade computation
+
+### Weighted percentage
+
+When `course.apply_assignment_group_weights === true`:
 
 ```
-function computeGroupGrade(group, submissions, mode):
-  // mode: 'current' | 'final'
+For each group:
+  group_percentage = earned_points / possible_points * 100   (null if possible_points === 0)
+  weighted_contribution = group_weight * (group_percentage / 100)
+
+active_weight_sum = sum of group_weight for groups where possible_points > 0
+
+If active_weight_sum === 0:
+  overall_percentage = null
+
+Else:
+  overall_percentage = (sum of weighted_contribution for active groups) / active_weight_sum * 100
+```
+
+Note: `weighted_contribution` is on a 0–100 scale (group_weight × group_pct/100). Dividing by
+`active_weight_sum` and multiplying by 100 rescales to an overall percentage. Example: two groups
+with weight 30 and 70, group percentages 70% and 81.5%:
+- contributions: 30 × 0.70 = 21, 70 × 0.815 = 57.05
+- active_weight_sum = 100
+- overall = (21 + 57.05) / 100 × 100 = 78.05%
+
+When `apply_assignment_group_weights === false` (unweighted):
+- `weighted_contribution` is `null` for all groups in the output.
+- Overall = total_earned_points / total_possible_points × 100 (across all retained assignments in
+  all groups, regardless of `group_weight`).
+- `active_weight_sum` concept does not apply.
+
+### Letter grade lookup
+
+The grading scheme entries use **decimal fraction values** (e.g. `0.9` for 90%, `0.8` for 80%).
+They are stored sorted descending by `value` in Canvas's API response.
+
+```
+To map `percentage` (0–100) to a letter:
+  for each entry in grading_scheme (sorted descending by entry.value):
+    if percentage / 100 >= entry.value:
+      return entry.name
+  return grading_scheme[last].name   // score below the lowest cutoff (fallthrough)
+```
+
+Example grading scheme: `[{name:'A', value:0.9}, {name:'B', value:0.8}, {name:'C', value:0.7}, {name:'F', value:0.0}]`
+
+### Drop algorithm (pseudocode)
+
+```ts
+function computeGroupGrade(group, submissionsById, mode: 'current' | 'final'):
   assignments = group.assignments.filter(a => a.grading_type !== 'not_graded')
-  
-  // Build score list (excluding excused)
-  scorable = []
-  for each assignment in assignments:
-    sub = submissions[assignment.id]
+
+  // Classify each assignment
+  items = []
+  for a of assignments:
+    sub = submissionsById[a.id]
     excused = sub?.excused === true
-    if excused: continue
-    
-    score = null
-    status = 'unsubmitted'
-    if sub?.workflow_state === 'graded' and sub.score !== null:
-      score = sub.score
-      status = 'graded'
-    else if sub?.missing === true:
-      status = 'missing'
-    
-    scorable.push({ assignment, score, status })
-  
-  // Apply drop rules to scorable set
-  droppable = scorable.filter(s => s.assignment.id not in group.rules.never_drop)
-  pinned = scorable.filter(s => s.assignment.id in group.rules.never_drop)
-  
-  // Compute effective score for drop-rule evaluation (use 0 for ungraded in 'final'; skip in 'current')
+    if excused:
+      items.push({ a, score: null, status: 'excused', pinned: false })
+      continue
+    if sub?.workflow_state === 'graded' && sub.score !== null:
+      items.push({ a, score: sub.score, status: 'graded', pinned: group.rules.never_drop.includes(a.id) })
+    else if sub?.workflow_state === 'submitted' || sub?.workflow_state === 'pending_review':
+      items.push({ a, score: null, status: 'submitted', pinned: group.rules.never_drop.includes(a.id) })
+    else:
+      // missing / unsubmitted
+      items.push({ a, score: null, status: 'missing', pinned: group.rules.never_drop.includes(a.id) })
+
+  // Separate excused (already excluded) from droppable candidates
+  excused_items = items.filter(i => i.status === 'excused')
+  droppable = items.filter(i => i.status !== 'excused' && !i.pinned)
+  pinned = items.filter(i => i.status !== 'excused' && i.pinned)
+
+  // effective score for drop-algorithm comparisons
   effectiveScore = (item) =>
-    item.score !== null ? item.score :
-    mode === 'final' ? 0 :
-    null  // null = exclude from current
+    item.score              // already a number, or null
+    // In current mode, null means "excluded" and is treated as worst score for comparison
+    // In final mode, null means 0
 
-  // For drop_highest: runs first
-  if group.rules.drop_highest > 0:
-    droppable = applyDrop(droppable, group.rules.drop_highest, 'maximize_removed', effectiveScore)
-  
-  // For drop_lowest: runs second
-  if group.rules.drop_lowest > 0:
-    droppable = applyDrop(droppable, group.rules.drop_lowest, 'maximize_retained', effectiveScore)
-  
+  // Apply drop_highest first (Canvas documented order)
+  dropped_high = []
+  if group.rules.drop_highest > 0 && droppable.length > group.rules.drop_highest:
+    [droppable, dropped_high] = applyDrop(droppable, group.rules.drop_highest, 'minimize_retained', effectiveScore, mode)
+
+  // Apply drop_lowest second
+  dropped_low = []
+  if group.rules.drop_lowest > 0 && droppable.length > group.rules.drop_lowest:
+    [droppable, dropped_low] = applyDrop(droppable, group.rules.drop_lowest, 'maximize_retained', effectiveScore, mode)
+
   retained = [...droppable, ...pinned]
-  dropped = scorable.filter(s => s not in retained)
-  
-  // Compute group earned / possible
-  earned = 0, possible = 0
-  for each item in retained:
-    eff = effectiveScore(item)
-    if mode === 'current' and eff === null: continue  // skip ungraded in current mode
-    earned += eff ?? 0
-    possible += item.assignment.points_possible
-  
-  return { retained, dropped, earned, possible }
 
-function applyDrop(items, count, strategy, effectiveScore):
-  // brute-force: try all C(items, count) combinations to find which 'count' items to drop
-  // such that the retained set's percentage is maximized (strategy='maximize_retained')
-  // or the removed set's percentage is maximized (strategy='maximize_removed')
-  // Safety: if C(len, count) > 10_000, fall back to greedy sort
-  ...
+  // Annotate output assignments
+  for item of dropped_high: item.dropped = true; item.drop_reason = 'drop_highest'
+  for item of dropped_low:  item.dropped = true; item.drop_reason = 'drop_lowest'
+
+  // Compute earned/possible for this mode
+  earned = 0; possible = 0
+  for item of retained:
+    if item.status === 'excused' || item.status === 'not_graded': continue
+    if mode === 'current' && item.score === null: continue  // exclude ungraded from current
+    earned += item.score ?? 0
+    possible += item.a.points_possible
+
+  return { retained, excused_items, dropped_high, dropped_low, earned, possible }
+
+
+// applyDrop returns [retained_items, dropped_items]
+function applyDrop(items, count, strategy, effectiveScore, mode):
+  // Guard: if droppable is empty or count >= len, skip
+  if items.length === 0 || count >= items.length: return [items, []]
+
+  // Candidate percentage of a retained set (items NOT dropped)
+  function retainedPct(retained):
+    e = 0; p = 0
+    for item of retained:
+      eff = effectiveScore(item)
+      if mode === 'current' && eff === null: continue  // excluded from current
+      e += eff ?? 0
+      p += item.a.points_possible
+    return p === 0 ? null : e / p
+
+  // Generate all C(items.length, count) subsets to DROP
+  dropped_combos = combinations(items, count)
+
+  // Safety cap
+  if dropped_combos.length > 10_000:
+    // Greedy fallback — add caveat (see §1)
+    return greedyDrop(items, count, strategy, effectiveScore, mode)
+
+  best_retained = null
+  best_pct = null
+
+  for combo of dropped_combos:
+    retained = items.filter(i => i not in combo)
+    pct = retainedPct(retained) ?? (mode === 'current' ? -Infinity : 0)
+    if best_retained === null
+      || (strategy === 'maximize_retained' && pct > best_pct)
+      || (strategy === 'minimize_retained' && pct < best_pct):
+      best_retained = retained
+      best_pct = pct
+      best_dropped = combo
+
+  return [best_retained, best_dropped]
 ```
 
 ---
 
 ## Pseudonymizer integration
 
-`explain_grade` returns `student.id` and `student.name`. When the result contains a student who
-is not the authenticated user themselves (or when the pseudonymizer is enabled regardless), the
-tool calls `pseudonymizer.anonymizeUser(course_id, user)` on the student user object fetched
-from the enrollment, then copies the anonymized `id`, `name` fields into `student`.
+`explain_grade` returns `student.id` and `student.name`. The `CanvasUser` object is fetched in
+call 5. The tool calls `pseudonymizer.anonymizeUser(course_id, user)` on that object:
+
+```ts
+const user = studentId === 'self'
+  ? await canvas.users.getSelf()
+  : await canvas.users.get(studentId)
+
+const anonUser = pseudonymizer
+  ? await pseudonymizer.anonymizeUser(courseId, user)
+  : user
+
+// In output:
+student: { id: anonUser.id, name: anonUser.name }
+```
 
 Add `'explain_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` in `src/pseudonym/coverage.ts`.
 
@@ -446,7 +526,7 @@ Add `'explain_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` in `src/pseudonym/coverag
 
 ## Catalog registration (`src/tools/catalog.ts`)
 
-New domain entry:
+New domain entry (append to `toolDomainCatalog`):
 
 ```ts
 {
@@ -456,7 +536,8 @@ New domain entry:
 }
 ```
 
-The `'shared'` audience makes the tool available to both `student` and `educator` roles.
+`src/tools/index.ts` does **not** need to be edited — tools are wired automatically through the
+catalog (the existing `getAllTools()` iterates `toolDomainCatalog`).
 
 ---
 
@@ -466,91 +547,114 @@ All tests use mocked Canvas responses — no real Canvas instance is hit.
 
 ### Fixture A — Weighted course, `drop_lowest: 1` + `never_drop`
 
-Course: `apply_assignment_group_weights: true`, grading standard A/B/C (90/80/70%).
+**Course mock**: `apply_assignment_group_weights: true`, `grading_standard_id: 42`
 
-Groups:
-- **Homework** (weight 30%, `drop_lowest: 1`, `never_drop: [assignment_3]`):
+**Grading standard mock** (id 42):
+```ts
+{ grading_scheme: [
+  { name: 'A', value: 0.9 },
+  { name: 'B', value: 0.8 },
+  { name: 'C', value: 0.7 },
+  { name: 'F', value: 0.0 },
+] }
+```
+
+**Groups**:
+- **Homework** (group_weight: 30, `drop_lowest: 1`, `never_drop: [3]`):
   - Assignment 1 (10 pts): score 8 → 80%
-  - Assignment 2 (10 pts): score 5 → 50%   ← expected drop (lowest non-pinned)
+  - Assignment 2 (10 pts): score 5 → 50%  ← expected drop (lowest droppable ratio)
   - Assignment 3 (10 pts, never_drop): score 6 → 60%
-- **Exams** (weight 70%, no rules):
+- **Exams** (group_weight: 70, no rules):
   - Midterm (100 pts): score 88
   - Final (100 pts): score 75
 
-Expected current computation:
-- Homework retained: assignments 1 + 3 → 14/20 = 70% → weighted = 30 * 0.70 = 21
-- Exams: 163/200 = 81.5% → weighted = 70 * 0.815 = 57.05
-- Overall = (21 + 57.05) / (30 + 70) * 100 = 78.05 / 100 * 100 = 78.05%
-- Letter = B (≥ 80%? No → C? No → B is 80%, so C at 70%: 78.05% → C)
+**Expected current computation**:
+- Homework retained: A1 + A3 (A2 dropped) → earned 14/20 = 70% → contribution = 30 × 0.70 = 21
+- Exams: 163/200 = 81.5% → contribution = 70 × 0.815 = 57.05
+- active_weight_sum = 100
+- overall_percentage = (21 + 57.05) / 100 × 100 = 78.05%
+- Letter: 78.05/100 = 0.7805 ≥ 0.7 (C) but < 0.8 (B) → **C**
 
-Wait, let me recalculate:
-- weighted overall = sum(group_weight * group_percentage / 100) / sum(group_weight for active groups) * 100
-- = (30 * 0.70 + 70 * 0.815) / 100 * 100
-
-Actually the weighted calculation when all weights are active:
-overall_percentage = sum(weighted_contributions) where weighted_contribution = group_weight * group_pct
-
-Let me think again. If the sum of all group weights is 100 (as Canvas requires), then:
-overall = Σ (group_weight_i * group_pct_i) / 100
-
-So:
-- Homework: 30 * 70 / 100 = 21
-- Exams: 70 * 81.5 / 100 = 57.05
-- Overall = 21 + 57.05 = 78.05%
-- Letter = C (cutoff 70%) since 78.05% < 80% (B cutoff)
-
-Tests verify:
-1. Assignment 2 has `dropped: true`, `drop_reason: 'drop_lowest'`
-2. Assignment 3 has `dropped: false` despite being the lowest-ratio assignment without pinning
-3. `totals.current.computed_percentage ≈ 78.05`
+**Assertions**:
+1. Assignment 2: `dropped: true`, `drop_reason: 'drop_lowest'`
+2. Assignment 3: `dropped: false` (pinned by `never_drop`)
+3. `totals.current.computed_percentage ≈ 78.05` (within 0.01)
 4. `totals.current.letter === 'C'`
 
 ### Fixture B — Unweighted course (no drop rules)
 
-Course: `apply_assignment_group_weights: false`, no grading standard.
+**Course mock**: `apply_assignment_group_weights: false`, `grading_standard_id: null`
 
-Groups:
-- **Group A**: assignment 100pts scored 90 → 90/100
-- **Group B**: assignment 50pts scored 40 → 40/50
+**Groups**:
+- Group A: assignment (100 pts): score 90
+- Group B: assignment (50 pts): score 40
 
-Unweighted: total = (90+40)/(100+50) = 130/150 = 86.67%
+**Expected**: total = 130/150 = 86.67%
 
-Tests verify:
-1. `course.weighted: false`
-2. `totals.current.computed_percentage ≈ 86.67`
-3. `totals.current.letter === null` (no grading standard)
+**Assertions**:
+1. `course.weighted === false`
+2. `groups[*].current.weighted_contribution === null` (unweighted)
+3. `totals.current.computed_percentage ≈ 86.67`
+4. `totals.current.letter === null`
 
-### Fixture C — Reconciliation match + discrepancy
+### Fixture C — Reconciliation: match vs discrepancy (two separate `it()` blocks)
 
-Uses fixture A data and mocks enrollment to return `current_score: 78.1` (within 0.5 pp → `matches: true`).
-Then mocks enrollment to return `current_score: 81.0` (2.95 pp discrepancy → `matches: false`, caveat included).
+**Block 1** — uses Fixture A data; mock enrollment `current_score: 78.1`:
+- `|78.05 - 78.1| = 0.05 ≤ 0.5` → `matches: true`
 
-### Fixture D — Excused + missing assignments
+**Block 2** — uses Fixture A data; mock enrollment `current_score: 81.0`:
+- `|78.05 - 81.0| = 2.95 > 0.5` → `matches: false`, caveat about possible curve is present
 
-Group with 3 assignments:
-- Assignment 1: score 80/100 (graded)
-- Assignment 2: excused
-- Assignment 3: missing (workflow_state: unsubmitted, missing: true)
+### Fixture D — Excused + missing + submitted/pending_review assignments
 
-current mode: only A1 contributes → 80/100 = 80%
-final mode: A1 + A3 (as 0) → 80/200 = 40%, A2 excluded
+**Group** (unweighted) with 4 assignments (10 pts each):
+- A1: score 8 (graded)
+- A2: excused
+- A3: missing (`workflow_state: 'unsubmitted'`, `missing: true`)
+- A4: `workflow_state: 'pending_review'`
+
+**Current mode**: only A1 contributes → 8/10 = 80%
+**Final mode**: A1 (8) + A3 (0) + A4 (0) → 8/30 ≈ 26.67%; A2 excluded
+
+**Assertions**:
+1. A2: `status: 'excused'`, `dropped: false`
+2. A3: `status: 'missing'`
+3. A4: `status: 'submitted'` (pending_review collapses to 'submitted')
+4. `groups[0].current.earned_points === 8`, `groups[0].current.possible_points === 10`
+5. `groups[0].final.earned_points === 8`, `groups[0].final.possible_points === 30`
 
 ### Fixture E — `drop_highest: 1` (bonus exclusion)
 
-Group with 4 assignments incl. one extra credit:
-- A1: 10/10 (100%) — expected dropped (drop_highest removes best)
-- A2: 8/10 (80%)
-- A3: 6/10 (60%)
-- A4: 4/10 (40%)
+**Group** (4 assignments, 10 pts each):
+- A1: score 10/10 = 100% ← expected dropped (best ratio)
+- A2: score 8/10 = 80%
+- A3: score 6/10 = 60%
+- A4: score 4/10 = 40%
 
-After drop_highest: retain A2+A3+A4 → 18/30 = 60%
-Test verifies A1 has `dropped: true, drop_reason: 'drop_highest'`
+**Expected**: drop A1 → retained A2+A3+A4 → 18/30 = 60%
+
+**Assertions**:
+1. A1: `dropped: true`, `drop_reason: 'drop_highest'`
+2. `groups[0].current.percentage ≈ 60`
 
 ### Fixture F — FERPA pseudonymization
 
-With `CANVAS_PSEUDONYMIZE_STUDENTS=true`, verify:
-- `student.name` is replaced with `Student 0` (or matching pseudonymizer output)
-- `student.id` remains numeric (pseudonymizer does not change the id field)
+With `CANVAS_PSEUDONYMIZE_STUDENTS=true` (mocked via test env):
+- Mock `canvas.users.get()` returns `{ id: 1234, name: 'Alice Student', ... }`
+- Pseudonymizer maps user_id 1234 to `'Student 0'`
+
+**Assertions**:
+1. `result.student.name === 'Student 0'`
+2. `result.student.id === 1234` (pseudonymizer does not change the numeric id)
+
+### Fixture G — Missing enrollment
+
+Mock `canvas.enrollments.listForCourse()` returns `[]`:
+
+**Assertions**:
+1. `result.totals.current.canvas_posted_score === null`
+2. `result.caveats` includes the "No student enrollment found" string
+3. Grade computation still runs (computed_percentage is not null if assignments exist)
 
 ---
 
@@ -580,18 +684,17 @@ Limitations:
 
 | File | Change |
 |------|--------|
-| `src/canvas/grade-explanation.ts` | **New** — `GradeExplanationModule` with `fetchRaw()` |
-| `src/canvas/index.ts` | Add `gradeExplanation: GradeExplanationModule` to `CanvasClient` |
-| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` exporting `explain_grade` ToolDefinition |
-| `src/tools/catalog.ts` | Register `grade_explanation` domain (`shared` audience) |
-| `src/tools/index.ts` | Import and spread `gradeExplanationTools` in `getAllTools()` |
+| `src/tools/grade-explanation.ts` | **New** — `gradeExplanationTools()` with `explain_grade` ToolDefinition; all Canvas calls and grade-computation logic |
+| `src/tools/catalog.ts` | Add `grade_explanation` domain entry (`shared` audience) |
 | `src/pseudonym/coverage.ts` | Add `'explain_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
-| `tests/grade-explanation.test.ts` | **New** — fixtures A–F with mocked Canvas responses |
+| `tests/grade-explanation.test.ts` | **New** — fixtures A–G with mocked Canvas responses |
 
-**7 files total.** No new package dependencies.
+**4 files total. No new canvas module. No new package dependencies.** The combination generator
+(`combinations(items, k)` iterator) and the greedy fallback are authored in-tree inside
+`src/tools/grade-explanation.ts` (or a private helper section of the same file).
 
 ---
 
 ## Open questions for CTO review
 
-None — all four design unknowns are retired above. The spec is implementation-ready.
+None — all design unknowns are retired above. The spec is implementation-ready.
