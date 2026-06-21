@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 134,
+  "toolCount": 135,
   "tools": [
     {
       "name": "health_check",
@@ -1649,6 +1649,18 @@
       },
       "access": "read",
       "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "explain_grade",
+      "domain": "grade_explanation",
+      "description": "Recomputes and explains the weighted course grade for a student, including assignment-group weights, drop_lowest / drop_highest / never_drop rules, per-group breakdowns (earned points, dropped assignments, weighted contributions), the mapped letter grade (via the course grading standard when present), and a reconciliation check against Canvas's posted current_score / final_score.\n\nUse this when you need to verify that Canvas's displayed grade matches the rules, or to explain to a student or instructor how their grade was calculated.\n\nLimitations:\n- V1 computes one student per call. Omit student_id to compute for the authenticated user.\n- Instructor-applied curves and fudge points are not exposed via the Canvas REST API and cannot be reflected in the computation; a caveat is added when the discrepancy exceeds 0.5 pp.\n- When the course uses grading periods, reconciliation is against the overall (cross-period) grade.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled and you are passing a student_id, first call resolve_pseudonym to obtain the real Canvas user_id.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
       "relatedWorkflows": []
     }
   ]
