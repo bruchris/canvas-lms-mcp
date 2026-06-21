@@ -32,10 +32,22 @@ interface GradeItem {
   status: AssignmentStatus
   /** Effective score: a number for graded assignments, otherwise null. */
   score: number | null
+  /**
+   * points_possible normalized to a finite number. Canvas can return null or
+   * omit the field for "no points" assignments; coercing it through arithmetic
+   * would either silently inflate the percentage (null → +0 denominator) or
+   * poison the total to NaN (undefined). Normalizing once keeps the math safe.
+   */
+  points: number
   /** never_drop assignments are pinned: never considered for dropping. */
   pinned: boolean
   dropped: boolean
   dropReason: DropReason
+}
+
+/** Coerce a possibly-null/absent points_possible to a finite number. */
+function normalizePoints(value: number | null | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
 interface GroupModeResult {
@@ -87,7 +99,12 @@ function classify(
   sub: CanvasSubmission | undefined,
   neverDrop: ReadonlySet<number>,
 ): GradeItem {
-  const base = { assignment, dropped: false, dropReason: null as DropReason }
+  const base = {
+    assignment,
+    points: normalizePoints(assignment.points_possible),
+    dropped: false,
+    dropReason: null as DropReason,
+  }
   if (assignment.grading_type === 'not_graded') {
     return { ...base, status: 'not_graded', score: null, pinned: false }
   }
@@ -117,7 +134,7 @@ function retainedFraction(items: readonly GradeItem[], mode: Mode): number | nul
   for (const item of items) {
     if (mode === 'current' && item.score === null) continue
     earned += item.score ?? 0
-    possible += item.assignment.points_possible
+    possible += item.points
   }
   return possible === 0 ? null : earned / possible
 }
@@ -125,9 +142,10 @@ function retainedFraction(items: readonly GradeItem[], mode: Mode): number | nul
 /** score/points ratio for greedy ranking; null scores sort worst per mode. */
 function sortRatio(item: GradeItem, mode: Mode): number {
   if (item.score === null) return mode === 'current' ? -Infinity : 0
-  const pts = item.assignment.points_possible
-  if (pts <= 0) return item.score > 0 ? Infinity : 0
-  return item.score / pts
+  // A zero/absent points_possible cannot yield a meaningful ratio; treat it as
+  // neutral so a 0-point item never corrupts the greedy ranking with Infinity.
+  if (item.points <= 0) return 0
+  return item.score / item.points
 }
 
 interface DropOutcome {
@@ -240,7 +258,7 @@ function computeGroupGrade(
   for (const item of [...working, ...pinned]) {
     if (mode === 'current' && item.score === null) continue
     earned += item.score ?? 0
-    possible += item.assignment.points_possible
+    possible += item.points
   }
 
   return { items, earned, possible, usedGreedy }
@@ -327,7 +345,7 @@ function buildGroupOutput(
     assignments: current.items.map((item) => ({
       assignment_id: item.assignment.id,
       assignment_name: item.assignment.name,
-      points_possible: item.assignment.points_possible,
+      points_possible: item.points,
       score: item.score,
       status: item.status,
       dropped: item.dropped,
@@ -473,9 +491,14 @@ export function gradeExplanationTools(
         const caveats: string[] = []
 
         const enrollment = selectGradedEnrollment(enrollments)
-        if (enrollments.length === 0) {
+        // Reconciliation needs an enrollment that actually carries `grades`.
+        // An empty list OR an enrollment without a grades object (observer/TA
+        // records, hidden final grades) both leave posted scores unavailable —
+        // surface that rather than returning a silent null reconciliation.
+        if (!enrollment?.grades) {
           caveats.push(
-            'No student enrollment found for this course — Canvas posted scores are unavailable.',
+            'No student enrollment found with posted grades for this course — Canvas posted ' +
+              'scores are unavailable.',
           )
         }
 
@@ -530,6 +553,27 @@ export function gradeExplanationTools(
         const computedCurrent = computeOverall(currentResults, weighted)
         const computedFinal = computeOverall(finalResults, weighted)
 
+        // Explain weighted-mode edge cases so a null/odd total is never silent.
+        if (weighted && groupFilter === undefined) {
+          const hasGradedWork = currentResults.some((r) => r.result.possible > 0)
+          if (computedCurrent === null && hasGradedWork) {
+            caveats.push(
+              'This course is set to weight assignment groups, but no group weights are ' +
+                'configured, so the overall percentage cannot be computed.',
+            )
+          } else if (
+            hasGradedWork &&
+            currentResults.some((r) => (r.group.group_weight ?? 0) > 0 && r.result.possible <= 0)
+          ) {
+            caveats.push(
+              'One or more weighted assignment groups have no graded work yet, so their weight ' +
+                'is redistributed across the remaining groups (matching Canvas). Per-group ' +
+                'weighted_contribution values are nominal (group_weight × percentage) and may ' +
+                'not sum to the overall percentage.',
+            )
+          }
+        }
+
         const totalsCurrent = buildTotals(
           computedCurrent,
           enrollment?.grades?.current_score ?? null,
@@ -560,10 +604,12 @@ export function gradeExplanationTools(
         }
 
         // FERPA: pseudonymize only when viewing another student's data. Viewing
-        // one's own grade (self) exposes no third-party PII.
+        // one's own grade (self) exposes no third-party PII. Pass the already-
+        // fetched enrollments so role classification uses real enrollment types
+        // (a staff member fetched by id is correctly left un-pseudonymized).
         const anonUser =
-          pseudonymizer && typeof studentId === 'number'
-            ? await pseudonymizer.anonymizeUser(courseId, user)
+          pseudonymizer?.isEnabled() && typeof studentId === 'number'
+            ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
             : user
 
         return {

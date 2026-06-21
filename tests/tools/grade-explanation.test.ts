@@ -516,3 +516,281 @@ describe('explain_grade — tool metadata', () => {
     await expect(tool(canvas).handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
   })
 })
+
+// ── Grading-standard resolution (course vs. account fallback) ─────────────────
+
+describe('explain_grade — grading standard resolution', () => {
+  const oneGradedGroup = [
+    {
+      id: 1,
+      name: 'G',
+      position: 1,
+      group_weight: 0,
+      assignments: [{ id: 1, name: 'A1', points_possible: 100, grading_type: 'points' }],
+    },
+  ]
+
+  it('falls back to the account standard when the course list has no match', async () => {
+    const canvas = buildMockCanvas({
+      course: {
+        id: 1,
+        name: 'Course',
+        apply_assignment_group_weights: false,
+        grading_standard_id: 99,
+        account_id: 7,
+      },
+      groups: oneGradedGroup,
+      submissions: [graded(1, 95)],
+      courseStandards: [], // no course-level match
+      accountStandards: [
+        {
+          id: 99,
+          title: 'Acct',
+          context_type: 'Account',
+          context_id: 7,
+          grading_scheme: GRADING_SCHEME,
+        },
+      ],
+    })
+    const result = (await tool(canvas).handler({ course_id: 1 })) as GradeExplanation
+    expect(result.totals.current.letter).toBe('A') // 95% → 0.95 ≥ 0.9
+    expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith(7)
+  })
+
+  it('does not query the account when the course standard already matches', async () => {
+    const canvas = buildMockCanvas({
+      course: {
+        id: 1,
+        name: 'Course',
+        apply_assignment_group_weights: false,
+        grading_standard_id: 42,
+        account_id: 7,
+      },
+      groups: oneGradedGroup,
+      submissions: [graded(1, 95)],
+      courseStandards: [
+        {
+          id: 42,
+          title: 'Std',
+          context_type: 'Course',
+          context_id: 1,
+          grading_scheme: GRADING_SCHEME,
+        },
+      ],
+    })
+    const result = (await tool(canvas).handler({ course_id: 1 })) as GradeExplanation
+    expect(result.totals.current.letter).toBe('A')
+    expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
+  })
+
+  it('caveats and yields a null letter when the standard cannot be resolved', async () => {
+    const result = await run({
+      course: {
+        id: 1,
+        name: 'Course',
+        apply_assignment_group_weights: false,
+        grading_standard_id: 5,
+        account_id: null,
+      },
+      groups: oneGradedGroup,
+      submissions: [graded(1, 95)],
+      courseStandards: [], // no match, and no account to fall back to
+    })
+    expect(result.caveats.some((c) => c.includes('could not be'))).toBe(true)
+    expect(result.totals.current.letter).toBeNull()
+    expect(result.totals.current.computed_percentage).toBeCloseTo(95, 5)
+  })
+})
+
+// ── Weighted edge cases (renormalization, redistribution, no weights) ─────────
+
+describe('explain_grade — weighted edge cases', () => {
+  it('renormalizes by active weight when a weighted group has no graded work', async () => {
+    const result = await run({
+      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      groups: [
+        {
+          id: 1,
+          name: 'Empty',
+          position: 1,
+          group_weight: 30,
+          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+        },
+        {
+          id: 2,
+          name: 'Exams',
+          position: 2,
+          group_weight: 70,
+          assignments: [{ id: 2, name: 'Exam', points_possible: 100, grading_type: 'points' }],
+        },
+      ],
+      submissions: [graded(2, 80)], // group 1 has no submission → no graded work
+    })
+    // Group 1 (weight 30) excluded from current normalization → overall == 80%
+    expect(result.totals.current.computed_percentage).toBeCloseTo(80, 5)
+    expect(result.caveats.some((c) => c.includes('redistributed'))).toBe(true)
+  })
+
+  it('returns a null overall (no caveat) when no group has graded work', async () => {
+    const result = await run({
+      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      groups: [
+        {
+          id: 1,
+          name: 'G1',
+          position: 1,
+          group_weight: 50,
+          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+        },
+      ],
+      submissions: [], // nothing graded anywhere
+    })
+    expect(result.totals.current.computed_percentage).toBeNull()
+  })
+
+  it('caveats a weighted course that has no configured group weights', async () => {
+    const result = await run({
+      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      groups: [
+        {
+          id: 1,
+          name: 'G1',
+          position: 1,
+          group_weight: 0,
+          assignments: [{ id: 1, name: 'A1', points_possible: 100, grading_type: 'points' }],
+        },
+      ],
+      submissions: [graded(1, 90)],
+    })
+    expect(result.totals.current.computed_percentage).toBeNull()
+    expect(result.caveats.some((c) => c.includes('no group weights are configured'))).toBe(true)
+  })
+})
+
+// ── Final-mode reconciliation ────────────────────────────────────────────────
+
+describe('explain_grade — final-mode reconciliation', () => {
+  it('reconciles the final column and fires the curve caveat off a final discrepancy', async () => {
+    const result = await run({
+      ...FIXTURE_A,
+      enrollments: [
+        {
+          type: 'StudentEnrollment',
+          grades: { current_score: 78.05, current_grade: 'C', final_score: 85, final_grade: 'B' },
+        },
+      ],
+    })
+    expect(result.totals.current.matches).toBe(true) // current reconciles
+    expect(result.totals.final.canvas_posted_score).toBe(85)
+    expect(result.totals.final.canvas_posted_letter).toBe('B')
+    expect(result.totals.final.discrepancy).toBeCloseTo(6.95, 2)
+    expect(result.totals.final.matches).toBe(false)
+    // curve caveat is driven by the (larger) final-mode discrepancy
+    expect(result.caveats.some((c) => c.includes('curve') || c.includes('fudge'))).toBe(true)
+  })
+})
+
+// ── Robustness: enrollment-without-grades, null points, never_drop, not_graded ─
+
+describe('explain_grade — robustness', () => {
+  it('caveats when an enrollment exists but carries no grades', async () => {
+    const result = await run({
+      course: {
+        id: 1,
+        name: 'C',
+        apply_assignment_group_weights: false,
+        grading_standard_id: null,
+      },
+      groups: [
+        {
+          id: 1,
+          name: 'G',
+          position: 1,
+          group_weight: 0,
+          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+        },
+      ],
+      submissions: [graded(1, 8)],
+      enrollments: [{ type: 'ObserverEnrollment' }], // present, but no `grades`
+    })
+    expect(result.totals.current.canvas_posted_score).toBeNull()
+    expect(result.caveats.some((c) => c.includes('Canvas posted scores are unavailable'))).toBe(
+      true,
+    )
+  })
+
+  it('treats a null/absent points_possible as zero without poisoning the total', async () => {
+    const result = await run({
+      course: {
+        id: 1,
+        name: 'C',
+        apply_assignment_group_weights: false,
+        grading_standard_id: null,
+      },
+      groups: [
+        {
+          id: 1,
+          name: 'G',
+          position: 1,
+          group_weight: 0,
+          assignments: [
+            { id: 1, name: 'A1', points_possible: 10, grading_type: 'points' },
+            { id: 2, name: 'EC', points_possible: null, grading_type: 'points' },
+          ],
+        },
+      ],
+      submissions: [graded(1, 8), graded(2, 5)],
+    })
+    const group = findGroup(result, 1)
+    // The null-points item contributes its score to earned but 0 to possible
+    // (extra-credit semantics) — and never produces NaN/null.
+    expect(group.current.possible_points).toBe(10)
+    expect(group.current.earned_points).toBe(13)
+    expect(findAssignment(group, 2).points_possible).toBe(0)
+    expect(Number.isFinite(result.totals.current.computed_percentage)).toBe(true)
+    expect(result.totals.current.computed_percentage).toBeCloseTo(130, 5)
+  })
+
+  it('keeps a never_drop missing assignment and excludes not_graded from totals', async () => {
+    const result = await run({
+      course: {
+        id: 1,
+        name: 'C',
+        apply_assignment_group_weights: false,
+        grading_standard_id: null,
+      },
+      groups: [
+        {
+          id: 1,
+          name: 'G',
+          position: 1,
+          group_weight: 0,
+          rules: { drop_lowest: 1, never_drop: [1] },
+          assignments: [
+            { id: 1, name: 'Pinned', points_possible: 10, grading_type: 'points' },
+            { id: 2, name: 'High', points_possible: 10, grading_type: 'points' },
+            { id: 3, name: 'Low', points_possible: 10, grading_type: 'points' },
+            { id: 4, name: 'Survey', points_possible: 10, grading_type: 'not_graded' },
+          ],
+        },
+      ],
+      // A1 missing (no submission); A2/A3 graded; A4 not_graded
+      submissions: [graded(2, 8), graded(3, 4)],
+    })
+    const group = findGroup(result, 1)
+    expect(findAssignment(group, 1)).toMatchObject({ status: 'missing', dropped: false })
+    expect(findAssignment(group, 4).status).toBe('not_graded')
+    // current: A3 dropped (drop_lowest), A1 missing excluded → only A2 counts → 8/10
+    expect(group.current.earned_points).toBe(8)
+    expect(group.current.possible_points).toBe(10)
+    // final: pinned-missing A1 adds 10 possible / 0 earned; A2 8/10; A3 dropped; A4 excluded
+    expect(group.final.earned_points).toBe(8)
+    expect(group.final.possible_points).toBe(20)
+  })
+
+  it('caveats when the assignment_group_id filter matches no group', async () => {
+    const result = await run(FIXTURE_A, { course_id: 1, assignment_group_id: 999 })
+    expect(result.groups).toHaveLength(0)
+    expect(result.caveats.some((c) => c.includes('was not found in this course'))).toBe(true)
+  })
+})
