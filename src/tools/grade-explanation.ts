@@ -491,14 +491,24 @@ export function gradeExplanationTools(
         const caveats: string[] = []
 
         const enrollment = selectGradedEnrollment(enrollments)
-        // Reconciliation needs an enrollment that actually carries `grades`.
-        // An empty list OR an enrollment without a grades object (observer/TA
-        // records, hidden final grades) both leave posted scores unavailable —
-        // surface that rather than returning a silent null reconciliation.
+        // Reconciliation needs an enrollment that actually carries posted scores.
+        // Two distinct "unavailable" cases must each be surfaced rather than
+        // returning a silent null reconciliation:
+        //   1. no enrollment / no grades object (empty list, observer/TA records);
+        //   2. a grades object whose current_score AND final_score are both null
+        //      (muted/hidden grades, or no grade posted yet).
         if (!enrollment?.grades) {
           caveats.push(
             'No student enrollment found with posted grades for this course — Canvas posted ' +
               'scores are unavailable.',
+          )
+        } else if (
+          enrollment.grades.current_score == null &&
+          enrollment.grades.final_score == null
+        ) {
+          caveats.push(
+            'Canvas has not posted a current or final score for this student (grades may be ' +
+              'hidden or not yet released), so the reconciliation could not be performed.',
           )
         }
 

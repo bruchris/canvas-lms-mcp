@@ -416,6 +416,32 @@ describe('explain_grade — Fixture F (pseudonymization)', () => {
     )
     expect(result.student.name).toBe('Real Name')
   })
+
+  it('leaves a staff member fetched by id un-pseudonymized (real enrollment types)', async () => {
+    const ps = new Pseudonymizer({
+      baseUrl: 'https://school.instructure.com/api/v1',
+      rootDir: tmpRoot,
+      env: { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' },
+    })
+    const result = await run(
+      {
+        course: {
+          id: 1,
+          name: 'Course',
+          apply_assignment_group_weights: false,
+          grading_standard_id: null,
+        },
+        groups: [],
+        user: { id: 555, name: 'Dr. Teacher' },
+        // enrollments fetched for the target id carry a staff type → not student
+        enrollments: [{ type: 'TeacherEnrollment', grades: { current_score: null } }],
+        pseudonymizer: ps,
+      },
+      { course_id: 1, student_id: 555 },
+    )
+    expect(result.student.name).toBe('Dr. Teacher')
+    expect(result.student.id).toBe(555)
+  })
 })
 
 // ── Fixture G — missing enrollment ───────────────────────────────────────────
@@ -717,6 +743,43 @@ describe('explain_grade — robustness', () => {
     expect(result.caveats.some((c) => c.includes('Canvas posted scores are unavailable'))).toBe(
       true,
     )
+  })
+
+  it('caveats when the enrollment carries grades but the posted scores are null', async () => {
+    const result = await run({
+      course: {
+        id: 1,
+        name: 'C',
+        apply_assignment_group_weights: false,
+        grading_standard_id: null,
+      },
+      groups: [
+        {
+          id: 1,
+          name: 'G',
+          position: 1,
+          group_weight: 0,
+          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+        },
+      ],
+      submissions: [graded(1, 8)],
+      // grades object exists, but Canvas has posted no score (hidden/unreleased)
+      enrollments: [
+        {
+          type: 'StudentEnrollment',
+          grades: {
+            current_score: null,
+            current_grade: null,
+            final_score: null,
+            final_grade: null,
+          },
+        },
+      ],
+    })
+    expect(result.totals.current.canvas_posted_score).toBeNull()
+    expect(result.totals.current.matches).toBeNull()
+    expect(result.totals.current.discrepancy).toBeNull()
+    expect(result.caveats.some((c) => c.includes('has not posted'))).toBe(true)
   })
 
   it('treats a null/absent points_possible as zero without poisoning the total', async () => {
