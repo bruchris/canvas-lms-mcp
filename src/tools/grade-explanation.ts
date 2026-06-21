@@ -113,7 +113,7 @@ function classify(
   }
   const pinned = neverDrop.has(assignment.id)
   if (sub?.workflow_state === 'graded' && sub.score !== null) {
-    return { ...base, status: 'graded', score: sub.score ?? null, pinned }
+    return { ...base, status: 'graded', score: sub.score, pinned }
   }
   if (sub?.workflow_state === 'submitted' || sub?.workflow_state === 'pending_review') {
     return { ...base, status: 'submitted', score: null, pinned }
