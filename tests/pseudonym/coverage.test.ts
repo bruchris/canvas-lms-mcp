@@ -27,6 +27,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_group_members',
   'list_submission_comments_needing_attention',
   'list_students_needing_attention',
+  'explain_grade',
 ])
 
 function buildMinimalCanvas(): CanvasClient {

@@ -52,6 +52,10 @@ export class UsersModule {
     return this.client.request<CanvasUser>(`/api/v1/users/${userId}`)
   }
 
+  async getSelf(): Promise<CanvasUser> {
+    return this.client.request<CanvasUser>('/api/v1/users/self')
+  }
+
   async getProfile(): Promise<CanvasUserProfile> {
     return this.client.request<CanvasUserProfile>('/api/v1/users/self/profile')
   }
