@@ -181,7 +181,6 @@ z.object({
 ```ts
 {
   readOnlyHint: true,
-  destructiveHint: false,
   openWorldHint: true,
 }
 ```
@@ -364,13 +363,16 @@ Same mock as Fixture A.
 
 ### Fixture C — truncation at `max_files`
 
-**Mock**: 6 submissions, each with 1 attachment; `max_files: 3`.
+**Mock**: 6 submissions, each with 1 attachment; `max_files: 3`, `attachments_only: true`.
 
 **Assertions**:
 1. `result.total_files === 3`
 2. `result.truncated === true`
 3. `result.truncation_note` matches `/Re-run with assignment_ids or student_ids/`
-4. `result.total_submissions_scanned === 3` (stopped after 3rd submission hit the cap)
+4. `result.total_submissions_scanned === 4`
+   — Tracing the algorithm: subs 1–3 each push one file (files=[1,2,3]); on sub 4 the inner
+   loop finds `files.length (3) >= maxFiles (3)` before pushing, sets `truncated = true` and
+   breaks; the outer `if truncated: break` exits. So 4 submissions were scanned.
 
 ### Fixture D — FERPA pseudonymization
 
@@ -451,7 +453,7 @@ workflow_state (e.g. "submitted", "graded").
 | File | Change |
 |------|--------|
 | `src/tools/submission-files.ts` | **New** — `submissionFileTools()` with `list_course_submission_files` ToolDefinition |
-| `src/tools/catalog.ts` | Add `submission_files` domain entry (`educator` audience) |
+| `src/tools/catalog.ts` | Add `import { submissionFileTools } from './submission-files'` at top + append `submission_files` domain entry (`educator` audience) |
 | `src/pseudonym/coverage.ts` | Add `'list_course_submission_files'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
 | `tests/submission-files.test.ts` | **New** — fixtures A–H with mocked Canvas responses |
 
