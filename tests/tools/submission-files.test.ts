@@ -322,6 +322,22 @@ describe('submissionFileTools', () => {
       // file_id is still present so the caller can re-fetch once the file is ready.
       expect(result.files[0].file_id).toBe(800)
     })
+
+    it('combines the user and attachment warnings when both apply', async () => {
+      const submissions = [
+        sub({
+          id: 1,
+          assignment_id: 10,
+          user_id: 200,
+          user: undefined,
+          attachments: [att({ id: 801, display_name: 'processing.pdf', url: '' })],
+        }),
+      ]
+      const { canvas } = buildMockCanvas(submissions)
+      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      // Both clauses present, user-warning first, joined by '; '.
+      expect(result.files[0]._warning).toMatch(/user data unavailable; attachment url unavailable/)
+    })
   })
 
   // Fixture D — FERPA pseudonymization
