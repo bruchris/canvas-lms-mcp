@@ -32,6 +32,9 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
   'list_submissions',
   'get_submission',
 
+  // src/tools/submission-files.ts
+  'list_course_submission_files',
+
   // src/tools/conversations.ts
   'list_conversations',
   'get_conversation',

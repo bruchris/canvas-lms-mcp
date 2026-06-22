@@ -29,6 +29,7 @@ import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
 import { submissionTools } from './submissions'
+import { submissionFileTools } from './submission-files'
 import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
 
@@ -58,6 +59,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'submissions',
     defaultPrimaryAudience: 'educator',
     getTools: submissionTools,
+  },
+  {
+    domain: 'submission_files',
+    defaultPrimaryAudience: 'educator',
+    getTools: submissionFileTools,
   },
   {
     domain: 'rubrics',

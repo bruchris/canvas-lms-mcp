@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 135,
+  "toolCount": 136,
   "tools": [
     {
       "name": "health_check",
@@ -210,6 +210,18 @@
       "relatedWorkflows": [
         "educator-assignment-review"
       ]
+    },
+    {
+      "name": "list_course_submission_files",
+      "domain": "submission_files",
+      "description": "List every file attachment submitted by students across all assignments in a course. Returns a manifest — one entry per file — including the original filename, a file_id for re-fetching via download_file, content type, and size. Useful for bulk-archiving student work before a course expires or a Free-For-Teacher account is concluded. Outputs are bounded by max_files (default 500); when the limit is hit, truncated is true and truncation_note explains how to retrieve the rest. Download URLs are time-limited (typically 1 hour) — use the returned file_id with download_file to get a fresh URL at download time. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, user_name is a stable per-course pseudonym (e.g. \"Student 1\"); user_id (the raw numeric Canvas ID) is always returned and works as a stable per-student folder key.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
     },
     {
       "name": "list_rubrics",
