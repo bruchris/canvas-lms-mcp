@@ -119,7 +119,7 @@ export function submissionFileTools(
 
           let userId = sub.user_id
           let userName: string | null = null
-          let warning: string | undefined
+          let userWarning: string | undefined
 
           if (sub.user) {
             const resolvedUser = pseudonymizer?.isEnabled()
@@ -128,7 +128,7 @@ export function submissionFileTools(
             userId = resolvedUser.id
             userName = resolvedUser.name
           } else {
-            warning = 'user data unavailable'
+            userWarning = 'user data unavailable'
           }
 
           for (const att of sub.attachments ?? []) {
@@ -136,6 +136,14 @@ export function submissionFileTools(
               truncated = true
               break
             }
+            // Canvas can return an attachment whose signed URL is not yet ready
+            // (e.g. a file still processing). Flag it rather than emit a
+            // good-looking entry with a broken download_url; file_id still lets
+            // the caller re-fetch via download_file once it is ready.
+            const attWarning = att.url
+              ? undefined
+              : 'attachment url unavailable (file may still be processing) — retry download_file with file_id'
+            const warning = [userWarning, attWarning].filter(Boolean).join('; ') || undefined
             files.push({
               assignment_id: sub.assignment_id,
               assignment_name: sub.assignment?.name ?? null,
@@ -160,7 +168,7 @@ export function submissionFileTools(
           total_submissions_scanned: submissionsScanned,
           truncated,
           truncation_note: truncated
-            ? `Results truncated at ${maxFiles} files. Re-run with assignment_ids or student_ids filters to retrieve the remaining files.`
+            ? `Results truncated at ${maxFiles} files — the manifest is incomplete. To retrieve the rest, raise max_files (up to ${MAX_MAX_FILES}) and/or re-run scoped to a subset of assignment_ids or student_ids (iterate per assignment to fully cover a large course).`
             : null,
           url_expiry_note: URL_EXPIRY_NOTE,
           files,

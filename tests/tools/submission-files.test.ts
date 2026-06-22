@@ -241,8 +241,86 @@ describe('submissionFileTools', () => {
       const result = (await getTool(canvas).handler({ course_id: 1, max_files: 3 })) as Manifest
       expect(result.total_files).toBe(3)
       expect(result.truncated).toBe(true)
-      expect(result.truncation_note).toMatch(/Re-run with assignment_ids or student_ids/)
+      // Pin the interpolated max_files in the note, plus the recovery guidance.
+      expect(result.truncation_note).toContain('truncated at 3 files')
+      expect(result.truncation_note).toMatch(/assignment_ids or student_ids/)
       expect(result.total_submissions_scanned).toBe(4)
+    })
+
+    it('cuts mid-submission when max_files falls between a submission’s attachments', async () => {
+      // Two submissions, three attachments each; cap at 4 → 3 from sub 1 plus the
+      // FIRST attachment of sub 2. Pins the inner-loop (mid-submission) cut point
+      // so a refactor to a submission-boundary check (which would overshoot to 6)
+      // is caught.
+      const submissions = [
+        sub({
+          id: 1,
+          assignment_id: 10,
+          user_id: 100,
+          user: { id: 100, name: 'Alice' },
+          attachments: [
+            att({ id: 1, display_name: 'a1.pdf' }),
+            att({ id: 2, display_name: 'a2.pdf' }),
+            att({ id: 3, display_name: 'a3.pdf' }),
+          ],
+        }),
+        sub({
+          id: 2,
+          assignment_id: 10,
+          user_id: 101,
+          user: { id: 101, name: 'Bob' },
+          attachments: [
+            att({ id: 4, display_name: 'b1.pdf' }),
+            att({ id: 5, display_name: 'b2.pdf' }),
+            att({ id: 6, display_name: 'b3.pdf' }),
+          ],
+        }),
+      ]
+      const { canvas } = buildMockCanvas(submissions)
+      const result = (await getTool(canvas).handler({ course_id: 1, max_files: 4 })) as Manifest
+      expect(result.total_files).toBe(4)
+      expect(result.truncated).toBe(true)
+      expect(result.files.map((f) => f.file_id)).toEqual([1, 2, 3, 4])
+      // files[3] is the first attachment of the second submission — the cut is mid-submission.
+      expect(result.files[3].file_id).toBe(4)
+    })
+
+    it('does not flag truncation when files exactly fill max_files', async () => {
+      const submissions = Array.from({ length: 3 }, (_, i) =>
+        sub({
+          id: i + 1,
+          assignment_id: 10,
+          user_id: 100 + i,
+          user: { id: 100 + i, name: `S${i}` },
+          attachments: [att({ id: 700 + i, display_name: `f${i}.pdf` })],
+        }),
+      )
+      const { canvas } = buildMockCanvas(submissions)
+      const result = (await getTool(canvas).handler({ course_id: 1, max_files: 3 })) as Manifest
+      expect(result.total_files).toBe(3)
+      expect(result.truncated).toBe(false)
+      expect(result.truncation_note).toBeNull()
+    })
+  })
+
+  // Attachment whose signed URL is not yet ready (e.g. still processing)
+  describe('missing attachment url', () => {
+    it('flags a warning instead of emitting a silently-broken download entry', async () => {
+      const submissions = [
+        sub({
+          id: 1,
+          assignment_id: 10,
+          user_id: 100,
+          user: { id: 100, name: 'Alice' },
+          attachments: [att({ id: 800, display_name: 'processing.pdf', url: '' })],
+        }),
+      ]
+      const { canvas } = buildMockCanvas(submissions)
+      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      expect(result.total_files).toBe(1)
+      expect(result.files[0]._warning).toContain('attachment url unavailable')
+      // file_id is still present so the caller can re-fetch once the file is ready.
+      expect(result.files[0].file_id).toBe(800)
     })
   })
 
