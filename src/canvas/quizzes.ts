@@ -1,9 +1,13 @@
 import type { CanvasHttpClient } from './client'
+import { type CanvasQueryParams } from './query'
 import type {
   CanvasQuiz,
   CanvasQuizSubmission,
   CanvasQuizQuestion,
   CanvasQuizSubmissionQuestion,
+  CanvasQuizSubmissionEvent,
+  CanvasQuizSubmissionEventsResponse,
+  CanvasQuizExtension,
 } from './types'
 
 export class QuizzesModule {
@@ -65,5 +69,51 @@ export class QuizzesModule {
         body: JSON.stringify(body),
       },
     )
+  }
+
+  async getSubmissionEvents(
+    courseId: number,
+    quizId: number,
+    submissionId: number,
+    attempt?: number,
+  ): Promise<CanvasQuizSubmissionEvent[]> {
+    const query: CanvasQueryParams = {}
+    if (attempt !== undefined) {
+      query.attempt = attempt
+    }
+    const response = await this.client.request<CanvasQuizSubmissionEventsResponse>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions/${submissionId}/events`,
+      { query },
+    )
+    // Defensive: Canvas returns [] for an empty log; the guard also tolerates a
+    // null field without throwing. Real errors surface as CanvasApiError above.
+    return response.quiz_submission_events ?? []
+  }
+
+  /**
+   * Apply a quiz extension (extra time / extra attempts) for one student on one
+   * Classic Quiz via `POST /courses/:id/quizzes/:id/extensions`. Canvas accepts a
+   * batch (`quiz_extensions` array), but callers operate per-student-per-quiz, so
+   * the array always holds a single element. Omitted fields are left out of the
+   * body — never pass `extra_time: 0` (Canvas rejects zero/negative extensions).
+   */
+  async setExtension(
+    courseId: number,
+    quizId: number,
+    userId: number,
+    extra_time?: number,
+    extra_attempts?: number,
+  ): Promise<CanvasQuizExtension[]> {
+    const extension: Record<string, number> = { user_id: userId }
+    if (extra_time !== undefined) extension.extra_time = extra_time
+    if (extra_attempts !== undefined) extension.extra_attempts = extra_attempts
+    const response = await this.client.request<{ quiz_extensions: CanvasQuizExtension[] }>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/extensions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ quiz_extensions: [extension] }),
+      },
+    )
+    return response.quiz_extensions
   }
 }

@@ -27,6 +27,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_group_members',
   'list_submission_comments_needing_attention',
   'list_students_needing_attention',
+  'explain_grade',
 ])
 
 function buildMinimalCanvas(): CanvasClient {
@@ -51,6 +52,7 @@ function buildMinimalCanvas(): CanvasClient {
       listQuestions: list,
       getSubmissionAnswers: list,
       scoreQuestion: noop,
+      getSubmissionEvents: list,
     },
     files: { list, listFolders: list, get: noop, upload: noop, delete: noop, download: noop },
     gradebookHistory: { listDays: list, getDay: list, listSubmissions: list, getFeed: list },
@@ -101,6 +103,7 @@ function buildMinimalCanvas(): CanvasClient {
       listCourses: list,
       listUsers: list,
       getReports: list,
+      listNotifications: list,
     },
     analytics: {
       searchContentType: list,

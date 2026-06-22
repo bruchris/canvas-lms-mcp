@@ -73,6 +73,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     },
     {
       name: 'get_profile',
+      audience: 'shared',
       description: 'Get the profile of the currently authenticated user.',
       inputSchema: {},
       annotations: {

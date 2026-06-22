@@ -68,6 +68,7 @@ export interface CanvasCourse {
   banner_image_download_url?: string | null
   concluded?: boolean
   post_manually?: boolean
+  grading_standard_id?: number | null
 }
 
 export interface CanvasCourseSection {
@@ -150,6 +151,7 @@ export interface UpdateCourseParams {
   end_at?: string
   default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
   syllabus_body?: string
+  grading_standard_id?: number | null
 }
 
 // --- Assignments ---
@@ -389,6 +391,7 @@ export interface CanvasQuiz {
   question_count: number
   due_at: string | null
   published: boolean
+  time_limit?: number | null // quiz duration in minutes; null if untimed
 }
 
 export interface CanvasQuizSubmission {
@@ -400,6 +403,11 @@ export interface CanvasQuizSubmission {
   score: number | null
   kept_score: number | null
   workflow_state: string
+  // Per-student accommodation stored on the submission record. Canvas sets these
+  // when a quiz extension is applied (POST .../extensions); they are the only
+  // documented way to READ a student's extra time / attempts back.
+  extra_time?: number | null // extra time in minutes
+  extra_attempts?: number | null
 }
 
 export interface CanvasQuizQuestion {
@@ -417,6 +425,33 @@ export interface CanvasQuizSubmissionQuestion {
   quiz_id: number
   answer: string | number | null
   flagged: boolean
+}
+
+export interface CanvasQuizExtension {
+  user_id: number
+  // Canvas field name (minutes); tool output renames this to extra_time_minutes.
+  extra_time: number | null
+  extra_attempts: number | null
+}
+
+// --- Quiz Submission Events ---
+
+export interface CanvasQuizSubmissionEvent {
+  // Canvas returns a stable per-event id as a string (e.g. "3409").
+  id: string
+  event_type: string
+  created_at: string
+  // Per the Canvas API, event_data is a single object of contextual key/value
+  // pairs (e.g. { answer: "42" } on question_answered) or null (e.g. on
+  // page_blurred / page_focused) — never an array. The keys vary by event_type,
+  // so the value bag is left opaque.
+  event_data: Record<string, unknown> | null
+}
+
+export interface CanvasQuizSubmissionEventsResponse {
+  // `| null` is a defensive allowance: Canvas returns an empty array for an
+  // empty log, but the client null-guards the field rather than assume it.
+  quiz_submission_events: CanvasQuizSubmissionEvent[] | null
 }
 
 // --- Files ---
@@ -605,6 +640,8 @@ export interface CreateDiscussionParams {
   discussion_type?: 'side_comment' | 'threaded'
   published?: boolean
   require_initial_post?: boolean
+  is_announcement?: boolean
+  delayed_post_at?: string
 }
 
 export interface UpdateDiscussionParams {
@@ -612,6 +649,8 @@ export interface UpdateDiscussionParams {
   message?: string
   published?: boolean
   require_initial_post?: boolean
+  is_announcement?: boolean
+  delayed_post_at?: string
 }
 
 // --- Calendar ---
@@ -789,6 +828,15 @@ export interface CanvasOutcomeMasteryDistributionResponse {
 
 // --- Accounts ---
 
+export interface CanvasAccountNotification {
+  id: number
+  subject: string
+  message: string
+  start_at: string
+  end_at: string | null
+  icon: string
+}
+
 export interface CanvasAccount {
   id: number
   name: string
@@ -816,6 +864,23 @@ export interface CanvasAccountReport {
   } | null
 }
 
+// --- Grading Standards ---
+
+export interface CanvasGradingSchemeEntry {
+  name: string
+  value: number
+}
+
+export type CanvasGradingStandardContextType = 'Course' | 'Account'
+
+export interface CanvasGradingStandard {
+  id: number
+  title: string
+  context_type: CanvasGradingStandardContextType
+  context_id: number
+  grading_scheme: CanvasGradingSchemeEntry[]
+}
+
 // --- Assignments (params) ---
 
 export interface CreateAssignmentParams {
@@ -828,6 +893,16 @@ export interface CreateAssignmentParams {
 }
 
 export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
+
+export interface CreateAssignmentOverrideParams {
+  title?: string
+  student_ids?: number[]
+  group_id?: number
+  course_section_id?: number
+  due_at?: string | null
+  unlock_at?: string | null
+  lock_at?: string | null
+}
 
 // --- Analytics ---
 
@@ -983,4 +1058,36 @@ export interface CanvasPeerReview {
   asset_id: number
   asset_type: 'Submission'
   workflow_state: 'assigned' | 'completed'
+}
+
+// --- Content Exports ---
+
+export type ContentExportType = 'common_cartridge' | 'qti' | 'zip'
+
+export type ContentExportWorkflowState =
+  | 'created'
+  | 'exporting'
+  | 'exported'
+  | 'failed'
+  // Canvas may emit undocumented states (e.g. 'waiting_for_external_tool'); keep the
+  // union open as a hint type without losing autocomplete on the known states.
+  | (string & {})
+
+export interface CanvasContentExportAttachment {
+  url: string
+  filename: string
+}
+
+export interface CanvasContentExport {
+  id: number
+  export_type: ContentExportType
+  workflow_state: ContentExportWorkflowState
+  /** null while 'created'; a Canvas progress URL once 'exporting'/'exported'. */
+  progress_url: string | null
+  /** Non-null (time-limited download link) only when workflow_state === 'exported'. */
+  attachment: CanvasContentExportAttachment | null
+  /** Opaque integer — the teacher/admin who initiated the export, not a student identifier. */
+  user_id?: number
+  created_at: string
+  updated_at: string
 }

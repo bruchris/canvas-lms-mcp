@@ -10,6 +10,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'search_course_content',
+      audience: 'shared',
       description:
         'Search for content within a course. Searches pages, assignments, discussions, and announcements by keyword.',
       inputSchema: {
@@ -100,6 +101,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course_activity_stream',
+      audience: 'shared',
       description:
         'Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).',
       inputSchema: {

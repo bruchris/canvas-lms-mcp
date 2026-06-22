@@ -89,6 +89,7 @@ describe('createHttpHandler', () => {
       expect(res._headers['access-control-allow-origin']).toBe('https://myapp.example.com')
       expect(res._headers['access-control-allow-methods']).toBe('GET, POST, DELETE, OPTIONS')
       expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Token')
+      expect(res._headers['access-control-allow-headers']).toContain('X-Canvas-Role')
       expect(res._headers['access-control-allow-headers']).not.toContain('X-Canvas-Base-URL')
     })
 
@@ -198,6 +199,79 @@ describe('createHttpHandler', () => {
       await handler(req, res)
       // Should not return 400 since handler has default config
       expect(res._status).not.toBe(400)
+    })
+  })
+
+  describe('role filtering', () => {
+    const roleHandler = createHttpHandler({
+      token: 'test-token',
+      baseUrl: 'https://canvas.example.com/api/v1',
+      role: 'teacher',
+    })
+
+    it('passes the X-Canvas-Role header through to the server factory', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-role': 'student' },
+      })
+      await handler(req, createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ role: 'student' }),
+      )
+    })
+
+    it('falls back to the configured role when no header is present', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      await roleHandler(createMockReq({ method: 'POST', url: '/mcp' }), createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ role: 'teacher' }),
+      )
+    })
+
+    it('header role overrides the configured env role', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-role': 'admin' },
+      })
+      await roleHandler(req, createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }))
+    })
+
+    it('treats X-Canvas-Role: all as no filter (role undefined)', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-role': 'all' },
+      })
+      await roleHandler(req, createMockRes())
+      const lastCall = vi.mocked(createCanvasMCPServer).mock.calls.at(-1)?.[0]
+      expect(lastCall?.role).toBeUndefined()
+    })
+
+    it('keeps the configured role and warns when the header value is invalid', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-role': 'bogus' },
+      })
+      await roleHandler(req, createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ role: 'teacher' }),
+      )
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unknown X-Canvas-Role 'bogus'"))
+      warn.mockRestore()
     })
   })
 

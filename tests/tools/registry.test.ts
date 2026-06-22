@@ -19,6 +19,8 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       delete: async () => undefined,
+      listOverrides: async () => [],
+      createOverride: async () => ({}),
     },
     submissions: {
       list: async () => [],
@@ -42,6 +44,8 @@ function buildFullMockCanvas(): CanvasClient {
       listQuestions: async () => [],
       getSubmissionAnswers: async () => [],
       scoreQuestion: async () => {},
+      getSubmissionEvents: async () => [],
+      setExtension: async () => [],
     },
     files: {
       list: async () => [],
@@ -90,6 +94,7 @@ function buildFullMockCanvas(): CanvasClient {
         modules: [],
         summary: { total_modules: 0, total_items: 0, items_by_type: {} },
       }),
+      listWithItems: async () => [],
       create: async () => ({}),
       update: async () => ({}),
       createItem: async () => ({}),
@@ -125,6 +130,7 @@ function buildFullMockCanvas(): CanvasClient {
       listCourses: async () => [],
       listUsers: async () => [],
       getReports: async () => [],
+      listNotifications: async () => [],
     },
     analytics: {
       searchContentType: async () => [],
@@ -163,6 +169,17 @@ function buildFullMockCanvas(): CanvasClient {
       updateItem: async () => ({}),
       deleteItem: async () => undefined,
     },
+    contentExports: {
+      create: async () => ({}),
+      get: async () => ({}),
+      list: async () => [],
+    },
+    gradingStandards: {
+      listForCourse: async () => [],
+      listForAccount: async () => [],
+      createForCourse: async () => ({}),
+      createForAccount: async () => ({}),
+    },
   } as unknown as CanvasClient
 }
 
@@ -172,7 +189,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 118 tools across all domains', () => {
+  it('returns all 135 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -202,13 +219,14 @@ describe('getAllTools', () => {
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
     expect(names).toContain('create_rubric')
-    // Quizzes (6)
+    // Quizzes (7)
     expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
     expect(names).toContain('list_quiz_submissions')
     expect(names).toContain('list_quiz_questions')
     expect(names).toContain('get_quiz_submission_answers')
     expect(names).toContain('score_quiz_question')
+    expect(names).toContain('get_quiz_submission_events')
     // Files (6)
     expect(names).toContain('list_files')
     expect(names).toContain('list_folders')
@@ -272,13 +290,15 @@ describe('getAllTools', () => {
     expect(names).toContain('get_submission_peer_reviews')
     expect(names).toContain('create_peer_review')
     expect(names).toContain('delete_peer_review')
-    // Accounts (6)
+    // Accounts (8)
     expect(names).toContain('get_account')
     expect(names).toContain('list_accounts')
     expect(names).toContain('list_sub_accounts')
     expect(names).toContain('list_account_courses')
     expect(names).toContain('list_account_users')
     expect(names).toContain('get_account_reports')
+    expect(names).toContain('list_account_notifications')
+    expect(names).toContain('view_account_notifications')
     // Analytics & Search (4)
     expect(names).toContain('search_course_content')
     expect(names).toContain('get_course_analytics')
@@ -319,8 +339,27 @@ describe('getAllTools', () => {
     // Attention (2)
     expect(names).toContain('list_submission_comments_needing_attention')
     expect(names).toContain('list_students_needing_attention')
+    // Content Exports (3)
+    expect(names).toContain('create_content_export')
+    expect(names).toContain('get_content_export')
+    expect(names).toContain('list_content_exports')
+    // Grading Standards (3)
+    expect(names).toContain('list_grading_standards')
+    expect(names).toContain('create_grading_standard')
+    expect(names).toContain('apply_grading_standard_to_course')
+    // Quiz Accommodations (2)
+    expect(names).toContain('set_student_quiz_accommodation')
+    expect(names).toContain('list_student_quiz_accommodations')
+    // Assignment Overrides (3)
+    expect(names).toContain('list_assignment_overrides')
+    expect(names).toContain('create_assignment_override')
+    expect(names).toContain('set_student_assignment_dates')
+    // Course Setup (1)
+    expect(names).toContain('check_course_setup')
+    // Grade Explanation (1)
+    expect(names).toContain('explain_grade')
 
-    expect(tools).toHaveLength(119)
+    expect(tools).toHaveLength(135)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -367,12 +406,27 @@ describe('getAllTools', () => {
       'create_new_quiz_item',
       'update_new_quiz_item',
       'delete_new_quiz_item',
+      'create_content_export',
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
+      'set_student_quiz_accommodation',
+      'create_assignment_override',
+      'set_student_assignment_dates',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
       const tool = tools.find((t) => t.name === name)!
       expect(tool.annotations.destructiveHint).toBe(true)
     }
+  })
+
+  it('exposes get_quiz_submission_events to the student role (shared audience)', () => {
+    // The #182 user story serves "a student reviewing their own attempt", so the
+    // tool is tagged `shared` and must survive student-role filtering.
+    const studentTools = getAllTools(buildFullMockCanvas(), undefined, 'student').map((t) => t.name)
+    expect(studentTools).toContain('get_quiz_submission_events')
+    const teacherTools = getAllTools(buildFullMockCanvas(), undefined, 'teacher').map((t) => t.name)
+    expect(teacherTools).toContain('get_quiz_submission_events')
   })
 
   it('read tools have readOnlyHint: true', () => {
@@ -412,6 +466,12 @@ describe('getAllTools', () => {
       'create_new_quiz_item',
       'update_new_quiz_item',
       'delete_new_quiz_item',
+      'create_content_export',
+      'create_grading_standard',
+      'apply_grading_standard_to_course',
+      'set_student_quiz_accommodation',
+      'create_assignment_override',
+      'set_student_assignment_dates',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

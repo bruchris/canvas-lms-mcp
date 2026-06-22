@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { CanvasClient, CanvasHttpClient, CanvasApiError } from '../../src/canvas/index'
 import { CoursesModule } from '../../src/canvas/courses'
 import { GradebookHistoryModule } from '../../src/canvas/gradebook-history'
+import { GradingStandardsModule } from '../../src/canvas/grading-standards'
 import { UsersModule } from '../../src/canvas/users'
 
 describe('CanvasClient facade', () => {
@@ -21,6 +22,15 @@ describe('CanvasClient facade', () => {
     })
 
     expect(client.gradebookHistory).toBeInstanceOf(GradebookHistoryModule)
+  })
+
+  it('creates a CanvasClient with gradingStandards module', () => {
+    const client = new CanvasClient({
+      token: 'test-token',
+      baseUrl: 'https://canvas.example.com',
+    })
+
+    expect(client.gradingStandards).toBeInstanceOf(GradingStandardsModule)
   })
 
   it('re-exports CanvasHttpClient', () => {

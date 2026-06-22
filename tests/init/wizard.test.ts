@@ -77,6 +77,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 's3cret' },
       { clients: ['cursor', 'claude-desktop'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
     const logs: string[] = []
@@ -110,6 +111,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com/' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
 
@@ -125,6 +127,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com/api/v1' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
 
@@ -136,7 +139,7 @@ describe('runWizard — interactive flow', () => {
   })
 
   it('skips the URL prompt when --base-url was supplied', async () => {
-    const prompts = scriptedPrompts([{ token: 't' }, { clients: ['cursor'] }])
+    const prompts = scriptedPrompts([{ token: 't' }, { clients: ['cursor'] }, { role: 'all' }])
     const writer = recordingWriter()
 
     await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
@@ -155,6 +158,7 @@ describe('runWizard — interactive flow', () => {
       { token: 'bad' },
       { token: 'good' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     let attempt = 0
     const ping = async (): Promise<ValidateResult> => {
@@ -210,6 +214,7 @@ describe('runWizard — interactive flow', () => {
       { token: 't' },
       { proceed: true },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const ping = async (): Promise<ValidateResult> => ({
       ok: false,
@@ -248,7 +253,11 @@ describe('runWizard — interactive flow', () => {
   })
 
   it('uses --client values from argv and skips the client multi-select', async () => {
-    const prompts = scriptedPrompts([{ baseUrl: 'https://school.instructure.com' }, { token: 't' }])
+    const prompts = scriptedPrompts([
+      { baseUrl: 'https://school.instructure.com' },
+      { token: 't' },
+      { role: 'all' },
+    ])
     const writer = recordingWriter()
 
     await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
@@ -281,6 +290,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
 
@@ -297,6 +307,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
 
@@ -312,6 +323,7 @@ describe('runWizard — interactive flow', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
     const logs: string[] = []
@@ -443,6 +455,7 @@ describe('runWizard — output', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const writer = recordingWriter()
     const logs: string[] = []
@@ -466,6 +479,7 @@ describe('runWizard — output', () => {
       { baseUrl: 'https://school.instructure.com' },
       { token: 't' },
       { clients: ['cursor'] },
+      { role: 'all' },
     ])
     const cursor = CLIENTS.find((c) => c.id === 'cursor')!
     const logs: string[] = []
@@ -475,5 +489,110 @@ describe('runWizard — output', () => {
     })
 
     expect(logs.some((l) => l.includes(cursor.name))).toBe(true)
+  })
+})
+
+describe('runWizard — role filtering', () => {
+  it('writes CANVAS_ROLE when a role is selected interactively', async () => {
+    const prompts = scriptedPrompts([
+      { baseUrl: 'https://school.instructure.com' },
+      { token: 't' },
+      { clients: ['cursor'] },
+      { role: 'student' },
+    ])
+    const writer = recordingWriter()
+
+    await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
+      initialConfig: baseConfig(),
+    })
+
+    expect(prompts.remaining()).toBe(0)
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBe('student')
+  })
+
+  it('omits CANVAS_ROLE when "all" is selected interactively', async () => {
+    const prompts = scriptedPrompts([
+      { baseUrl: 'https://school.instructure.com' },
+      { token: 't' },
+      { clients: ['cursor'] },
+      { role: 'all' },
+    ])
+    const writer = recordingWriter()
+
+    await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
+      initialConfig: baseConfig(),
+    })
+
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBeUndefined()
+  })
+
+  it('uses --role from argv and skips the role prompt', async () => {
+    const prompts = scriptedPrompts([
+      { baseUrl: 'https://school.instructure.com' },
+      { token: 't' },
+      { clients: ['cursor'] },
+    ])
+    const writer = recordingWriter()
+
+    await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
+      initialConfig: baseConfig({ role: 'teacher' }),
+    })
+
+    expect(prompts.remaining()).toBe(0)
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBe('teacher')
+  })
+
+  it('omits CANVAS_ROLE when --role all is supplied', async () => {
+    const prompts = scriptedPrompts([
+      { baseUrl: 'https://school.instructure.com' },
+      { token: 't' },
+      { clients: ['cursor'] },
+    ])
+    const writer = recordingWriter()
+
+    await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
+      initialConfig: baseConfig({ role: 'all' }),
+    })
+
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBeUndefined()
+  })
+
+  it('writes CANVAS_ROLE in non-interactive mode when --role is set', async () => {
+    const prompts = scriptedPrompts([])
+    const writer = recordingWriter()
+
+    const result = await runWizard(
+      makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }),
+      {
+        initialConfig: baseConfig({
+          nonInteractive: true,
+          baseUrl: 'https://school.instructure.com',
+          token: 'tok',
+          clients: ['cursor'],
+          role: 'admin',
+        }),
+      },
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(prompts.calls).toHaveLength(0)
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBe('admin')
+  })
+
+  it('does not prompt for a role in non-interactive mode without --role', async () => {
+    const prompts = scriptedPrompts([])
+    const writer = recordingWriter()
+
+    await runWizard(makeDeps({ prompts: prompts.fn, writeClientConfigs: writer.fn }), {
+      initialConfig: baseConfig({
+        nonInteractive: true,
+        baseUrl: 'https://school.instructure.com',
+        token: 'tok',
+        clients: ['cursor'],
+      }),
+    })
+
+    expect(prompts.calls).toHaveLength(0)
+    expect(writer.calls[0].entry.env.CANVAS_ROLE).toBeUndefined()
   })
 })

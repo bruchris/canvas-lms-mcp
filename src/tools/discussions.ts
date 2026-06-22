@@ -72,6 +72,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_discussion',
+      audience: 'educator',
       description: 'Create a new discussion topic in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -86,6 +87,15 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
           .boolean()
           .optional()
           .describe('Require students to post before seeing replies'),
+        is_announcement: z
+          .boolean()
+          .optional()
+          .describe('When true, creates an announcement instead of a discussion topic'),
+        delayed_post_at: z
+          .string()
+          .datetime()
+          .optional()
+          .describe('ISO 8601 datetime to schedule the topic for future posting'),
       },
       annotations: {
         destructiveHint: true,
@@ -99,11 +109,14 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
           discussion_type: params.discussion_type as 'side_comment' | 'threaded' | undefined,
           published: params.published as boolean | undefined,
           require_initial_post: params.require_initial_post as boolean | undefined,
+          is_announcement: params.is_announcement as boolean | undefined,
+          delayed_post_at: params.delayed_post_at as string | undefined,
         })
       },
     },
     {
       name: 'update_discussion',
+      audience: 'educator',
       description: 'Update an existing discussion topic.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -115,6 +128,15 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
           .boolean()
           .optional()
           .describe('Require students to post before seeing replies'),
+        is_announcement: z
+          .boolean()
+          .optional()
+          .describe('When true, marks the topic as an announcement'),
+        delayed_post_at: z
+          .string()
+          .datetime()
+          .optional()
+          .describe('ISO 8601 datetime to schedule the topic for future posting'),
       },
       annotations: {
         destructiveHint: true,
@@ -128,6 +150,8 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
           message: params.message as string | undefined,
           published: params.published as boolean | undefined,
           require_initial_post: params.require_initial_post as boolean | undefined,
+          is_announcement: params.is_announcement as boolean | undefined,
+          delayed_post_at: params.delayed_post_at as string | undefined,
         }
         if (Object.values(updateParams).every((v) => v === undefined)) {
           throw new Error('At least one field must be provided to update a discussion topic')
@@ -137,6 +161,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_discussion',
+      audience: 'educator',
       description: 'Delete a discussion topic from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

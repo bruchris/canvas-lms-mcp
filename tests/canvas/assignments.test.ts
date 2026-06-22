@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AssignmentsModule } from '../../src/canvas/assignments'
-import { CanvasHttpClient } from '../../src/canvas/client'
-import type { CanvasAssignment, CanvasAssignmentGroup } from '../../src/canvas/types'
+import { CanvasApiError, CanvasHttpClient } from '../../src/canvas/client'
+import type {
+  CanvasAssignment,
+  CanvasAssignmentGroup,
+  CanvasAssignmentOverride,
+} from '../../src/canvas/types'
 
 describe('AssignmentsModule', () => {
   let client: CanvasHttpClient
@@ -302,6 +306,136 @@ describe('AssignmentsModule', () => {
       expect(client.request).toHaveBeenCalledWith('/api/v1/courses/42/assignments/99', {
         method: 'DELETE',
       })
+    })
+  })
+
+  describe('listOverrides', () => {
+    it('lists overrides for an assignment', async () => {
+      const mockOverrides: CanvasAssignmentOverride[] = [
+        {
+          id: 1,
+          assignment_id: 10,
+          title: 'Override 1',
+          student_ids: [42, 43],
+          due_at: '2026-09-15T23:59:00Z',
+          unlock_at: null,
+          lock_at: null,
+        },
+      ]
+
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(mockOverrides)
+
+      const result = await assignments.listOverrides(100, 10)
+      expect(result).toEqual(mockOverrides)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides')
+    })
+
+    it('returns empty array when no overrides', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+
+      const result = await assignments.listOverrides(100, 10)
+      expect(result).toEqual([])
+    })
+
+    it('propagates client errors unchanged', async () => {
+      vi.spyOn(client, 'paginate').mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/v1/courses/100/assignments/10/overrides'),
+      )
+
+      await expect(assignments.listOverrides(100, 10)).rejects.toBeInstanceOf(CanvasApiError)
+    })
+  })
+
+  describe('createOverride', () => {
+    it('creates an override targeting student_ids', async () => {
+      const mockOverride: CanvasAssignmentOverride = {
+        id: 1,
+        assignment_id: 10,
+        title: 'Acc',
+        student_ids: [42],
+        due_at: '2026-09-15T23:59:00Z',
+      }
+
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockOverride)
+
+      const result = await assignments.createOverride(100, 10, {
+        student_ids: [42],
+        title: 'Acc',
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      expect(result).toEqual(mockOverride)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_override: {
+            student_ids: [42],
+            title: 'Acc',
+            due_at: '2026-09-15T23:59:00Z',
+          },
+        }),
+      })
+    })
+
+    it('creates an override targeting course_section_id', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignmentOverride)
+
+      await assignments.createOverride(100, 10, {
+        course_section_id: 5,
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_override: {
+            course_section_id: 5,
+            due_at: '2026-09-15T23:59:00Z',
+          },
+        }),
+      })
+    })
+
+    it('creates an override targeting group_id', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignmentOverride)
+
+      await assignments.createOverride(100, 10, {
+        group_id: 7,
+        due_at: '2026-09-15T23:59:00Z',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_override: {
+            group_id: 7,
+            due_at: '2026-09-15T23:59:00Z',
+          },
+        }),
+      })
+    })
+
+    it('serializes a null due_at to remove the due date', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({} as CanvasAssignmentOverride)
+
+      await assignments.createOverride(100, 10, { student_ids: [42], due_at: null })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/10/overrides', {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_override: { student_ids: [42], due_at: null },
+        }),
+      })
+    })
+
+    it('propagates a 422 duplicate-override error unchanged', async () => {
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError(
+          'Unprocessable Entity',
+          422,
+          '/api/v1/courses/100/assignments/10/overrides',
+        ),
+      )
+
+      await expect(
+        assignments.createOverride(100, 10, { student_ids: [42], due_at: '2026-09-15T23:59:00Z' }),
+      ).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
 })

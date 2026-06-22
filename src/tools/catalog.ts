@@ -4,14 +4,19 @@ import { accountTools } from './accounts'
 import { analyticsTools } from './analytics'
 import { attentionTools } from './attention'
 import { assignmentTools } from './assignments'
+import { assignmentOverrideTools } from './assignment-overrides'
 import { calendarTools } from './calendar'
+import { contentExportsTools } from './content-exports'
 import { conversationTools } from './conversations'
+import { courseSetupTools } from './course-setup'
 import { courseTools } from './courses'
 import { dashboardTools } from './dashboard'
 import { discussionTools } from './discussions'
 import { enrollmentTools } from './enrollments'
 import { fileTools } from './files'
 import { gradebookHistoryTools } from './gradebook-history'
+import { gradeExplanationTools } from './grade-explanation'
+import { gradingStandardsTools } from './grading-standards'
 import { groupTools } from './groups'
 import { healthTools } from './health'
 import { moduleTools } from './modules'
@@ -19,6 +24,7 @@ import { outcomeTools } from './outcomes'
 import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
+import { quizAccommodationTools } from './quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
@@ -152,5 +158,35 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'attention',
     defaultPrimaryAudience: 'educator',
     getTools: attentionTools,
+  },
+  {
+    domain: 'content_exports',
+    defaultPrimaryAudience: 'educator',
+    getTools: contentExportsTools,
+  },
+  {
+    domain: 'grading_standards',
+    defaultPrimaryAudience: 'educator',
+    getTools: gradingStandardsTools,
+  },
+  {
+    domain: 'quiz_accommodations',
+    defaultPrimaryAudience: 'educator',
+    getTools: quizAccommodationTools,
+  },
+  {
+    domain: 'assignment_overrides',
+    defaultPrimaryAudience: 'educator',
+    getTools: assignmentOverrideTools,
+  },
+  {
+    domain: 'course_setup',
+    defaultPrimaryAudience: 'educator',
+    getTools: courseSetupTools,
+  },
+  {
+    domain: 'grade_explanation',
+    defaultPrimaryAudience: 'shared',
+    getTools: gradeExplanationTools,
   },
 ]

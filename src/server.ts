@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient } from './canvas'
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { registerAllTools } from './tools'
+import type { CanvasRole } from './tools/types'
 import { registerAllResources } from './resources'
 
 export interface CanvasMCPServerConfig {
@@ -17,6 +18,13 @@ export interface CanvasMCPServerConfig {
    * across requests.
    */
   pseudonymizer?: Pseudonymizer
+  /**
+   * Optional Canvas role for role-based tool filtering. When set, only tools
+   * visible to that role are registered; when omitted, every tool is registered
+   * (the default, backwards-compatible behaviour). The role is a client-side UX
+   * filter only — Canvas still enforces real permissions server-side.
+   */
+  role?: CanvasRole
 }
 
 export interface CanvasMCPServer {
@@ -38,7 +46,7 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
     version,
   })
 
-  registerAllTools(server, canvas, pseudonymizer)
+  registerAllTools(server, canvas, pseudonymizer, config.role)
   registerAllResources(server, canvas)
 
   return { server, canvas, pseudonymizer }

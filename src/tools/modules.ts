@@ -6,6 +6,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_modules',
+      audience: 'shared',
       description: 'List all modules in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -21,6 +22,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_module',
+      audience: 'shared',
       description: 'Get details for a single module by ID.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -38,6 +40,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_module_items',
+      audience: 'shared',
       description: 'List all items within a module.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -55,6 +58,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course_structure',
+      audience: 'shared',
       description:
         'Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.',
       inputSchema: {
@@ -88,6 +92,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       // include_progress, instructors[], or per-student fields, this tool MUST be added
       // to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped at the handler.
       name: 'view_course_structure',
+      audience: 'shared',
       description:
         "Interactive tree view of a course's modules and items. Returns the same payload as `get_course_structure` and additionally links to an MCP Apps UI resource that renders an explorable tree with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `get_course_structure`).",
       inputSchema: {
