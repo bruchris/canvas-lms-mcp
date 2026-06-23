@@ -881,6 +881,30 @@ export interface CanvasGradingStandard {
   grading_scheme: CanvasGradingSchemeEntry[]
 }
 
+// --- Late policy ---
+
+/**
+ * A course's late/missing submission automation policy. Returned (wrapped in a
+ * `{ late_policy: ... }` envelope) by `GET /api/v1/courses/:id/late_policy`,
+ * which requires the `manage_grades` permission — student tokens receive 403.
+ * Canvas creates the underlying row lazily, so a course that has never had a
+ * policy saved returns 404.
+ */
+export interface CanvasLatePolicy {
+  id?: number
+  course_id?: number
+  late_submission_deduction_enabled: boolean
+  /** Percent deducted per interval (0–100; used as-is, no normalization). */
+  late_submission_deduction: number
+  late_submission_interval: 'hour' | 'day'
+  late_submission_minimum_percent_enabled: boolean
+  /** Floor: the grade cannot fall below this percent (0–100). */
+  late_submission_minimum_percent: number
+  missing_submission_deduction_enabled: boolean
+  /** Percent deducted for missing work (typically 100 for auto-zero). */
+  missing_submission_deduction: number
+}
+
 // --- Assignments (params) ---
 
 export interface CreateAssignmentParams {
