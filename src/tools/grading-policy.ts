@@ -217,7 +217,13 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
             }
           } catch (err) {
             if (!(err instanceof CanvasApiError)) throw err
-            // Standard not retrievable (permission/transient) — degrade below.
+            // Only "not retrievable for a non-error reason" degrades to a caveat:
+            // 403 (no permission to read the account standards list) and 404
+            // (the referenced standard is gone). Transient/actionable failures
+            // (5xx, 429, 401) propagate to formatError() with their specific
+            // message — mirroring the late-policy handling above, so a retryable
+            // error is never masked as a permanent "could not be retrieved".
+            if (err.status !== 403 && err.status !== 404) throw err
           }
           if (standardTitle === null) {
             caveats.push(

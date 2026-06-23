@@ -164,7 +164,8 @@ describe('explain_grading_policy — Fixture B (late_policy 404)', () => {
     course: {
       id: 1,
       name: 'Course',
-      apply_assignment_group_weights: false,
+      // apply_assignment_group_weights intentionally omitted — exercises the
+      // `?? false` coalescing for the realistic Canvas shape where it is absent.
       grading_standard_id: null,
     },
     latePolicyError: new CanvasApiError('Not Found', 404, '/api/v1/courses/1/late_policy'),
@@ -472,6 +473,66 @@ describe('explain_grading_policy — Fixture L (coexisting caveats)', () => {
   })
 })
 
+// ── Fixture M — call-4 non-Canvas error propagates (not degraded) ─────────────
+
+describe('explain_grading_policy — Fixture M (call-4 non-Canvas error propagates)', () => {
+  it('re-throws a non-CanvasApiError from the grading-standard lookup', async () => {
+    const canvas = {
+      latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
+      courses: {
+        get: vi.fn().mockResolvedValue({
+          id: 1,
+          name: 'Course',
+          apply_assignment_group_weights: false,
+          grading_standard_id: 42,
+          account_id: 10,
+        }),
+      },
+      assignments: {
+        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+      },
+      gradingStandards: {
+        listForCourse: vi.fn().mockRejectedValue(new TypeError('boom')),
+        listForAccount: vi.fn().mockResolvedValue([]),
+      },
+    } as unknown as CanvasClient
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(TypeError)
+  })
+})
+
+// ── Fixture N — call-4 transient (5xx) CanvasApiError propagates (not degraded) ─
+
+describe('explain_grading_policy — Fixture N (call-4 5xx propagates)', () => {
+  it('re-throws a non-403/404 CanvasApiError instead of masking it as a caveat', async () => {
+    const canvas = {
+      latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
+      courses: {
+        get: vi.fn().mockResolvedValue({
+          id: 1,
+          name: 'Course',
+          apply_assignment_group_weights: false,
+          grading_standard_id: 42,
+          account_id: 10,
+        }),
+      },
+      assignments: {
+        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+      },
+      gradingStandards: {
+        listForCourse: vi.fn().mockResolvedValue([]),
+        listForAccount: vi
+          .fn()
+          .mockRejectedValue(
+            new CanvasApiError('Server Error', 503, '/api/v1/accounts/10/grading_standards'),
+          ),
+      },
+    } as unknown as CanvasClient
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toMatchObject({
+      status: 503,
+    })
+  })
+})
+
 // ── Error propagation — required calls ───────────────────────────────────────
 
 describe('explain_grading_policy — required-call failures propagate', () => {
@@ -493,6 +554,29 @@ describe('explain_grading_policy — required-call failures propagate', () => {
         get: vi.fn().mockRejectedValue(new CanvasApiError('Not Found', 404, '/api/v1/courses/1')),
       },
       assignments: { listGroups: vi.fn().mockResolvedValue([]) },
+      gradingStandards: {
+        listForCourse: vi.fn().mockResolvedValue([]),
+        listForAccount: vi.fn().mockResolvedValue([]),
+      },
+    } as unknown as CanvasClient
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(
+      CanvasApiError,
+    )
+  })
+
+  it('propagates a failure from the required assignment-groups call', async () => {
+    const canvas = {
+      latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
+      courses: {
+        get: vi.fn().mockResolvedValue({ id: 1, name: 'Course', grading_standard_id: null }),
+      },
+      assignments: {
+        listGroups: vi
+          .fn()
+          .mockRejectedValue(
+            new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/assignment_groups'),
+          ),
+      },
       gradingStandards: {
         listForCourse: vi.fn().mockResolvedValue([]),
         listForAccount: vi.fn().mockResolvedValue([]),
