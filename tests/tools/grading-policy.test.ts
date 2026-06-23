@@ -148,6 +148,7 @@ describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weigh
       { id: 2, name: 'Homework', weight: 40 },
     ])
     expect(result.grading_scheme.applied).toBe(true)
+    expect(result.grading_scheme.standard_id).toBe(42)
     expect(result.grading_scheme.standard_title).toBe('Default Grading Scale')
     for (const fragment of ['auto-zero', '10%', 'day', '50%', 'Exams', 'Homework']) {
       expect(result.summary).toContain(fragment)
@@ -323,6 +324,151 @@ describe('explain_grading_policy — Fixture G (enabled, 0% deduction)', () => {
     const { result } = await run(overrides)
     expect(result.summary).toContain('no deduction (0%)')
     expect(result.summary).not.toContain('100%')
+  })
+})
+
+// ── Fixture H — mid-range missing deduction (partial, neither 0 nor 100) ─────
+
+describe('explain_grading_policy — Fixture H (partial missing deduction)', () => {
+  const overrides: MockOverrides = {
+    course: {
+      id: 1,
+      name: 'Course',
+      apply_assignment_group_weights: false,
+      grading_standard_id: null,
+    },
+    latePolicy: latePolicy({
+      missing_submission_deduction_enabled: true,
+      missing_submission_deduction: 25,
+    }),
+    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+  }
+
+  it('describes a partial missing-work deduction without auto-zero/0% wording', async () => {
+    const { result } = await run(overrides)
+    expect(result.missing_submission_policy?.deduction_percent).toBe(25)
+    expect(result.summary).toContain('Missing work loses 25%')
+    expect(result.summary).not.toContain('auto-zero')
+    expect(result.summary).not.toContain('no deduction')
+  })
+})
+
+// ── Fixture I — grading standard set, course has no account_id ────────────────
+
+describe('explain_grading_policy — Fixture I (standard set, no account_id)', () => {
+  const overrides: MockOverrides = {
+    course: {
+      id: 1,
+      name: 'Course',
+      apply_assignment_group_weights: false,
+      grading_standard_id: 99,
+      // account_id intentionally omitted
+    },
+    latePolicy: latePolicy(),
+    courseStandards: [{ id: 1, title: 'Other', grading_scheme: [] }],
+    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+  }
+
+  it('caveats without an account fallback and never calls listForAccount', async () => {
+    const { result, canvas } = await run(overrides)
+    expect(result.grading_scheme.applied).toBe(true)
+    expect(result.grading_scheme.standard_id).toBe(99)
+    expect(result.grading_scheme.standard_title).toBeNull()
+    expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
+    expect(
+      result.caveats.some((c) => c.includes('Grading standard (id: 99) could not be retrieved')),
+    ).toBe(true)
+  })
+})
+
+// ── Fixture J — weighted course with no assignment groups configured ──────────
+
+describe('explain_grading_policy — Fixture J (weighted, empty groups)', () => {
+  const overrides: MockOverrides = {
+    course: {
+      id: 1,
+      name: 'Course',
+      apply_assignment_group_weights: true,
+      grading_standard_id: null,
+    },
+    latePolicy: latePolicy(),
+    groups: [],
+  }
+
+  it('reflects the weighted flag without emitting a malformed empty group list', async () => {
+    const { result } = await run(overrides)
+    expect(result.group_weighting.weighted).toBe(true)
+    expect(result.group_weighting.groups).toEqual([])
+    expect(result.summary).not.toContain('weighted: .')
+    expect(result.summary).toContain('no assignment groups are configured')
+  })
+})
+
+// ── Fixture K — grading-standard lookup throws (degrades, does not abort) ──────
+
+describe('explain_grading_policy — Fixture K (call-4 CanvasApiError degrades)', () => {
+  it('degrades a 403 on the account standard lookup to a caveat instead of failing', async () => {
+    const canvas = {
+      latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
+      courses: {
+        get: vi.fn().mockResolvedValue({
+          id: 1,
+          name: 'Course',
+          apply_assignment_group_weights: false,
+          grading_standard_id: 42,
+          account_id: 10,
+        }),
+      },
+      assignments: {
+        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+      },
+      gradingStandards: {
+        listForCourse: vi.fn().mockResolvedValue([]),
+        listForAccount: vi
+          .fn()
+          .mockRejectedValue(
+            new CanvasApiError('Forbidden', 403, '/api/v1/accounts/10/grading_standards'),
+          ),
+      },
+    } as unknown as CanvasClient
+
+    const result = (await gradingPolicyTools(canvas)[0].handler({
+      course_id: 1,
+    })) as GradingPolicyOut
+    expect(result.grading_scheme.applied).toBe(true)
+    expect(result.grading_scheme.standard_title).toBeNull()
+    expect(
+      result.caveats.some((c) => c.includes('Grading standard (id: 42) could not be retrieved')),
+    ).toBe(true)
+    // The rest of the policy still came through — partial-data contract intact.
+    expect(result.missing_submission_policy).not.toBeNull()
+  })
+})
+
+// ── Fixture L — multiple caveats coexist (403 policy + unretrievable standard) ─
+
+describe('explain_grading_policy — Fixture L (coexisting caveats)', () => {
+  const overrides: MockOverrides = {
+    course: {
+      id: 1,
+      name: 'Course',
+      apply_assignment_group_weights: true,
+      grading_standard_id: 99,
+      account_id: 10,
+    },
+    latePolicyError: new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/late_policy'),
+    courseStandards: [],
+    accountStandards: [],
+    groups: [{ id: 1, name: 'Exams', group_weight: 100 }],
+  }
+
+  it('emits both the permission and the standard-retrieval caveats', async () => {
+    const { result } = await run(overrides)
+    expect(result.caveats).toHaveLength(2)
+    expect(result.caveats.some((c) => c.includes('instructor or admin permissions'))).toBe(true)
+    expect(
+      result.caveats.some((c) => c.includes('Grading standard (id: 99) could not be retrieved')),
+    ).toBe(true)
   })
 })
 

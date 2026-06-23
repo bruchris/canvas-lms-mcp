@@ -81,9 +81,15 @@ function buildSummary(
     }
   }
 
-  if (weighted) {
+  if (weighted && groups.length > 0) {
     const list = groups.map((g) => `${g.name} (${g.weight}%)`).join(', ')
     blocks.push(`Assignment groups are weighted: ${list}.`)
+  } else if (weighted) {
+    // Flagged for weighting but no groups configured yet — avoid emitting a
+    // malformed "weighted: ." with an empty list.
+    blocks.push(
+      'Assignment groups are set to be weighted, but no assignment groups are configured.',
+    )
   } else {
     blocks.push('Assignment groups are not weighted — all assignments contribute equally.')
   }
@@ -184,23 +190,36 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
         // Call 4 (conditional): resolve the grading-standard title. The course
         // endpoint returns only course-owned standards, so fall back to the
         // account standard when the id is not found at the course level.
+        //
+        // The title is non-essential — a missing/unreadable standard degrades to
+        // a null title + caveat rather than failing the whole tool. So a
+        // CanvasApiError here (e.g. an instructor who can read the course but not
+        // the account-level standards list → 403) is caught and degraded, which
+        // keeps the allSettled partial-data contract intact. Non-Canvas errors
+        // still propagate.
         let standardTitle: string | null = null
         if (course.grading_standard_id != null) {
-          const courseStandards = await canvas.gradingStandards.listForCourse(courseId)
-          const found = courseStandards.find((s) => s.id === course.grading_standard_id)
-          if (found) {
-            standardTitle = found.title
-          } else if (course.account_id != null) {
-            const accountStandards = await canvas.gradingStandards.listForAccount(course.account_id)
-            const foundInAccount = accountStandards.find((s) => s.id === course.grading_standard_id)
-            if (foundInAccount) {
-              standardTitle = foundInAccount.title
-            } else {
-              caveats.push(
-                `Grading standard (id: ${course.grading_standard_id}) could not be retrieved.`,
+          try {
+            const courseStandards = await canvas.gradingStandards.listForCourse(courseId)
+            const found = courseStandards.find((s) => s.id === course.grading_standard_id)
+            if (found) {
+              standardTitle = found.title
+            } else if (course.account_id != null) {
+              const accountStandards = await canvas.gradingStandards.listForAccount(
+                course.account_id,
               )
+              const foundInAccount = accountStandards.find(
+                (s) => s.id === course.grading_standard_id,
+              )
+              if (foundInAccount) {
+                standardTitle = foundInAccount.title
+              }
             }
-          } else {
+          } catch (err) {
+            if (!(err instanceof CanvasApiError)) throw err
+            // Standard not retrievable (permission/transient) — degrade below.
+          }
+          if (standardTitle === null) {
             caveats.push(
               `Grading standard (id: ${course.grading_standard_id}) could not be retrieved.`,
             )
