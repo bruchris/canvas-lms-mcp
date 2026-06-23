@@ -73,8 +73,22 @@ To distinguish the two states in the raw output, the tool exposes a
 - `'api'` — a 200 response was received from the late_policy endpoint.
 - `'default'` — a 404 was received; defaults (no automation) are assumed.
 
-Same pattern for `late_submission_policy.source`. When the field is `null` (403 case), neither
-status is applicable — the caller should treat the absence of the field as "unknown, not off".
+Same pattern for `late_submission_policy.source`. When either field is `null` (403 case), the
+state is unknown — callers must NOT infer "policy is off" from a null field.
+
+The **synthetic default object** used when Canvas returns 404 is:
+
+```ts
+const DEFAULT_LATE_POLICY = {
+  late_submission_deduction_enabled: false,
+  late_submission_deduction: 0,
+  late_submission_interval: 'day' as const,
+  late_submission_minimum_percent_enabled: false,
+  late_submission_minimum_percent: 0,
+  missing_submission_deduction_enabled: false,
+  missing_submission_deduction: 0,
+}
+```
 
 ### 3. Scope: include group weighting and grading-scheme presence in this tool?
 
@@ -105,7 +119,7 @@ independently.
 |---|----------|---------|--------|
 | 1 | `GET /api/v1/courses/:id/late_policy` | Missing/late deduction flags and values | `canvas.latePolicy.get(courseId)` (new) |
 | 2 | `GET /api/v1/courses/:id` | `apply_assignment_group_weights`, `grading_standard_id`, `account_id`, course name | `canvas.courses.get(courseId)` (existing) |
-| 3 | `GET /api/v1/courses/:id/assignment_groups` | Group names and weights | `canvas.assignments.listGroups(courseId)` (existing, no extra includes) |
+| 3 | `GET /api/v1/courses/:id/assignment_groups` | Group names and weights | `canvas.assignments.listGroups(courseId)` (existing; omit `include` opts to skip assignments) |
 | 4 _(conditional)_ | `GET /api/v1/courses/:id/grading_standards` (then account fallback) | Confirm the grading standard exists and retrieve its title | `canvas.gradingStandards.listForCourse()` / `listForAccount()` (existing) |
 
 Calls 1, 2, and 3 are independent — issue them as `Promise.allSettled([call1, call2, call3])` so
@@ -133,7 +147,7 @@ const groups = groupsResult.value
 
 // Call 1: late policy — only 403 and 404 are handled gracefully
 let latePolicySource: 'api' | 'default' = 'default'
-let rawLatePolicy: CanvasLatePolicy | null = null
+let rawLatePolicy: CanvasLatePolicy = DEFAULT_LATE_POLICY
 let policyUnavailable = false
 
 if (latePolicyResult.status === 'fulfilled') {
@@ -144,15 +158,49 @@ if (latePolicyResult.status === 'fulfilled') {
   if (err instanceof CanvasApiError && err.status === 403) {
     policyUnavailable = true  // both policy output fields become null
   } else if (err instanceof CanvasApiError && err.status === 404) {
-    latePolicySource = 'default'  // no policy row yet; defaults (disabled) apply
+    latePolicySource = 'default'  // rawLatePolicy stays as DEFAULT_LATE_POLICY
   } else {
     return formatError(err)  // 5xx, network error — propagate
   }
 }
+
+// Initialize caveats (always starts as empty array)
+const caveats: string[] = []
+if (policyUnavailable) {
+  caveats.push(
+    'Late/missing submission policy requires instructor or admin permissions '
+    + '— policy details are not accessible with this token.',
+  )
+}
 ```
 
-Note: `canvas.assignments.listGroups(courseId)` is called without `include: ['assignments']`
-(the default call omits assignments) to avoid fetching unnecessary data.
+Note: `canvas.assignments.listGroups(courseId)` is called without options (the second parameter
+defaults to `{}`), so `include[]=assignments` is NOT sent and only group metadata is returned.
+
+**Grading standard lookup (call 4):**
+
+```ts
+let standardTitle: string | null = null
+if (course.grading_standard_id != null) {
+  // Canvas /courses/:id/grading_standards returns ONLY course-owned standards;
+  // account-inherited standards are NOT included, so an account-level fallback is needed.
+  const courseStandards = await canvas.gradingStandards.listForCourse(courseId)
+  const found = courseStandards.find(s => s.id === course.grading_standard_id)
+  if (found) {
+    standardTitle = found.title
+  } else if (course.account_id != null) {
+    const accountStandards = await canvas.gradingStandards.listForAccount(course.account_id)
+    const foundInAccount = accountStandards.find(s => s.id === course.grading_standard_id)
+    if (foundInAccount) {
+      standardTitle = foundInAccount.title
+    } else {
+      caveats.push(`Grading standard (id: ${course.grading_standard_id}) could not be retrieved.`)
+    }
+  } else {
+    caveats.push(`Grading standard (id: ${course.grading_standard_id}) could not be retrieved.`)
+  }
+}
+```
 
 ---
 
@@ -180,15 +228,16 @@ export class LatePolicyModule {
 The response shape from Canvas is `{ "late_policy": { ... } }` — an envelope. The module unwraps
 it and returns the inner `CanvasLatePolicy` object directly.
 
-**Register in `src/canvas/index.ts`** (following the pattern of all existing modules):
+**Register in `src/canvas/index.ts`** (following the exact pattern of all existing modules):
 
 ```ts
+// 1. Add import alongside existing module imports:
 import { LatePolicyModule } from './late-policy'
 
-// 1. Declare as a class property (in the class body, alongside existing properties):
+// 2. Declare as a class property in the class body, alongside e.g. `courses: CoursesModule`:
 latePolicy: LatePolicyModule
 
-// 2. Assign in the constructor:
+// 3. Assign in the constructor body, alongside e.g. `this.courses = new CoursesModule(...)`:
 this.latePolicy = new LatePolicyModule(this.client)
 ```
 
@@ -213,6 +262,9 @@ export interface CanvasLatePolicy {
 }
 ```
 
+Note: `grading_standard_id?: number | null` and `account_id?: number` are already present on
+`CanvasCourse` in `types.ts` — no additional type changes needed for those fields.
+
 ---
 
 ## Tool contract (`src/tools/grading-policy.ts`)
@@ -234,14 +286,17 @@ but is **not used** — this tool returns no student PII.
 
 `explain_grading_policy`
 
-### Zod input schema
+### Input schema
+
+Following the `ToolDefinition.inputSchema` shape used by all other tools (a `Record<string, ZodTypeAny>`,
+not a `z.object()` wrapper):
 
 ```ts
-z.object({
+inputSchema: {
   course_id: z.number().int().positive().describe(
     'Canvas course ID to explain the grading policy for.'
   ),
-})
+}
 ```
 
 ### Annotations
@@ -263,41 +318,59 @@ z.object({
     name: string,
   },
   // null when the late_policy endpoint returned 403 (student token).
-  // Non-null for both 200 (source: 'api') and 404 (source: 'default') responses.
+  // Non-null for both 200 (source: 'api') and 404/default (source: 'default') responses.
+  // When null, treat values as UNKNOWN — not as "no penalty".
   missing_submission_policy: {
     source: 'api' | 'default',  // 'api' = Canvas returned data; 'default' = no policy row (404)
-    enabled: boolean,             // true iff missing_submission_deduction_enabled
-    deduction_percent: number,    // 0-100; 100 means auto-zero; 0 when source is 'default'
+    enabled: boolean,             // mirrors missing_submission_deduction_enabled
+    deduction_percent: number,    // mirrors missing_submission_deduction (0-100)
   } | null,
   late_submission_policy: {
     source: 'api' | 'default',
     enabled: boolean,
-    deduction_percent: number,    // percent deducted per interval; 0 when source is 'default'
-    interval: 'hour' | 'day',
+    deduction_percent: number,    // mirrors late_submission_deduction
+    interval: 'hour' | 'day',    // mirrors late_submission_interval
     minimum_percent_enabled: boolean,
-    minimum_percent: number,      // 0 if minimum_percent_enabled is false
+    minimum_percent: number,      // mirrors late_submission_minimum_percent
   } | null,
   group_weighting: {
-    weighted: boolean,            // course.apply_assignment_group_weights ?? false
-    groups: Array<{
-      id: number,
-      name: string,
-      weight: number,             // group_weight from Canvas (0-100)
-    }>,
+    weighted: boolean,
+    // Each group: { id, name, weight } where weight maps from CanvasAssignmentGroup.group_weight
+    groups: Array<{ id: number; name: string; weight: number }>,
   },
   grading_scheme: {
     applied: boolean,             // true iff grading_standard_id is non-null
     standard_id: number | null,
     standard_title: string | null,  // populated if applied; null if unretrievable or not set
   },
-  summary: string,               // plain-language paragraph
-  caveats: string[],
+  summary: string,
+  caveats: string[],             // initialised as []; strings appended as issues arise
 }
 ```
 
-**When `missing_submission_policy === null` (and likewise for `late_submission_policy`)**, the
-caller should treat the values as **unknown, not off** — the policy exists but cannot be read
-with the current token. The `caveats` array will contain an explanation.
+**Field mapping from Canvas types to output:**
+
+```ts
+// group_weighting.groups is built by mapping CanvasAssignmentGroup[]:
+groups: assignmentGroups.map(g => ({ id: g.id, name: g.name, weight: g.group_weight }))
+
+// missing_submission_policy (when non-null):
+{
+  source: latePolicySource,
+  enabled: rawLatePolicy.missing_submission_deduction_enabled,
+  deduction_percent: rawLatePolicy.missing_submission_deduction,
+}
+
+// late_submission_policy (when non-null):
+{
+  source: latePolicySource,
+  enabled: rawLatePolicy.late_submission_deduction_enabled,
+  deduction_percent: rawLatePolicy.late_submission_deduction,
+  interval: rawLatePolicy.late_submission_interval,
+  minimum_percent_enabled: rawLatePolicy.late_submission_minimum_percent_enabled,
+  minimum_percent: rawLatePolicy.late_submission_minimum_percent,
+}
+```
 
 ### Summary generation
 
@@ -318,17 +391,20 @@ The `summary` field is assembled from the structured data. Examples:
 
 ### Summary assembly rules
 
+`caveats` starts as `[]`; strings are pushed as issues are encountered. The summary is
+built by joining non-empty blocks with a space.
+
 ```
 missing_block:
-  if missing_submission_policy === null:  skip (permission caveat added separately)
+  if missing_submission_policy === null:  skip  // permission caveat added below
   elif enabled:
     if deduction_percent === 100: "Missing work is automatically scored 0% (auto-zero)."
     elif deduction_percent === 0:  "Missing work policy is enabled with no deduction (0%)."
-    else: "Missing work loses <deduction_percent>% of the possible points automatically."
+    else: "Missing work loses <deduction_percent>% of possible points automatically."
   else: "No automatic missing-work penalty."
 
 late_block:
-  if late_submission_policy === null:  skip (permission caveat added separately)
+  if late_submission_policy === null:  skip
   elif enabled:
     base = "Late submissions lose <deduction_percent>% per <interval>."
     if minimum_percent_enabled: append " Grade cannot fall below <minimum_percent>%."
@@ -349,15 +425,15 @@ scheme_block:
   else:
     "No letter-grade scheme is applied."
 
-permission_caveat (added when missing_submission_policy === null):
-  append to caveats: "Late/missing penalty details require instructor or admin permissions
-  and are not available with this token."
-  append to summary: "Late/missing penalty details require instructor permissions and are
-  not available."
+permission note (appended when missing_submission_policy === null):
+  // one caveat entry covers both policy fields (single 403 caused both to be null):
+  caveats.push('Late/missing penalty details require instructor or admin permissions — not available with this token.')
+  // append to summary after scheme_block:
+  + " Late/missing penalty details require instructor permissions and are not available."
 
 summary = [missing_block, late_block, weighting_block, scheme_block]
   .filter(Boolean).join(" ")
-  (permission note appended at the end when policy is null)
+  (permission note text appended to summary when policyUnavailable)
 ```
 
 ---
@@ -393,9 +469,8 @@ No `CanvasUser`, no `user_name`, no `participants` array, no enrollment data wit
 `PSEUDONYMIZER_WRAPPED_TOOLS`. CI's `coverage.test.ts` checks only that tools in that list are
 actually wrapped — adding a non-PII tool to the list would fail that check.
 
-Note: if Canvas adds user-identity fields (e.g. `created_by`) to the `late_policy` or
-`grading_standards` responses in future API versions, this tool must be re-evaluated for
-PII exposure.
+Note: if Canvas adds user-identity fields (e.g. `created_by`) to `late_policy` or
+`grading_standards` responses in future API versions, this tool must be re-evaluated for PII exposure.
 
 ---
 
@@ -403,13 +478,14 @@ PII exposure.
 
 | Scenario | Handling |
 |----------|----------|
-| 403 on `late_policy` call | Set both policy fields to `null`; add caveat; continue with course/groups data |
-| 404 on `late_policy` call | Treat as default (all-false policy, `source: 'default'`); no caveat |
+| 403 on `late_policy` call | Set `policyUnavailable = true`; both policy fields become `null`; push one caveat entry; continue |
+| 404 on `late_policy` call | Use `DEFAULT_LATE_POLICY`, `source: 'default'`; no caveat |
 | 5xx or network error on `late_policy` call | Propagate via `formatError()`; discard partial data |
 | 403 or 404 on course or assignment_groups | Propagate via `formatError()` — tool cannot function without course data |
-| `grading_standard_id` set but standard not in course-level list | Try account-level list via `listForAccount(course.account_id)` |
-| Standard not found in either course or account list | `standard_title: null`; add caveat `"Grading standard (id: <n>) could not be retrieved."` |
-| Network failure on any call | Propagate via `formatError()` "Failed to connect to Canvas — check your base URL" |
+| `grading_standard_id` set, not in course-level list | Try `listForAccount(course.account_id)` |
+| Standard not found in either course or account list | `standard_title: null`; push caveat |
+| `account_id` is null/undefined and standard not in course list | `standard_title: null`; push caveat |
+| Network failure on any call | Propagate via `formatError()` |
 
 ---
 
@@ -437,7 +513,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit.
 }
 ```
 
-**Assignment groups mock** (two groups, no `include[]=assignments`):
+**Assignment groups mock** (no `include[]=assignments`):
 ```json
 [
   { "id": 1, "name": "Exams", "group_weight": 60 },
@@ -445,7 +521,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit.
 ]
 ```
 
-**Grading standards mock** (course-level list returns `[{ id: 42, title: 'Default Grading Scale', ... }]`).
+**Grading standards mock**: `listForCourse(1)` returns `[{ id: 42, title: 'Default Grading Scale', grading_scheme: [] }]`.
 
 **Assertions**:
 1. `result.missing_submission_policy.enabled === true`
@@ -457,22 +533,22 @@ All tests use mocked Canvas responses — no real Canvas instance is hit.
 7. `result.late_submission_policy.minimum_percent_enabled === true`
 8. `result.late_submission_policy.minimum_percent === 50`
 9. `result.group_weighting.weighted === true`
-10. `result.group_weighting.groups` has two entries: Exams (weight 60) and Homework (weight 40)
+10. `result.group_weighting.groups` is `[{ id: 1, name: 'Exams', weight: 60 }, { id: 2, name: 'Homework', weight: 40 }]`
 11. `result.grading_scheme.applied === true`
 12. `result.grading_scheme.standard_title === 'Default Grading Scale'`
-13. `result.summary` contains "auto-zero" and "10%" and "day" and "50%" and group names
-14. `result.caveats` is empty
+13. `result.summary` contains "auto-zero" and "10%" and "day" and "50%" and "Exams" and "Homework"
+14. `result.caveats` is `[]`
 
 ### Fixture B — No policy configured (late_policy returns 404)
 
 **Course mock**: `apply_assignment_group_weights: false`, `grading_standard_id: null`
 
-**Late policy call**: `canvas.latePolicy.get` throws `CanvasApiError` with `status: 404`.
+**Late policy call**: throws `CanvasApiError` with `status: 404`.
 
-**Assignment groups mock**: single group `{ id: 1, name: 'Assignments', group_weight: 0 }`.
+**Assignment groups mock**: `[{ id: 1, name: 'Assignments', group_weight: 0 }]`.
 
 **Assertions**:
-1. `result.missing_submission_policy` is non-null
+1. `result.missing_submission_policy` is not null
 2. `result.missing_submission_policy.enabled === false`
 3. `result.missing_submission_policy.source === 'default'`
 4. `result.late_submission_policy.enabled === false`
@@ -481,43 +557,47 @@ All tests use mocked Canvas responses — no real Canvas instance is hit.
 7. `result.grading_scheme.applied === false`
 8. `result.grading_scheme.standard_id === null`
 9. `result.summary` contains "No automatic" and "not weighted" and "No letter-grade"
-10. `result.caveats` is empty
+10. `result.caveats` is `[]`
 
 ### Fixture C — Student token (403 on late_policy)
 
-**Late policy call**: `canvas.latePolicy.get` throws `CanvasApiError` with `status: 403`.
+**Late policy call**: throws `CanvasApiError` with `status: 403`.
 
 **Course mock**: `apply_assignment_group_weights: true`, `grading_standard_id: null`
 
-**Assignment groups mock**: single group `{ id: 1, name: 'Exams', group_weight: 100 }`.
+**Assignment groups mock**: `[{ id: 1, name: 'Exams', group_weight: 100 }]`.
 
 **Assertions**:
 1. `result.missing_submission_policy === null`
 2. `result.late_submission_policy === null`
-3. `result.group_weighting.weighted === true` (group data still returned)
-4. `result.caveats` has exactly one entry containing "instructor or admin permissions"
-5. `result.summary` contains group name and weight, and ends with the permissions note
+3. `result.group_weighting.weighted === true`
+4. `result.group_weighting.groups[0].weight === 100` (mapping from `group_weight`)
+5. `result.caveats.length === 1` (exactly one caveat for both policy fields)
+6. `result.caveats[0]` contains "instructor or admin permissions"
+7. `result.summary` contains "Exams" and "100%" and "instructor permissions"
 
 ### Fixture D — Grading standard is account-scoped (two-level fallback)
 
 **Course mock**: `grading_standard_id: 42`, `account_id: 10`
 
-**Course-level grading standards mock**: `listForCourse(1)` returns `[]` (standard is
-account-scoped; `/courses/:id/grading_standards` returns only course-owned standards).
+**`listForCourse(1)` mock**: returns `[]` (standard is account-scoped; this endpoint returns
+only course-owned standards, not inherited ones).
 
-**Account-level grading standards mock**: `listForAccount(10)` returns
-`[{ id: 42, title: 'Institutional Scale', grading_scheme: [...] }]`.
+**`listForAccount(10)` mock**: returns `[{ id: 42, title: 'Institutional Scale', grading_scheme: [] }]`.
 
 **Assertions**:
 1. `result.grading_scheme.applied === true`
 2. `result.grading_scheme.standard_title === 'Institutional Scale'`
-3. Both `listForCourse` AND `listForAccount` mocks were called (verify via spy)
+3. Spy confirms both `listForCourse` and `listForAccount` were called
+4. `result.caveats` is `[]`
 
-### Fixture E — Grading standard set but not retrievable
+### Fixture E — Grading standard set but not retrievable at either level
 
 **Course mock**: `grading_standard_id: 99`, `account_id: 10`
 
-**Both `listForCourse(1)` and `listForAccount(10)`** return arrays that do not include id 99.
+**`listForCourse(1)` mock**: returns `[{ id: 1, title: 'Other', grading_scheme: [] }]` (id 99 not present).
+
+**`listForAccount(10)` mock**: returns `[]`.
 
 **Assertions**:
 1. `result.grading_scheme.applied === true`
@@ -539,11 +619,11 @@ account-scoped; `/courses/:id/grading_standards` returns only course-owned stand
 ### Fixture G — `deduction_percent === 0` with policy enabled (edge case)
 
 **Late policy mock** (200): `missing_submission_deduction_enabled: true`,
-`missing_submission_deduction: 0` (policy enabled but deduction is 0%).
+`missing_submission_deduction: 0`.
 
 **Assertion**:
-1. `result.summary` contains "no deduction (0%)" or equivalent — does NOT say "100%"
-   (i.e. the `(100 - 0) = 100%` formula is NOT applied)
+1. `result.summary` contains "no deduction (0%)" — does NOT say "100%"
+   (the `(100 - 0)` formula must NOT be applied for this case)
 
 ---
 
@@ -573,18 +653,17 @@ Use explain_grade to compute the actual weighted grade for a specific student.
 |------|--------|
 | `src/canvas/types.ts` | Add `CanvasLatePolicy` interface |
 | `src/canvas/late-policy.ts` | **New** — `LatePolicyModule` with `get(courseId)` |
-| `src/canvas/index.ts` | Import `LatePolicyModule`; declare `latePolicy: LatePolicyModule` property; assign in constructor |
-| `src/tools/grading-policy.ts` | **New** — `gradingPolicyTools(canvas, pseudonymizer?)` with `explain_grading_policy` ToolDefinition, `Promise.allSettled` calls, and summary generation |
+| `src/canvas/index.ts` | Import `LatePolicyModule`; declare property; assign in constructor |
+| `src/tools/grading-policy.ts` | **New** — `gradingPolicyTools(canvas, pseudonymizer?)` with `explain_grading_policy` ToolDefinition, `Promise.allSettled` orchestration, `DEFAULT_LATE_POLICY` constant, and summary generation |
 | `src/tools/catalog.ts` | Import `gradingPolicyTools`; add `grading_policy` domain entry after `grade_explanation` |
 | `tests/grading-policy.test.ts` | **New** — Fixtures A–G with mocked Canvas responses |
 
 **6 files total. No new package dependencies. No student PII (pseudonymizer accepted but unused).**
 
 Existing modules used without modification:
-- `src/canvas/courses.ts` — `CoursesModule.get(courseId)` (already exists)
-- `src/canvas/assignments.ts` — `AssignmentsModule.listGroups(courseId)` (already exists)
-- `src/canvas/grading-standards.ts` — `GradingStandardsModule.listForCourse()` /
-  `listForAccount()` (already exists and registered on `CanvasClient` as `canvas.gradingStandards`)
+- `src/canvas/courses.ts` — `CoursesModule.get(courseId)` ✅
+- `src/canvas/assignments.ts` — `AssignmentsModule.listGroups(courseId)` (second param omitted; defaults to `{}`) ✅
+- `src/canvas/grading-standards.ts` — `GradingStandardsModule.listForCourse()` / `listForAccount()` (registered on `CanvasClient` as `canvas.gradingStandards`) ✅
 
 ---
 
