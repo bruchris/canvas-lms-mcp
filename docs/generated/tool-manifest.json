@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 136,
+  "toolCount": 137,
   "tools": [
     {
       "name": "health_check",
@@ -1667,6 +1667,18 @@
       "name": "explain_grade",
       "domain": "grade_explanation",
       "description": "Recomputes and explains the weighted course grade for a student, including assignment-group weights, drop_lowest / drop_highest / never_drop rules, per-group breakdowns (earned points, dropped assignments, weighted contributions), the mapped letter grade (via the course grading standard when present), and a reconciliation check against Canvas's posted current_score / final_score.\n\nUse this when you need to verify that Canvas's displayed grade matches the rules, or to explain to a student or instructor how their grade was calculated.\n\nLimitations:\n- V1 computes one student per call. Omit student_id to compute for the authenticated user.\n- Instructor-applied curves and fudge points are not exposed via the Canvas REST API and cannot be reflected in the computation; a caveat is added when the discrepancy exceeds 0.5 pp.\n- When the course uses grading periods, reconciliation is against the overall (cross-period) grade.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled and you are passing a student_id, first call resolve_pseudonym to obtain the real Canvas user_id.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "explain_grading_policy",
+      "domain": "grading_policy",
+      "description": "Explains the grading automation rules configured for a Canvas course:\n- Missing-submission policy: whether blank/unsubmitted work is automatically scored 0 (or another deduction), or left unpenalised.\n- Late-submission policy: whether Canvas applies a per-day or per-hour percentage deduction to late submissions, and whether there is a floor below which the grade cannot fall.\n- Assignment-group weighting: whether the course uses weighted groups, and the weight of each group.\n- Grading scheme: whether a letter-grade scheme (A/B/C/F mapping) is applied to the final score.\n\nAlso returns a plain-language summary paragraph you can share with students or instructors.\n\nNote: the late/missing policy section requires instructor or admin permissions. Students receive the group-weighting and grading-scheme sections only, with a caveat noting what is unavailable. Use explain_grade to compute the actual weighted grade for a specific student.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

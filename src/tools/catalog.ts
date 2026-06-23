@@ -16,6 +16,7 @@ import { enrollmentTools } from './enrollments'
 import { fileTools } from './files'
 import { gradebookHistoryTools } from './gradebook-history'
 import { gradeExplanationTools } from './grade-explanation'
+import { gradingPolicyTools } from './grading-policy'
 import { gradingStandardsTools } from './grading-standards'
 import { groupTools } from './groups'
 import { healthTools } from './health'
@@ -194,5 +195,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'grade_explanation',
     defaultPrimaryAudience: 'shared',
     getTools: gradeExplanationTools,
+  },
+  {
+    domain: 'grading_policy',
+    defaultPrimaryAudience: 'shared',
+    getTools: gradingPolicyTools,
   },
 ]

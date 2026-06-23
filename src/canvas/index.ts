@@ -23,6 +23,7 @@ import { GradebookHistoryModule } from './gradebook-history'
 import { NewQuizzesModule } from './new-quizzes'
 import { ContentExportsModule } from './content-exports'
 import { GradingStandardsModule } from './grading-standards'
+import { LatePolicyModule } from './late-policy'
 
 /**
  * Standalone Canvas REST API client. Composed of modular per-domain classes
@@ -61,6 +62,7 @@ export class CanvasClient {
   newQuizzes: NewQuizzesModule
   contentExports: ContentExportsModule
   gradingStandards: GradingStandardsModule
+  latePolicy: LatePolicyModule
 
   constructor(config: CanvasClientConfig) {
     this.client = new CanvasHttpClient(config)
@@ -87,6 +89,7 @@ export class CanvasClient {
     this.newQuizzes = new NewQuizzesModule(this.client)
     this.contentExports = new ContentExportsModule(this.client)
     this.gradingStandards = new GradingStandardsModule(this.client)
+    this.latePolicy = new LatePolicyModule(this.client)
   }
 }
 
