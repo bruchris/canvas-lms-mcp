@@ -153,6 +153,8 @@ describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weigh
     for (const fragment of ['auto-zero', '10%', 'day', '50%', 'Exams', 'Homework']) {
       expect(result.summary).toContain(fragment)
     }
+    // Pin the weighted-groups sentence directly (lead-in + per-group rendering).
+    expect(result.summary).toContain('Assignment groups are weighted: Exams (60%), Homework (40%).')
     expect(result.caveats).toEqual([])
   })
 })
@@ -266,6 +268,8 @@ describe('explain_grading_policy — Fixture E (standard unretrievable)', () => 
     expect(result.grading_scheme.applied).toBe(true)
     expect(result.grading_scheme.standard_id).toBe(99)
     expect(result.grading_scheme.standard_title).toBeNull()
+    // Applied-but-title-unknown must read differently from "no scheme applied".
+    expect(result.summary).toContain('A letter-grade scheme is applied (title unavailable)')
     expect(
       result.caveats.some((c) => c.includes('Grading standard (id: 99) could not be retrieved')),
     ).toBe(true)
