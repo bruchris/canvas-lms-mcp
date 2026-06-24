@@ -41,7 +41,18 @@ Where T is the target as a fraction (0–1). When `P_remaining = 0` the grade is
 
 **Weighted courses (`apply_assignment_group_weights === true`):**
 
-Each group g has weight w_g. Assuming uniform x on every remaining assignment across every group:
+Each group g has weight w_g. Variable definitions for the weighted formula:
+
+```
+E_g           = Σ score for graded retained assignments in group g
+P_g_graded    = Σ points_possible for graded retained assignments in group g
+P_g_remaining = Σ points_possible for remaining (ungraded, retained) assignments in group g
+P_g_total     = P_g_graded + P_g_remaining
+                (NOT GroupModeResult.possible — in current mode that only sums graded items)
+T             = target_percentage / 100  (target as fraction, 0–1)
+```
+
+Assuming uniform x on every remaining assignment across every group:
 
 ```
 pct_g(x)         = (E_g + x × P_g_remaining) / P_g_total   (for active groups: P_g_total > 0)
@@ -51,7 +62,7 @@ Overall(x)        = Σ(w_g × pct_g(x)) / active_weight_sum  = T
 Expanding into a linear equation A + x × B = T:
   A = Σ(w_g × E_g / P_g_total) / active_weight_sum    (current weighted grade, 0–1 scale)
   B = Σ(w_g × P_g_remaining / P_g_total) / active_weight_sum  (weighted fraction still to grade)
-  x = (T − A) / B    (when B > 0)
+  x = (T − A) / B    (when B > 0; when B = 0, compare A to T directly — see §5 and pseudocode)
 ```
 
 When `B = 0` (no remaining work) the grade is fully determined; compare A to T.
@@ -79,7 +90,7 @@ Running drops with hypothetical scores creates a circular dependency (x affects 
 |-------------------|------------------------|
 | `graded` (retained) | Locked in — contributes to E_g and P_g_graded |
 | `graded` (dropped) | Excluded entirely |
-| `submitted` (awaiting grading) | **Remaining** — contributes P_g_remaining |
+| `submitted` (awaiting grading; includes `workflow_state === 'pending_review'` mapped by `classify()`) | **Remaining** — contributes P_g_remaining |
 | `missing` (not submitted) | **Remaining** — contributes P_g_remaining |
 | `excused` | Excluded (same as `explain_grade`) |
 | `not_graded` | Excluded (same as `explain_grade`) |
@@ -140,7 +151,7 @@ Functions and types moved to `grade-engine.ts` (all exported):
 
 **Decision: same integration as `explain_grade`.**
 
-`project_grade` returns `student.id` and `student.name` sourced from the fetched `CanvasUser`. When `user_id` is numeric (viewing another student's data), call `pseudonymizer.anonymizeUser(courseId, user, enrollments)`. Skip for `self` (no third-party PII). Add `'project_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS`.
+`project_grade` returns `student.id` and `student.name` sourced from the fetched `CanvasUser`. When `student_id` is numeric (viewing another student's data), call `pseudonymizer.anonymizeUser(courseId, user, enrollments)` — confirmed 3-argument signature (`courseId`, fetched `CanvasUser`, optional enrollment array). Skip for `self` (no third-party PII). Add `'project_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS`.
 
 The `remaining_assignments` array in the output contains only assignment metadata (id, name, points_possible, status) — no student-identifying fields.
 
@@ -162,7 +173,7 @@ Both the student self-view and the instructor-advising-a-student case benefit fr
 
 ### 12. V1 is single-student only
 
-**Decision: same as `explain_grade` — one student per call.** Omit `user_id` for self; supply a numeric `user_id` for another student. Fan-out to all students is deferred to V2.
+**Decision: same as `explain_grade` — one student per call.** Omit `student_id` for self; supply a numeric `student_id` for another student. Fan-out to all students is deferred to V2.
 
 ---
 
@@ -242,7 +253,7 @@ inputSchema: {
       'grading standard configured. Exactly one of target_percentage or target_letter must ' +
       'be provided. Case-insensitive.',
     ),
-  user_id: z.number().int().positive().optional()
+  student_id: z.number().int().positive().optional()
     .describe(
       'Canvas user_id of the student to compute for. Omit to compute for the authenticated user. ' +
       'Instructors may pass any enrolled student\'s user_id. When CANVAS_PSEUDONYMIZE_STUDENTS ' +
@@ -280,7 +291,7 @@ These throw plain `Error` (not `CanvasApiError`) and are caught by `buildHandler
 {
   student: {
     id: number,
-    name: string,             // pseudonymized when CANVAS_PSEUDONYMIZE_STUDENTS=true and user_id set
+    name: string,             // pseudonymized when CANVAS_PSEUDONYMIZE_STUDENTS=true and student_id set
   },
   course: {
     id: number,
@@ -334,6 +345,9 @@ These throw plain `Error` (not `CanvasApiError`) and are caught by `buildHandler
 ### Projection computation (annotated pseudocode)
 
 ```ts
+// Derive student identity — mirrors the explain_grade convention
+const studentId: number | 'self' = params.student_id ?? 'self'
+
 // Step 1: run current-mode drop algorithm for every group (reuses grade-engine)
 const groupResults: GroupModeResult[] = groups.map(group =>
   computeGroupGrade(group, submissionsById, 'current'),
@@ -508,7 +522,7 @@ Same pattern as `explain_grade`:
 
 ```ts
 const anonUser =
-  pseudonymizer?.isEnabled() && typeof userId === 'number'
+  pseudonymizer?.isEnabled() && typeof studentId === 'number'
     ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
     : user
 
@@ -537,7 +551,7 @@ import { gradeProjectionTools } from './grade-projection'
 
 ## FERPA / pseudonymization
 
-`project_grade` returns `student.id` and `student.name` from the fetched `CanvasUser` — same PII profile as `explain_grade`. Pseudonymizer wrapping is required when viewing another student's data. The `remaining_assignments` list contains only assignment metadata (id, name, points_possible, status) — no student-identifying fields. Add `'project_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS`.
+`project_grade` returns `student.id` and `student.name` from the fetched `CanvasUser` — same PII profile as `explain_grade`. Pseudonymizer wrapping is required when `student_id` is numeric (viewing another student's data). The `remaining_assignments` list contains only assignment metadata (id, name, points_possible, status) — no student-identifying fields. Add `'project_grade'` to both `PSEUDONYMIZER_WRAPPED_TOOLS` (`src/pseudonym/coverage.ts`) and `EXPECTED_PII_BEARING_TOOLS` (`tests/pseudonym/coverage.test.ts`).
 
 ---
 
@@ -713,7 +727,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit. The mo
 
 ### Fixture K — FERPA pseudonymization
 
-**With CANVAS_PSEUDONYMIZE_STUDENTS=true, `user_id: 1234`**:
+**With CANVAS_PSEUDONYMIZE_STUDENTS=true, `student_id: 1234`**:
 - `canvas.users.get(1234)` → `{ id: 1234, name: 'Alice Student', ... }`
 - Pseudonymizer maps user 1234 → `'Student 0'`
 
@@ -766,7 +780,7 @@ Limitations:
 - Drop rules are frozen at their current state (based on already-graded scores); which items
   are dropped may shift as remaining assignments are graded.
 - Late-submission penalties are not factored in.
-- V1 computes one student per call. Omit user_id to compute for the authenticated user.
+- V1 computes one student per call. Omit student_id to compute for the authenticated user.
   When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.
 ```
 
@@ -782,8 +796,9 @@ Limitations:
 | `src/tools/catalog.ts` | **Modify** — Import `gradeProjectionTools`; add `grade_projection` domain entry with `defaultPrimaryAudience: 'shared'` after the `grading_policy` entry |
 | `src/pseudonym/coverage.ts` | **Modify** — Add `'project_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
 | `tests/grade-projection.test.ts` | **New** — Fixtures A–L with mocked Canvas responses |
+| `tests/pseudonym/coverage.test.ts` | **Modify** — Add `'project_grade'` to `EXPECTED_PII_BEARING_TOOLS` set (must stay in sync with `PSEUDONYMIZER_WRAPPED_TOOLS`; CI fails if either is updated without the other) |
 
-**6 files total. No new Canvas module. No new package dependencies.**
+**7 files total. No new Canvas module. No new package dependencies.**
 
 All Canvas calls in `project_grade` use existing `CanvasClient` facade methods. The `src/canvas/` layer is untouched.
 
