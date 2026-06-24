@@ -60,7 +60,7 @@ active_weight_sum = Σ w_g  for active groups
 Overall(x)        = Σ(w_g × pct_g(x)) / active_weight_sum  = T
 
 Expanding into a linear equation A + x × B = T:
-  A = Σ(w_g × E_g / P_g_total) / active_weight_sum    (current weighted grade, 0–1 scale)
+  A = Σ(w_g × E_g / P_g_total) / active_weight_sum    (weighted grade over full denominator — differs from computeOverall() which uses only p_graded)
   B = Σ(w_g × P_g_remaining / P_g_total) / active_weight_sum  (weighted fraction still to grade)
   x = (T − A) / B    (when B > 0; when B = 0, compare A to T directly — see §5 and pseudocode)
 ```
@@ -104,8 +104,8 @@ The output surfaces per-group `remaining_assignments` so the student can see exa
 When `target_letter` is provided:
 - Fetch the course grading scheme via `resolveGradingScheme()` (shared with `explain_grade`).
 - Find the entry whose `name` matches (case-insensitive); use `entry.value × 100` as the resolved target percentage. This is the lower bound for that letter, i.e. the minimum score that earns it.
-- If no grading scheme is configured: return `isError: true` with caveat *"A letter-grade target requires a grading scheme, but this course has no grading standard configured. Pass target_percentage instead."*
-- If the letter is not in the scheme: return `isError: true` with caveat *"Letter grade '<X>' is not in the course grading scheme. Valid letters: <comma-separated list>."*
+- If no grading scheme is configured: `throw new Error('A letter-grade target requires a grading scheme, but this course has no grading standard configured. Pass target_percentage instead.')` — caught by `buildHandler` and passed to `formatError`, producing `isError: true` in the response.
+- If the letter is not in the scheme: `throw new Error("Letter grade '<X>' is not in the course grading scheme. Valid letters: <comma-separated list>.")` — same path via `buildHandler`.
 
 **Why lower-bound resolution?** The student wants *at least* a B — the lower bound of B (e.g. 80%) is the exact minimum that achieves it. Scoring at the lower bound earns precisely that letter.
 
@@ -186,7 +186,7 @@ Both the student self-view and the instructor-advising-a-student case benefit fr
 | 3a | `GET /api/v1/courses/:id/students/submissions?student_ids[]=self` | Submissions for authenticated user | `canvas.submissions.listMy(courseId)` |
 | 3b | `GET /api/v1/courses/:id/students/submissions?student_ids[]=:id` | Submissions for specified student | `canvas.submissions.listForStudents(courseId, { student_ids: [userId] })` |
 | 4 | `GET /api/v1/courses/:id/enrollments?user_id=:id&include[]=grades` | Canvas's posted current score (for `current_grade` output) | `canvas.enrollments.listForCourse(courseId, { user_id, include: ['grades'] })` |
-| 5 | `GET /api/v1/users/:id` (or `/users/self`) | Student name for output and pseudonymizer | `canvas.users.get(userId)` or `canvas.users.getSelf()` |
+| 5 | `GET /api/v1/users/:id` (or `/users/self`) | Student name for output and pseudonymizer | `canvas.users.get(studentId)` or `canvas.users.getSelf()` (both already exist on `CanvasClient.users`; same as `explain_grade`) |
 | 6 (conditional) | `GET /api/v1/courses/:id/grading_standards` (then account fallback) | Grading scheme for letter-grade target resolution and output letter | `canvas.gradingStandards.listForCourse()` / `listForAccount()` |
 
 Calls 2–5 are independent after call 1 resolves; issue as `Promise.all([call2, call3, call4, call5])`. Call 6 is conditional on `target_letter` being provided OR `course.grading_standard_id !== null` (for mapping the output `current_grade.letter` and `target.letter`).
@@ -521,13 +521,18 @@ const targetStr = targetLetter
 Same pattern as `explain_grade`:
 
 ```ts
+// enrollments = result of call 4: canvas.enrollments.listForCourse(courseId, { user_id: studentId, include: ['grades'] })
+// Passing enrollments lets anonymizeUser classify role correctly; staff pass through unchanged.
 const anonUser =
   pseudonymizer?.isEnabled() && typeof studentId === 'number'
     ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
     : user
 
+const targetRequested: string = params.target_letter ?? String(params.target_percentage)
+
 // In output:
 student: { id: anonUser.id, name: anonUser.name }
+target: { requested: targetRequested, percentage: targetPercentage, letter: /* mapLetter result or null */ }
 ```
 
 Add `'project_grade'` to `PSEUDONYMIZER_WRAPPED_TOOLS` in `src/pseudonym/coverage.ts`.
@@ -563,7 +568,7 @@ import { gradeProjectionTools } from './grade-projection'
 | Neither provided | `throw new Error(...)` before Canvas calls |
 | `target_letter` with no grading scheme on course | `throw new Error(...)` after call 1 resolves |
 | `target_letter` letter not in scheme | `throw new Error(...)` with valid-letters list |
-| `user_id` not enrolled in course | Caveat pushed; `current_grade` returned as null; computation continues |
+| `student_id` not enrolled in course (enrollments = []) | Push caveat; set `current_grade = { percentage: null, letter: null }`; continue to projection computation (enrollment absence does not affect assignment/submission data) |
 | 401/403/404 on Canvas calls | `formatError()` maps to user-friendly message |
 | `activeWeightSum === 0` (no active groups) | Caveat pushed; `feasibility: 'impossible'` |
 | All assignments excused / `not_graded` (P_total = 0) | `current_grade.percentage: null`; `minimum_pct_on_remaining: null`; `feasibility: 'impossible'`; caveat pushed |
@@ -638,7 +643,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit. The mo
 **Assertions**:
 1. `result.projection.feasibility === 'achievable'`
 2. `result.projection.minimum_pct_on_remaining` within 0.01 of 96.5
-3. `result.current_grade.percentage` within 0.01 of 41.75
+3. `result.current_grade.percentage` within 0.01 of 83.5 (computeOverall current-mode: Homework earned=80/possible=100, Exams earned=85/possible=100 → weighted = ((30×0.80)+(70×0.85))/100×100 = 83.5%)
 4. `result.projection.groups.length === 2`
 5. Each group entry has correct `remaining_points_possible === 100`
 
@@ -667,7 +672,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit. The mo
 
 **Call**: `target_letter: 'A'`
 
-**Assertion**: Response has `isError: true`; message contains "no grading standard"
+**Assertion**: Response has `isError: true`; message contains "no grading standard configured"
 
 ### Fixture G — Letter target, letter not in scheme
 
@@ -677,7 +682,7 @@ All tests use mocked Canvas responses — no real Canvas instance is hit. The mo
 
 **Assertions**:
 1. Response has `isError: true`
-2. Message contains "'B' is not in the course grading scheme"
+2. Message contains "Letter grade 'B' is not in the course grading scheme"
 3. Message contains valid-letters list (e.g. "A, F")
 
 ### Fixture H — Drop-lowest interaction (dropped item excluded from locked-in and remaining)
