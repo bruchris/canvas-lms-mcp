@@ -174,6 +174,16 @@ describe('linkAuditTools', () => {
       expect(result.summary.total_findings).toBe(result.findings.length)
     })
 
+    it('emits exactly the three expected findings (no over- or under-counting)', async () => {
+      // page 2 cross-course image + syllabus cross-course link + announcement empty img.
+      // The same-course page/assignment links and the null assignment description
+      // must NOT contribute, so this absolute count guards against a dropped source
+      // loop, double-counting, or accidental same-course findings.
+      const result = await runFullScan()
+      expect(result.findings).toHaveLength(3)
+      expect(result.summary.total_findings).toBe(3)
+    })
+
     it('lists all four sources in stable order', async () => {
       const result = await runFullScan()
       expect(result.summary.sources_scanned).toEqual([
@@ -362,6 +372,87 @@ describe('linkAuditTools', () => {
       const [tool] = linkAuditTools(canvas)
       const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
 
+      expect(result.findings).toHaveLength(0)
+    })
+
+    it('emits a finding per flaggable URL when one body contains several', async () => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<a href="/courses/2/pages/a">x</a><img src="/courses/3/files/b">',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      expect(result.findings).toHaveLength(2)
+      expect(result.findings.map((f) => f.cross_course_id).sort()).toEqual([2, 3])
+    })
+
+    it('classifies an empty href on a link as empty_or_malformed', async () => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<a href="">x</a>',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      expect(result.findings).toHaveLength(1)
+      expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
+    })
+
+    it('does not flag a /courses/{id} reference that lacks a trailing slash', async () => {
+      // v1 boundary: the cross-course regex requires a trailing slash after the
+      // course id, so a bare course-landing link is intentionally not flagged.
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<a href="/courses/55">other course</a>',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      expect(result.findings).toHaveLength(0)
+    })
+  })
+
+  describe('empty include array', () => {
+    it('scans nothing when include is an explicit empty array', async () => {
+      // `[] ?? [...CONTENT_SOURCES]` does not fall back (an empty array is not
+      // nullish), so an explicit empty selection scans no sources. Only omitting
+      // `include` entirely scans all four.
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+
+      const result = (await tool.handler({ course_id: 100, include: [] })) as AuditResult
+
+      expect(canvas.pages.listWithBodies).not.toHaveBeenCalled()
+      expect(canvas.assignments.list).not.toHaveBeenCalled()
+      expect(canvas.courses.getSyllabus).not.toHaveBeenCalled()
+      expect(canvas.discussions.listAnnouncements).not.toHaveBeenCalled()
+      expect(result.summary.sources_scanned).toEqual([])
+      expect(result.summary.total_findings).toBe(0)
       expect(result.findings).toHaveLength(0)
     })
   })
