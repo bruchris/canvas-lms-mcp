@@ -33,6 +33,7 @@ import { submissionTools } from './submissions'
 import { submissionFileTools } from './submission-files'
 import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
+import { linkAuditTools } from './link-audit'
 
 export interface ToolDomainRegistration {
   domain: string
@@ -200,5 +201,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'grading_policy',
     defaultPrimaryAudience: 'shared',
     getTools: gradingPolicyTools,
+  },
+  {
+    domain: 'link_audit',
+    defaultPrimaryAudience: 'educator',
+    getTools: linkAuditTools,
   },
 ]

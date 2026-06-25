@@ -105,6 +105,7 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       delete: async () => undefined,
+      listWithBodies: async () => [],
     },
     calendar: {
       list: async () => [],
@@ -189,7 +190,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 137 tools across all domains', () => {
+  it('returns all 138 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -362,8 +363,10 @@ describe('getAllTools', () => {
     expect(names).toContain('explain_grade')
     // Grading Policy (1)
     expect(names).toContain('explain_grading_policy')
+    // Link Audit (1)
+    expect(names).toContain('audit_course_links')
 
-    expect(tools).toHaveLength(137)
+    expect(tools).toHaveLength(138)
   })
 
   it('all tools have openWorldHint: true', () => {

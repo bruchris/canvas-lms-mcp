@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 137,
+  "toolCount": 138,
   "tools": [
     {
       "name": "health_check",
@@ -1685,6 +1685,18 @@
       },
       "access": "read",
       "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "audit_course_links",
+      "domain": "link_audit",
+      "description": "Scan a course's content (pages, assignments, syllabus, announcements) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     }
   ]
