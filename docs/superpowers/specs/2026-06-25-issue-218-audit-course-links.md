@@ -273,7 +273,7 @@ function scanHtml(
     return {
       summary: {
         course_id: courseId,
-        sources_scanned: [...activeInclude],
+        sources_scanned: CONTENT_SOURCES.filter((s) => activeInclude.has(s)),
         total_findings: findings.length,
       },
       findings,
@@ -311,12 +311,17 @@ function scanHtml(
 - **No new package dependencies**: HTML link extraction uses built-in JS regex. Canvas generates
   predictably structured HTML (double-quoted attributes, no arbitrary user-crafted markup in
   attribute position), making regex extraction accurate for this use-case without a DOM parser.
+- **Single-quoted attributes are a known v1 limitation**: The three regexes match only
+  double-quoted attribute values (`href="..."`). Content pasted via Canvas's source editor may
+  use single-quoted attributes (`href='...'`); those URLs are not extracted and will not appear
+  in findings. This is an accepted scope boundary for v1; extend the regexes to match both
+  quote styles in a follow-up if false negatives are reported in practice.
 
 ---
 
 ## Catalog registration (`src/tools/catalog.ts`)
 
-### 1. Import (add after `import { gradingPolicyTools } from './grading-policy'`):
+### 1. Import (add after `import { userTools } from './users'`, the last value import in the file):
 
 ```ts
 import { linkAuditTools } from './link-audit'
@@ -477,14 +482,16 @@ function buildMockCanvas() {
    `{ location: { type: 'syllabus', id: 100, title: 'Syllabus' }, kind: 'link', reason: 'cross_course_reference', cross_course_id: 50 }`.
 
 6. **Empty `src` in announcement → finding**: `Welcome` message has `<img src="">`.
-   Assert finding: `{ location: { type: 'announcements', id: 20 }, kind: 'image', reason: 'empty_or_malformed' }`.
+   Assert finding: `{ location: { type: 'announcements', id: 20, title: 'Welcome' }, kind: 'image', reason: 'empty_or_malformed' }`.
    Assert `cross_course_id` is absent on this finding.
 
 7. **`total_findings` matches `findings.length`**: Assert
    `result.summary.total_findings === result.findings.length`.
 
-8. **`sources_scanned` lists all four**: Assert `result.summary.sources_scanned` is an array
-   containing all of `'pages'`, `'assignments'`, `'syllabus'`, `'announcements'` (any order).
+8. **`sources_scanned` lists all four in stable order**: Assert
+   `result.summary.sources_scanned` equals
+   `['pages', 'assignments', 'syllabus', 'announcements']` exactly. The handler uses
+   `CONTENT_SOURCES.filter(s => activeInclude.has(s))` (not `Set` spread) to guarantee this order.
 
 **`include` filter:**
 
@@ -530,6 +537,11 @@ function buildMockCanvas() {
 
 17. **Null syllabus → no findings**: Override `getSyllabus` mock to return `null`. Assert no
     finding with `location.type === 'syllabus'` and no error thrown.
+
+18. **Undefined body on a page → no findings**: Override pages mock to return a page with no
+    `body` field (i.e. `body: undefined`, which is the actual `CanvasPage.body` type when Canvas
+    omits the field). Assert no finding is emitted and no error is thrown. This verifies the
+    `!html` guard in `extractUrls` handles `undefined` correctly.
 
 ### Registry test — `tests/tools/registry.test.ts` (modify existing file)
 
@@ -579,16 +591,20 @@ passes without modification.
 ## Implementation checklist for the implementor
 
 1. `src/canvas/pages.ts` — add `listWithBodies(courseId)` method to `PagesModule`.
+   **No change to `src/canvas/index.ts`** — `CanvasClient.pages` is already typed as
+   `PagesModule`; the new method is automatically visible through the facade.
 2. `src/tools/link-audit.ts` — new file with `linkAuditTools()` function, module-level helpers
    (`extractUrls`, `decodeHtmlEntities`, `classifyUrl`, `scanHtml`), inline type definitions, and
    the `audit_course_links` tool definition.
 3. `src/tools/catalog.ts` — import `linkAuditTools`; add `link_audit` domain entry after
    `grading_policy`.
 4. `tests/canvas/pages.test.ts` — add `listWithBodies` (4 cases) to the existing file.
-5. `tests/tools/link-audit.test.ts` — new file (17 test cases across suite-level, full-scan,
-   filter, and edge-case groups).
+5. `tests/tools/link-audit.test.ts` — new file (18 test cases across suite-level, full-scan,
+   filter, and edge-case groups, including case 18 for `body: undefined`).
 6. `tests/tools/registry.test.ts` — 3 changes: `listWithBodies` on pages mock; count 137→138
    and update `it(...)` description string; `audit_course_links` in `toContain` block.
+   **Note**: verify the baseline count is still 137 (`pnpm test tests/tools/registry.test.ts`
+   on main) before updating — set the target to `baseline + 1`.
 
 ---
 
@@ -618,6 +634,12 @@ passes without modification.
 - [x] Parallel fetch strategy with `Promise.all` and conditional gates documented.
 - [x] Catalog: verbatim import and insertion point (after `grading_policy`, last entry).
 - [x] Registry test: 3 precise changes (mock method; count + description string; `toContain`).
-- [x] Test plan: 4 Canvas client cases + 17 tool cases covering full scan, include filter,
-  classification edge cases (javascript:, #, entity encoding, iframe, external, empty, null).
+- [x] Test plan: 4 Canvas client cases + 18 tool cases covering full scan, include filter,
+  classification edge cases (javascript:, #, entity encoding, iframe, external, empty, null,
+  undefined body).
+- [x] `sources_scanned` uses stable `CONTENT_SOURCES.filter()` order, not `Set` spread.
+- [x] Single-quoted attributes documented as known v1 limitation in handler notes.
+- [x] Import placement fixed: after `import { userTools } from './users'` (actual last value
+  import in `catalog.ts`), not after `gradingPolicyTools`.
+- [x] No change to `src/canvas/index.ts` — explicitly noted in checklist step 1.
 - [x] FERPA and audience coverage tests unaffected — explicitly stated.
