@@ -14,6 +14,18 @@ export class PagesModule {
     )
   }
 
+  /**
+   * List every page in a course with its full HTML `body`. The paginated list
+   * endpoint returns page stubs without `body`, so this fans out a `get()` per
+   * page (mirroring the `listWithItems` pattern in `modules.ts`). Used by the
+   * link-audit tool to scan page content. `CanvasApiError` from either the list
+   * or any individual fetch propagates unchanged.
+   */
+  async listWithBodies(courseId: number): Promise<CanvasPage[]> {
+    const stubs = await this.client.paginate<CanvasPage>(`/api/v1/courses/${courseId}/pages`)
+    return Promise.all(stubs.map((stub) => this.get(courseId, stub.url)))
+  }
+
   async create(
     courseId: number,
     params: { title: string; body?: string; published?: boolean; editing_roles?: string },
