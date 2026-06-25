@@ -296,6 +296,9 @@ describe('linkAuditTools', () => {
         reason: 'cross_course_reference',
         cross_course_id: 999,
       })
+      // href reports the RAW, un-decoded attribute value; decoding is applied only
+      // to the value used for classification, not to what is surfaced.
+      expect(result.findings[0].href).toBe('/courses/999/pages/foo?a=1&amp;b=2')
     })
 
     it('classifies an iframe src as a video kind', async () => {
@@ -319,6 +322,30 @@ describe('linkAuditTools', () => {
         course_id: 100,
         include: ['assignments'],
       })) as AuditResult
+
+      expect(result.findings).toHaveLength(1)
+      expect(result.findings[0]).toMatchObject({
+        kind: 'video',
+        reason: 'cross_course_reference',
+        cross_course_id: 999,
+      })
+    })
+
+    it('classifies a <source> inside a <video> as a video kind', async () => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<video controls><source src="/courses/999/media_objects/m2"></video>',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({
