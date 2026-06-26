@@ -31,6 +31,7 @@ import { rubricTools } from './rubrics'
 import { studentTools } from './student'
 import { submissionTools } from './submissions'
 import { submissionFileTools } from './submission-files'
+import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'
 import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
 import { linkAuditTools } from './link-audit'
@@ -66,6 +67,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'submission_files',
     defaultPrimaryAudience: 'educator',
     getTools: submissionFileTools,
+  },
+  {
+    domain: 'submissions_awaiting_grading',
+    defaultPrimaryAudience: 'educator',
+    getTools: submissionsAwaitingGradingTools,
   },
   {
     domain: 'rubrics',
