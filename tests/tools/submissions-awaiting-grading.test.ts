@@ -276,6 +276,54 @@ describe('list_submissions_awaiting_grading', () => {
     expect(result.caveats.some((c) => c.includes('2 assignment(s)'))).toBe(true)
   })
 
+  it('Fixture G3 — mixed counts: caveat survives the non-early-return path, counts exactly 1', async () => {
+    const withCount = mkAssignment({ id: 1, needs_grading_count: 2 })
+    const undefinedCount = mkAssignment({ id: 2 }) // needs_grading_count absent
+    const canvas = buildMockCanvas({
+      assignments: [withCount, undefinedCount],
+      submissions: [
+        mkSubmission({
+          id: 1,
+          assignment_id: withCount.id,
+          workflow_state: 'submitted',
+          user: { id: 1, name: 'A' },
+        }),
+      ],
+    })
+    const result = await run(canvas)
+
+    // toFetch is non-empty (withCount), so the early-return is NOT taken.
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].assignment_id).toBe(withCount.id)
+    expect(canvas.submissions.listForStudents).toHaveBeenCalled()
+    // The caveat must still fire on this path, naming exactly the one undefined-count assignment.
+    expect(result.caveats.some((c) => c.includes('needs_grading_count'))).toBe(true)
+    expect(result.caveats.some((c) => c.includes('1 assignment(s)'))).toBe(true)
+  })
+
+  it('Fixture G4 — missing-count caveat counts eligible (post-toggle) assignments, not all', async () => {
+    const withCount = mkAssignment({ id: 1, needs_grading_count: 2 })
+    // An undefined-count Classic Quiz that is excluded by include_quizzes:false must
+    // NOT be named in the caveat — the count is over eligibleAssignments, not allAssignments.
+    const undefinedQuiz = mkAssignment({ id: 3, is_quiz_assignment: true, quiz_id: 30 })
+    const canvas = buildMockCanvas({
+      assignments: [withCount, undefinedQuiz],
+      submissions: [
+        mkSubmission({
+          id: 1,
+          assignment_id: withCount.id,
+          workflow_state: 'submitted',
+          user: { id: 1, name: 'A' },
+        }),
+      ],
+    })
+    const result = await run(canvas, { course_id: COURSE_ID, include_quizzes: false })
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].assignment_id).toBe(withCount.id)
+    expect(result.caveats.some((c) => c.includes('needs_grading_count'))).toBe(false)
+  })
+
   it('Fixture H — FERPA pseudonymization rewrites the name, keeps the id', async () => {
     const canvas = buildMockCanvas({
       assignments: [A1],
