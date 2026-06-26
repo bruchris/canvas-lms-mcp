@@ -165,6 +165,23 @@ export function submissionsAwaitingGradingTools(
           caveats.push(FILL_IN_BLANK_CAVEAT)
         }
 
+        // Step 5b: surface assignments dropped because Canvas did not report
+        // needs_grading_count at all (undefined, not 0). Without this caveat an
+        // empty/partial result is indistinguishable from "nothing to grade" when
+        // the token lacks grading permission on those assignments — silent data
+        // loss. Computed before the early-return so the all-empty case is covered.
+        const missingCountCount = eligibleAssignments.filter(
+          (a) => a.needs_grading_count === undefined,
+        ).length
+        if (missingCountCount > 0) {
+          caveats.push(
+            `Canvas did not report needs_grading_count for ${missingCountCount} assignment(s); they ` +
+              'were skipped and any ungraded work on them is NOT shown here. This usually means the ' +
+              'token lacks grading permission on those assignments, or the Canvas instance requires ' +
+              'needs_grading_count_by_section. Verify in SpeedGrader.',
+          )
+        }
+
         // Step 6: early-return when nothing needs fetching.
         if (toFetch.length === 0) {
           return { course_id: courseId, total_submissions_awaiting: 0, items: [], caveats }

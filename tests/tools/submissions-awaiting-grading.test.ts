@@ -91,6 +91,7 @@ const A2 = mkAssignment({
   needs_grading_count: 1,
   is_quiz_assignment: true,
   quiz_id: 10,
+  due_at: '2026-07-01T00:00:00Z',
 })
 const A3 = mkAssignment({ id: 3, name: 'Graded already', needs_grading_count: 0 })
 
@@ -176,6 +177,7 @@ describe('list_submissions_awaiting_grading', () => {
     // A2's oldest submission (06-19) precedes A1's oldest (06-20).
     expect(result.items[0].assignment_id).toBe(A2.id)
     expect(result.items[0].type).toBe('classic_quiz')
+    expect(result.items[0].due_at).toBe('2026-07-01T00:00:00Z')
     expect(result.items[0].submissions[0].has_pending_manual_questions).toBe(true)
     expect(result.items[1].assignment_id).toBe(A1.id)
     expect(result.items[1].submissions[0].submitted_at).toBe('2026-06-20T10:00:00Z')
@@ -199,6 +201,8 @@ describe('list_submissions_awaiting_grading', () => {
     expect(result.items[0].assignment_id).toBe(A2.id)
     expect(result.items[0].submissions[0].workflow_state).toBe('pending_review')
     expect(result.caveats.some((c) => c.includes('Fill-in-the-blank'))).toBe(false)
+    // The New Quizzes caveat is unconditional — not gated behind only_pending_review.
+    expect(result.caveats.some((c) => c.includes('New Quizzes'))).toBe(true)
   })
 
   it('Fixture C — assignment_ids scope', async () => {
@@ -250,6 +254,11 @@ describe('list_submissions_awaiting_grading', () => {
     expect(result.items).toHaveLength(0)
     expect(result.total_submissions_awaiting).toBe(0)
     expect(canvas.submissions.listForStudents).not.toHaveBeenCalled()
+    // The early-return branch must still carry the fixed caveats (counts were 0,
+    // not undefined, so no missing-count caveat).
+    expect(result.caveats.some((c) => c.includes('New Quizzes'))).toBe(true)
+    expect(result.caveats.some((c) => c.includes('Fill-in-the-blank'))).toBe(true)
+    expect(result.caveats.some((c) => c.includes('needs_grading_count'))).toBe(false)
   })
 
   it('Fixture G2 — needs_grading_count absent (undefined) on all assignments', async () => {
@@ -261,6 +270,10 @@ describe('list_submissions_awaiting_grading', () => {
 
     expect(result.items).toHaveLength(0)
     expect(canvas.submissions.listForStudents).not.toHaveBeenCalled()
+    // Undefined counts must not be mistaken for "nothing to grade": a caveat names
+    // the skipped count so the empty result is not silently authoritative.
+    expect(result.caveats.some((c) => c.includes('needs_grading_count'))).toBe(true)
+    expect(result.caveats.some((c) => c.includes('2 assignment(s)'))).toBe(true)
   })
 
   it('Fixture H — FERPA pseudonymization rewrites the name, keeps the id', async () => {
@@ -290,6 +303,20 @@ describe('list_submissions_awaiting_grading', () => {
 
     expect(result.items[0].submissions[0].user_name).toBeNull()
     expect(ps.anonymizeSubmission).not.toHaveBeenCalled()
+  })
+
+  it('Fixture H3 — FERPA: tool does not second-guess the pseudonymizer (staff passthrough)', async () => {
+    const canvas = buildMockCanvas({ assignments: [A1], submissions: [S1] })
+    // The real pseudonymizer leaves staff names intact; the tool must surface
+    // whatever name the pseudonymizer returns, not impose its own decision.
+    const ps = {
+      isEnabled: () => true,
+      anonymizeSubmission: vi.fn(async (_courseId: number, sub: CanvasSubmission) => sub),
+    } as unknown as Pseudonymizer
+    const result = await run(canvas, { course_id: COURSE_ID }, ps)
+
+    expect(ps.anonymizeSubmission).toHaveBeenCalledTimes(1)
+    expect(result.items[0].submissions[0].user_name).toBe('Alice')
   })
 
   it('Fixture I — sorting correctness: older item first', async () => {
