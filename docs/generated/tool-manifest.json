@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 138,
+  "toolCount": 139,
   "tools": [
     {
       "name": "health_check",
@@ -215,6 +215,18 @@
       "name": "list_course_submission_files",
       "domain": "submission_files",
       "description": "List every file attachment submitted by students across all assignments in a course. Returns a manifest — one entry per file — including the original filename, a file_id for re-fetching via download_file, content type, and size. Useful for bulk-archiving student work before a course expires or a Free-For-Teacher account is concluded. Outputs are bounded by max_files (default 500); when the limit is hit, truncated is true and truncation_note explains how to retrieve the rest. Download URLs are time-limited (typically 1 hour) — use the returned file_id with download_file to get a fresh URL at download time. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, user_name is a stable per-course pseudonym (e.g. \"Student 1\"); user_id (the raw numeric Canvas ID) is always returned and works as a stable per-student folder key.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_submissions_awaiting_grading",
+      "domain": "submissions_awaiting_grading",
+      "description": "Lists all submissions in a course that still need a human grade, sorted oldest-waiting first.\n\nSurfaces two categories:\n- workflow_state=submitted: assignments submitted by students but not yet graded at all.\n- workflow_state=pending_review: Classic Quiz submissions where Canvas auto-graded the objective questions but left essays or manually-scored questions for the instructor.\n\nReturns a triage list grouped by assignment or Classic Quiz, with per-submission details: student identity, workflow state, submitted_at, and whether the submission has pending manual-grading questions.\n\nParameters:\n- course_id (required): Canvas course ID to scan.\n- assignment_ids (optional): limit the scan to specific assignment IDs.\n- include_quizzes (default true): include Classic Quiz assignments in the scan.\n- include_assignments (default true): include non-quiz assignments.\n- only_pending_review (default false): when true, return only pending_review submissions (quiz essays awaiting manual scoring), omitting regular ungraded assignments.\n\nKnown limitations:\n- New Quizzes (Quizzes.Next) may not appear with 'pending_review' workflow state here; use SpeedGrader or the New Quizzes interface for their grading queue.\n- Fill-in-the-blank answers that Canvas auto-marked are not surfaced.\n- V1 returns submission-level state only; per-question detail is not included.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with pseudonyms. Use resolve_pseudonym to look up the real identity.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
