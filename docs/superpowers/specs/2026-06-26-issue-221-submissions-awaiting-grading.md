@@ -301,15 +301,22 @@ for (const sub of processedSubmissions) {
 const assignmentById = new Map(toFetch.map(a => [a.id, a]))
 
 // Step 12: assemble items; sort submissions within each item oldest-first
+// Defensive: Canvas may return submissions for assignment_ids outside toFetch (edge case).
+// Collect any such orphaned IDs and skip; caveat appended in Step 14.
+const unmatchedIds: number[] = []
 const items = [...byAssignment.entries()]
-  .map(([assignmentId, subs]) => {
-    const assignment = assignmentById.get(assignmentId)!
+  .flatMap(([assignmentId, subs]) => {
+    const assignment = assignmentById.get(assignmentId)
+    if (!assignment) {
+      unmatchedIds.push(assignmentId)
+      return []
+    }
     const sortedSubs = [...subs].sort((a, b) => {
       if (!a.submitted_at) return 1   // null sorts last
       if (!b.submitted_at) return -1
       return a.submitted_at < b.submitted_at ? -1 : 1
     })
-    return {
+    return [{
       assignment_id: assignmentId,
       assignment_name: assignment.name,
       type: isClassicQuiz(assignment) ? 'classic_quiz' as const : 'assignment' as const,
@@ -323,7 +330,7 @@ const items = [...byAssignment.entries()]
         submitted_at: s.submitted_at,
         has_pending_manual_questions: s.workflow_state === 'pending_review',
       })),
-    }
+    }]
   })
   // Step 13: sort items by oldest submitted_at (ascending; items with only null dates sort last)
   .sort((a, b) => {
@@ -335,8 +342,16 @@ const items = [...byAssignment.entries()]
       .filter(s => s.submitted_at)
       .map(s => Date.parse(s.submitted_at!))
       .reduce((min, t) => (t < min ? t : min), Infinity)
-    return aOldest - bOldest  // Infinity - Infinity === 0 (stable tie)
+    // Guard: Infinity - Infinity === NaN (violates ECMAScript sort contract). Both-Infinity
+    // means every submission in both groups has null submitted_at — stable tie.
+    if (aOldest === Infinity && bOldest === Infinity) return 0
+    return aOldest - bOldest
   })
+
+// Step 14: append defensive caveat if Canvas returned stray submissions
+if (unmatchedIds.length > 0) {
+  caveats.push('Some submissions could not be matched to an assignment and were excluded.')
+}
 
 return {
   course_id: courseId,
@@ -545,6 +560,35 @@ All tests use `vi.spyOn` on `canvas.*` methods (same pattern as `tests/grade-exp
 
 *(This fixture documents the intentional decision to include external-tool assignments rather than falsely excluding them as "New Quizzes".)*
 
+### Fixture I2 — Null submitted_at: no NaN corruption in items sort
+
+**Mocks:**
+- A1: `needs_grading_count: 1`, submission `submitted_at: null`
+- A2: `needs_grading_count: 1`, submission `submitted_at: null`
+
+**Call**: `{ course_id: courseId }`
+
+**Assertions:**
+1. `result.items.length === 2` (no crash, no corruption)
+2. Items appear in stable order (either [A1, A2] or [A2, A1] — any stable tie order is acceptable, but the array must have exactly 2 entries)
+
+*(This fixture guards against the Infinity − Infinity = NaN sort-contract violation; if the NaN guard is absent, V8 may silently drop or reorder items.)*
+
+### Fixture K — Stray submission defensive skip
+
+**Mocks:**
+- `canvas.assignments.list(courseId)` → 1 assignment (A1, `needs_grading_count: 2`)
+- `canvas.submissions.listForStudents(...)` → 2 submissions:
+  - S1: `assignment_id: A1.id`, `workflow_state: 'submitted'`
+  - S_stray: `assignment_id: 9999` (not in `toFetch`), `workflow_state: 'submitted'`
+
+**Call**: `{ course_id: courseId }`
+
+**Assertions:**
+1. `result.items.length === 1` (S_stray's group excluded)
+2. `result.items[0].assignment_id === A1.id`
+3. `result.caveats` contains `'Some submissions could not be matched to an assignment and were excluded.'`
+
 ---
 
 ## Tool description (MCP `tool.description`)
@@ -587,7 +631,7 @@ Known limitations:
 | `src/tools/submissions-awaiting-grading.ts` | **New** — `submissionsAwaitingGradingTools(canvas, pseudonymizer?)` exporting `list_submissions_awaiting_grading`; Zod schema, annotations, algorithm, output shape as specified above |
 | `src/tools/catalog.ts` | **Modify** — add `import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'`; add `submissions_awaiting_grading` domain entry (`defaultPrimaryAudience: 'educator'`) after the `submission_files` entry |
 | `src/pseudonym/coverage.ts` | **Modify** — add `'list_submissions_awaiting_grading'` to `PSEUDONYMIZER_WRAPPED_TOOLS` |
-| `tests/submissions-awaiting-grading.test.ts` | **New** — Fixtures A–J as specified above |
+| `tests/submissions-awaiting-grading.test.ts` | **New** — Fixtures A–K as specified above |
 | `tests/pseudonym/coverage.test.ts` | **Modify** — add `'list_submissions_awaiting_grading'` to `EXPECTED_PII_BEARING_TOOLS` (CI enforces exact equality with `PSEUDONYMIZER_WRAPPED_TOOLS`) |
 
 **5 files total. No new Canvas module. No new package dependencies.**
