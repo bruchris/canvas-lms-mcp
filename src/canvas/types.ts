@@ -1071,6 +1071,12 @@ export interface CanvasNewQuizItem {
   }
 }
 
+export interface CanvasNewQuizAccommodation {
+  user_id: number
+  time_multiplier: number | null
+  extra_attempts: number | null
+}
+
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {

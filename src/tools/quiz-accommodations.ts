@@ -26,8 +26,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Apply extra time and/or extra attempts to a specific student across all Classic Quizzes ' +
         'in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. ' +
-        'New Quizzes (quiz_type quizzes.next) are skipped — they use a different accommodation ' +
-        'mechanism not covered by this tool. ' +
+        'New Quizzes (quiz_type quizzes.next) are skipped — use set_student_new_quiz_accommodation instead. ' +
         'Only applies to quizzes that exist at call time; re-run after creating new quizzes. ' +
         'Assignment due-date overrides are not handled here (separate fast-follow feature). ' +
         'Note: for courses with many quizzes this makes one Canvas API call per quiz. ' +

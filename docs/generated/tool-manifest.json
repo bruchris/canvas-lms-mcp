@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 139,
+  "toolCount": 141,
   "tools": [
     {
       "name": "health_check",
@@ -1606,7 +1606,7 @@
     {
       "name": "set_student_quiz_accommodation",
       "domain": "quiz_accommodations",
-      "description": "Apply extra time and/or extra attempts to a specific student across all Classic Quizzes in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. New Quizzes (quiz_type quizzes.next) are skipped — they use a different accommodation mechanism not covered by this tool. Only applies to quizzes that exist at call time; re-run after creating new quizzes. Assignment due-date overrides are not handled here (separate fast-follow feature). Note: for courses with many quizzes this makes one Canvas API call per quiz. Partial failures are tolerated — a failure on one quiz does not abort the rest. Returns the standard fan-out envelope: separated applied[], skipped[] (each with a skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested quiz_ids absent from the course, and a summary of counts. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
+      "description": "Apply extra time and/or extra attempts to a specific student across all Classic Quizzes in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. New Quizzes (quiz_type quizzes.next) are skipped — use set_student_new_quiz_accommodation instead. Only applies to quizzes that exist at call time; re-run after creating new quizzes. Assignment due-date overrides are not handled here (separate fast-follow feature). Note: for courses with many quizzes this makes one Canvas API call per quiz. Partial failures are tolerated — a failure on one quiz does not abort the rest. Returns the standard fan-out envelope: separated applied[], skipped[] (each with a skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested quiz_ids absent from the course, and a summary of counts. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -1619,6 +1619,30 @@
       "name": "list_student_quiz_accommodations",
       "domain": "quiz_accommodations",
       "description": "List the current quiz accommodation (extra time and/or extra attempts) for a specific student across all Classic Quizzes in a course. Useful for auditing before or after calling set_student_quiz_accommodation. New Quizzes (quiz_type quizzes.next) are excluded. Reads extra_time / extra_attempts from each quiz's submission records (Canvas exposes no read endpoint for quiz extensions directly) — one Canvas API call per Classic Quiz, so it may be slow for courses with many quizzes. Errors from any quiz's read propagate immediately (no per-quiz error catching). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "set_student_new_quiz_accommodation",
+      "domain": "new_quiz_accommodations",
+      "description": "Apply a time and/or attempts accommodation for a student across all New Quizzes in a course (course-level, single Canvas API call when no assignment_ids are given) or for a specified subset of New Quizzes (per-quiz fan-out when assignment_ids are given). New Quizzes use a time_multiplier (ratio, e.g. 1.5 for 1.5× time), not absolute minutes. For Classic Quizzes (quiz_type: assignment / practice_quiz / etc.) use set_student_quiz_accommodation instead. Partial per-quiz failures are tolerated — a failure on one quiz does not abort the rest. In per-quiz mode, fan-out is sequential (one Canvas API call per assignment ID, awaited in series). Canvas errors on the course-level path (no assignment_ids) propagate as a top-level error (no envelope). Returns a uniform envelope: scope (\"course\" or \"per_quiz\"), applied[], failed[], and summary. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_student_new_quiz_accommodations",
+      "domain": "new_quiz_accommodations",
+      "description": "Read the current course-level New Quizzes accommodation (time multiplier and/or extra attempts) for a specific student in a course. Useful for auditing before or after calling set_student_new_quiz_accommodation. Returns has_accommodation: false when no accommodation is set (Canvas 404 is treated as \"no record\", not an error). New Quizzes store a single course-level accommodation record per student; this is not per-quiz. For Classic Quizzes, use list_student_quiz_accommodations instead. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

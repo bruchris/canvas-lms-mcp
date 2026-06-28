@@ -1,5 +1,5 @@
-import type { CanvasHttpClient } from './client'
-import type { CanvasNewQuiz, CanvasNewQuizItem } from './types'
+import { CanvasApiError, type CanvasHttpClient } from './client'
+import type { CanvasNewQuiz, CanvasNewQuizAccommodation, CanvasNewQuizItem } from './types'
 
 export interface NewQuizPayload {
   title?: string
@@ -146,6 +146,51 @@ export class NewQuizzesModule {
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items/${itemId}`,
       { method: 'DELETE' },
     )
+  }
+
+  async setAccommodation(
+    courseId: number,
+    userId: number,
+    timeMultiplier?: number,
+    extraAttempts?: number,
+  ): Promise<CanvasNewQuizAccommodation> {
+    const body: Record<string, unknown> = { user_id: userId }
+    if (timeMultiplier !== undefined) body.time_multiplier = timeMultiplier
+    if (extraAttempts !== undefined) body.extra_attempts = extraAttempts
+    return this.client.request<CanvasNewQuizAccommodation>(
+      `/api/quiz/v1/courses/${courseId}/accommodations`,
+      { method: 'POST', body: JSON.stringify(body) },
+    )
+  }
+
+  async setQuizAccommodation(
+    courseId: number,
+    assignmentId: number,
+    userId: number,
+    timeMultiplier?: number,
+    extraAttempts?: number,
+  ): Promise<CanvasNewQuizAccommodation> {
+    const body: Record<string, unknown> = { user_id: userId }
+    if (timeMultiplier !== undefined) body.time_multiplier = timeMultiplier
+    if (extraAttempts !== undefined) body.extra_attempts = extraAttempts
+    return this.client.request<CanvasNewQuizAccommodation>(
+      `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/accommodations`,
+      { method: 'POST', body: JSON.stringify(body) },
+    )
+  }
+
+  async getAccommodation(
+    courseId: number,
+    userId: number,
+  ): Promise<CanvasNewQuizAccommodation | null> {
+    try {
+      return await this.client.request<CanvasNewQuizAccommodation>(
+        `/api/quiz/v1/courses/${courseId}/accommodations/${userId}`,
+      )
+    } catch (err) {
+      if (err instanceof CanvasApiError && err.status === 404) return null
+      throw err
+    }
   }
 
   private toWireItem(item: NewQuizItemInput): Record<string, unknown> {

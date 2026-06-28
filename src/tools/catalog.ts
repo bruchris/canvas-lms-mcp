@@ -26,6 +26,7 @@ import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
 import { quizAccommodationTools } from './quiz-accommodations'
+import { newQuizAccommodationTools } from './new-quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
@@ -187,6 +188,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'quiz_accommodations',
     defaultPrimaryAudience: 'educator',
     getTools: quizAccommodationTools,
+  },
+  {
+    domain: 'new_quiz_accommodations',
+    defaultPrimaryAudience: 'educator',
+    getTools: newQuizAccommodationTools,
   },
   {
     domain: 'assignment_overrides',
