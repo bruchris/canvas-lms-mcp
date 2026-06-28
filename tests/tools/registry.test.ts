@@ -169,6 +169,9 @@ function buildFullMockCanvas(): CanvasClient {
       createItem: async () => ({}),
       updateItem: async () => ({}),
       deleteItem: async () => undefined,
+      setAccommodation: async () => ({}),
+      setQuizAccommodation: async () => ({}),
+      getAccommodation: async () => null,
     },
     contentExports: {
       create: async () => ({}),
@@ -353,6 +356,9 @@ describe('getAllTools', () => {
     // Quiz Accommodations (2)
     expect(names).toContain('set_student_quiz_accommodation')
     expect(names).toContain('list_student_quiz_accommodations')
+    // New Quiz Accommodations (2)
+    expect(names).toContain('set_student_new_quiz_accommodation')
+    expect(names).toContain('list_student_new_quiz_accommodations')
     // Assignment Overrides (3)
     expect(names).toContain('list_assignment_overrides')
     expect(names).toContain('create_assignment_override')
@@ -368,7 +374,7 @@ describe('getAllTools', () => {
     // Submissions Awaiting Grading (1)
     expect(names).toContain('list_submissions_awaiting_grading')
 
-    expect(tools).toHaveLength(139)
+    expect(tools).toHaveLength(141)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -419,6 +425,7 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
     ]
@@ -479,6 +486,7 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
     ])
