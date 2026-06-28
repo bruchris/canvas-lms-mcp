@@ -25,7 +25,9 @@ These tools close the gap left by `set_student_quiz_accommodation` (Classic Quiz
 
 ### Unknown 1: Exact New Quizzes accommodation field names / types
 
-**Decision: New Quizzes use `time_multiplier` (float ratio ≥ 1.0) and `extra_attempts` (integer ≥ 1). There is no absolute-time field.**
+**Decision: New Quizzes use `time_multiplier` (float ratio > 1.0, minimum 1.01) and `extra_attempts` (integer ≥ 1). There is no absolute-time field.**
+
+**Why minimum 1.01 and not 1.0:** `time_multiplier: 1.0` means "100% of the original time limit" — zero extra time, a no-op accommodation. Accepting 1.0 would create a confusing record (accommodation set but no actual benefit). The Zod schema uses `.min(1.01)` to reject this case before Canvas is called; Canvas may or may not accept it, but the tool enforces > 1.0 as an invariant (consistent with the Classic tool's `time_multiplier` Zod minimum, which also uses 1.01).
 
 The Canvas New Quizzes Accommodations API (`POST /api/quiz/v1/courses/{course_id}/accommodations`) accepts:
 
@@ -121,12 +123,13 @@ interface NewQuizAccommodationEnvelope {
   applied: NewQuizAccommodationResult[]
   failed: NewQuizAccommodationResult[]
   summary: {
-    scope: 'course' | 'per_quiz'
     applied: number
     failed: number
   }
 }
 ```
+
+`scope` appears only at the top level of the envelope — NOT inside `summary`. Having it in both would be redundant and would require keeping them in sync.
 
 Course-level example output:
 
@@ -135,7 +138,7 @@ Course-level example output:
   "scope": "course",
   "applied": [{ "assignment_id": null, "time_multiplier": 1.5, "extra_attempts": 2 }],
   "failed": [],
-  "summary": { "scope": "course", "applied": 1, "failed": 0 }
+  "summary": { "applied": 1, "failed": 0 }
 }
 ```
 
@@ -151,9 +154,11 @@ Per-quiz example output (2 succeeded, 1 failed):
   "failed": [
     { "assignment_id": 999, "time_multiplier": null, "extra_attempts": null, "error": "Not found" }
   ],
-  "summary": { "scope": "per_quiz", "applied": 2, "failed": 1 }
+  "summary": { "applied": 2, "failed": 1 }
 }
 ```
+
+**Error behavior (course-level):** In the course-level path, `setAccommodation` is called without a try/catch. If Canvas returns an error (401, 403, 422, 500), it propagates to `buildHandler` → `isError: true` (no envelope). This is deliberate: the course-level call is atomic (covers all New Quizzes or none), so a Canvas error means nothing was applied, and a top-level error response accurately reflects that. Per-quiz partial failures are handled differently — they use a per-call try/catch so the envelope is always returned even when individual calls fail.
 
 ---
 
@@ -165,7 +170,7 @@ Detailed rationale:
 
 - **Input:** Both tools accept `user_id: number` (the real Canvas user ID). This is consistent with all existing write tools. The tool descriptions instruct the caller to use `resolve_pseudonym` if `CANVAS_PSEUDONYMIZE_STUDENTS` is enabled.
 - **`set_student_new_quiz_accommodation` response:** Returns the `NewQuizAccommodationEnvelope` shape above. The `assignment_id` and numeric accommodation values appear; no `CanvasUser` object, no `participants` array, no `user_name` field.
-- **`list_student_new_quiz_accommodations` response:** Returns `{ has_accommodation: boolean, time_multiplier: number|null, extra_attempts: number|null }`. The raw Canvas response for `GET .../accommodations/{user_id}` contains `user_id`; the tool discards it before constructing its output object.
+- **`list_student_new_quiz_accommodations` response:** Returns `{ has_accommodation: boolean, time_multiplier: number|null, extra_attempts: number|null }`. The raw Canvas GET response contains `user_id: <number>`. The handler explicitly omits it by constructing a new object with only `has_accommodation`, `time_multiplier`, and `extra_attempts`. This explicit stripping — not pseudonymizer wrapping — is the FERPA mitigation for this tool.
 - **CLAUDE.md trigger:** Pseudonymizer wrapping is required when a tool returns "a `CanvasUser`, a `participants` array, or a `user_name` field." None of the three triggers apply to either tool.
 
 ---
@@ -231,7 +236,13 @@ async getAccommodation(
 }
 ```
 
-Import `CanvasApiError` from `'./client'` at the top of `new-quizzes.ts` (alongside the existing `CanvasHttpClient` import).
+**Import change:** The existing line 1 of `new-quizzes.ts` is `import type { CanvasHttpClient } from './client'`. Replace it with a combined import to avoid duplicate-import linting issues:
+
+```ts
+import { CanvasApiError, type CanvasHttpClient } from './client'
+```
+
+Do NOT add a separate second `import` statement for `'./client'`.
 
 **Note:** `getAccommodation` catches 404 internally and returns `null` (no accommodation set). All other errors propagate. This is the correct pattern for "record may not exist" reads — `CanvasApiError` 404 is a normal non-error state here, not a fault.
 
@@ -260,6 +271,8 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
 }
 ```
 
+**Function signature note:** `newQuizAccommodationTools` takes only `(canvas: CanvasClient)` — no `pseudonymizer` parameter. The `ToolDomainRegistration.getTools` type declares `(canvas, pseudonymizer?)` but TypeScript allows an implementation with fewer parameters (it's structurally compatible). This matches `quizAccommodationTools` (the Classic sibling), which also omits the optional pseudonymizer. Do NOT add a second `_pseudonymizer?: Pseudonymizer` parameter unless the tool later needs to call `pseudonymizer.anonymize*()`.
+
 ### Tool 1: `set_student_new_quiz_accommodation`
 
 ```ts
@@ -273,6 +286,8 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
     'For Classic Quizzes (quiz_type: assignment / practice_quiz / etc.) use ' +
     'set_student_quiz_accommodation instead. ' +
     'Partial per-quiz failures are tolerated — a failure on one quiz does not abort the rest. ' +
+    'In per-quiz mode, fan-out is sequential (one Canvas API call per assignment ID, awaited in series). ' +
+    'Canvas errors on the course-level path (no assignment_ids) propagate as a top-level error (no envelope). ' +
     'Returns a uniform envelope: scope ("course" or "per_quiz"), applied[], failed[], and summary. ' +
     'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
     'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
@@ -338,7 +353,7 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         scope: 'course',
         applied: [result],
         failed: [],
-        summary: { scope: 'course', applied: 1, failed: 0 },
+        summary: { applied: 1, failed: 0 },
       }
     }
 
@@ -372,7 +387,7 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
       scope: 'per_quiz',
       applied,
       failed,
-      summary: { scope: 'per_quiz', applied: applied.length, failed: failed.length },
+      summary: { applied: applied.length, failed: failed.length },
     }
   },
 }
@@ -435,14 +450,21 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
 
 Two changes:
 
-**Import** (after the existing `import { quizAccommodationTools } from './quiz-accommodations'` line):
+**Import** — insert immediately after the existing line 28 (`import { quizAccommodationTools } from './quiz-accommodations'`):
 
 ```ts
 import { newQuizAccommodationTools } from './new-quiz-accommodations'
 ```
 
-**Entry** (after the `quiz_accommodations` entry):
-
+**Entry** — insert between the `quiz_accommodations` entry (ends line 190) and the `assignment_overrides` entry (starts line 192), i.e. after:
+```ts
+  {
+    domain: 'quiz_accommodations',
+    defaultPrimaryAudience: 'educator',
+    getTools: quizAccommodationTools,
+  },
+```
+Add:
 ```ts
   {
     domain: 'new_quiz_accommodations',
@@ -455,13 +477,20 @@ import { newQuizAccommodationTools } from './new-quiz-accommodations'
 
 ## Classic tool description update (`src/tools/quiz-accommodations.ts`)
 
-One change only — update the `description` of `set_student_quiz_accommodation` to mention the sibling tool. Add this sentence before the existing "Only applies to quizzes that exist at call time" sentence:
+One change only — replace the existing New Quizzes skip sentence in `set_student_quiz_accommodation`'s `description` with a version that points to the sibling tool:
 
+**Old string** (currently at line ~29 of `src/tools/quiz-accommodations.ts`):
 ```
-'For New Quizzes (quiz_type quizzes.next) use set_student_new_quiz_accommodation instead. '
+'New Quizzes (quiz_type quizzes.next) are skipped — they use a different accommodation ' +
+'mechanism not covered by this tool. ' +
 ```
 
-No logic, schema, or output changes to the Classic tool.
+**New string** (replace with):
+```
+'New Quizzes (quiz_type quizzes.next) are skipped — use set_student_new_quiz_accommodation instead. ' +
+```
+
+This replaces the existing sentence rather than adding a near-duplicate alongside it. No logic, schema, or output changes to the Classic tool.
 
 ---
 
@@ -546,7 +575,13 @@ function buildMockCanvas() {
    - `applied[0].assignment_id === 101`, `applied[1].assignment_id === 102`.
    - `summary.applied === 2, summary.failed === 0`.
 
-5. **Per-quiz partial failure**: Mock `setQuizAccommodation` resolves for `101` but throws `CanvasApiError('Not Found', 404, '...')` for `102`. Assert:
+5. **Per-quiz partial failure**: Configure the mock to resolve on the first call and reject on the second:
+   ```ts
+   canvas.newQuizzes.setQuizAccommodation
+     .mockResolvedValueOnce({ user_id: 42, time_multiplier: 1.5, extra_attempts: 1 })
+     .mockRejectedValueOnce(new CanvasApiError('Not Found', 404, '/api/quiz/v1/...'))
+   ```
+   Call with `{ course_id: 10, user_id: 42, time_multiplier: 1.5, assignment_ids: [101, 102] }`. Assert:
    - `applied.length === 1, applied[0].assignment_id === 101`.
    - `failed.length === 1, failed[0].assignment_id === 102`, `failed[0].error` contains "Not Found".
    - `summary.applied === 1, summary.failed === 1`.
@@ -604,11 +639,14 @@ expect(names).toContain('set_student_new_quiz_accommodation')
 expect(names).toContain('list_student_new_quiz_accommodations')
 ```
 
-**Change 4 — `writeToolNames` arrays:** `set_student_new_quiz_accommodation` has `destructiveHint: true`. Add it to **both** `writeToolNames` collections in the file (the "write tools have destructiveHint" array and the "read tools" exclusion Set):
+**Change 4 — `writeToolNames` arrays:** `set_student_new_quiz_accommodation` has `destructiveHint: true`. In `tests/tools/registry.test.ts` there are exactly **two** places where write-tool names are listed. In both, insert `'set_student_new_quiz_accommodation'` immediately after the existing `'set_student_quiz_accommodation'` entry (the Classic sibling is already present in both collections — add the New Quiz sibling directly after it):
 
 ```ts
-'set_student_new_quiz_accommodation',
+'set_student_quiz_accommodation',
+'set_student_new_quiz_accommodation',  // ADD
 ```
+
+The first collection is in the `'write tools have destructiveHint: true'` test; the second is the exclusion `Set` in the `'read tools have readOnlyHint: true'` test. If `set_student_new_quiz_accommodation` is absent from the second Set, the read-tools test will assert `readOnlyHint: true` on it and fail.
 
 ---
 
@@ -627,14 +665,14 @@ expect(names).toContain('list_student_new_quiz_accommodations')
 
 **Total: 8 files.** Well within the 15-file guard.
 
-After all files are written, run `pnpm generate:manifests` to update `docs/generated/tool-manifest.json` and any tool-count assertions in the manifests.
+After all files are written, run `pnpm generate:manifests` and commit the updated `docs/generated/tool-manifest.json`. This script updates ONLY the manifest JSON — CI does not regenerate it automatically, and the committed file must reflect the new tool count. The tool count in `tests/tools/registry.test.ts` is a hand-maintained number updated via Change 2 above; `pnpm generate:manifests` does not touch it.
 
 ---
 
 ## Acceptance check
 
 - [x] **design-first** flag present in issue #224.
-- [x] **Unknown 1 (field names/types):** retired — New Quizzes use `time_multiplier` (float ratio ≥ 1.01) and `extra_attempts` (integer ≥ 1); no absolute-time field exists; `CanvasNewQuizAccommodation` type specified with exact field names; Classic field shape (`extra_time` minutes) explicitly distinguished.
+- [x] **Unknown 1 (field names/types):** retired — New Quizzes use `time_multiplier` (float ratio > 1.0, Zod min 1.01 to reject no-op accommodations) and `extra_attempts` (integer ≥ 1); no absolute-time field exists; rationale for 1.01 documented; `CanvasNewQuizAccommodation` type specified with exact field names; Classic field shape (`extra_time` minutes) explicitly distinguished.
 - [x] **Unknown 2 (option A vs B):** retired — Option B (new sibling tools); rationale covers API surface difference, operation cardinality difference, codebase precedent, and non-breaking change surface; Classic tool gets description-only update.
 - [x] **Unknown 3 (GET endpoint):** retired — `GET /api/quiz/v1/courses/{course_id}/accommodations/{user_id}` exists; `getAccommodation` catches 404 internally (returns `null`) and propagates all other errors; `list_student_new_quiz_accommodations` uses this endpoint.
 - [x] **Unknown 4 (course-level vs per-quiz):** retired — course-level by default (single API call when no `assignment_ids`); per-quiz fan-out when `assignment_ids` provided; no pre-listing; 404s from per-quiz POSTs become `failed` entries; empty `assignment_ids` treated as course-level.
