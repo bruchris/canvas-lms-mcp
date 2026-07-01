@@ -50,17 +50,39 @@ assignments backed by the Quizzes.Next LTI tool. Canvas's documented Assignment 
 yet declare this field — add it (see Type changes below). The audit reuses
 `canvas.assignments.list(courseId)` — the same call the `assignments` source already makes — to
 discover New Quiz assignment IDs; when both `assignments` and `quizzes` are selected, this issues
-the list-assignments call twice. This is an accepted, minor v1 inefficiency (same accepted-cost
-pattern as `pages.listWithBodies`'s per-page fan-out in the original spec); a future refactor can
-hoist the shared fetch above both source blocks if it becomes a hot path.
+the list-assignments call twice, concurrently (both calls are independent branches of the same
+outer `Promise.all`, not sequential). This is an accepted, minor v1 inefficiency (same
+accepted-cost pattern as `pages.listWithBodies`'s per-page fan-out in the original spec); a future
+refactor can hoist the shared fetch above both source blocks if it becomes a hot path.
+
+**Field naming.** The issue text describes findings carrying `source: 'quizzes'`; this spec uses
+the codebase's actual, pre-existing field name instead — `ContentLocation.type` (see
+`src/tools/link-audit.ts` line 11) — for consistency with the four existing sources, which already
+use `type`, not `source`. This is a terminology mapping, not a scope change: the issue's intent
+("tag findings with which quiz they came from") is satisfied by `type: 'quizzes'` on the existing
+field.
 
 **Migrated/stub Classic quiz rows.** When a Classic quiz has been migrated to New Quizzes, Canvas
 leaves a stub row in `/courses/:id/quizzes` with `quiz_type: 'quizzes.next'` for backward
-compatibility; this stub carries no real question content and calling
-`listQuestions` on it is not meaningful. The scan filters these out
-(`quiz.quiz_type !== 'quizzes.next'`) before fetching Classic questions — the same course's real
-New Quiz content is still fully covered via the assignments/`is_quiz_lti_assignment` path. This
-filter is defensive and low-risk: at worst it skips a contentless stub record.
+compatibility; this stub carries no real question content and calling `listQuestions` on it is
+not meaningful. **This repo already has an established, tested convention for telling Classic and
+New Quiz rows apart**: `src/tools/quiz-accommodations.ts` defines
+`CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])` and
+uses `CLASSIC_QUIZ_TYPES.has(quiz.quiz_type)` as an **allow-list** (see its `listQuestions`-adjacent
+filter at line 130 and the `classicQuizzes = quizzes.filter(...)` at line 205), specifically so an
+unrecognized/future `quiz_type` value is never mistakenly treated as a scannable Classic quiz. The
+quiz scan here follows that same convention rather than inventing a new one: define an equivalent
+local `CLASSIC_QUIZ_TYPES` constant in `src/tools/link-audit.ts` (mirroring the same four values;
+not imported cross-module, matching this codebase's existing pattern of each tool file owning its
+own small constants — e.g. `link-audit.ts`'s own `HREF_RE`/`IMG_SRC_RE` are not shared either) and
+filter with `CLASSIC_QUIZ_TYPES.has(quiz.quiz_type)`, **not** `quiz.quiz_type !== 'quizzes.next'`.
+This is strictly safer than the deny-list: it skips `listQuestions` for any quiz whose `quiz_type`
+isn't a known-Classic value (including `quizzes.next` and any future/unrecognized type), while the
+same course's real New Quiz content is still fully covered via the independent
+assignments/`is_quiz_lti_assignment` path. Note the specific stub-row field values assumed in the
+test fixtures below (`points_possible: 0`, `question_count: 0`) are illustrative, not verified
+against live Canvas API docs — the filter's correctness does not depend on those specific values,
+only on `quiz_type` not being a recognized Classic value.
 
 **Classic quiz `description` field.** `CanvasQuiz` does not currently declare `description` even
 though Canvas's quiz object returns it (the HTML shown above the quiz questions). Add it (see
@@ -172,13 +194,26 @@ assignment.
 ### New helper: `scanQuizzes`
 
 ```ts
+// Mirrors the allow-list convention already established in
+// src/tools/quiz-accommodations.ts (CLASSIC_QUIZ_TYPES) — kept as a local
+// constant per this codebase's pattern of each tool file owning its own small
+// constants, not a cross-module import.
+const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])
+
 async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<LinkFinding[]> {
+  // `assignments` here is a separate, locally-scoped fetch from the outer
+  // handler's `assignments` variable (used by the `assignments`-source
+  // findings loop) — the two never share data or state. When both the
+  // `assignments` and `quizzes` sources are active, `canvas.assignments.list`
+  // is called twice, concurrently (each inside its own branch of the outer
+  // handler's Promise.all) — an accepted v1 inefficiency, not a bug (see
+  // Design unknown §1).
   const [quizzes, assignments] = await Promise.all([
     canvas.quizzes.list(courseId),
     canvas.assignments.list(courseId),
   ])
 
-  const classicQuizzes = quizzes.filter((quiz) => quiz.quiz_type !== 'quizzes.next')
+  const classicQuizzes = quizzes.filter((quiz) => CLASSIC_QUIZ_TYPES.has(quiz.quiz_type))
   const classicFindings = await Promise.all(
     classicQuizzes.map(async (quiz) => {
       const location: ContentLocation = {
@@ -332,6 +367,12 @@ the committed manifest against a fresh `generate-manifests` run, so the implemen
 `audit_course_links` entry's `description` field in `docs/generated/tool-manifest.json`). No other
 manifest field (`toolCount`, `annotations`, `access`, `primaryAudience`) changes.
 
+**Do not hand-edit `tool-manifest.json`.** `tests/discovery/manifests.test.ts`'s "matches the
+committed generated JSON artifact" case does a full deep `toEqual` between the committed file and
+a freshly built manifest (not a scoped diff of just `audit_course_links`) — any manual edit that
+doesn't byte-for-byte match `generate-manifests`'s output, including key order, fails the test.
+Always regenerate via the script.
+
 ---
 
 ## Test plan
@@ -425,57 +466,62 @@ are pre-existing, already-tested methods; only their TypeScript return types gai
    },
    ```
 
-**New test cases (course ID = `100` throughout, appended after the existing 18 cases):**
+**New test cases (course ID = `100` throughout, appended after the existing 26 cases — recount
+before implementing: `grep -c '  it(' tests/tools/link-audit.test.ts` on `main` should read 26;
+if it doesn't, renumber these to `baseline + 1` through `baseline + 9` accordingly):**
 
-19. **`quizzes` not called by default**: Call `{ course_id: 100 }` (no `include`). Assert
+27. **`quizzes` not called by default**: Call `{ course_id: 100 }` (no `include`). Assert
     `canvas.quizzes.list` is NOT called. Assert `canvas.newQuizzes.listItems` is NOT called.
     Assert `result.summary.sources_scanned` equals
     `['pages', 'assignments', 'syllabus', 'announcements']` exactly (unchanged from before this
     feature — locks in the opt-in decision).
 
-20. **Classic quiz description cross-course link → finding, no `question_id`**: Call
+28. **Classic quiz description cross-course link → finding, no `question_id`**: Call
     `{ course_id: 100, include: ['quizzes'] }`. Assert a finding
     `{ location: { type: 'quizzes', id: 30, title: 'Midterm', quiz_engine: 'classic' }, kind: 'link', reason: 'cross_course_reference', cross_course_id: 999 }`
     exists with `question_id` absent.
 
-21. **Classic quiz question cross-course image → finding with `question_id`**: Same call. Assert
+29. **Classic quiz question cross-course image → finding with `question_id`**: Same call. Assert
     a finding
     `{ location: { type: 'quizzes', id: 30, title: 'Midterm', quiz_engine: 'classic', question_id: 300 }, kind: 'image', reason: 'cross_course_reference', cross_course_id: 999 }`.
 
-22. **Classic quiz question with no links → no finding**: Assert no finding has
+30. **Classic quiz question with no links → no finding**: Assert no finding has
     `location.question_id === 301`.
 
-23. **Migrated/stub Classic quiz (`quiz_type: 'quizzes.next'`) skipped**: Assert
+31. **Migrated/stub Classic quiz (`quiz_type: 'quizzes.next'`) skipped**: Assert
     `canvas.quizzes.listQuestions` is called exactly once, with `(100, 30)` (never with `31`).
     Assert no finding has `location.id === 31`.
 
-24. **New Quiz item cross-course image → finding**: Same call. Assert a finding
+32. **New Quiz item cross-course image → finding**: Same call. Assert a finding
     `{ location: { type: 'quizzes', id: 40, title: 'Final (New Quiz)', quiz_engine: 'new', question_id: 'item-1' }, kind: 'image', reason: 'cross_course_reference', cross_course_id: 999 }`.
 
-25. **Only the New-Quiz-flagged assignment is scanned for items**: Assert
+33. **Only the New-Quiz-flagged assignment is scanned for items**: Assert
     `canvas.newQuizzes.listItems` is called exactly once, with `(100, 40)` — never with `10` or
     `11`.
 
-26. **`sources_scanned` when only `quizzes` is opted in**: Call
+34. **`sources_scanned` when only `quizzes` is opted in**: Call
     `{ course_id: 100, include: ['quizzes'] }`. Assert `result.summary.sources_scanned` equals
     `['quizzes']`. Assert `canvas.pages.listWithBodies`, `canvas.courses.getSyllabus`, and
     `canvas.discussions.listAnnouncements` are NOT called. Assert `canvas.assignments.list` IS
     called (needed for New Quiz discovery even though the `assignments` source itself is not
     active).
 
-27. **Combined `include: ['assignments', 'quizzes']` — accepted double-fetch**: Call
+35. **Combined `include: ['assignments', 'quizzes']` — accepted double-fetch**: Call
     `{ course_id: 100, include: ['assignments', 'quizzes'] }`. Assert `canvas.assignments.list`
     is called exactly **twice** (once for the `assignments` source, once inside `scanQuizzes` for
     New Quiz discovery) — this locks in the accepted v1 inefficiency documented in Design unknown
     §1 rather than leaving it as an untested assumption. Assert `result.summary.sources_scanned`
     equals `['assignments', 'quizzes']`.
 
-28. **Null quiz description → no finding, no error**: `Migrated Stub`'s `description: null` (and
-    any classic quiz with a null description generally) produces no finding and does not throw —
-    covered implicitly by case 23 already skipping quiz 31 entirely, plus asserting
-    `scanHtml(null, ...)` behavior is exercised (already covered by the pre-existing `scanHtml`
-    null-guard tests for `assignments`/`announcements`; no new case needed beyond noting it here
-    for completeness).
+**Note (not a new numbered case — already covered):** `Migrated Stub`'s `description: null` (and
+a null Classic-quiz description generally) produces no finding and does not throw. This is already
+exercised by case 31 (which skips quiz 31 entirely via the `CLASSIC_QUIZ_TYPES` filter before
+`scanHtml` would even see its description) and is the same `scanHtml` null-guard already covered
+by the pre-existing `assignments`/`announcements` null-body tests — no additional numbered test
+case is needed for this path.
+
+**`makeCanvas()` (the minimal mock builder used only by the classification-edge-case suite)
+needs no changes** — none of the new cases above use it; they all use `buildMockCanvas()`.
 
 ### Registry test — `tests/tools/registry.test.ts` (modify existing file)
 
@@ -516,7 +562,9 @@ description (see "Manifest regeneration" above).
      blocks. `sources_scanned` computation is unchanged (already generic over `CONTENT_SOURCES`).
 3. `tests/tools/link-audit.test.ts` — extend `buildMockCanvas()` with `quizzes`/`newQuizzes`
    mocks and a third `assignments` entry (id 40, `is_quiz_lti_assignment: true`, `description:
-   null`); add test cases 19–27 (case 28 is a documentation note, not new code).
+   null`); add 9 new test cases (numbered 27–35 in this spec, assuming the verified baseline of
+   26 existing cases — renumber to `baseline + 1..9` if the recount differs). No changes to
+   `makeCanvas()`.
 4. Run `pnpm generate:manifests` and commit the resulting `docs/generated/tool-manifest.json`
    diff (only `audit_course_links.description` changes).
 5. No changes to `src/tools/catalog.ts`, `src/canvas/index.ts`, `src/canvas/quizzes.ts`,
@@ -553,9 +601,15 @@ description (see "Manifest regeneration" above).
   `question_id` for question/item-level findings, letting an instructor jump straight to the
   broken item as required by the issue's acceptance criteria.
 - [x] Test plan: 2 new mock fixtures (`quizzes`, `newQuizzes`) + 1 new assignment fixture, 9 new
-  test cases (19–27) covering opt-in default, Classic description, Classic question, stub-skip,
-  New Quiz item, scan-isolation, `sources_scanned` variants, and the accepted double-fetch
-  behavior; case 28 documents an already-covered null-guard path.
+  test cases (numbered 27–35 against the verified 26-case baseline) covering opt-in default,
+  Classic description, Classic question, stub-skip (via the `CLASSIC_QUIZ_TYPES` allow-list, not
+  a `quizzes.next` deny-list), New Quiz item, scan-isolation, `sources_scanned` variants, and the
+  accepted double-fetch behavior; a closing note documents an already-covered null-guard path and
+  confirms `makeCanvas()` needs no changes.
+- [x] Classic/New Quiz discrimination reuses the existing `CLASSIC_QUIZ_TYPES` allow-list
+  convention from `src/tools/quiz-accommodations.ts` rather than introducing an inconsistent
+  deny-list — the two `assignments` fetches (outer handler vs. inside `scanQuizzes`) are called
+  out as independently-scoped and concurrent, not sequential or shared.
 - [x] Manifest regeneration requirement (`pnpm generate:manifests`) called out explicitly, since
   the tool description text changes.
 - [x] Catalog, FERPA/pseudonymizer, audience-coverage, and tool-count impacts all explicitly
