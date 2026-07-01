@@ -3,7 +3,13 @@ import { linkAuditTools } from '../../src/tools/link-audit'
 import type { CanvasClient } from '../../src/canvas'
 
 interface Finding {
-  location: { type: string; id: number; title: string }
+  location: {
+    type: string
+    id: number
+    title: string
+    quiz_engine?: 'classic' | 'new'
+    question_id?: number | string
+  }
   kind: string
   href: string
   reason: string
@@ -64,6 +70,97 @@ function buildMockCanvas(): CanvasClient {
           grading_type: 'points',
           submission_types: [],
           allowed_attempts: -1,
+        },
+        {
+          id: 40,
+          name: 'Final (New Quiz)',
+          description: null, // no href here — keeps existing assignments-source finding counts unaffected
+          course_id: 100,
+          due_at: null,
+          points_possible: 20,
+          grading_type: 'points',
+          submission_types: ['external_tool'],
+          allowed_attempts: -1,
+          is_quiz_lti_assignment: true,
+        },
+      ]),
+    },
+    quizzes: {
+      list: vi.fn().mockResolvedValue([
+        {
+          id: 30,
+          title: 'Midterm',
+          quiz_type: 'assignment',
+          description: '<p>Read <a href="/courses/999/pages/notes">notes</a> first.</p>',
+          points_possible: 20,
+          question_count: 2,
+          due_at: null,
+          published: true,
+        },
+        {
+          id: 31,
+          title: 'Migrated Stub',
+          quiz_type: 'quizzes.next',
+          description: null,
+          points_possible: 0,
+          question_count: 0,
+          due_at: null,
+          published: true,
+        },
+      ]),
+      listQuestions: vi.fn().mockResolvedValue([
+        {
+          id: 300,
+          quiz_id: 30,
+          position: 1,
+          question_text: '<p>See <img src="/courses/999/files/1/download"> above.</p>',
+          question_type: 'multiple_choice_question',
+          points_possible: 10,
+        },
+        {
+          id: 301,
+          quiz_id: 30,
+          position: 2,
+          question_text: '<p>No links here.</p>',
+          question_type: 'true_false_question',
+          points_possible: 10,
+        },
+      ]),
+    },
+    newQuizzes: {
+      listItems: vi.fn().mockResolvedValue([
+        {
+          id: 'item-1',
+          position: 1,
+          points_possible: 5,
+          entry_type: 'Item',
+          entry: {
+            interaction_type_slug: 'choice',
+            item_body: '<p>Pick the diagram: <img src="/courses/999/files/2/download"></p>',
+            interaction_data: {},
+            properties: {},
+          },
+        },
+        {
+          // Link-free control: a same-course image must NOT be flagged.
+          id: 'item-2',
+          position: 2,
+          points_possible: 5,
+          entry_type: 'Item',
+          entry: {
+            interaction_type_slug: 'choice',
+            item_body: '<p>Local image: <img src="/courses/100/files/3/download"></p>',
+            interaction_data: {},
+            properties: {},
+          },
+        },
+        {
+          // Malformed/entry-less item (e.g. an unexpected Stimulus shape): must be
+          // skipped safely, never throw. `entry` is intentionally absent here.
+          id: 'item-3',
+          position: 3,
+          points_possible: 0,
+          entry_type: 'Stimulus',
         },
       ]),
     },
@@ -461,6 +558,204 @@ describe('linkAuditTools', () => {
       const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(0)
+    })
+  })
+
+  describe('quizzes source', () => {
+    // 27
+    it('does not scan quizzes by default (opt-in)', async () => {
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+
+      const result = (await tool.handler({ course_id: 100 })) as AuditResult
+
+      expect(canvas.quizzes.list).not.toHaveBeenCalled()
+      expect(canvas.newQuizzes.listItems).not.toHaveBeenCalled()
+      expect(result.summary.sources_scanned).toEqual([
+        'pages',
+        'assignments',
+        'syllabus',
+        'announcements',
+      ])
+    })
+
+    // 28
+    it('flags a cross-course link in a Classic quiz description without a question_id', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      const finding = result.findings.find(
+        (f) => f.location.type === 'quizzes' && f.location.id === 30 && f.kind === 'link',
+      )
+      expect(finding).toBeDefined()
+      expect(finding?.location).toEqual({
+        type: 'quizzes',
+        id: 30,
+        title: 'Midterm',
+        quiz_engine: 'classic',
+      })
+      expect(finding?.location).not.toHaveProperty('question_id')
+      expect(finding).toMatchObject({ reason: 'cross_course_reference', cross_course_id: 999 })
+    })
+
+    // 29
+    it('flags a cross-course image in a Classic quiz question with a question_id', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          location: {
+            type: 'quizzes',
+            id: 30,
+            title: 'Midterm',
+            quiz_engine: 'classic',
+            question_id: 300,
+          },
+          kind: 'image',
+          reason: 'cross_course_reference',
+          cross_course_id: 999,
+        }),
+      )
+    })
+
+    // 30
+    it('emits no finding for a Classic quiz question with no links', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings.some((f) => f.location.question_id === 301)).toBe(false)
+    })
+
+    // 31
+    it('skips a migrated stub Classic quiz (quiz_type quizzes.next)', async () => {
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(1)
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith(100, 30)
+      expect(result.findings.some((f) => f.location.id === 31)).toBe(false)
+    })
+
+    // 32
+    it('flags a cross-course image in a New Quiz item', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          location: {
+            type: 'quizzes',
+            id: 40,
+            title: 'Final (New Quiz)',
+            quiz_engine: 'new',
+            question_id: 'item-1',
+          },
+          kind: 'image',
+          reason: 'cross_course_reference',
+          cross_course_id: 999,
+        }),
+      )
+    })
+
+    // 33
+    it('scans items only for the New-Quiz-flagged assignment', async () => {
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+      await tool.handler({ course_id: 100, include: ['quizzes'] })
+
+      expect(canvas.newQuizzes.listItems).toHaveBeenCalledTimes(1)
+      expect(canvas.newQuizzes.listItems).toHaveBeenCalledWith(100, 40)
+    })
+
+    // 34
+    it('reports sources_scanned as ["quizzes"] and skips other sources when only quizzes is opted in', async () => {
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.summary.sources_scanned).toEqual(['quizzes'])
+      expect(canvas.pages.listWithBodies).not.toHaveBeenCalled()
+      expect(canvas.courses.getSyllabus).not.toHaveBeenCalled()
+      expect(canvas.discussions.listAnnouncements).not.toHaveBeenCalled()
+      // assignments.list is still needed for New Quiz discovery
+      expect(canvas.assignments.list).toHaveBeenCalled()
+    })
+
+    // 35
+    it('fetches assignments twice for the accepted double-fetch when both assignments and quizzes are included', async () => {
+      const canvas = buildMockCanvas()
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['assignments', 'quizzes'],
+      })) as AuditResult
+
+      expect(canvas.assignments.list).toHaveBeenCalledTimes(2)
+      expect(result.summary.sources_scanned).toEqual(['assignments', 'quizzes'])
+    })
+
+    // 36 — absolute count guard, mirroring the full-scan suite's exact-count test.
+    // Locks the quizzes source to its 3 expected findings (quiz-30 description link,
+    // quiz-30 question-300 image, New-Quiz item-1 image) so a duplicate, stub-quiz
+    // leak, or same-course false positive cannot slip past the existential matchers.
+    it('emits exactly the three expected quiz findings (no over- or under-counting)', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings).toHaveLength(3)
+      expect(result.summary.total_findings).toBe(3)
+    })
+
+    // 37 — clean New Quiz control: a same-course item image must NOT be flagged
+    // (symmetric to Classic question 301's no-finding control).
+    it('does not flag a same-course image in a New Quiz item', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      // item-1 IS flagged in the same result, so this negative control cannot pass vacuously.
+      expect(result.findings.some((f) => f.location.question_id === 'item-1')).toBe(true)
+      expect(result.findings.some((f) => f.location.question_id === 'item-2')).toBe(false)
+    })
+
+    // 38 — robustness: a malformed/entry-less New Quiz item (e.g. an unexpected
+    // Stimulus shape) is skipped safely rather than throwing a TypeError that would
+    // abort the whole multi-source audit.
+    it('skips an entry-less New Quiz item without throwing', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      // item-1 IS flagged in the same result, proving the New Quiz items were scanned.
+      expect(result.findings.some((f) => f.location.question_id === 'item-1')).toBe(true)
+      expect(result.findings.some((f) => f.location.question_id === 'item-3')).toBe(false)
     })
   })
 

@@ -1726,7 +1726,7 @@
     {
       "name": "audit_course_links",
       "domain": "link_audit",
-      "description": "Scan a course's content (pages, assignments, syllabus, announcements) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
+      "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems — these break silently for students while still rendering in the instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
