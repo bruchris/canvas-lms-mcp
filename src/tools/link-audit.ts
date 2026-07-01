@@ -158,8 +158,12 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
         quiz_engine: 'new',
       }
       const items = await canvas.newQuizzes.listItems(courseId, assignment.id)
+      // `entry` is optional-chained defensively: New Quizzes list items include
+      // Stimulus blocks and other entry shapes, and a malformed/entry-less item
+      // would otherwise throw a raw TypeError that aborts the whole audit. A
+      // missing body is treated as "no links" by extractUrls' null-guard.
       return items.flatMap((item) =>
-        scanHtml(item.entry.item_body, courseId, { ...location, question_id: item.id }),
+        scanHtml(item.entry?.item_body, courseId, { ...location, question_id: item.id }),
       )
     }),
   )

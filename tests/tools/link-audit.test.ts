@@ -141,6 +141,27 @@ function buildMockCanvas(): CanvasClient {
             properties: {},
           },
         },
+        {
+          // Link-free control: a same-course image must NOT be flagged.
+          id: 'item-2',
+          position: 2,
+          points_possible: 5,
+          entry_type: 'Item',
+          entry: {
+            interaction_type_slug: 'choice',
+            item_body: '<p>Local image: <img src="/courses/100/files/3/download"></p>',
+            interaction_data: {},
+            properties: {},
+          },
+        },
+        {
+          // Malformed/entry-less item (e.g. an unexpected Stimulus shape): must be
+          // skipped safely, never throw. `entry` is intentionally absent here.
+          id: 'item-3',
+          position: 3,
+          points_possible: 0,
+          entry_type: 'Stimulus',
+        },
       ]),
     },
     courses: {
@@ -691,6 +712,46 @@ describe('linkAuditTools', () => {
 
       expect(canvas.assignments.list).toHaveBeenCalledTimes(2)
       expect(result.summary.sources_scanned).toEqual(['assignments', 'quizzes'])
+    })
+
+    // 36 — absolute count guard, mirroring the full-scan suite's exact-count test.
+    // Locks the quizzes source to its 3 expected findings (quiz-30 description link,
+    // quiz-30 question-300 image, New-Quiz item-1 image) so a duplicate, stub-quiz
+    // leak, or same-course false positive cannot slip past the existential matchers.
+    it('emits exactly the three expected quiz findings (no over- or under-counting)', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings).toHaveLength(3)
+      expect(result.summary.total_findings).toBe(3)
+    })
+
+    // 37 — clean New Quiz control: a same-course item image must NOT be flagged
+    // (symmetric to Classic question 301's no-finding control).
+    it('does not flag a same-course image in a New Quiz item', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings.some((f) => f.location.question_id === 'item-2')).toBe(false)
+    })
+
+    // 38 — robustness: a malformed/entry-less New Quiz item (e.g. an unexpected
+    // Stimulus shape) is skipped safely rather than throwing a TypeError that would
+    // abort the whole multi-source audit.
+    it('skips an entry-less New Quiz item without throwing', async () => {
+      const [tool] = linkAuditTools(buildMockCanvas())
+      const result = (await tool.handler({
+        course_id: 100,
+        include: ['quizzes'],
+      })) as AuditResult
+
+      expect(result.findings.some((f) => f.location.question_id === 'item-3')).toBe(false)
     })
   })
 
