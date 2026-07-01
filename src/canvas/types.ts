@@ -194,6 +194,7 @@ export interface CanvasAssignment {
   }
   assignment_visibility?: number[]
   is_quiz_assignment?: boolean
+  is_quiz_lti_assignment?: boolean // true when backed by the New Quizzes (Quizzes.Next) LTI tool
   in_closed_grading_period?: boolean
   post_to_sis?: boolean
   integration_id?: string | null
@@ -387,6 +388,7 @@ export interface CanvasQuiz {
   id: number
   title: string
   quiz_type: string
+  description?: string | null // HTML shown above the quiz's questions
   points_possible: number
   question_count: number
   due_at: string | null
