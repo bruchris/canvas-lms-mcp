@@ -738,6 +738,8 @@ describe('linkAuditTools', () => {
         include: ['quizzes'],
       })) as AuditResult
 
+      // item-1 IS flagged in the same result, so this negative control cannot pass vacuously.
+      expect(result.findings.some((f) => f.location.question_id === 'item-1')).toBe(true)
       expect(result.findings.some((f) => f.location.question_id === 'item-2')).toBe(false)
     })
 
@@ -751,6 +753,8 @@ describe('linkAuditTools', () => {
         include: ['quizzes'],
       })) as AuditResult
 
+      // item-1 IS flagged in the same result, proving the New Quiz items were scanned.
+      expect(result.findings.some((f) => f.location.question_id === 'item-1')).toBe(true)
       expect(result.findings.some((f) => f.location.question_id === 'item-3')).toBe(false)
     })
   })
