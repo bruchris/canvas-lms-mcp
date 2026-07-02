@@ -94,6 +94,29 @@ accepted heuristic gap as Signal A's own "group submissions" and "peer-review-af
 comment" limitations (`2026-06-12-instructor-needs-attention.md:37-40`). A roster-based
 refinement is a fast-follow if real-world use shows this misfires often.
 
+**Cross-tool consequence of a misclassification (explicitly accepted, not silently absorbed).**
+The `peer` bucket is not just "shown as pseudonymized in this tool's own output" — see
+"Pre-warming peer pseudonyms" below, the pre-warm call **persists** that pseudonym into the same
+per-course map file every other tool in this codebase reads (`list_submissions`, `get_submission`,
+`list_submission_comments_needing_attention`, `list_submissions_awaiting_grading`, ...). Every
+prior `unknown → pseudonymize` call site in this codebase (`submission.user`, enrollment-embedded
+users) is a roster-verified subject by construction — this is the first path where an *unverified
+guess* about a third party's role can write into that shared map. Concretely: a misclassified
+non-grader staff member's real name would then also be masked as `"Student N"` the next time an
+*instructor* runs `list_submissions` or `list_submission_comments_needing_attention` on that same
+course, until someone notices. We accept this consciously, for the same reason the codebase
+already accepts the underlying `unknown → student` default: the failure direction (a staff name
+briefly hidden, visible and fixable by anyone who notices the mislabeled entry) is preferred over
+the alternative (a genuine peer's identity leaking through this student-facing tool). Two factors
+narrow the exposure in practice: (1) `CANVAS_PSEUDONYMIZE_STUDENTS` is documented as intended for
+teacher/staff tokens (`2026-05-25-ferpa-pseudonymization.md:159`) — a deployment serving students
+with this tool would typically run with the flag off, so this pre-warming path is inert in the
+common case; (2) this is not a new *failure mode* introduced by this tool, only a new *trigger* for
+an existing one — the pseudonymizer already has no "demote/undo" mechanism for any wrongly-assigned
+entry, staff or student, from any tool. No mitigation is implemented in v1; a roster-aware
+correction path (e.g. extending `resolve_pseudonym`/an admin-facing un-assign) is a fast-follow if
+this proves disruptive in practice.
+
 **Pre-warming peer pseudonyms.** Once a comment is classified `peer`, we must ensure its author
 has a pseudonym allocated in the course's map *before* calling `anonymizeSubmission` (which only
 looks up the map, never populates it). We do this with the already-public
@@ -104,8 +127,10 @@ looks up the map, never populates it). We do this with the already-public
 await pseudonymizer.anonymizeUser(courseId, { id: comment.author_id, name: comment.author_name })
 ```
 
-With no enrollments passed, `classifyRole({}, undefined)` sees an empty list and returns
-`'unknown'` (`roles.ts:36`), and `shouldPseudonymize('unknown')` is `true` (`roles.ts:59-61`) — so
+Internally `anonymizeUser` calls `classifyRole({ id: comment.author_id, name: comment.author_name
+}, undefined)` (`pseudonymizer.ts:128`) — with no `enrollments` argument and no `.enrollments`
+field on the passed-in object, `classifyRole` sees an empty list and returns `'unknown'`
+(`roles.ts:36`), and `shouldPseudonymize('unknown')` is `true` (`roles.ts:59-61`) — so
 `anonymizeUser` allocates and persists a pseudonym for that peer's user_id into the exact same
 per-course map (`pseudonyms/<host>/<courseId>.json`) that every other tool in this codebase reads
 and writes. The returned `CanvasUser` from this warming call is discarded — its only purpose is
@@ -182,6 +207,14 @@ export function studentTools(
   pseudonymizer?: Pseudonymizer,
 ): ToolDefinition[] {
 ```
+
+### New imports
+
+`src/tools/student.ts` gains two imports not currently present in the file: `SubmissionListInclude`
+from `'../canvas/submissions'` (not re-exported by the `src/canvas` facade — `src/canvas/index.ts`
+only does `export type * from './types'`, so it must come from the submissions module directly,
+mirroring `src/tools/submissions.ts:7`) and `type { Pseudonymizer }` from
+`'../pseudonym/pseudonymizer'` (mirroring `src/tools/submissions.ts:10`).
 
 ### New include constant
 
@@ -375,9 +408,11 @@ function toFeedbackComment(
       })
     }
 
-    findings.sort((a, b) =>
-      a.latest_feedback_comment.created_at < b.latest_feedback_comment.created_at ? 1 : -1,
-    )
+    findings.sort((a, b) => {
+      const A = a.latest_feedback_comment.created_at
+      const B = b.latest_feedback_comment.created_at
+      return A === B ? 0 : A < B ? 1 : -1
+    })
 
     return {
       courses_scanned: courseIds.length,
@@ -400,7 +435,9 @@ Notes:
   unchanged (`pseudonymizer.ts:339-347` only rewrites `author_name`, never `id`).
 - `latest_feedback_comment` uses ISO-8601 string comparison (`created_at >= created_at`), matching
   Signal A's existing sort code path — safe because Canvas always returns `created_at` as
-  zero-padded ISO-8601 UTC.
+  zero-padded ISO-8601 UTC. The findings-level sort comparator explicitly returns `0` on equal
+  timestamps (two findings whose latest feedback landed in the same second) rather than reusing a
+  strict `<` check both ways, which would be a non-antisymmetric (technically invalid) comparator.
 - Register this as the fifth entry in `studentTools`'s returned array, after
   `get_my_upcoming_assignments` — no `audience` override needed; it inherits the `student` domain
   default.
@@ -423,8 +460,9 @@ Notes:
      comment).
 - **Audience**: no change needed. `get_my_submission_feedback` inherits `student` from the domain
   default, matching every other tool in `src/tools/student.ts`.
-- **Tool count**: `tests/tools/registry.test.ts:377` — `expect(tools).toHaveLength(141)` becomes
-  `142`.
+- **Tool count**: two hardcoded assertions move `141` → `142` —
+  `tests/tools/registry.test.ts:377` and `tests/discovery/manifests.test.ts:38` (see Test plan
+  for why the manifest test needs both a regenerated JSON artifact *and* this separate hand-edit).
 
 ---
 
@@ -470,7 +508,7 @@ All tests use mocked Canvas responses; no live Canvas calls.
 ```ts
 const teacherComment: CanvasSubmissionComment = {
   id: 900,
-  author_id: 7, // matches gradedSubmission.grader_id
+  author_id: 7, // matches feedbackSubmission.grader_id
   author_name: 'Dr. Chen',
   comment: 'Nice improvement on the thesis statement.',
   created_at: '2026-06-30T14:02:00Z',
@@ -506,7 +544,17 @@ const feedbackSubmission: CanvasSubmission = {
   read_status: 'unread',
   html_url: 'https://school.instructure.com/courses/1/assignments/20/submissions/5',
   user: { id: 5, name: 'Alex Rivera', short_name: 'Alex', sortable_name: 'Rivera, Alex' },
-  assignment: { id: 20, name: 'Essay 2', course_id: 1, due_at: null, points_possible: 100 },
+  assignment: {
+    id: 20,
+    name: 'Essay 2',
+    description: null,
+    due_at: null,
+    points_possible: 100,
+    grading_type: 'points',
+    submission_types: ['online_text_entry'],
+    course_id: 1,
+    allowed_attempts: -1,
+  },
   course: { id: 1, name: 'Intro to CS', course_code: 'CS101', workflow_state: 'available' },
   submission_comments: [selfComment, peerComment, teacherComment],
 }
@@ -559,9 +607,11 @@ const noCommentsSubmission: CanvasSubmission = {
    excluded from the "latest feedback" computation even though it's chronologically not the
    newest anyway (add a second fixture variant where the self comment IS the newest to prove
    exclusion, not just recency, drives the result).
-8. **`unread_only` filter**: build a second submission identical to `feedbackSubmission` but
-   `read_status: 'read'`; call `{ course_id: 1, unread_only: true }`; assert only the `unread`
-   one appears.
+8. **`unread_only` filter**: build a second submission, `readFeedbackSubmission`, identical to
+   `feedbackSubmission` except `id: 103`, `assignment_id: 23`, and `read_status: 'read'`; mock
+   `listMy` to resolve `[feedbackSubmission, readFeedbackSubmission]`; call
+   `{ course_id: 1, unread_only: true }`; assert `result.findings_count === 1` and the one
+   finding has `submission_id: 100` (the `unread` one).
 9. **`course_id` omitted scans active courses**: mock `canvas.courses.list` to resolve two
    courses (`1`, `2`); mock `submissions.listMy` to return `[feedbackSubmission]` for course 1
    and `[]` for course 2. Call `{}`. Assert `canvas.courses.list` called with
@@ -615,7 +665,14 @@ const noCommentsSubmission: CanvasSubmission = {
 
 ### Manifest test — `tests/discovery/manifests.test.ts`
 
-No test-file changes. Passes once `pnpm generate:manifests` is run and the diff committed.
+This file has **two independent count assertions**, not one — both must be updated, the second is
+easy to miss because it lives in a different test than the deep-equal one:
+- The `'matches the committed generated JSON artifact'` case does a full deep-equal against a
+  freshly generated manifest; it passes once `pnpm generate:manifests` is run and the diff
+  committed (no test-file edit needed for this one).
+- The `'serializes the registered tool surface with discovery metadata'` case has its own,
+  separately hardcoded `expect(manifest.tools).toHaveLength(141)` at **line 38** — this must be
+  bumped to `142` by hand; regenerating the manifest JSON does not touch this assertion.
 
 ### Audience coverage test — `tests/tools/audience-coverage.test.ts`
 
@@ -638,17 +695,26 @@ default.
    `PSEUDONYMIZER_WRAPPED_TOOLS` with a new `// src/tools/student.ts` comment block.
 4. `tests/canvas/submissions.test.ts` — 2 new cases for `listMy`'s `include` param (see Test
    plan).
-5. `tests/tools/student.test.ts` — extend `buildMockCanvas()`, add the fixtures and 12 new test
-   cases (numbered 5–16 in this spec's Test plan, appended after the existing 4 top-level tests
-   and per-tool `describe` blocks).
+5. `tests/tools/student.test.ts`:
+   - **Modify** the two existing top-level assertions: `toHaveLength(4)` → `5`, and the `names`
+     array to append `'get_my_submission_feedback'` after `'get_my_upcoming_assignments'`. These
+     are existing assertions, not new test cases — they will fail as soon as the 5th tool is
+     registered if left untouched.
+   - Extend `buildMockCanvas()`, add the fixtures, and add the 12 new test cases (numbered 5–16
+     in this spec's Test plan) in a new `describe('get_my_submission_feedback')` block, appended
+     after the existing per-tool `describe` blocks.
 6. `tests/pseudonym/coverage.test.ts` — add `'get_my_submission_feedback'` to
    `EXPECTED_PII_BEARING_TOOLS`.
 7. `tests/tools/registry.test.ts` — bump the tool-count assertion `141` → `142`.
-8. Run `pnpm generate:manifests` and commit the resulting `docs/generated/tool-manifest.json` /
-   `manifest.json` diff.
-9. No changes to `src/tools/catalog.ts`, `src/tools/index.ts`, `src/tools/peer-reviews.ts`,
-   `src/pseudonym/pseudonymizer.ts`, `src/pseudonym/roles.ts`, `tests/tools/audience-coverage.test.ts`,
-   or `tests/discovery/manifests.test.ts` (beyond the regenerated JSON artifact).
+8. `tests/discovery/manifests.test.ts` — bump the separately-hardcoded
+   `expect(manifest.tools).toHaveLength(141)` at line 38 to `142` (see Test plan — this is
+   distinct from the deep-equal case below and is easy to miss).
+9. Run `pnpm generate:manifests` and commit the resulting `docs/generated/tool-manifest.json`
+   diff (this repo's manifest script writes `tool-manifest.json` and `workflow-manifest.json`
+   only — there is no separate `manifest.json` to update).
+10. No changes to `src/tools/catalog.ts`, `src/tools/index.ts`, `src/tools/peer-reviews.ts`,
+    `src/pseudonym/pseudonymizer.ts`, `src/pseudonym/roles.ts`, or
+    `tests/tools/audience-coverage.test.ts`.
 
 ---
 
@@ -680,4 +746,13 @@ default.
   (fixtures, role classification, `unread_only`, cross-course scan, pseudonymization on/off,
   stability, ungraded-submission edge case, error propagation), coverage-test and registry-test
   updates, manifest regeneration called out explicitly.
-- [x] Implementation checklist enumerates every file touched and every file explicitly untouched.
+- [x] Implementation checklist enumerates every file touched and every file explicitly untouched,
+  including the two independently-hardcoded tool-count assertions
+  (`tests/tools/registry.test.ts:377` and `tests/discovery/manifests.test.ts:38`) and the
+  existing `tests/tools/student.test.ts` assertions that must be *modified*, not just appended
+  to.
+- [x] Cross-tool consequence of the peer pre-warming mechanism (a misclassified staff comment's
+  pseudonym persists into the shared per-course map used by instructor-facing tools too) is
+  explicitly named and the acceptance rationale spelled out, not left as an implicit side effect.
+- [x] All fixture object literals type-check against their real interfaces (`CanvasAssignment`'s
+  required fields are all present on the `feedbackSubmission.assignment` fixture).
