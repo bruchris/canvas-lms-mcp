@@ -59,4 +59,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/grade-explanation.ts
   'explain_grade',
+
+  // src/tools/student.ts
+  'get_my_submission_feedback',
 ] as const
