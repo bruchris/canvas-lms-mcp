@@ -323,11 +323,12 @@ describe('getAllTools', () => {
     expect(names).toContain('get_outcome_rollups')
     expect(names).toContain('get_outcome_contributing_scores')
     expect(names).toContain('get_outcome_mastery_distribution')
-    // Student (4)
+    // Student (5)
     expect(names).toContain('get_my_courses')
     expect(names).toContain('get_my_grades')
     expect(names).toContain('get_my_submissions')
     expect(names).toContain('get_my_upcoming_assignments')
+    expect(names).toContain('get_my_submission_feedback')
     // Dashboard (4)
     expect(names).toContain('get_dashboard_cards')
     expect(names).toContain('get_todo_items')
@@ -374,7 +375,7 @@ describe('getAllTools', () => {
     // Submissions Awaiting Grading (1)
     expect(names).toContain('list_submissions_awaiting_grading')
 
-    expect(tools).toHaveLength(141)
+    expect(tools).toHaveLength(142)
   })
 
   it('all tools have openWorldHint: true', () => {

@@ -1,8 +1,70 @@
 import { z } from 'zod'
+import { CanvasApiError } from '../canvas'
 import type { CanvasClient } from '../canvas'
+import type { SubmissionListInclude } from '../canvas/submissions'
+import type { CanvasSubmission, CanvasSubmissionComment } from '../canvas/types'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
-export function studentTools(canvas: CanvasClient): ToolDefinition[] {
+const MY_SUBMISSION_FEEDBACK_INCLUDE = [
+  'submission_comments',
+  'user',
+  'assignment',
+  'course',
+  'read_status',
+] as const satisfies ReadonlyArray<SubmissionListInclude>
+
+type CommentAuthorRole = 'self' | 'teacher' | 'peer'
+
+interface FeedbackComment {
+  id: number
+  author_role: CommentAuthorRole
+  author_name: string
+  comment: string
+  created_at: string
+}
+
+interface SubmissionFeedback {
+  course_id: number
+  course_name: string | null
+  assignment_id: number
+  assignment_name: string | null
+  submission_id: number
+  workflow_state: string
+  score: number | null
+  read_status: 'read' | 'unread' | null
+  feedback_author_roles: CommentAuthorRole[] // deduped, excludes 'self'
+  latest_feedback_comment: FeedbackComment
+  comments: FeedbackComment[] // full thread, chronological, includes 'self' comments
+  html_url: string | null
+}
+
+function classifyCommentAuthor(
+  comment: CanvasSubmissionComment,
+  submission: CanvasSubmission,
+): CommentAuthorRole {
+  if (comment.author_id === submission.user_id) return 'self'
+  if (submission.grader_id != null && comment.author_id === submission.grader_id) return 'teacher'
+  return 'peer'
+}
+
+function toFeedbackComment(
+  comment: CanvasSubmissionComment,
+  role: CommentAuthorRole,
+): FeedbackComment {
+  return {
+    id: comment.id,
+    author_role: role,
+    author_name: comment.author_name,
+    comment: comment.comment,
+    created_at: comment.created_at,
+  }
+}
+
+export function studentTools(
+  canvas: CanvasClient,
+  pseudonymizer?: Pseudonymizer,
+): ToolDefinition[] {
   return [
     {
       name: 'get_my_courses',
@@ -57,6 +119,185 @@ export function studentTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async () => {
         return canvas.users.getUpcomingAssignments()
+      },
+    },
+    {
+      name: 'get_my_submission_feedback',
+      description:
+        "List the authenticated student's own submissions that carry feedback comments from an " +
+        'instructor or a peer reviewer — comments left by the student themselves do not count as ' +
+        'feedback and submissions with no non-self comments are omitted. Omit `course_id` to scan ' +
+        'every active course; a course that errors during a scan is skipped and reported in ' +
+        '`courses_failed` rather than failing the whole call. Sorted most-recent-feedback-first. ' +
+        'Comment author role is best-effort: ' +
+        "'teacher' is only identified when the author is the submission's recorded grader; other " +
+        "non-self authors are labeled 'peer', including any staff member who comments without being " +
+        'the recorded grader.',
+      inputSchema: {
+        course_id: z
+          .number()
+          .optional()
+          .describe("The Canvas course ID. Omit to scan all of the student's active courses."),
+        unread_only: z
+          .boolean()
+          .optional()
+          .describe(
+            "Only include submissions the student hasn't opened yet (Canvas read_status). " +
+              'Defaults to false.',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const courseIdParam = params.course_id as number | undefined
+        const unreadOnly = (params.unread_only as boolean | undefined) ?? false
+
+        const courseIds =
+          courseIdParam !== undefined
+            ? [courseIdParam]
+            : (await canvas.courses.list({ enrollment_state: 'active' })).map((c) => c.id)
+
+        const perCourse: Array<{ courseId: number; submissions: CanvasSubmission[] }> = []
+        const coursesFailed: Array<{ course_id: number; status: number | null; message: string }> =
+          []
+
+        if (courseIdParam !== undefined) {
+          // Explicit single course: fail fast so an explicit request surfaces the
+          // real Canvas error to the caller.
+          perCourse.push({
+            courseId: courseIdParam,
+            submissions: await canvas.submissions.listMy(courseIdParam, {
+              include: MY_SUBMISSION_FEEDBACK_INCLUDE,
+            }),
+          })
+        } else {
+          // All-courses scan: tolerate a single course failing (a concluded-but-
+          // still-"active" enrollment, or a course that 403s the student-
+          // submissions endpoint) so one bad course does not hide the feedback in
+          // every other course. Failures are surfaced in `courses_failed`. Each
+          // call is wrapped so the failing course id stays associated with its
+          // error (Promise.allSettled would drop it).
+          const results = await Promise.all(
+            courseIds.map(async (courseId) => {
+              try {
+                const submissions = await canvas.submissions.listMy(courseId, {
+                  include: MY_SUBMISSION_FEEDBACK_INCLUDE,
+                })
+                return { ok: true as const, courseId, submissions }
+              } catch (err) {
+                return { ok: false as const, courseId, err }
+              }
+            }),
+          )
+          for (const result of results) {
+            if (result.ok) {
+              perCourse.push({ courseId: result.courseId, submissions: result.submissions })
+            } else {
+              coursesFailed.push({
+                course_id: result.courseId,
+                status: result.err instanceof CanvasApiError ? result.err.status : null,
+                message:
+                  result.err instanceof CanvasApiError ? result.err.message : String(result.err),
+              })
+            }
+          }
+        }
+
+        let submissionsScanned = 0
+        const candidates: Array<{ courseId: number; submission: CanvasSubmission }> = []
+        for (const { courseId, submissions } of perCourse) {
+          for (const submission of submissions) {
+            submissionsScanned += 1
+            const comments = submission.submission_comments ?? []
+            if (comments.length === 0) continue
+            const hasFeedback = comments.some(
+              (c) => classifyCommentAuthor(c, submission) !== 'self',
+            )
+            if (!hasFeedback) continue
+            if (unreadOnly && submission.read_status !== 'unread') continue
+            candidates.push({ courseId, submission })
+          }
+        }
+
+        if (pseudonymizer?.isEnabled()) {
+          const peerAuthors = new Map<string, { courseId: number; id: number; name: string }>()
+          for (const { courseId, submission } of candidates) {
+            for (const comment of submission.submission_comments ?? []) {
+              if (classifyCommentAuthor(comment, submission) === 'peer') {
+                peerAuthors.set(`${courseId}:${comment.author_id}`, {
+                  courseId,
+                  id: comment.author_id,
+                  name: comment.author_name,
+                })
+              }
+            }
+          }
+          await Promise.all(
+            [...peerAuthors.values()].map((p) =>
+              pseudonymizer.anonymizeUser(p.courseId, { id: p.id, name: p.name }),
+            ),
+          )
+        }
+
+        const findings: SubmissionFeedback[] = []
+        for (const { courseId, submission } of candidates) {
+          const roles = new Map<number, CommentAuthorRole>()
+          for (const c of submission.submission_comments ?? []) {
+            roles.set(c.id, classifyCommentAuthor(c, submission))
+          }
+
+          const resolved = pseudonymizer?.isEnabled()
+            ? await pseudonymizer.anonymizeSubmission(courseId, submission)
+            : submission
+
+          const originalNameById = new Map(
+            (submission.submission_comments ?? []).map((c) => [c.id, c.author_name]),
+          )
+          const comments = (resolved.submission_comments ?? []).map((c) => {
+            const role = roles.get(c.id) ?? 'peer'
+            // A comment from the submission's recorded grader is staff and must
+            // keep its real name — even if that same user_id was pre-warmed as a
+            // peer on a different submission in this course (the shared per-course
+            // pseudonym map is keyed by user_id, not role, so anonymizeSubmission
+            // would otherwise mask this teacher comment too).
+            const author_name =
+              role === 'teacher' ? (originalNameById.get(c.id) ?? c.author_name) : c.author_name
+            return toFeedbackComment({ ...c, author_name }, role)
+          })
+          const feedbackComments = comments.filter((c) => c.author_role !== 'self')
+          const latest = feedbackComments.reduce((a, b) => (a.created_at >= b.created_at ? a : b))
+
+          findings.push({
+            course_id: courseId,
+            course_name: resolved.course?.name ?? null,
+            assignment_id: resolved.assignment_id,
+            assignment_name: resolved.assignment?.name ?? null,
+            submission_id: resolved.id,
+            workflow_state: resolved.workflow_state,
+            score: resolved.score,
+            read_status: resolved.read_status ?? null,
+            feedback_author_roles: [...new Set(feedbackComments.map((c) => c.author_role))],
+            latest_feedback_comment: latest,
+            comments,
+            html_url: resolved.html_url ?? null,
+          })
+        }
+
+        findings.sort((a, b) => {
+          const A = a.latest_feedback_comment.created_at
+          const B = b.latest_feedback_comment.created_at
+          return A === B ? 0 : A < B ? 1 : -1
+        })
+
+        return {
+          courses_scanned: courseIds.length,
+          courses_failed: coursesFailed,
+          submissions_scanned: submissionsScanned,
+          findings_count: findings.length,
+          findings,
+        }
       },
     },
   ]
