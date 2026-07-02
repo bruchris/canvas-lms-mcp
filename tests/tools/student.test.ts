@@ -417,12 +417,105 @@ describe('studentTools', () => {
       expect(result.findings[0].comments.find((c) => c.id === 900)!.author_role).toBe('peer')
     })
 
-    it('propagates CanvasApiError', async () => {
+    it('propagates CanvasApiError on the explicit single-course path', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.submissions.listMy).mockRejectedValue(
         new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/students/submissions'),
       )
       await expect(getTool(canvas).handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
+    })
+
+    it('sorts findings most-recent-feedback-first', async () => {
+      const canvas = buildMockCanvas()
+      // feedbackSubmission's latest feedback is the teacher comment on 2026-06-30.
+      const newerFeedbackSubmission: CanvasSubmission = {
+        ...feedbackSubmission,
+        id: 200,
+        assignment_id: 24,
+        submission_comments: [
+          {
+            id: 950,
+            author_id: 7, // grader -> teacher
+            author_name: 'Dr. Chen',
+            comment: 'A later note.',
+            created_at: '2026-07-01T10:00:00Z',
+          },
+        ],
+      }
+      // input order is oldest-first on purpose, to prove the handler re-sorts
+      vi.mocked(canvas.submissions.listMy).mockResolvedValue([
+        feedbackSubmission,
+        newerFeedbackSubmission,
+      ])
+      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+        findings: Array<{ submission_id: number }>
+      }
+      expect(result.findings.map((f) => f.submission_id)).toEqual([200, 100])
+    })
+
+    it('keeps both findings (stable order) when latest feedback ties on the same timestamp', async () => {
+      const canvas = buildMockCanvas()
+      const tiedComment = (id: number): CanvasSubmissionComment => ({
+        id,
+        author_id: 7,
+        author_name: 'Dr. Chen',
+        comment: 'Same-second note.',
+        created_at: '2026-07-02T12:00:00Z',
+      })
+      const first: CanvasSubmission = {
+        ...feedbackSubmission,
+        id: 210,
+        submission_comments: [tiedComment(960)],
+      }
+      const second: CanvasSubmission = {
+        ...feedbackSubmission,
+        id: 211,
+        submission_comments: [tiedComment(961)],
+      }
+      vi.mocked(canvas.submissions.listMy).mockResolvedValue([first, second])
+      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+        findings_count: number
+        findings: Array<{ submission_id: number }>
+      }
+      expect(result.findings_count).toBe(2)
+      // equal-timestamp comparator returns 0 -> stable sort preserves input order
+      expect(result.findings.map((f) => f.submission_id)).toEqual([210, 211])
+    })
+
+    it('tolerates a failing course during an all-courses scan and reports it', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.courses.list).mockResolvedValue([
+        { id: 1, name: 'Intro to CS', course_code: 'CS101', workflow_state: 'available' },
+        { id: 2, name: 'Concluded', course_code: 'HIST101', workflow_state: 'available' },
+      ])
+      vi.mocked(canvas.submissions.listMy).mockImplementation(async (courseId: number) => {
+        if (courseId === 2) {
+          throw new CanvasApiError('Forbidden', 403, '/api/v1/courses/2/students/submissions')
+        }
+        return [feedbackSubmission]
+      })
+      const result = (await getTool(canvas).handler({})) as {
+        courses_scanned: number
+        courses_failed: Array<{ course_id: number; status: number | null }>
+        findings_count: number
+      }
+      expect(result.courses_scanned).toBe(2)
+      expect(result.findings_count).toBe(1) // course 1's feedback still returned
+      expect(result.courses_failed).toEqual([{ course_id: 2, status: 403, message: 'Forbidden' }])
+    })
+
+    it('reports read_status as null when Canvas omits it', async () => {
+      const canvas = buildMockCanvas()
+      const noReadStatus: CanvasSubmission = {
+        ...feedbackSubmission,
+        id: 400,
+        read_status: undefined,
+      }
+      vi.mocked(canvas.submissions.listMy).mockResolvedValue([noReadStatus])
+      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+        findings: Array<{ read_status: string | null }>
+      }
+      expect(result.findings[0].read_status).toBeNull()
     })
 
     describe('pseudonymization', () => {
@@ -486,6 +579,58 @@ describe('studentTools', () => {
         const second = peerName(await tool.handler({ course_id: 1 }))
         expect(first).toMatch(/^Student \d+$/)
         expect(second).toBe(first)
+      })
+
+      it('keeps the recorded grader name even when that user is a peer commenter elsewhere', async () => {
+        // Same user (id 7) is the recorded grader on submission A (teacher) and a
+        // non-grader commenter on submission B (peer) in the same course. The peer
+        // pre-warm allocates a pseudonym for user 7 in the shared course map; the
+        // teacher comment on A must still keep its real name.
+        const canvas = buildMockCanvas()
+        const graderComment: CanvasSubmissionComment = {
+          id: 800,
+          author_id: 7,
+          author_name: 'Dr. Chen',
+          comment: 'Graded feedback on your essay.',
+          created_at: '2026-06-30T10:00:00Z',
+        }
+        const sameUserPeerComment: CanvasSubmissionComment = {
+          id: 801,
+          author_id: 7,
+          author_name: 'Dr. Chen',
+          comment: 'A note left without being the grader here.',
+          created_at: '2026-06-29T10:00:00Z',
+        }
+        const subA: CanvasSubmission = {
+          ...feedbackSubmission,
+          id: 300,
+          assignment_id: 30,
+          grader_id: 7,
+          submission_comments: [graderComment],
+        }
+        const subB: CanvasSubmission = {
+          ...feedbackSubmission,
+          id: 301,
+          assignment_id: 31,
+          grader_id: 99, // author 7 is NOT the grader here -> peer
+          submission_comments: [sameUserPeerComment],
+        }
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([subA, subB])
+        const result = (await getTool(canvas, makePseudonymizer()).handler({
+          course_id: 1,
+        })) as {
+          findings: Array<{
+            submission_id: number
+            comments: Array<{ id: number; author_role: string; author_name: string }>
+          }>
+        }
+        const findingFor = (id: number) => result.findings.find((f) => f.submission_id === id)!
+        const teacherOnA = findingFor(300).comments.find((c) => c.id === 800)!
+        const peerOnB = findingFor(301).comments.find((c) => c.id === 801)!
+        expect(teacherOnA.author_role).toBe('teacher')
+        expect(teacherOnA.author_name).toBe('Dr. Chen') // grader name preserved
+        expect(peerOnB.author_role).toBe('peer')
+        expect(peerOnB.author_name).toMatch(/^Student \d+$/) // same user, masked as a peer here
       })
     })
   })

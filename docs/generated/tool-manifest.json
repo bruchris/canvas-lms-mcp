@@ -1456,7 +1456,7 @@
     {
       "name": "get_my_submission_feedback",
       "domain": "student",
-      "description": "List the authenticated student's own submissions that carry feedback comments from an instructor or a peer reviewer — comments left by the student themselves do not count as feedback and submissions with no non-self comments are omitted. Omit `course_id` to scan every active course. Sorted most-recent-feedback-first. Comment author role is best-effort: 'teacher' is only identified when the author is the submission's recorded grader; other non-self authors are labeled 'peer', including any staff member who comments without being the recorded grader.",
+      "description": "List the authenticated student's own submissions that carry feedback comments from an instructor or a peer reviewer — comments left by the student themselves do not count as feedback and submissions with no non-self comments are omitted. Omit `course_id` to scan every active course; a course that errors during a scan is skipped and reported in `courses_failed` rather than failing the whole call. Sorted most-recent-feedback-first. Comment author role is best-effort: 'teacher' is only identified when the author is the submission's recorded grader; other non-self authors are labeled 'peer', including any staff member who comments without being the recorded grader.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
