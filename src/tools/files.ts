@@ -49,10 +49,8 @@ function findDuplicateFiles(
   folderId?: number,
 ): { duplicate_groups: DuplicateGroup[]; total_redundant_copies: number } {
   const folderPathById = new Map(folders.map((f) => [f.id, f.full_name]))
-  const scoped =
-    folderId == null
-      ? files
-      : files.filter((f) => collectFolderSubtree(folders, folderId).has(f.folder_id))
+  const subtree = folderId == null ? null : collectFolderSubtree(folders, folderId)
+  const scoped = subtree == null ? files : files.filter((f) => subtree.has(f.folder_id))
 
   const groups = new Map<string, CanvasFile[]>()
   for (const file of scoped) {
