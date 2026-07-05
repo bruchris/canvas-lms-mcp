@@ -374,8 +374,10 @@ describe('getAllTools', () => {
     expect(names).toContain('audit_course_links')
     // Submissions Awaiting Grading (1)
     expect(names).toContain('list_submissions_awaiting_grading')
+    // Files (1)
+    expect(names).toContain('find_duplicate_files')
 
-    expect(tools).toHaveLength(142)
+    expect(tools).toHaveLength(143)
   })
 
   it('all tools have openWorldHint: true', () => {
