@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 142,
+  "toolCount": 143,
   "tools": [
     {
       "name": "health_check",
@@ -551,6 +551,18 @@
       "name": "download_file",
       "domain": "files",
       "description": "Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "find_duplicate_files",
+      "domain": "files",
+      "description": "Find duplicate files in a course's Files area — copies with the same name and size, typically left behind by repeated course copies. Each duplicate gets flagged separately by accessibility checkers, so this surfaces them for cleanup with the existing delete_file tool. Groups by display name + size (Canvas file listings carry no content hash), so same-name files of different sizes are not considered duplicates.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

@@ -1,6 +1,86 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { CanvasFile, CanvasFolder } from '../canvas/types'
 import type { ToolDefinition } from './types'
+
+interface DuplicateFileEntry {
+  id: number
+  folder_path: string
+  created_at?: string
+}
+
+interface DuplicateGroup {
+  display_name: string
+  size: number
+  count: number
+  files: DuplicateFileEntry[]
+}
+
+// Folders in the subtree rooted at `folderId`, including `folderId` itself. If
+// `folderId` isn't present among `folders` (e.g. a stale/foreign id), the
+// subtree is just `{ folderId }` — callers naturally get zero matching files
+// rather than an error.
+function collectFolderSubtree(folders: CanvasFolder[], folderId: number): Set<number> {
+  const childrenByParent = new Map<number, number[]>()
+  for (const folder of folders) {
+    if (folder.parent_folder_id == null) continue
+    const siblings = childrenByParent.get(folder.parent_folder_id) ?? []
+    siblings.push(folder.id)
+    childrenByParent.set(folder.parent_folder_id, siblings)
+  }
+
+  const subtree = new Set<number>([folderId])
+  const queue = [folderId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const childId of childrenByParent.get(current) ?? []) {
+      if (!subtree.has(childId)) {
+        subtree.add(childId)
+        queue.push(childId)
+      }
+    }
+  }
+  return subtree
+}
+
+function findDuplicateFiles(
+  files: CanvasFile[],
+  folders: CanvasFolder[],
+  folderId?: number,
+): { duplicate_groups: DuplicateGroup[]; total_redundant_copies: number } {
+  const folderPathById = new Map(folders.map((f) => [f.id, f.full_name]))
+  const scoped =
+    folderId == null
+      ? files
+      : files.filter((f) => collectFolderSubtree(folders, folderId).has(f.folder_id))
+
+  const groups = new Map<string, CanvasFile[]>()
+  for (const file of scoped) {
+    const key = JSON.stringify([file.display_name, file.size])
+    const group = groups.get(key) ?? []
+    group.push(file)
+    groups.set(key, group)
+  }
+
+  const duplicate_groups: DuplicateGroup[] = []
+  let total_redundant_copies = 0
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    total_redundant_copies += group.length - 1
+    duplicate_groups.push({
+      display_name: group[0]!.display_name,
+      size: group[0]!.size,
+      count: group.length,
+      files: group.map((f) => ({
+        id: f.id,
+        folder_path: folderPathById.get(f.folder_id) ?? `(unknown folder ${f.folder_id})`,
+        ...(f.created_at !== undefined ? { created_at: f.created_at } : {}),
+      })),
+    })
+  }
+
+  return { duplicate_groups, total_redundant_copies }
+}
 
 export function fileTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -114,6 +194,37 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         const file_id = params.file_id as number
         const course_id = params.course_id as number | undefined
         return canvas.files.download(file_id, course_id)
+      },
+    },
+    {
+      name: 'find_duplicate_files',
+      description:
+        "Find duplicate files in a course's Files area — copies with the same name and size, " +
+        'typically left behind by repeated course copies. Each duplicate gets flagged separately ' +
+        'by accessibility checkers, so this surfaces them for cleanup with the existing ' +
+        'delete_file tool. Groups by display name + size (Canvas file listings carry no content ' +
+        'hash), so same-name files of different sizes are not considered duplicates.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        folder_id: z
+          .number()
+          .optional()
+          .describe(
+            'Optional Canvas folder ID to scope the search to that folder and its subfolders',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const folder_id = params.folder_id as number | undefined
+        const [files, folders] = await Promise.all([
+          canvas.files.list(course_id),
+          canvas.files.listFolders(course_id),
+        ])
+        return findDuplicateFiles(files, folders, folder_id)
       },
     },
   ]
