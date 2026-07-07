@@ -33,10 +33,14 @@ dependency.
 **Decision: no special-casing. Follow the exact precedent already shipped for `search_users` and
 `list_course_users`.** Both of those tools accept a `search_term` that is often literally the
 student's real name, and both still route their output through `pseudonymizer.anonymizeUsers`
-unconditionally when `CANVAS_PSEUDONYMIZE_STUDENTS` is enabled — proven in
-`tests/tools/users.test.ts:241-267` (calling `search_users`/`list_course_users` with
-`search_term: 'alice'` still returns `name: 'Student N'` in the response). This is not a gap to
-fix; it is the accepted, tested behavior of this codebase for exactly this situation.
+unconditionally when `CANVAS_PSEUDONYMIZE_STUDENTS` is enabled. `search_users`'s own test proves
+the name-search case directly (`tests/tools/users.test.ts:242-247` — calling it with
+`search_term: 'alice'` still returns `name: 'Student N'`); `list_course_users`'s adjacent test
+(`tests/tools/users.test.ts:260-267`) doesn't happen to pass a `search_term`, but its handler
+(`src/tools/users.ts:167-169`) calls `pseudonymizer.anonymizeUsers(course_id, users)`
+unconditionally on every returned user regardless of what filters produced them — so the same
+conclusion holds by code inspection, not just by that one test's exact inputs. This is not a gap
+to fix; it is the accepted, tested behavior of this codebase for exactly this situation.
 
 The reasoning it rests on: the pseudonymizer's job is to keep the **response** from carrying a
 real name/email/login the caller didn't already have — it is not, and cannot be, responsible for
@@ -74,6 +78,20 @@ correct and stable regardless of the pseudonymization flag. See Unknown 3 for th
 ### 3. Output shape
 
 ```ts
+interface FindStudentMatchedCourse {
+  course_id: number
+  course_name: string
+  term: string | null
+  enrollment_state: string
+  last_activity_at: string | null
+  user_name: string // possibly pseudonymized, scoped to this course
+}
+
+interface FindStudentMatch {
+  user_id: number
+  matched_courses: FindStudentMatchedCourse[]
+}
+
 interface FindStudentAcrossCoursesResult {
   include_concluded: boolean
   courses_found: number // instructor's teaching courses matching the state filters, pre-cap
@@ -81,17 +99,7 @@ interface FindStudentAcrossCoursesResult {
   truncated: boolean
   courses_failed: Array<{ course_id: number; status: number | null; message: string }>
   matches_count: number
-  matches: Array<{
-    user_id: number
-    matched_courses: Array<{
-      course_id: number
-      course_name: string
-      term: string | null
-      enrollment_state: string
-      last_activity_at: string | null
-      user_name: string // possibly pseudonymized, scoped to this course
-    }>
-  }>
+  matches: FindStudentMatch[]
 }
 ```
 
@@ -121,6 +129,18 @@ happen per documented Canvas behavior, but the type marks it optional), **includ
 rather than silently dropping it — a false-positive extra course scanned is a wasted API call; a
 false-negative dropped course is a real course silently missing from the instructor's search
 results, which is the worse failure mode.
+
+**Flagged implementation risk:** the "every course entry always carries the caller's own
+`enrollments`" claim is standard, long-documented Canvas API behavior, but nothing else in this
+repo currently exercises it — there is no existing test fixture or code path to independently
+confirm it against this codebase's own conventions. Because the fallback above is
+*include-on-missing*, if this assumption turns out to be wrong in some Canvas configuration (e.g.
+`enrollments` omitted for other reasons), the role filter would silently degrade to "every visible
+course" rather than "teaching courses only," with no signal to the caller that filtering didn't
+happen. The implementor should verify this against a real Canvas response (or the existing
+`tests/canvas/courses.test.ts` fixtures, if any construct one) before relying on it, and, if it
+does not hold, escalate rather than ship the silent fallback as-is — this is called out again in
+Open Questions.
 
 ### 5. `include_concluded` — two `list()` calls, not one
 
@@ -152,7 +172,7 @@ the end, since a missing start date is less useful to search first) and take the
 `max_courses`. Set `truncated: true` and report both `courses_found` (pre-cap) and
 `courses_scanned` (post-cap, `== min(courses_found, max_courses)`) — never silently drop courses
 without surfacing the flag, per this repo's stated no-silent-truncation convention (e.g.
-`list_submissions_awaiting_grading`'s spec, `2026-06-26-issue-221-...md`).
+`list_course_submission_files`'s cap-and-flag treatment in `src/tools/submission-files.ts`).
 
 ### 7. Per-course fan-out mechanics — `Promise.all` with per-course tolerance, not the shared `fanOut` helper
 
@@ -176,6 +196,18 @@ because Canvas's default for this endpoint only returns `active` and `invited` �
 "concluded enrollments are excluded by default" pattern as Unknown 5, this time on the
 users-in-course endpoint. `include: ['enrollments']` is required to read
 `last_activity_at`/`enrollment_state` per Unknown 8.
+
+**Explicit design note — this is intentionally independent of `include_concluded`.**
+`include_concluded` (Unknown 5) controls which *courses* get scanned at all (does the instructor's
+own concluded/past-term teaching enrollment count). The per-course `enrollment_state` list above
+controls which *student* enrollment rows are matched **within** a course that's already being
+scanned. These are two different axes on purpose: a currently-active course can still contain a
+student whose own enrollment is `'completed'` or `'inactive'` (e.g. they withdrew, or completed
+early under a self-paced structure), and the instructor asking "was this student ever in my
+current courses" should see that row regardless of `include_concluded`. So `include_concluded:
+false` narrows the *course* scan to active-only, while the *student*-enrollment-state list stays
+"all states" in every case — it is not a bug that a `'completed'` student enrollment can surface
+inside an `include_concluded: false` call, as long as the *course* itself is currently active.
 
 ### 8. Where `last_activity_at` and `enrollment_state` come from
 
@@ -594,14 +626,23 @@ No changes — it iterates `getAllTools()` dynamically; the new tool resolves to
 | `tests/discovery/manifests.test.ts` | Bump hardcoded count `143` → `144` |
 | `docs/generated/tool-manifest.json` | Regenerate via `pnpm generate:manifests` |
 
-8 files total (7 hand-edited + 1 new test file; the manifest JSON is generated, not hand-edited).
-No new Canvas client module, no changes to `src/canvas/courses.ts`, `src/canvas/users.ts`,
-`src/pseudonym/pseudonymizer.ts`, or `src/pseudonym/roles.ts`.
+8 files total: 7 hand-edited (2 of them new — `student-search.ts` and
+`student-search.test.ts`) + 1 generated (`tool-manifest.json`, via `pnpm generate:manifests`, not
+hand-edited). No new Canvas client module, no changes to `src/canvas/courses.ts`,
+`src/canvas/users.ts`, `src/pseudonym/pseudonymizer.ts`, or `src/pseudonym/roles.ts`.
 
 ---
 
 ## Open questions for CTO review
 
+- **Verify the "`/courses` always returns the caller's own `enrollments`" assumption before
+  implementing** (Unknown 4): this is standard documented Canvas behavior but is not exercised
+  anywhere else in this repo today, and the spec's own defensive fallback would silently degrade
+  the teacher-only filter to "every visible course" if the assumption doesn't hold in practice.
+  The implementor should confirm this against a real Canvas response (or existing
+  `tests/canvas/courses.test.ts` fixtures, if any construct one with `enrollments` populated)
+  before relying on it — this is the one part of the spec resting on an external behavior rather
+  than something verifiable purely by reading this repo's own code.
 - **`INSTRUCTOR_ENROLLMENT_TYPES` scope** (Unknown 4): this spec excludes `DesignerEnrollment` from
   the "teaching courses" filter, on the reasoning that a designer role doesn't imply the
   roster-search persona the issue describes. If designers should also get this tool, that's a
