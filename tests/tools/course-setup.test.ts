@@ -48,6 +48,33 @@ const DEFAULT_ASSIGNMENTS = [
   },
 ]
 
+// Time-relative fixtures for the submissions_open_past_due check. Computed
+// relative to Date.now() (not fixed calendar dates) so the "right now" predicate
+// is exercised deterministically regardless of when the suite runs — matching the
+// convention in tests/tools/attention.test.ts. Kept scoped to this file's new
+// describe block; deliberately NOT added to DEFAULT_ASSIGNMENTS so the other four
+// checks' exact-items assertions are not perturbed.
+const DAY_MS = 24 * 60 * 60 * 1000
+const PAST_DUE = new Date(Date.now() - 5 * DAY_MS).toISOString()
+const EARLIER_PAST_DUE = new Date(Date.now() - 10 * DAY_MS).toISOString()
+const PAST_LOCK = new Date(Date.now() - 1 * DAY_MS).toISOString()
+const FUTURE_LOCK = new Date(Date.now() + 5 * DAY_MS).toISOString()
+const FUTURE_DUE = new Date(Date.now() + 5 * DAY_MS).toISOString()
+const FUTURE_UNLOCK = new Date(Date.now() + 5 * DAY_MS).toISOString()
+
+const OPEN_PAST_DUE_ASSIGNMENT = {
+  id: 8,
+  name: 'Reflection',
+  published: true,
+  due_at: PAST_DUE,
+  unlock_at: null,
+  lock_at: null,
+  all_dates: [],
+  grading_type: 'points',
+  points_possible: 10,
+  submission_types: ['online_upload'],
+}
+
 const DEFAULT_GROUPS = [
   { id: 1, name: 'Homework', position: 1, group_weight: 50 },
   { id: 2, name: 'Exams', position: 2, group_weight: 50 },
@@ -120,15 +147,16 @@ describe('courseSetupTools', () => {
     expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
   })
 
-  it('runs all four checks when no checks param is supplied', async () => {
+  it('runs all five checks when no checks param is supplied', async () => {
     const report = await run(buildMockCanvas(), { course_id: 10 })
     expect(report.summary.checks_run).toEqual([
       'missing_due_dates',
       'unpublished_items',
       'assignment_group_weights',
       'ungraded_setup',
+      'submissions_open_past_due',
     ])
-    expect(report.findings).toHaveLength(4)
+    expect(report.findings).toHaveLength(5)
   })
 
   describe('missing_due_dates', () => {
@@ -450,6 +478,293 @@ describe('courseSetupTools', () => {
       })
       const report = await run(canvas, { course_id: 10 })
       expect(itemsFor(report, 'ungraded_setup').some((i) => i.id === 7)).toBe(false)
+    })
+  })
+
+  describe('submissions_open_past_due', () => {
+    // Case 2 (also exercises the all_dates:[] top-level fallback — design-unknown §2 —
+    // so case 8 is folded here, not a separate block).
+    it('flags a published assignment past due with no lock date (top-level fallback)', async () => {
+      const canvas = buildMockCanvas({ assignments: [OPEN_PAST_DUE_ASSIGNMENT] })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toContainEqual(
+        expect.objectContaining({ type: 'assignment', id: 8, name: 'Reflection' }),
+      )
+      const finding = items.find((i) => i.id === 8)!
+      expect(finding.detail).toBe(
+        `due ${PAST_DUE} has passed; lock_at is not set — submissions still open`,
+      )
+    })
+
+    // Case 3
+    it('flags a published assignment past due with a future lock date', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, lock_at: FUTURE_LOCK }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain(FUTURE_LOCK)
+      expect(items[0].detail).not.toContain('not set')
+    })
+
+    // Case 4
+    it('does not flag when already locked (lock_at in the past)', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, lock_at: PAST_LOCK }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 5
+    it('does not flag when not yet due', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, due_at: FUTURE_DUE }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 6
+    it('does not flag when due_at is null', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, due_at: null }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 7
+    it('does not flag an unpublished assignment even when past due and unlocked', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, published: false }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 9
+    it('does not flag when unlock_at is still in the future', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, unlock_at: FUTURE_UNLOCK }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 10
+    it('does not flag an assignment with no digital drop box (on_paper)', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, submission_types: ['on_paper'] }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 11
+    it('does not flag an assignment with submission_types: [none]', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, submission_types: ['none'] }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 12
+    it('still flags when submission_types mixes a digital and a non-digital entry', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          { ...OPEN_PAST_DUE_ASSIGNMENT, submission_types: ['on_paper', 'online_upload'] },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toHaveLength(1)
+    })
+
+    // Case 13
+    it('flags an override still open while the base is already locked', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: PAST_LOCK },
+              {
+                base: false,
+                title: 'Late Registrants',
+                due_at: PAST_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain('for override "Late Registrants"')
+      expect(items[0].detail).toContain('submissions still open')
+    })
+
+    // Case 14
+    it('flags the base still open while a named override is already locked', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Section B',
+                due_at: PAST_DUE,
+                unlock_at: null,
+                lock_at: PAST_LOCK,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).not.toContain('for override')
+    })
+
+    // Case 15
+    it('excludes the phantom base entry when only_visible_to_overrides is true', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            only_visible_to_overrides: true,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Group A',
+                due_at: FUTURE_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Case 16
+    it('still flags an open override when only_visible_to_overrides is true', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            only_visible_to_overrides: true,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Group A',
+                due_at: PAST_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain('for override "Group A"')
+    })
+
+    // Case 17 — multiple open date sets, base earliest; count worded generically.
+    it('picks the earliest open base set and notes the extra open set generically', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: EARLIER_PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Extended',
+                due_at: PAST_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain(EARLIER_PAST_DUE)
+      expect(items[0].detail).not.toContain('for override')
+      expect(items[0].detail).toContain('(+1 more date set(s) also open)')
+    })
+
+    // Case 18 — multiple open date sets, override earliest; suffix must not say "override(s)".
+    it('picks the earliest open override yet still counts the base as a generic date set', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Extended',
+                due_at: EARLIER_PAST_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain(EARLIER_PAST_DUE)
+      expect(items[0].detail).toContain('for override "Extended"')
+      expect(items[0].detail).toContain('(+1 more date set(s) also open)')
+    })
+
+    // Case 19
+    it('runs alone without triggering the other checks fetches', async () => {
+      const canvas = buildMockCanvas({ assignments: [OPEN_PAST_DUE_ASSIGNMENT] })
+      const report = await run(canvas, {
+        course_id: 10,
+        checks: ['submissions_open_past_due'],
+      })
+      expect(canvas.assignments.list).toHaveBeenCalled()
+      expect(canvas.modules.listWithItems).not.toHaveBeenCalled()
+      expect(canvas.assignments.listGroups).not.toHaveBeenCalled()
+      expect(canvas.courses.get).not.toHaveBeenCalled()
+      expect(report.summary.checks_run).toEqual(['submissions_open_past_due'])
+      expect(report.findings).toHaveLength(1)
+    })
+
+    // Case 20
+    it('emits an empty items array when nothing is open past due', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          { ...OPEN_PAST_DUE_ASSIGNMENT, id: 30, due_at: FUTURE_DUE },
+          { ...OPEN_PAST_DUE_ASSIGNMENT, id: 31, due_at: null },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10, checks: ['submissions_open_past_due'] })
+      const finding = report.findings.find((f) => f.check === 'submissions_open_past_due')
+      expect(finding).toBeDefined()
+      expect(finding!.items).toEqual([])
     })
   })
 
