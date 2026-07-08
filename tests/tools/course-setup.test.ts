@@ -858,6 +858,18 @@ describe('courseSetupTools', () => {
       const report = await run(canvas, { course_id: 10 })
       expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
     })
+
+    // Cycle-2 add-on: the third date-parse guard. Without a malformed-unlock_at test
+    // the `Number.isNaN(unlockMs)` branch was the one unguarded-in-tests parse — a
+    // regression dropping only that line would fabricate a finding yet pass. Pins the
+    // three date guards symmetrically.
+    it('does not flag when unlock_at is a malformed date string (fails closed)', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, unlock_at: 'garbage-unlock' }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
   })
 
   describe('checks filter', () => {
