@@ -83,11 +83,26 @@ function buildDateSets(a: CanvasAssignment): DateSet[] {
 // "Right now" predicate: the due date has passed, the assignment is already
 // unlocked (unlock_at null or in the past), and it has not yet locked (lock_at
 // null or in the future) — i.e. Canvas is accepting submissions this instant.
+//
+// Every non-null date is NaN-guarded. An unparseable date string parses to NaN,
+// and every comparison against NaN is false, which without a guard would let a
+// garbage `due_at` slip past the `>= nowMs` gate and fabricate a finding with a
+// nonsense detail. A malformed date is treated conservatively as "not open" so
+// the check fails closed (suppresses the finding) rather than open — matching the
+// check's false-positive discipline. Real Canvas always returns ISO 8601 or null
+// here; this only bites on a malformed/partial response.
 function isOpenPastDue(d: DateSet, nowMs: number): boolean {
   if (d.due_at === null) return false
-  if (new Date(d.due_at).getTime() >= nowMs) return false
-  if (d.unlock_at !== null && new Date(d.unlock_at).getTime() > nowMs) return false
-  if (d.lock_at !== null && new Date(d.lock_at).getTime() <= nowMs) return false
+  const dueMs = new Date(d.due_at).getTime()
+  if (Number.isNaN(dueMs) || dueMs >= nowMs) return false
+  if (d.unlock_at !== null) {
+    const unlockMs = new Date(d.unlock_at).getTime()
+    if (Number.isNaN(unlockMs) || unlockMs > nowMs) return false
+  }
+  if (d.lock_at !== null) {
+    const lockMs = new Date(d.lock_at).getTime()
+    if (Number.isNaN(lockMs) || lockMs <= nowMs) return false
+  }
   return true
 }
 

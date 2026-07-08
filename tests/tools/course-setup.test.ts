@@ -58,6 +58,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const PAST_DUE = new Date(Date.now() - 5 * DAY_MS).toISOString()
 const EARLIER_PAST_DUE = new Date(Date.now() - 10 * DAY_MS).toISOString()
 const PAST_LOCK = new Date(Date.now() - 1 * DAY_MS).toISOString()
+const PAST_UNLOCK = new Date(Date.now() - 2 * DAY_MS).toISOString()
 const FUTURE_LOCK = new Date(Date.now() + 5 * DAY_MS).toISOString()
 const FUTURE_DUE = new Date(Date.now() + 5 * DAY_MS).toISOString()
 const FUTURE_UNLOCK = new Date(Date.now() + 5 * DAY_MS).toISOString()
@@ -765,6 +766,97 @@ describe('courseSetupTools', () => {
       const finding = report.findings.find((f) => f.check === 'submissions_open_past_due')
       expect(finding).toBeDefined()
       expect(finding!.items).toEqual([])
+    })
+
+    // Review add-on (test-analyzer T1): the "unlock_at already passed" side of the
+    // unlock gate — case 9's inverse. Pins that a released-in-the-past, past-due,
+    // unlocked assignment is still flagged (a mutation to `unlock_at !== null →
+    // return false` would otherwise pass silently).
+    it('flags when unlock_at is set but already in the past', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, unlock_at: PAST_UNLOCK }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toHaveLength(1)
+    })
+
+    // Review add-on (test-analyzer T2): the spec's stated equal-due_at tie-break.
+    // Two open date sets share the identical due_at; strict `<` keeps the first
+    // entry (base), so the base — not the override — must drive the finding. A
+    // switch to `<=` would flip the winner and this test would catch it.
+    it('keeps the base on an exact due_at tie between base and override', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+              {
+                base: false,
+                title: 'Section C',
+                due_at: PAST_DUE,
+                unlock_at: null,
+                lock_at: null,
+              },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).not.toContain('for override')
+      expect(items[0].detail).toContain('(+1 more date set(s) also open)')
+    })
+
+    // Review add-on (test-analyzer T3): the spec's conservative-exclusion of an
+    // empty submission_types (treated as "no drop box").
+    it('does not flag an assignment with an empty submission_types array', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, submission_types: [] }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    // Review add-on (test-analyzer T4): the `chosen.title ?? 'untitled override'`
+    // fallback — an open override date set with no title.
+    it('labels an open override with no title as "untitled override"', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [
+          {
+            ...OPEN_PAST_DUE_ASSIGNMENT,
+            all_dates: [
+              { base: true, due_at: PAST_DUE, unlock_at: null, lock_at: PAST_LOCK },
+              { base: false, due_at: PAST_DUE, unlock_at: null, lock_at: null },
+            ],
+          },
+        ],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'submissions_open_past_due')
+      expect(items).toHaveLength(1)
+      expect(items[0].detail).toContain('for override "untitled override"')
+    })
+
+    // Review add-on (silent-failure S1): a malformed, non-null date string must not
+    // fabricate a finding. Without the NaN guard, `new Date('garbage').getTime()`
+    // is NaN, every comparison is false, and the assignment would be flagged with a
+    // nonsense detail. The check must fail closed (no finding) instead.
+    it('does not flag when due_at is a malformed date string', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, due_at: 'not-a-real-date' }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
+    })
+
+    it('does not flag when lock_at is a malformed date string (fails closed)', async () => {
+      const canvas = buildMockCanvas({
+        assignments: [{ ...OPEN_PAST_DUE_ASSIGNMENT, lock_at: 'garbage-lock' }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      expect(itemsFor(report, 'submissions_open_past_due')).toEqual([])
     })
   })
 
