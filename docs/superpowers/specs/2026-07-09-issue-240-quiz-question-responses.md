@@ -100,14 +100,36 @@ different Canvas data sources are involved here and they must not be conflated:
   auto-graded types, Canvas's classic quiz-submission-questions payload has historically included a
   `correct` field once a quiz is graded, but this repo's current `CanvasQuizSubmissionQuestion` type
   (`src/canvas/types.ts`) does not model it, and its exact shape (boolean vs. tri-state) is not
-  independently confirmed in this codebase. Per CLAUDE.md's implementation guidance, **the
-  implementor must verify the live field name/shape against a real Canvas response during
-  implementation** and adjust the type below if it disagrees; note any deviation in the PR.
+  independently confirmed in this codebase. **CLAUDE.md requires tests to never hit a live Canvas
+  instance, so there is no way to verify the live shape during implementation** — committing to a
+  guess and correcting it later (the same path already taken twice in this codebase: see the
+  "Post-implementation correction" block atop
+  `docs/superpowers/specs/2026-06-14-issue-182-quiz-submission-event-logs.md`, and the tri-state
+  `event_type`/`event_data` fixes it records) is the only workable process here, not an open
+  research task for the implementor.
 
-  V1 adds `correct?: boolean | null` to `CanvasQuizSubmissionQuestion` (optional, so it degrades to
-  `undefined`/passthrough if Canvas omits it entirely for a given question/workflow state) and
-  surfaces it verbatim as `correct: response.correct ?? null` per response. No `points_awarded`
-  field is invented from thin air.
+  V1 commits to `correct?: boolean | null` on `CanvasQuizSubmissionQuestion` (optional, so it
+  degrades to `undefined`/passthrough if Canvas omits it entirely for a given question/workflow
+  state) and surfaces it verbatim as `correct: response.correct ?? null` per response. No
+  `points_awarded` field is invented from thin air. If a real Canvas instance later proves this
+  field name or shape wrong, fix it in a follow-up PR with a "Post-implementation correction" note
+  at the top of this spec (matching the #182 precedent) — this is expected maintenance, not a sign
+  the V1 PR was incomplete.
+
+- **Related, equally unverifiable, and just as load-bearing: the join key.** The pivot's entire
+  correctness depends on `CanvasQuizSubmissionQuestion.id` (from `getSubmissionAnswers`) living in
+  the same ID space as `CanvasQuizQuestion.id` (from `listQuestions`) — i.e. that Canvas's
+  per-submission answer record's `id` really is the quiz's question ID, not some other
+  submission-question-specific identifier. This is what `tests/canvas/quizzes.test.ts`'s existing
+  fixture (`{ id: 1, quiz_id: 1, answer: '4', flagged: false }`, matched against a `quiz_id: 1`
+  question) already assumes, and what `include[]=quiz_question` is documented to support, but it is
+  not independently confirmed against a live response either. If this assumption is wrong, the
+  failure mode is silent: `groups.get(answer.id)` returns `undefined`, the `if (!group) continue`
+  guard swallows the mismatch, and every `responses[]` array simply comes back empty with no error
+  — mocked tests alone cannot catch this since the test fixtures construct matching IDs by
+  construction. Flag this explicitly to the implementor as the single highest-risk assumption in
+  this spec, worth a one-line comment in the shipped code (e.g. `// Assumes CanvasQuizSubmissionQuestion.id === CanvasQuizQuestion.id; see spec design unknown #3.`) so a future
+  "answers aren't matching to questions" bug report points straight back here.
 
 - Grading remains via the already-shipped `score_quiz_question` tool; this tool is read-only review,
   not a new grading pathway.
@@ -229,6 +251,15 @@ interface QuizQuestionResponsesResult {
 }
 ```
 
+**Naming deviation from the issue's sketch**: the issue's proposed contract names this field
+`answer_text`, implying a normalized display string. This spec uses `answer` instead and types it as
+Canvas's raw union, because Canvas's actual answer shape is not uniformly textual — matching and
+multiple-answer questions return arrays/objects, not plain strings — so a `_text` suffix would
+misleadingly promise a string that isn't always there. Essay/short-answer/file-upload answers (the
+issue's primary motivating case) are already plain strings under this shape, so no information is
+lost for the tool's main use case; a normalized-to-string projection is left as a non-breaking
+follow-up if real usage shows callers want one.
+
 If `question_id` is provided, `questions` has at most one element (the matching question); if
 `question_id` is omitted, `questions` covers every question on the quiz, ordered by `position`.
 
@@ -289,19 +320,22 @@ no new endpoint.
 New file: `src/tools/quiz-question-responses.ts`, exporting
 `quizQuestionResponseTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[]`.
 
-A new file (rather than adding to `src/tools/quizzes.ts`) matches the precedent set by
-`src/tools/attention.ts`, `src/tools/link-audit.ts`, and `src/tools/submissions-awaiting-grading.ts`
-— each a dedicated file for a single cross-cutting read tool with its own pseudonymizer dependency,
-rather than folded into an existing domain file whose other tools don't need one. It also avoids
-changing `quizTools()`'s existing signature (`(canvas) => ToolDefinition[]`, no `pseudonymizer`
-param today).
+A new file (rather than adding to `src/tools/quizzes.ts`) matches two related precedents: the
+dedicated-file-per-cross-cutting-tool pattern used by `src/tools/attention.ts`,
+`src/tools/link-audit.ts`, and `src/tools/submissions-awaiting-grading.ts` (none of these fold their
+tools into an existing domain file); and, specifically for the `pseudonymizer` dependency, the
+`getTools(canvas, pseudonymizer?)` signature already used by `attention.ts` and
+`submissions-awaiting-grading.ts` (`link-audit.ts`'s tools carry no PII and so take no
+`pseudonymizer` parameter — it's cited only for the file-organization precedent, not the
+pseudonymizer one). This also avoids changing `quizTools()`'s existing signature
+(`(canvas) => ToolDefinition[]`, no `pseudonymizer` param today).
 
 ### Handler sketch
 
 ```ts
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
-import type { CanvasQuizSubmission, CanvasQuizSubmissionQuestion } from '../canvas/types'
+import type { CanvasQuizSubmissionQuestion } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
@@ -467,12 +501,16 @@ export function quizQuestionResponseTools(
 `src/tools/quizzes.ts` and `src/tools/quiz-accommodations.ts`.
 
 **Why `Promise.allSettled` over the shared `fanOut()` helper**: `fanOut()`
-(`src/tools/fan-out.ts`) models an applied/skipped/failed envelope built around **write**
-operations with a `notFound` list of requested-but-absent item IDs. This tool has no
-applied/skipped semantics (every completed submission is "in scope"), so — exactly like
-`list_student_quiz_accommodations`'s explicit choice documented at
-`src/tools/quiz-accommodations.ts` lines 216–221 — it hand-rolls the resilience loop rather than
-force-fitting the write-oriented helper.
+(`src/tools/fan-out.ts`) models an applied/skipped/failed envelope purpose-built for **write**
+operations — `set_student_quiz_accommodation` (`src/tools/quiz-accommodations.ts`) uses it and does
+catch per-item errors internally, but its three-bucket applied/skipped/failed shape (plus a
+`notFound` list of requested-but-absent IDs) doesn't fit a pure-read tool where every completed
+submission is simply "in scope," with no skip semantics and no caller-requested-ID-list to validate
+against. Note this is the opposite tradeoff from `list_student_quiz_accommodations`
+(same file, a **read** tool) which explicitly chose to let any per-quiz read failure abort the whole
+call rather than tolerate partial failure — this tool makes the opposite choice (tolerate, via
+`submissions_failed`) because a single bad submission answer-fetch out of potentially hundreds
+should not blank out an otherwise-complete grade-by-question view.
 
 ---
 
@@ -484,8 +522,10 @@ Add the import:
 import { quizQuestionResponseTools } from './quiz-question-responses'
 ```
 
-Add a new domain registration entry (insert after the existing `new_quizzes` entry, before
-`rubrics`):
+Add a new domain registration entry. Verify the current file order before inserting — as of this
+writing the registration array runs `..., quizzes, new_quizzes, files, ...` (NOT `rubrics`, which
+appears earlier, before `quizzes`). Insert the new entry immediately after `new_quizzes` and before
+`files`:
 
 ```ts
 {
@@ -516,18 +556,29 @@ Implementation:
 
 1. Add `'get_quiz_question_responses'` to `PSEUDONYMIZER_WRAPPED_TOOLS` in
    `src/pseudonym/coverage.ts`, under a new `// src/tools/quiz-question-responses.ts` comment block.
+   **Also add it to `EXPECTED_PII_BEARING_TOOLS` in `tests/pseudonym/coverage.test.ts`** — that test
+   file maintains its own independent hand-copied set that the test diffs against
+   `PSEUDONYMIZER_WRAPPED_TOOLS`; updating only `coverage.ts` and skipping the test file's set makes
+   `tests/pseudonym/coverage.test.ts` fail (`onlyInWrap: ['get_quiz_question_responses']`). Both
+   files must change together.
 2. The handler sketch above already performs the wrap: it fetches the student roster via
-   `canvas.users.listStudents(courseId)` (already scoped to `enrollment_type: ['student']`, so no
-   `enrollments` array needs to be passed to `anonymizeUsers` for role classification — every user in
-   that list is already known to be a student), conditionally routes it through
+   `canvas.users.listStudents(courseId)` (this endpoint has no `enrollments` field on its returned
+   `CanvasUser` objects, so `classifyRole()` — see `src/pseudonym/roles.ts` — will classify each as
+   `'unknown'`, not `'student'`; that's fine, not a bug, because `shouldPseudonymize('unknown')` is
+   also `true` under the codebase's conservative "unknown → treat as student" default documented at
+   the top of `roles.ts` — the correct behavior here rests on that conservative default, not on any
+   claim that the roster is "known" to be students), conditionally routes it through
    `pseudonymizer.anonymizeUsers(courseId, students)` when enabled, and joins the resulting
    `user.id → user.name` map onto each response row. `user_id` itself is never scrubbed (Canvas user
-   IDs are not FERPA-directly-identifying in isolation and are required as the stable join key,
-   matching the precedent in `docs/superpowers/specs/2026-07-07-issue-235-find-student-across-courses.md`
-   — real IDs are the cross-reference key, only display names are pseudonymized).
-3. A student whose `user_id` doesn't appear in the roster fetch (e.g., a TA or teacher preview
-   attempt counted in `list_quiz_submissions`) gets `user_name: null` rather than a fabricated
-   value — this is intentional, not a bug, and should be covered by a test case.
+   IDs are not FERPA-directly-identifying in isolation and are required as the stable join key; see
+   `docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md`'s "fields that get pseudonymized"
+   scope, which documents that `id` is preserved while name/contact fields are rewritten).
+3. A `user_id` from `list_quiz_submissions` that doesn't appear in the roster fetch gets
+   `user_name: null` rather than a fabricated value — this is intentional, not a bug, and should be
+   covered by a test case. Note this is NOT expected to happen for TA/teacher preview attempts (those
+   carry a `workflow_state` like `preview`, already excluded by `RESPONDED_WORKFLOW_STATES` before
+   the roster join runs); the realistic case is a student who has since been deactivated or removed
+   from the default active-enrollment scope that `listStudents()` queries.
 
 ---
 
@@ -558,9 +609,14 @@ field, to guard the type widening.
 
 ### Tool tests — `tests/tools/quiz-question-responses.test.ts`
 
-Build a `buildMockCanvas()` helper (following `tests/tools/quizzes.test.ts`'s pattern) with
-`quizzes.get`, `quizzes.listQuestions`, `quizzes.listSubmissions`, `quizzes.getSubmissionAnswers`,
-and `users.listStudents` all as `vi.fn()`.
+Build a `buildMockCanvas()` helper (following `tests/tools/quizzes.test.ts`'s structural pattern —
+a fake `CanvasClient` with `vi.fn()` per method) with `quizzes.get`, `quizzes.listQuestions`,
+`quizzes.listSubmissions`, `quizzes.getSubmissionAnswers`, and `users.listStudents` all as
+`vi.fn()`. Do not copy that file's specific mock literals (`mockQuizSubmission`, `mockQuestion`,
+`mockSubQuestion`) verbatim — they include fields absent from the real `src/canvas/types.ts`
+interfaces (an existing, CI-invisible discrepancy since `tsconfig.json` excludes `tests/` from
+typecheck). Build fresh fixtures matching the interfaces shown in this spec's "Type additions"
+section instead.
 
 1. **Annotations**: `get_quiz_question_responses` has `readOnlyHint: true`, `openWorldHint: true`,
    no `destructiveHint`, and resolves to the `educator` audience (no `audience` override present).
@@ -601,9 +657,11 @@ and `users.listStudents` all as `vi.fn()`.
 
 ### Pseudonymizer coverage test
 
-`tests/pseudonym/coverage.test.ts` must pass once `'get_quiz_question_responses'` is added to both
-`PSEUDONYMIZER_WRAPPED_TOOLS` and the registered server's tool set — no test-file changes needed
-beyond what that coverage test already automatically checks against the list.
+`tests/pseudonym/coverage.test.ts` maintains its own hand-copied `EXPECTED_PII_BEARING_TOOLS` set
+that it diffs against `PSEUDONYMIZER_WRAPPED_TOOLS` — **this test file itself must be edited**:
+add `'get_quiz_question_responses'` to `EXPECTED_PII_BEARING_TOOLS` (`tests/pseudonym/coverage.test.ts`)
+in the same commit as the `PSEUDONYMIZER_WRAPPED_TOOLS` addition in `src/pseudonym/coverage.ts`.
+Forgetting either half fails this test.
 
 ### Audience coverage test
 
@@ -624,7 +682,8 @@ bail-out threshold.
 2. Add `src/tools/quiz-question-responses.ts` with the `get_quiz_question_responses` tool.
 3. Register the new domain in `src/tools/catalog.ts`.
 4. Add `'get_quiz_question_responses'` to `PSEUDONYMIZER_WRAPPED_TOOLS` in
-   `src/pseudonym/coverage.ts`.
+   `src/pseudonym/coverage.ts` AND to `EXPECTED_PII_BEARING_TOOLS` in
+   `tests/pseudonym/coverage.test.ts` (both, in the same commit).
 5. Run `pnpm generate:manifests`; bump the two `toHaveLength(143)` → `144` assertions.
 6. Add `tests/tools/quiz-question-responses.test.ts` covering the 13 cases above.
 7. Confirm `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass.
@@ -636,14 +695,17 @@ bail-out threshold.
 1. ~~**Manually-graded flag source**~~ — **Resolved**: `needs_manual_grading` is derived from
    `question_type` membership in `MANUALLY_GRADED_QUESTION_TYPES` (essay, file upload), not from an
    uncertain per-answer Canvas field. Already encoded above; no CTO input needed.
-2. **`correct` field shape**: flagged in design unknown §3 as needing live-API verification during
-   implementation. If Canvas's actual response uses a different field name or a tri-state (e.g. a
-   string `"undefined"` for ungraded essay answers, as Canvas's quiz-taking API is known to do
-   elsewhere) rather than `boolean | null`, the implementor should adjust
-   `CanvasQuizSubmissionQuestion.correct`'s type accordingly and note the deviation in the PR
-   description, per CLAUDE.md's "follow live SDK/API signatures where the spec disagrees" allowance.
-   No spec re-review needed for this specific adjustment — it's a type-precision fix, not an
-   architecture change.
+2. **`correct` field shape and the answer/question join key**: design unknown §3 commits to
+   `correct?: boolean | null` and to `CanvasQuizSubmissionQuestion.id === CanvasQuizQuestion.id` as
+   the pivot's join key, both unverifiable against a live Canvas instance under this project's
+   mocked-tests-only constraint. If either assumption proves wrong once real usage surfaces it
+   (silently empty `responses[]` arrays would be the symptom for the join key; a different field
+   name/shape would be the symptom for `correct`), fix it in a follow-up PR with a
+   "Post-implementation correction" note at the top of this spec, matching the precedent already set
+   by `docs/superpowers/specs/2026-06-14-issue-182-quiz-submission-event-logs.md`. No spec re-review
+   is needed to ship V1 on these best-effort assumptions — flagging here only so the CTO can weigh in
+   if a different level of pre-emptive caution (e.g. shipping `correct` as `unknown` instead of
+   `boolean | null`) is preferred.
 3. **No submission-count cap**: confirmed acceptable to ship without one in V1 (design unknown §4),
    consistent with the already-shipped `list_quiz_submissions` tool's unbounded behavior. Flag here
    in case the CTO wants a cap added proactively rather than reactively.
@@ -657,8 +719,10 @@ bail-out threshold.
       documented.
 - [x] Design unknown §2 (question-type scope) retired: all types returned by default,
       `needs_manual_grading` computed per question.
-- [x] Design unknown §3 (per-question scoring) retired: no fabricated `points_awarded`;
-      `correct` surfaced only when Canvas provides it, with an explicit live-verification note.
+- [x] Design unknown §3 (per-question scoring and join key) retired: no fabricated
+      `points_awarded`; `correct` and the `id`-based question/answer join key are both committed to
+      as best-effort V1 assumptions with a documented post-implementation-correction path, rather
+      than left as an open "verify live" task the implementor cannot actually perform.
 - [x] Design unknown §4 (payload size / fan-out bounding) retired: no artificial cap, per-submission
       failure tolerance via `submissions_failed`, workflow-state filtering documented.
 - [x] Exact tool name, Zod schema, Canvas calls, output shape, and MCP annotations specified.
@@ -670,5 +734,6 @@ bail-out threshold.
 - [x] No new package dependencies.
 - [x] Pseudonymizer coverage explicitly required and specified (`user_name` trigger), unlike the
       sibling `get_quiz_submission_answers`/`get_quiz_submission_events` tools which correctly
-      remain unwrapped.
+      remain unwrapped — including the easy-to-miss second registration in
+      `tests/pseudonym/coverage.test.ts`'s `EXPECTED_PII_BEARING_TOOLS`.
 - [x] Manifest regeneration and both tool-count assertion bumps called out explicitly.
