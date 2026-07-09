@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 143,
+  "toolCount": 144,
   "tools": [
     {
       "name": "health_check",
@@ -484,6 +484,18 @@
         "openWorldHint": true
       },
       "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_quiz_question_responses",
+      "domain": "quiz_question_responses",
+      "description": "Review every student's answer to one or all questions in a Classic Quiz, pivoted by question instead of by student — for grading essay/short-answer/file-upload questions consistently across a class instead of paging through SpeedGrader one student at a time. Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New Quizzes exposes responses through a different API. Omit question_id to get every question; provide it to scope to one. Each question reports needs_manual_grading (true for essay and file-upload questions) and points_possible. Scans one Canvas API call per completed or pending-review submission; a failed per-submission fetch is recorded in submissions_failed rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with stable pseudonyms.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
       "primaryAudience": "educator",
       "relatedWorkflows": []
     },
