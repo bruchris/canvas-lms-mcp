@@ -25,6 +25,7 @@ import { outcomeTools } from './outcomes'
 import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
+import { quizQuestionResponseTools } from './quiz-question-responses'
 import { quizAccommodationTools } from './quiz-accommodations'
 import { newQuizAccommodationTools } from './new-quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
@@ -88,6 +89,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'new_quizzes',
     defaultPrimaryAudience: 'educator',
     getTools: newQuizTools,
+  },
+  {
+    domain: 'quiz_question_responses',
+    defaultPrimaryAudience: 'educator',
+    getTools: quizQuestionResponseTools,
   },
   {
     domain: 'files',

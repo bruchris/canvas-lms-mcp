@@ -425,7 +425,15 @@ export interface CanvasQuizQuestion {
 export interface CanvasQuizSubmissionQuestion {
   id: number
   quiz_id: number
-  answer: string | number | null
+  // Widened from `string | number | null`: matching / multiple-answer question
+  // types return arrays or keyed objects, not a plain scalar. Still backward
+  // compatible — the scalar members remain valid.
+  answer: string | number | string[] | Record<string, unknown> | null
+  // Present once Canvas has graded an auto-graded question type; omitted for
+  // manually-graded (essay / file-upload) answers not yet scored, so it is
+  // optional and surfaced as `correct ?? null`. See
+  // docs/superpowers/specs/2026-07-09-issue-240-quiz-question-responses.md §3.
+  correct?: boolean | null
   flagged: boolean
 }
 

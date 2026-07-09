@@ -31,6 +31,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_students_needing_attention',
   'explain_grade',
   'get_my_submission_feedback',
+  'get_quiz_question_responses',
 ])
 
 function buildMinimalCanvas(): CanvasClient {
