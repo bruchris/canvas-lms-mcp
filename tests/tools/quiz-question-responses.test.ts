@@ -382,4 +382,75 @@ describe('quizQuestionResponseTools', () => {
       expect(essay.responses[0]).toMatchObject({ user_id: 99, user_name: null })
     })
   })
+
+  describe('empty states', () => {
+    it('returns questions with empty responses when no submissions exist', async () => {
+      const canvas = buildMockCanvas({ submissions: [] })
+      const tool = getTool(canvas)
+      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      expect(result.submissions_scanned).toBe(0)
+      expect(result.submissions_failed).toEqual([])
+      expect(result.question_count).toBe(2)
+      expect(result.questions.every((q) => q.responses.length === 0)).toBe(true)
+      expect(canvas.quizzes.getSubmissionAnswers).not.toHaveBeenCalled()
+    })
+
+    it('returns an empty question list when the quiz has no questions', async () => {
+      const canvas = buildMockCanvas({ questions: [] })
+      const tool = getTool(canvas)
+      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      expect(result.question_count).toBe(0)
+      expect(result.questions).toEqual([])
+    })
+  })
+
+  describe('join-key robustness', () => {
+    // The pivot's single load-bearing assumption is CanvasQuizSubmissionQuestion.id
+    // === CanvasQuizQuestion.id. This pins the documented guard: an answer whose id
+    // matches no question is dropped silently rather than crashing. See spec §3.
+    it('silently ignores an answer whose id matches no question', async () => {
+      const canvas = buildMockCanvas({
+        submissions: [subComplete],
+        answersBySubmission: {
+          100: [
+            { id: 999, quiz_id: 1, answer: 'orphan answer', flagged: false },
+            { id: 10, quiz_id: 1, answer: 'real essay answer', correct: null, flagged: false },
+          ],
+        },
+      })
+      const tool = getTool(canvas)
+      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      const essay = result.questions.find((q) => q.question_id === 10)!
+      expect(essay.responses.map((r) => r.answer)).toEqual(['real essay answer'])
+      // The orphan id 999 never surfaces as its own group or a stray response.
+      expect(result.questions.some((q) => q.question_id === 999)).toBe(false)
+      const mc = result.questions.find((q) => q.question_id === 20)!
+      expect(mc.responses).toEqual([])
+    })
+  })
+
+  describe('multiple submissions per student', () => {
+    it('keeps one response row per submission when a user appears twice', async () => {
+      const attempt1: CanvasQuizSubmission = { ...subComplete, id: 100, user_id: 5, attempt: 1 }
+      const attempt2: CanvasQuizSubmission = { ...subComplete, id: 101, user_id: 5, attempt: 2 }
+      const canvas = buildMockCanvas({
+        submissions: [attempt1, attempt2],
+        answersBySubmission: {
+          100: [{ id: 10, quiz_id: 1, answer: 'first attempt', correct: null, flagged: false }],
+          101: [{ id: 10, quiz_id: 1, answer: 'second attempt', correct: null, flagged: false }],
+        },
+      })
+      const tool = getTool(canvas)
+      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      const essay = result.questions.find((q) => q.question_id === 10)!
+      expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual([100, 101])
+      expect(essay.responses.map((r) => r.attempt)).toEqual([1, 2])
+      // Both rows resolve to the same student identity.
+      expect(essay.responses.every((r) => r.user_name === 'Alice Anderson')).toBe(true)
+    })
+  })
 })
