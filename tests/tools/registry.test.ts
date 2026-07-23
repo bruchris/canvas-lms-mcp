@@ -194,7 +194,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 146 tools across all domains', () => {
+  it('returns all 147 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -383,7 +383,7 @@ describe('getAllTools', () => {
     // Grade Projection (1)
     expect(names).toContain('project_grade')
 
-    expect(tools).toHaveLength(146)
+    expect(tools).toHaveLength(147)
   })
 
   it('all tools have openWorldHint: true', () => {
