@@ -139,6 +139,7 @@ function buildFullMockCanvas(): CanvasClient {
       getStudentActivity: async () => ({}),
       getCourseActivityStream: async () => [],
       getStudentSummaries: async () => [],
+      getAssignmentAnalytics: async () => [],
     },
     outcomes: {
       getRootOutcomeGroup: async () => ({}),
@@ -193,7 +194,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 139 tools across all domains', () => {
+  it('returns all 145 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -305,11 +306,12 @@ describe('getAllTools', () => {
     expect(names).toContain('get_account_reports')
     expect(names).toContain('list_account_notifications')
     expect(names).toContain('view_account_notifications')
-    // Analytics & Search (4)
+    // Analytics & Search (5)
     expect(names).toContain('search_course_content')
     expect(names).toContain('get_course_analytics')
     expect(names).toContain('get_student_analytics')
     expect(names).toContain('get_course_activity_stream')
+    expect(names).toContain('get_assignment_analytics')
     // Outcomes (12)
     expect(names).toContain('get_root_outcome_group')
     expect(names).toContain('list_outcome_groups')
@@ -379,7 +381,7 @@ describe('getAllTools', () => {
     // Quiz Question Responses (1)
     expect(names).toContain('get_quiz_question_responses')
 
-    expect(tools).toHaveLength(144)
+    expect(tools).toHaveLength(145)
   })
 
   it('all tools have openWorldHint: true', () => {
