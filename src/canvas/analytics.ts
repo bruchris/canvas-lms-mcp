@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type {
+  CanvasAssignmentAnalytics,
   CanvasCourseActivitySummary,
   CanvasStudentActivitySummary,
   CanvasActivityStreamItem,
@@ -104,6 +105,12 @@ export class AnalyticsModule {
   async getStudentSummaries(courseId: number): Promise<CanvasStudentSummary[]> {
     return this.client.paginate<CanvasStudentSummary>(
       `/api/v1/courses/${courseId}/analytics/student_summaries`,
+    )
+  }
+
+  async getAssignmentAnalytics(courseId: number): Promise<CanvasAssignmentAnalytics[]> {
+    return this.client.paginate<CanvasAssignmentAnalytics>(
+      `/api/v1/courses/${courseId}/analytics/assignments`,
     )
   }
 }
