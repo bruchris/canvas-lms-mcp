@@ -385,7 +385,7 @@ describe('getAllTools', () => {
     // Grade Projection (1)
     expect(names).toContain('project_grade')
 
-    expect(tools).toHaveLength(147)
+    expect(tools).toHaveLength(148)
   })
 
   it('all tools have openWorldHint: true', () => {
