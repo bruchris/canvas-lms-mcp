@@ -16,6 +16,7 @@ import { enrollmentTools } from './enrollments'
 import { fileTools } from './files'
 import { gradebookHistoryTools } from './gradebook-history'
 import { gradeExplanationTools } from './grade-explanation'
+import { gradeProjectionTools } from './grade-projection'
 import { gradingPolicyTools } from './grading-policy'
 import { gradingStandardsTools } from './grading-standards'
 import { groupTools } from './groups'
@@ -219,6 +220,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'grading_policy',
     defaultPrimaryAudience: 'shared',
     getTools: gradingPolicyTools,
+  },
+  {
+    domain: 'grade_projection',
+    defaultPrimaryAudience: 'shared',
+    getTools: gradeProjectionTools,
   },
   {
     domain: 'link_audit',

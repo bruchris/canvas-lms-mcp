@@ -378,8 +378,10 @@ describe('getAllTools', () => {
     expect(names).toContain('find_duplicate_files')
     // Quiz Question Responses (1)
     expect(names).toContain('get_quiz_question_responses')
+    // Grade Projection (1)
+    expect(names).toContain('project_grade')
 
-    expect(tools).toHaveLength(144)
+    expect(tools).toHaveLength(145)
   })
 
   it('all tools have openWorldHint: true', () => {

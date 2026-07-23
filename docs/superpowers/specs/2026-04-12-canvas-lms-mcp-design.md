@@ -606,6 +606,12 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 |------|------|-------------|
 | `explain_grading_policy` | read | Explain the grading automation rules configured for a Canvas course: missing-submission policy, late-submission penalty, and assignment-group weights |
 
+#### Grade Projection (1 tool)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `project_grade` | read | Project the minimum uniform score needed on remaining assignments to reach a target course grade (percentage or letter), accounting for group weights, drop rules, and the grading scheme |
+
 #### Submissions Awaiting Grading (1 tool)
 
 | Tool | Type | Description |
@@ -624,7 +630,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 |------|------|-------------|
 | `audit_course_links` | read | Scan a course's pages, assignments, syllabus, and announcements for broken or outdated links and images — returns structured findings with location and reason |
 
-**Totals: 144 tools (102 read, 42 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 145th tool (read).
+**Totals: 145 tools (103 read, 42 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 146th tool (read).
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand.
 

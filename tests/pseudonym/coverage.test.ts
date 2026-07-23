@@ -30,6 +30,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_submission_comments_needing_attention',
   'list_students_needing_attention',
   'explain_grade',
+  'project_grade',
   'get_my_submission_feedback',
   'get_quiz_question_responses',
 ])
