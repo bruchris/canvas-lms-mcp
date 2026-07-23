@@ -6,6 +6,8 @@ issue: 245
 
 **Date**: 2026-07-23
 **Issue**: [bruchris/canvas-lms-mcp#245](https://github.com/bruchris/canvas-lms-mcp/issues/245)
+**Originating RFC**: [Discussion #85 — "RFC: Accessibility tooling domain"](https://github.com/bruchris/canvas-lms-mcp/discussions/85)
+**Paperclip task**: BRU-1868 (child of BRU-1862, CTO Product Research)
 **Status**: Design — awaiting CTO review
 
 ---
@@ -25,6 +27,78 @@ This tool is deliberately the same shape and scanning scope as the already-shipp
 `audit_course_links` (`src/tools/link-audit.ts`): same content sources, same `include` schema, same
 "structural checks from already-wrapped HTML, no new package dependency" posture. It is a sibling
 tool, not an extension of `audit_course_links` — see Design unknown §1.
+
+---
+
+## RFC alignment — resolving Discussion #85's five open questions
+
+The Paperclip task that scoped this design work (BRU-1868) requires resolving the five open
+questions from the originating RFC (Discussion #85) before any implementation subtask is created.
+This section maps each one explicitly to a decision made below, plus the RFC's own module-boundary
+question and its five brainstormed tool names, none of which should be left as an implicit
+inference for a reviewer to reconstruct.
+
+1. **Scope** (RFC: "~5-8 new tools ... closer to v1.x than v1.0 maintenance work"). **Decision: one
+   tool, not five to eight.** The RFC brainstormed `audit_course_accessibility`,
+   `scan_page_accessibility`, `scan_assignment_accessibility`, `list_files_missing_alt_text`, and
+   `suggest_alt_text`. This spec collapses the first three into one: `audit_course_accessibility`'s
+   findings are already grouped by `location` (content type + id + title), so a caller wanting a
+   single page's results filters the returned `findings` array client-side — a dedicated
+   `scan_page_accessibility(course_id, page_id)` tool would duplicate the same scan logic behind a
+   narrower, redundant schema for no new capability. `list_files_missing_alt_text` doesn't map to
+   real Canvas data as named: alt text is a property of an `<img>` element *referencing* a file
+   inside rendered content, not a property Canvas stores on the Files/attachment resource itself —
+   there is no `GET .../files` field to query for "this file's alt text." The closest real
+   equivalent is exactly this spec's `img_missing_alt`/`img_alt_low_quality` findings, which already
+   cover every place an image is actually referenced, regardless of whether the underlying image
+   happens to be a Canvas File attachment or an external URL — a strict superset of what a
+   Files-scoped version could offer, so it is dropped as redundant rather than built separately.
+   `suggest_alt_text` is addressed by the Determinism decision immediately below (excluded, by
+   design, not by oversight).
+2. **Determinism boundary** (RFC: "HTML-parsing checks are deterministic; alt-text suggestions are
+   LLM-mediated and best done in the calling agent, not server-side"). **Decision: this tool only
+   detects and describes; it never generates replacement content.** Every rule in the taxonomy
+   (Design unknown §4 below) is a pure structural/string check with no LLM call and no generated
+   suggestion text — `detail` strings quote what's already in the course's own HTML (an alt value,
+   link text, a heading), never a proposed replacement. Drafting better alt text, rewritten link
+   text, or restructured headings is left entirely to the calling agent, which already has the
+   finding's location and current content and can call this server's existing read tools (e.g.
+   `get_page`) for full context and its own write tools (e.g. `update_page`) to apply a fix a human
+   approves — this server does not add a `suggest_alt_text`-style generation tool. This is the
+   RFC's own line, drawn explicitly rather than left to be inferred from the absence of such a tool.
+3. **Performance** (RFC: "pagination + per-domain limits + a documented 'this is best-effort'
+   stance"). **Decision: match `audit_course_links`'s existing, already-accepted posture exactly —
+   no new artificial cap.** `include` lets a caller narrow which sources are scanned (the same
+   mechanism `audit_course_links` uses today); each source's own Canvas client method already
+   paginates internally via `client.paginate()`. No submission-count-style limit is added here for
+   the same reason none exists on `audit_course_links`: this is a v1 read tool over course-owned
+   content (not a firehose of per-student records), and inventing a cap without a demonstrated
+   real-world performance problem would be scope not asked for. If a real course proves this too
+   slow, the fix is the same lever `audit_course_links` would need — not something to
+   speculatively design into two sibling tools independently.
+4. **Differentiation vs. `vishalsachdev/canvas-mcp`'s 20-check WCAG scanner** (RFC: "is there a
+   TypeScript-specific angle ... that makes us the preferred choice?"). **Decision: yes — typed,
+   structured `Finding[]` output, not prose.** Every finding carries a machine-checkable `rule`
+   union member, a `wcag` success-criterion string, and a `severity` enum (Design unknown §4) —
+   built for a downstream agent to programmatically filter/prioritize ("show me only `error`
+   severity", "group by WCAG SC"), which is the differentiation angle the RFC's own "ergonomics for
+   downstream agents" framing asked about, versus a scanner that returns a report meant primarily
+   for human reading.
+5. **Dependencies** (RFC: "prefer zero new runtime deps; a small HTML parser is probably the only
+   addition"). **Decision: zero new dependencies, no HTML parser needed at all.** The RFC assumed a
+   parser might be unavoidable; `audit_course_links` (shipped after this RFC was written) already
+   proved regex-based extraction is accurate enough for Canvas's predictable, double-quoted-attribute
+   HTML for a structurally similar problem (link/image extraction). This spec extends that same
+   proof to a wider rule set (alt text, links, headings, tables) — see the fully-specified regexes
+   below. No `package.json` change.
+6. **Module boundary** (RFC's own explicit question, asked inline rather than numbered with the
+   other five: "a separate `src/canvas/accessibility.ts` module ... or extend each domain with an
+   audit flavor?"). **Decision: neither — no new Canvas client module at all.** Every content source
+   this tool needs is already exposed by an existing, already-wrapped Canvas client method (the same
+   ones `audit_course_links` uses); no new Canvas endpoint is called, so there is nothing for a
+   `src/canvas/accessibility.ts` module to wrap. All new code lives at the tools layer only:
+   `src/tools/accessibility-audit.ts`, mirroring the precedent `link-audit.ts` already set (a
+   dedicated audit-domain tool file with zero corresponding Canvas client module of its own).
 
 ---
 
@@ -975,6 +1049,11 @@ manifest update. Well under this project's ~15-file bail-out threshold for split
 
 ## Acceptance check
 
+- [x] Originating RFC (Discussion #85)'s five open questions plus its module-boundary question all
+      explicitly resolved with a stated decision, not left as an implicit inference — see "RFC
+      alignment" section above. RFC's original 5-tool brainstorm explicitly reconciled down to one
+      tool, with `list_files_missing_alt_text` shown to not map to real Canvas file metadata and
+      `suggest_alt_text` explicitly excluded per the Determinism decision.
 - [x] Design-first flag present in issue #245.
 - [x] Design unknown §1 (native checker vs. independent audit) retired: native checker's public API
       confirmed (via Canvas's own release notes and documentation) to be aggregate/self-scoped/
