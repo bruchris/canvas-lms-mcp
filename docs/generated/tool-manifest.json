@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 144,
+  "toolCount": 145,
   "tools": [
     {
       "name": "health_check",
@@ -1271,6 +1271,18 @@
       "name": "get_course_activity_stream",
       "domain": "analytics",
       "description": "Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_assignment_analytics",
+      "domain": "analytics",
+      "description": "Get score distribution analytics for assignments in a course. Returns statistical summary (min, max, median, first/third quartile), submission count, and tardiness breakdown (on_time, late, missing) for each assignment. Provide assignment_id to scope to one assignment; omit to return analytics for all assignments in the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

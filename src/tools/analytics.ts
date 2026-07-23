@@ -116,5 +116,43 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         return canvas.analytics.getCourseActivityStream(course_id)
       },
     },
+    {
+      name: 'get_assignment_analytics',
+      description:
+        'Get score distribution analytics for assignments in a course. Returns statistical summary ' +
+        '(min, max, median, first/third quartile), submission count, and tardiness breakdown ' +
+        '(on_time, late, missing) for each assignment. Provide assignment_id to scope to one ' +
+        'assignment; omit to return analytics for all assignments in the course.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        assignment_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            'Scope the result to a single assignment ID. Omit to return analytics for all assignments.',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const assignment_id = params.assignment_id as number | undefined
+        const analytics = await canvas.analytics.getAssignmentAnalytics(course_id)
+        if (assignment_id !== undefined) {
+          const match = analytics.find((a) => a.assignment_id === assignment_id)
+          if (!match) {
+            throw new Error(
+              `Assignment ${assignment_id} not found in analytics for course ${course_id}.`,
+            )
+          }
+          return match
+        }
+        return analytics
+      },
+    },
   ]
 }
