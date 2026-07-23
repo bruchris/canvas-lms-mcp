@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-119 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+144 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, link audit, content exports, quiz accommodations, student workflows, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -28,7 +28,7 @@ Prefer the terminal? Use the [Quick Start](#quick-start) below.
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 119 | 80+ | 54 |
+| Tools | 144 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -85,37 +85,49 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (119)
+### All Registered Tools (144)
 
 | Category | Tools |
 |----------|-------|
 | Health | `health_check` |
 | Courses | `list_courses`, `get_course`, `get_syllabus`, `create_course`, `update_course` |
 | Assignments | `list_assignments`, `get_assignment`, `list_assignment_groups`, `create_assignment`, `update_assignment`, `delete_assignment` |
+| Assignment Overrides | `list_assignment_overrides`, `create_assignment_override`, `set_student_assignment_dates` |
 | Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
-| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment` |
-| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question` |
+| Submissions Awaiting Grading | `list_submissions_awaiting_grading` |
+| Submission Files | `list_course_submission_files` |
+| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment`, `create_rubric` |
+| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question`, `get_quiz_submission_events` |
+| Quiz Question Responses | `get_quiz_question_responses` |
+| Quiz Accommodations | `list_student_quiz_accommodations`, `set_student_quiz_accommodation` |
 | New Quizzes (LTI) | `create_new_quiz`, `update_new_quiz`, `delete_new_quiz`, `list_new_quiz_items`, `get_new_quiz_item`, `create_new_quiz_item`, `update_new_quiz_item`, `delete_new_quiz_item` |
-| Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `delete_file` |
+| New Quiz Accommodations | `list_student_new_quiz_accommodations`, `set_student_new_quiz_accommodation` |
+| Files | `list_files`, `list_folders`, `get_file`, `upload_file`, `download_file`, `delete_file`, `find_duplicate_files` |
 | Gradebook History | `list_gradebook_history_days`, `get_gradebook_history_day`, `list_gradebook_history_submissions`, `get_gradebook_history_feed` |
+| Grade Explanation | `explain_grade` |
+| Grading Policy | `explain_grading_policy` |
+| Grading Standards | `list_grading_standards`, `create_grading_standard`, `apply_grading_standard_to_course` |
 | Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
 | Groups | `list_groups`, `list_group_members` |
-| Enrollments | `list_enrollments`, `enroll_user`, `remove_enrollment` |
+| Enrollments | `list_enrollments`, `list_course_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
 | Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
 | Peer Reviews | `list_peer_reviews`, `get_submission_peer_reviews`, `create_peer_review`, `delete_peer_review` |
-| Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports` |
+| Accounts | `get_account`, `list_accounts`, `list_sub_accounts`, `list_account_courses`, `list_account_users`, `get_account_reports`, `list_account_notifications`, `view_account_notifications` |
 | Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream` |
 | Outcomes | `get_root_outcome_group`, `list_outcome_groups`, `list_outcome_group_links`, `get_outcome_group`, `list_outcome_group_outcomes`, `list_outcome_group_subgroups`, `get_outcome`, `get_outcome_alignments`, `get_outcome_results`, `get_outcome_rollups`, `get_outcome_contributing_scores`, `get_outcome_mastery_distribution` |
-| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments` |
+| Content Exports | `list_content_exports`, `get_content_export`, `create_content_export` |
+| Course Setup | `check_course_setup` |
+| Link Audit | `audit_course_links` |
+| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments`, `get_my_submission_feedback` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — registered only when `CANVAS_PSEUDONYMIZE_STUDENTS=true` |
 
-84 tools are read-only and 35 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` adds a 120th read tool.
+When FERPA mode is enabled, `resolve_pseudonym` adds a 145th read tool.
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
