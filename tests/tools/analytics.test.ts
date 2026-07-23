@@ -243,5 +243,14 @@ describe('analyticsTools', () => {
         'Assignment 999 not found in analytics for course 10',
       )
     })
+
+    it('propagates CanvasApiError from getAssignmentAnalytics', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.getAssignmentAnalytics).mockRejectedValueOnce(
+        new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/analytics/assignments'),
+      )
+      const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
+      await expect(tool.handler({ course_id: 10 })).rejects.toThrow(CanvasApiError)
+    })
   })
 })

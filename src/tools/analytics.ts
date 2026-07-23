@@ -118,6 +118,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_assignment_analytics',
+      audience: 'shared',
       description:
         'Get score distribution analytics for assignments in a course. Returns statistical summary ' +
         '(min, max, median, first/third quartile), submission count, and tardiness breakdown ' +
