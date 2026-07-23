@@ -606,6 +606,12 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 |------|------|-------------|
 | `explain_grading_policy` | read | Explain the grading automation rules configured for a Canvas course: missing-submission policy, late-submission penalty, and assignment-group weights |
 
+#### Grade Projection (1 tool)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `project_grade` | read | Project the minimum uniform score needed on remaining assignments to reach a target course grade (percentage or letter), accounting for group weights, drop rules, and the grading scheme |
+
 #### Submissions Awaiting Grading (1 tool)
 
 | Tool | Type | Description |
@@ -624,7 +630,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 |------|------|-------------|
 | `audit_course_links` | read | Scan a course's pages, assignments, syllabus, and announcements for broken or outdated links and images — returns structured findings with location and reason |
 
-**Totals: 144 tools (102 read, 42 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 145th tool (read).
+**Totals: 147 tools (105 read, 42 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 148th tool (read).
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand.
 
@@ -639,7 +645,7 @@ An opt-in server-side mode that pseudonymizes student personally identifiable in
 - Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
 - The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
 
-**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 145th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 148th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
 
 **Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
 

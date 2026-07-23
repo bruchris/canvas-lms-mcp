@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 144,
+  "toolCount": 147,
   "tools": [
     {
       "name": "health_check",
@@ -1280,6 +1280,18 @@
       "relatedWorkflows": []
     },
     {
+      "name": "get_assignment_analytics",
+      "domain": "analytics",
+      "description": "Get score distribution analytics for assignments in a course. Returns statistical summary (min, max, median, first/third quartile), submission count, and tardiness breakdown (on_time, late, missing) for each assignment. Provide assignment_id to scope to one assignment; omit to return analytics for all assignments in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
       "name": "get_root_outcome_group",
       "domain": "outcomes",
       "description": "Get the root outcome group for an account or course context.",
@@ -1487,6 +1499,18 @@
       },
       "access": "read",
       "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "find_student_across_courses",
+      "domain": "student_search",
+      "description": "Search the caller's teaching courses — active and, by default, concluded (past-term) ones — for a student by name, login, or email, and report every matching course with the student's enrollment state and last activity. Set `include_concluded: false` to only search current courses. `max_courses` bounds how many of the caller's courses are scanned (most recent term first); when exceeded, `truncated: true` is set rather than silently dropping courses. A course that errors during the scan is skipped and reported in `courses_failed` rather than failing the whole call.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     },
     {
@@ -1751,6 +1775,18 @@
       "name": "explain_grading_policy",
       "domain": "grading_policy",
       "description": "Explains the grading automation rules configured for a Canvas course:\n- Missing-submission policy: whether blank/unsubmitted work is automatically scored 0 (or another deduction), or left unpenalised.\n- Late-submission policy: whether Canvas applies a per-day or per-hour percentage deduction to late submissions, and whether there is a floor below which the grade cannot fall.\n- Assignment-group weighting: whether the course uses weighted groups, and the weight of each group.\n- Grading scheme: whether a letter-grade scheme (A/B/C/F mapping) is applied to the final score.\n\nAlso returns a plain-language summary paragraph you can share with students or instructors.\n\nNote: the late/missing policy section requires instructor or admin permissions. Students receive the group-weighting and grading-scheme sections only, with a caveat noting what is unavailable. Use explain_grade to compute the actual weighted grade for a specific student.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "project_grade",
+      "domain": "grade_projection",
+      "description": "Projects the minimum score needed on remaining assignments to reach a target course grade.\n\nGiven a target (as a percentage, e.g. 90, or a letter grade, e.g. \"A\") and the student's current scores, computes the minimum uniform percentage that must be earned on all remaining (not yet graded) assignments for the overall course grade to reach the target. Accounts for assignment-group weights, drop_lowest / drop_highest / never_drop rules, and the course grading scheme (for letter-grade targets and output letter mapping).\n\nReturns:\n- minimum_pct_on_remaining: the uniform percentage needed on all remaining items.\n- feasibility: 'achievable' | 'already_secured' | 'impossible'.\n- Per-group breakdown of locked-in scores and remaining assignments.\n- A plain-language summary.\n\nLimitations:\n- Uses a uniform-x model: the same percentage is assumed for every remaining item. This is the natural interpretation of \"minimum average needed.\" Per-item optimization is not supported.\n- Drop rules are frozen at their current state (based on already-graded scores); which items are dropped may shift as remaining assignments are graded.\n- Late-submission penalties are not factored in.\n- V1 computes one student per call. Omit student_id to compute for the authenticated user. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
