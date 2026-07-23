@@ -67,7 +67,7 @@ function buildMockCanvas(overrides: MockOverrides = {}): CanvasClient {
       listForStudents: vi.fn().mockResolvedValue(overrides.submissions ?? []),
     },
     enrollments: {
-      listForCourse: vi.fn().mockResolvedValue(overrides.enrollments ?? []),
+      listForCourse: vi.fn().mockResolvedValue(overrides.enrollments ?? [{ id: 1, user_id: 1 }]),
     },
     users: {
       getSelf: vi.fn().mockResolvedValue(overrides.user ?? { id: 1, name: 'Self User' }),
@@ -518,6 +518,74 @@ describe('project_grade — Fixture L (weighted, inactive group excluded)', () =
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(100, 2)
     expect(result.projection.feasibility).toBe('achievable')
     expect(result.caveats.some((c) => c.includes('no assignment groups'))).toBe(false)
+  })
+})
+
+// ── Fixture M — enrollment empty ─────────────────────────────────────────────
+
+describe('project_grade — Fixture M (enrollment empty)', () => {
+  it('pushes enrollment-empty caveat and returns null current_grade', async () => {
+    const result = await run(
+      {
+        course: {
+          id: 1,
+          name: 'C',
+          apply_assignment_group_weights: false,
+          grading_standard_id: null,
+        },
+        groups: [
+          pointsGroup(1, 'G', [
+            { id: 1, points: 100 },
+            { id: 2, points: 100 },
+          ]),
+        ],
+        submissions: [graded(1, 80)],
+        enrollments: [],
+      },
+      { course_id: 1, target_percentage: 90 },
+    )
+    expect(result.current_grade.percentage).toBeNull()
+    expect(result.current_grade.letter).toBeNull()
+    expect(result.caveats.some((c) => c.toLowerCase().includes('enrollment'))).toBe(true)
+    expect(result.projection.feasibility).toBe('achievable')
+    expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(100, 2)
+  })
+})
+
+// ── Fixture N — caveat ordering ───────────────────────────────────────────────
+
+describe('project_grade — Fixture N (caveat ordering)', () => {
+  it('places submitted-but-ungraded and late-penalty before drop-rules', async () => {
+    const result = await run(
+      {
+        course: {
+          id: 1,
+          name: 'C',
+          apply_assignment_group_weights: false,
+          grading_standard_id: null,
+        },
+        groups: [
+          pointsGroup(
+            1,
+            'G',
+            [
+              { id: 1, points: 50 },
+              { id: 2, points: 50 },
+              { id: 3, points: 50 },
+            ],
+            { drop_lowest: 1 },
+          ),
+        ],
+        submissions: [graded(1, 10), graded(2, 40)],
+      },
+      { course_id: 1, target_percentage: 80 },
+    )
+    const dropIdx = result.caveats.findIndex((c) => c.toLowerCase().includes('drop rules'))
+    const submittedIdx = result.caveats.findIndex((c) => c.toLowerCase().includes('submitted'))
+    const lateIdx = result.caveats.findIndex((c) => c.toLowerCase().includes('late'))
+    expect(dropIdx).toBeGreaterThan(-1)
+    expect(submittedIdx).toBeLessThan(dropIdx)
+    expect(lateIdx).toBeLessThan(dropIdx)
   })
 })
 

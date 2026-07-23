@@ -266,6 +266,7 @@ export function gradeProjectionTools(
           studentId === 'self' ? canvas.users.getSelf() : canvas.users.get(studentId),
         ])
 
+        const enrollmentEmpty = enrollments.length === 0
         const submissionsById = new Map(submissions.map((sub) => [sub.assignment_id, sub]))
         const weighted = course.apply_assignment_group_weights ?? false
 
@@ -281,19 +282,20 @@ export function gradeProjectionTools(
         const targetFraction = targetPercentage / 100
         const outcome = computeProjection(projData, weighted, targetFraction)
 
-        const caveats: string[] = []
-        if (outcome.activeWeightSumZero) {
-          caveats.push(
-            'No assignment groups have any gradeable assignments; overall grade cannot be computed.',
-          )
-        }
         const hasDropRules = groups.some(
           (g) => (g.rules?.drop_lowest ?? 0) > 0 || (g.rules?.drop_highest ?? 0) > 0,
         )
-        if (hasDropRules) {
+
+        const caveats: string[] = []
+        if (enrollmentEmpty) {
           caveats.push(
-            'Drop rules are applied using currently graded scores only; which items are dropped may ' +
-              'change as remaining assignments are graded.',
+            'No enrollment record was found for this student in this course; the current grade ' +
+              'cannot be determined from Canvas enrollment data.',
+          )
+        }
+        if (outcome.activeWeightSumZero) {
+          caveats.push(
+            'No assignment groups have any gradeable assignments; overall grade cannot be computed.',
           )
         }
         caveats.push(
@@ -304,6 +306,12 @@ export function gradeProjectionTools(
           'This projection does not account for late-submission penalties; if the course deducts ' +
             'points for late work, the actual score needed may be higher.',
         )
+        if (hasDropRules) {
+          caveats.push(
+            'Drop rules are applied using currently graded scores only; which items are dropped may ' +
+              'change as remaining assignments are graded.',
+          )
+        }
 
         const computedCurrent = computeOverall(currentResults, weighted)
         const currentGradeLetter = mapLetter(computedCurrent, gradingScheme)
@@ -365,10 +373,9 @@ export function gradeProjectionTools(
             percentage: targetPercentage,
             letter: targetLetter,
           },
-          current_grade: {
-            percentage: computedCurrent,
-            letter: currentGradeLetter,
-          },
+          current_grade: enrollmentEmpty
+            ? { percentage: null, letter: null }
+            : { percentage: computedCurrent, letter: currentGradeLetter },
           projection: {
             minimum_pct_on_remaining: outcome.minimumPctOnRemaining,
             feasibility: outcome.feasibility,
