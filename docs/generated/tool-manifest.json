@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 144,
+  "toolCount": 145,
   "tools": [
     {
       "name": "health_check",
@@ -1487,6 +1487,18 @@
       },
       "access": "read",
       "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "find_student_across_courses",
+      "domain": "student_search",
+      "description": "Search the caller's teaching courses — active and, by default, concluded (past-term) ones — for a student by name, login, or email, and report every matching course with the student's enrollment state and last activity. Set `include_concluded: false` to only search current courses. `max_courses` bounds how many of the caller's courses are scanned (most recent term first); when exceeded, `truncated: true` is set rather than silently dropping courses. A course that errors during the scan is skipped and reported in `courses_failed` rather than failing the whole call.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     },
     {
