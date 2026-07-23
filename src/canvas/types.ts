@@ -991,6 +991,29 @@ export interface CourseSearchResult {
   course_id: number
 }
 
+export interface CanvasAssignmentAnalytics {
+  assignment_id: number
+  title: string
+  points_possible: number
+  due_at: string | null
+  unlock_at: string | null
+  muted: boolean
+  min_score: number | null
+  max_score: number | null
+  median: number | null
+  first_quartile: number | null
+  third_quartile: number | null
+  tardiness_breakdown: {
+    total: number
+    on_time: number
+    late: number
+    missing: number
+    floating: number
+  }
+  non_digital_submission: boolean
+  submission_count: number
+}
+
 // --- Dashboard & Notifications ---
 
 export interface CanvasDashboardCard {

@@ -20,12 +20,30 @@ describe('analyticsTools', () => {
         getCourseActivityStream: vi
           .fn()
           .mockResolvedValue([{ type: 'Submission', count: 7, unread_count: 0 }]),
+        getAssignmentAnalytics: vi.fn().mockResolvedValue([
+          {
+            assignment_id: 1,
+            title: 'Essay',
+            points_possible: 100,
+            due_at: '2024-03-01T23:59:00Z',
+            unlock_at: null,
+            muted: false,
+            min_score: 40,
+            max_score: 98,
+            median: 78,
+            first_quartile: 65,
+            third_quartile: 90,
+            tardiness_breakdown: { total: 25, on_time: 20, late: 3, missing: 2, floating: 0 },
+            non_digital_submission: false,
+            submission_count: 25,
+          },
+        ]),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns 4 tool definitions', () => {
-    expect(analyticsTools(buildMockCanvas())).toHaveLength(4)
+  it('returns 5 tool definitions', () => {
+    expect(analyticsTools(buildMockCanvas())).toHaveLength(5)
   })
 
   it('exports tools with correct names', () => {
@@ -35,6 +53,7 @@ describe('analyticsTools', () => {
       'get_course_analytics',
       'get_student_analytics',
       'get_course_activity_stream',
+      'get_assignment_analytics',
     ])
   })
 
@@ -187,6 +206,51 @@ describe('analyticsTools', () => {
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_course_activity_stream')!
       await tool.handler({ course_id: 10 })
       expect(canvas.analytics.getCourseActivityStream).toHaveBeenCalledWith(10)
+    })
+  })
+
+  describe('get_assignment_analytics', () => {
+    it('has read-only annotations', () => {
+      const tool = analyticsTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_assignment_analytics',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('returns all assignments when no assignment_id provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
+      const result = await tool.handler({ course_id: 10 })
+      expect(canvas.analytics.getAssignmentAnalytics).toHaveBeenCalledWith(10)
+      expect(Array.isArray(result)).toBe(true)
+    })
+
+    it('filters to a single assignment when assignment_id is provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
+      const result = (await tool.handler({ course_id: 10, assignment_id: 1 })) as {
+        assignment_id: number
+        title: string
+      }
+      expect(result.assignment_id).toBe(1)
+      expect(result.title).toBe('Essay')
+    })
+
+    it('throws when assignment_id is not found', async () => {
+      const canvas = buildMockCanvas()
+      const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
+      await expect(tool.handler({ course_id: 10, assignment_id: 999 })).rejects.toThrow(
+        'Assignment 999 not found in analytics for course 10',
+      )
+    })
+
+    it('propagates CanvasApiError from getAssignmentAnalytics', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.analytics.getAssignmentAnalytics).mockRejectedValueOnce(
+        new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/analytics/assignments'),
+      )
+      const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
+      await expect(tool.handler({ course_id: 10 })).rejects.toThrow(CanvasApiError)
     })
   })
 })
