@@ -1784,6 +1784,18 @@
       "relatedWorkflows": []
     },
     {
+      "name": "project_grade",
+      "domain": "grade_projection",
+      "description": "Projects the minimum score needed on remaining assignments to reach a target course grade.\n\nGiven a target (as a percentage, e.g. 90, or a letter grade, e.g. \"A\") and the student's current scores, computes the minimum uniform percentage that must be earned on all remaining (not yet graded) assignments for the overall course grade to reach the target. Accounts for assignment-group weights, drop_lowest / drop_highest / never_drop rules, and the course grading scheme (for letter-grade targets and output letter mapping).\n\nReturns:\n- minimum_pct_on_remaining: the uniform percentage needed on all remaining items.\n- feasibility: 'achievable' | 'already_secured' | 'impossible'.\n- Per-group breakdown of locked-in scores and remaining assignments.\n- A plain-language summary.\n\nLimitations:\n- Uses a uniform-x model: the same percentage is assumed for every remaining item. This is the natural interpretation of \"minimum average needed.\" Per-item optimization is not supported.\n- Drop rules are frozen at their current state (based on already-graded scores); which items are dropped may shift as remaining assignments are graded.\n- Late-submission penalties are not factored in.\n- V1 computes one student per call. Omit student_id to compute for the authenticated user. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
       "name": "audit_course_links",
       "domain": "link_audit",
       "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems — these break silently for students while still rendering in the instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",

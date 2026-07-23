@@ -194,7 +194,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 146 tools across all domains', () => {
+  it('returns all 147 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -382,6 +382,8 @@ describe('getAllTools', () => {
     expect(names).toContain('find_duplicate_files')
     // Quiz Question Responses (1)
     expect(names).toContain('get_quiz_question_responses')
+    // Grade Projection (1)
+    expect(names).toContain('project_grade')
 
     expect(tools).toHaveLength(147)
   })
