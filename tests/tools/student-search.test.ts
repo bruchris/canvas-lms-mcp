@@ -33,7 +33,12 @@ const concludedCourse: CanvasCourse = {
   name: 'Data Structures',
   course_code: 'CS201',
   workflow_state: 'available',
-  term: { id: 9, name: 'Spring 2026', start_at: '2026-01-12T00:00:00Z', end_at: '2026-05-01T00:00:00Z' },
+  term: {
+    id: 9,
+    name: 'Spring 2026',
+    start_at: '2026-01-12T00:00:00Z',
+    end_at: '2026-05-01T00:00:00Z',
+  },
   enrollments: [
     {
       id: 502,
@@ -248,12 +253,13 @@ describe('studentSearchTools', () => {
     ;(canvas.courses.list as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([activeCourse])
       .mockResolvedValueOnce([concludedCourse])
-    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>)
-      .mockImplementation(async (courseId: number) => {
+    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(
+      async (courseId: number) => {
         if (courseId === 1) return [janeInCourse1]
         if (courseId === 2) return [janeInCourse2]
         return []
-      })
+      },
+    )
 
     const tool = studentSearchTools(canvas)[0]
     await tool.handler({ search_term: 'Jane' })
@@ -330,7 +336,16 @@ describe('studentSearchTools', () => {
     const result = await tool.handler({ search_term: 'Jane' })
     const r = result as {
       matches_count: number
-      matches: Array<{ user_id: number; matched_courses: Array<{ course_id: number; course_name: string; term: string; enrollment_state: string; last_activity_at: string }> }>
+      matches: Array<{
+        user_id: number
+        matched_courses: Array<{
+          course_id: number
+          course_name: string
+          term: string
+          enrollment_state: string
+          last_activity_at: string
+        }>
+      }>
     }
 
     expect(r.matches_count).toBe(1)
@@ -493,12 +508,16 @@ describe('studentSearchTools', () => {
     ;(canvas.courses.list as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([activeCourse])
       .mockResolvedValueOnce([])
-    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockResolvedValue([userNoEnrollments])
+    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      userNoEnrollments,
+    ])
 
     const tool = studentSearchTools(canvas)[0]
     const result = await tool.handler({ search_term: 'Jane' })
     const r = result as {
-      matches: Array<{ matched_courses: Array<{ enrollment_state: string; last_activity_at: null }> }>
+      matches: Array<{
+        matched_courses: Array<{ enrollment_state: string; last_activity_at: null }>
+      }>
     }
 
     expect(r.matches[0].matched_courses[0].enrollment_state).toBe('unknown')
@@ -537,13 +556,13 @@ describe('studentSearchTools', () => {
     ;(canvas.courses.list as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([activeCourse])
       .mockResolvedValueOnce([])
-    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('boom'),
-    )
+    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('boom'))
 
     const tool = studentSearchTools(canvas)[0]
     const result = await tool.handler({ search_term: 'Jane' })
-    const r = result as { courses_failed: Array<{ course_id: number; status: null; message: string }> }
+    const r = result as {
+      courses_failed: Array<{ course_id: number; status: null; message: string }>
+    }
 
     expect(r.courses_failed).toHaveLength(1)
     expect(r.courses_failed[0].course_id).toBe(1)

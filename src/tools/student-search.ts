@@ -32,7 +32,7 @@ export function studentSearchTools(
         "Search the caller's teaching courses — active and, by default, concluded (past-term) " +
         'ones — for a student by name, login, or email, and report every matching course with ' +
         "the student's enrollment state and last activity. Set `include_concluded: false` to " +
-        'only search current courses. `max_courses` bounds how many of the caller\'s courses are ' +
+        "only search current courses. `max_courses` bounds how many of the caller's courses are " +
         'scanned (most recent term first); when exceeded, `truncated: true` is set rather than ' +
         'silently dropping courses. A course that errors during the scan is skipped and reported ' +
         'in `courses_failed` rather than failing the whole call.',
@@ -44,9 +44,7 @@ export function studentSearchTools(
         include_concluded: z
           .boolean()
           .optional()
-          .describe(
-            'Also search courses with a concluded (completed) enrollment. Default true.',
-          ),
+          .describe('Also search courses with a concluded (completed) enrollment. Default true.'),
         max_courses: z
           .number()
           .int()
@@ -79,10 +77,7 @@ export function studentSearchTools(
           } else {
             byId.set(c.id, {
               ...existing,
-              enrollments: [
-                ...(existing.enrollments ?? []),
-                ...(c.enrollments ?? []),
-              ],
+              enrollments: [...(existing.enrollments ?? []), ...(c.enrollments ?? [])],
             })
           }
         }
@@ -132,8 +127,7 @@ export function studentSearchTools(
             coursesFailed.push({
               course_id: r.course.id,
               status: r.err instanceof CanvasApiError ? r.err.status : null,
-              message:
-                r.err instanceof CanvasApiError ? r.err.message : String(r.err),
+              message: r.err instanceof CanvasApiError ? r.err.message : String(r.err),
             })
           }
         }
