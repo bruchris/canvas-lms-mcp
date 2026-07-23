@@ -35,6 +35,9 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
   // src/tools/submission-files.ts
   'list_course_submission_files',
 
+  // src/tools/submissions-awaiting-grading.ts
+  'list_submissions_awaiting_grading',
+
   // src/tools/conversations.ts
   'list_conversations',
   'get_conversation',
@@ -56,4 +59,10 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/grade-explanation.ts
   'explain_grade',
+
+  // src/tools/student.ts
+  'get_my_submission_feedback',
+
+  // src/tools/quiz-question-responses.ts
+  'get_quiz_question_responses',
 ] as const

@@ -25,14 +25,18 @@ import { outcomeTools } from './outcomes'
 import { pageTools } from './pages'
 import { peerReviewTools } from './peer-reviews'
 import { quizTools } from './quizzes'
+import { quizQuestionResponseTools } from './quiz-question-responses'
 import { quizAccommodationTools } from './quiz-accommodations'
+import { newQuizAccommodationTools } from './new-quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
 import { submissionTools } from './submissions'
 import { submissionFileTools } from './submission-files'
+import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'
 import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
+import { linkAuditTools } from './link-audit'
 
 export interface ToolDomainRegistration {
   domain: string
@@ -67,6 +71,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     getTools: submissionFileTools,
   },
   {
+    domain: 'submissions_awaiting_grading',
+    defaultPrimaryAudience: 'educator',
+    getTools: submissionsAwaitingGradingTools,
+  },
+  {
     domain: 'rubrics',
     defaultPrimaryAudience: 'educator',
     getTools: rubricTools,
@@ -80,6 +89,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'new_quizzes',
     defaultPrimaryAudience: 'educator',
     getTools: newQuizTools,
+  },
+  {
+    domain: 'quiz_question_responses',
+    defaultPrimaryAudience: 'educator',
+    getTools: quizQuestionResponseTools,
   },
   {
     domain: 'files',
@@ -182,6 +196,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     getTools: quizAccommodationTools,
   },
   {
+    domain: 'new_quiz_accommodations',
+    defaultPrimaryAudience: 'educator',
+    getTools: newQuizAccommodationTools,
+  },
+  {
     domain: 'assignment_overrides',
     defaultPrimaryAudience: 'educator',
     getTools: assignmentOverrideTools,
@@ -200,5 +219,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'grading_policy',
     defaultPrimaryAudience: 'shared',
     getTools: gradingPolicyTools,
+  },
+  {
+    domain: 'link_audit',
+    defaultPrimaryAudience: 'educator',
+    getTools: linkAuditTools,
   },
 ]

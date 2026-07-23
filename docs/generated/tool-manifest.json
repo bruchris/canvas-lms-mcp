@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 137,
+  "toolCount": 144,
   "tools": [
     {
       "name": "health_check",
@@ -215,6 +215,18 @@
       "name": "list_course_submission_files",
       "domain": "submission_files",
       "description": "List every file attachment submitted by students across all assignments in a course. Returns a manifest — one entry per file — including the original filename, a file_id for re-fetching via download_file, content type, and size. Useful for bulk-archiving student work before a course expires or a Free-For-Teacher account is concluded. Outputs are bounded by max_files (default 500); when the limit is hit, truncated is true and truncation_note explains how to retrieve the rest. Download URLs are time-limited (typically 1 hour) — use the returned file_id with download_file to get a fresh URL at download time. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, user_name is a stable per-course pseudonym (e.g. \"Student 1\"); user_id (the raw numeric Canvas ID) is always returned and works as a stable per-student folder key.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_submissions_awaiting_grading",
+      "domain": "submissions_awaiting_grading",
+      "description": "Lists all submissions in a course that still need a human grade, sorted oldest-waiting first.\n\nSurfaces two categories:\n- workflow_state=submitted: assignments submitted by students but not yet graded at all.\n- workflow_state=pending_review: Classic Quiz submissions where Canvas auto-graded the objective questions but left essays or manually-scored questions for the instructor.\n\nReturns a triage list grouped by assignment or Classic Quiz, with per-submission details: student identity, workflow state, submitted_at, and whether the submission has pending manual-grading questions.\n\nParameters:\n- course_id (required): Canvas course ID to scan.\n- assignment_ids (optional): limit the scan to specific assignment IDs.\n- include_quizzes (default true): include Classic Quiz assignments in the scan.\n- include_assignments (default true): include non-quiz assignments.\n- only_pending_review (default false): when true, return only pending_review submissions (quiz essays awaiting manual scoring), omitting regular ungraded assignments.\n\nKnown limitations:\n- New Quizzes (Quizzes.Next) may not appear with 'pending_review' workflow state here; use SpeedGrader or the New Quizzes interface for their grading queue.\n- Fill-in-the-blank answers that Canvas auto-marked are not surfaced.\n- V1 returns submission-level state only; per-question detail is not included.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with pseudonyms. Use resolve_pseudonym to look up the real identity.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -476,6 +488,18 @@
       "relatedWorkflows": []
     },
     {
+      "name": "get_quiz_question_responses",
+      "domain": "quiz_question_responses",
+      "description": "Review every student's answer to one or all questions in a Classic Quiz, pivoted by question instead of by student — for grading essay/short-answer/file-upload questions consistently across a class instead of paging through SpeedGrader one student at a time. Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New Quizzes exposes responses through a different API. Omit question_id to get every question; provide it to scope to one. Each question reports needs_manual_grading (true for essay and file-upload questions) and points_possible. Scans one Canvas API call per completed or pending-review submission; a failed per-submission fetch is recorded in submissions_failed rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with stable pseudonyms.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
       "name": "list_files",
       "domain": "files",
       "description": "List all files in a course.",
@@ -539,6 +563,18 @@
       "name": "download_file",
       "domain": "files",
       "description": "Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "find_duplicate_files",
+      "domain": "files",
+      "description": "Find duplicate files in a course's Files area — copies with the same name and size, typically left behind by repeated course copies. Each duplicate gets flagged separately by accessibility checkers, so this surfaces them for cleanup with the existing delete_file tool. Groups by display name + size (Canvas file listings carry no content hash), so same-name files of different sizes are not considered duplicates.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1442,6 +1478,18 @@
       ]
     },
     {
+      "name": "get_my_submission_feedback",
+      "domain": "student",
+      "description": "List the authenticated student's own submissions that carry feedback comments from an instructor or a peer reviewer — comments left by the student themselves do not count as feedback and submissions with no non-self comments are omitted. Omit `course_id` to scan every active course; a course that errors during a scan is skipped and reported in `courses_failed` rather than failing the whole call. Sorted most-recent-feedback-first. Comment author role is best-effort: 'teacher' is only identified when the author is the submission's recorded grader; other non-self authors are labeled 'peer', including any staff member who comments without being the recorded grader.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": []
+    },
+    {
       "name": "get_dashboard_cards",
       "domain": "dashboard",
       "description": "Get the current user's dashboard course cards with position, color, and image.",
@@ -1594,7 +1642,7 @@
     {
       "name": "set_student_quiz_accommodation",
       "domain": "quiz_accommodations",
-      "description": "Apply extra time and/or extra attempts to a specific student across all Classic Quizzes in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. New Quizzes (quiz_type quizzes.next) are skipped — they use a different accommodation mechanism not covered by this tool. Only applies to quizzes that exist at call time; re-run after creating new quizzes. Assignment due-date overrides are not handled here (separate fast-follow feature). Note: for courses with many quizzes this makes one Canvas API call per quiz. Partial failures are tolerated — a failure on one quiz does not abort the rest. Returns the standard fan-out envelope: separated applied[], skipped[] (each with a skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested quiz_ids absent from the course, and a summary of counts. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
+      "description": "Apply extra time and/or extra attempts to a specific student across all Classic Quizzes in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. New Quizzes (quiz_type quizzes.next) are skipped — use set_student_new_quiz_accommodation instead. Only applies to quizzes that exist at call time; re-run after creating new quizzes. Assignment due-date overrides are not handled here (separate fast-follow feature). Note: for courses with many quizzes this makes one Canvas API call per quiz. Partial failures are tolerated — a failure on one quiz does not abort the rest. Returns the standard fan-out envelope: separated applied[], skipped[] (each with a skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested quiz_ids absent from the course, and a summary of counts. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -1607,6 +1655,30 @@
       "name": "list_student_quiz_accommodations",
       "domain": "quiz_accommodations",
       "description": "List the current quiz accommodation (extra time and/or extra attempts) for a specific student across all Classic Quizzes in a course. Useful for auditing before or after calling set_student_quiz_accommodation. New Quizzes (quiz_type quizzes.next) are excluded. Reads extra_time / extra_attempts from each quiz's submission records (Canvas exposes no read endpoint for quiz extensions directly) — one Canvas API call per Classic Quiz, so it may be slow for courses with many quizzes. Errors from any quiz's read propagate immediately (no per-quiz error catching). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "set_student_new_quiz_accommodation",
+      "domain": "new_quiz_accommodations",
+      "description": "Apply a time and/or attempts accommodation for a student across all New Quizzes in a course (course-level, single Canvas API call when no assignment_ids are given) or for a specified subset of New Quizzes (per-quiz fan-out when assignment_ids are given). New Quizzes use a time_multiplier (ratio, e.g. 1.5 for 1.5× time), not absolute minutes. For Classic Quizzes (quiz_type: assignment / practice_quiz / etc.) use set_student_quiz_accommodation instead. Partial per-quiz failures are tolerated — a failure on one quiz does not abort the rest. In per-quiz mode, fan-out is sequential (one Canvas API call per assignment ID, awaited in series). Canvas errors on the course-level path (no assignment_ids) propagate as a top-level error (no envelope). Returns a uniform envelope: scope (\"course\" or \"per_quiz\"), applied[], failed[], and summary. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_student_new_quiz_accommodations",
+      "domain": "new_quiz_accommodations",
+      "description": "Read the current course-level New Quizzes accommodation (time multiplier and/or extra attempts) for a specific student in a course. Useful for auditing before or after calling set_student_new_quiz_accommodation. Returns has_accommodation: false when no accommodation is set (Canvas 404 is treated as \"no record\", not an error). New Quizzes store a single course-level accommodation record per student; this is not per-quiz. For Classic Quizzes, use list_student_quiz_accommodations instead. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1654,7 +1726,7 @@
     {
       "name": "check_course_setup",
       "domain": "course_setup",
-      "description": "Run a factual course-readiness report that surfaces common configuration problems — assignments missing due dates, unpublished items students will not see, gradebook weighting gaps, and graded assignments with no points. Returns findings grouped by check with a plain-language detail per item. This is a config-health report only; it does not inspect student submissions or performance (see list_students_needing_attention / get_missing_submissions for those). Requires instructor permissions in the course.",
+      "description": "Run a factual course-readiness report that surfaces common configuration problems — assignments missing due dates, unpublished items students will not see, gradebook weighting gaps, graded assignments with no points, and published assignments still accepting submissions after their due date. Returns findings grouped by check with a plain-language detail per item. This is a config-health report only; it does not inspect student submissions or performance (see list_students_needing_attention / get_missing_submissions for those). Requires instructor permissions in the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1685,6 +1757,18 @@
       },
       "access": "read",
       "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "audit_course_links",
+      "domain": "link_audit",
+      "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems — these break silently for students while still rendering in the instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
       "relatedWorkflows": []
     }
   ]

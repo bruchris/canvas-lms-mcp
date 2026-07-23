@@ -19,6 +19,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_submissions',
   'get_submission',
   'list_course_submission_files',
+  'list_submissions_awaiting_grading',
   'list_conversations',
   'get_conversation',
   'list_gradebook_history_submissions',
@@ -29,6 +30,8 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_submission_comments_needing_attention',
   'list_students_needing_attention',
   'explain_grade',
+  'get_my_submission_feedback',
+  'get_quiz_question_responses',
 ])
 
 function buildMinimalCanvas(): CanvasClient {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NewQuizzesModule } from '../../src/canvas/new-quizzes'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasApiError, CanvasHttpClient } from '../../src/canvas/client'
+import type { CanvasNewQuizAccommodation } from '../../src/canvas/types'
 
 const COURSE_ID = 100
 const ASSIGNMENT_ID = 42
@@ -333,6 +334,96 @@ describe('NewQuizzesModule', () => {
     expect(body).toMatchObject({
       points_possible: 3,
       entry: { scoring_data: { value: 'false' } },
+    })
+  })
+})
+
+describe('NewQuizzesModule — accommodations', () => {
+  const USER_ID = 42
+  const mockAccommodation: CanvasNewQuizAccommodation = {
+    user_id: USER_ID,
+    time_multiplier: 1.5,
+    extra_attempts: 1,
+  }
+
+  let client: CanvasHttpClient
+  let mod: NewQuizzesModule
+
+  beforeEach(() => {
+    client = makeClient()
+    vi.spyOn(client, 'request').mockResolvedValue(mockAccommodation)
+    mod = new NewQuizzesModule(client)
+  })
+
+  describe('setAccommodation', () => {
+    it('sends both fields and returns the record', async () => {
+      const result = await mod.setAccommodation(COURSE_ID, USER_ID, 1.5, 1)
+      expect(result).toEqual(mockAccommodation)
+      expect(client.request).toHaveBeenCalledWith(
+        `/api/quiz/v1/courses/${COURSE_ID}/accommodations`,
+        expect.objectContaining({ method: 'POST' }),
+      )
+      const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+      expect(body).toEqual({ user_id: USER_ID, time_multiplier: 1.5, extra_attempts: 1 })
+    })
+
+    it('omits extra_attempts when undefined', async () => {
+      await mod.setAccommodation(COURSE_ID, USER_ID, 1.5, undefined)
+      const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+      expect(body).toEqual({ user_id: USER_ID, time_multiplier: 1.5 })
+      expect(body).not.toHaveProperty('extra_attempts')
+    })
+
+    it('omits time_multiplier when undefined', async () => {
+      await mod.setAccommodation(COURSE_ID, USER_ID, undefined, 2)
+      const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+      expect(body).toEqual({ user_id: USER_ID, extra_attempts: 2 })
+      expect(body).not.toHaveProperty('time_multiplier')
+    })
+  })
+
+  describe('setQuizAccommodation', () => {
+    it('sends to the per-quiz endpoint and returns the record', async () => {
+      const result = await mod.setQuizAccommodation(COURSE_ID, ASSIGNMENT_ID, USER_ID, 1.5, 1)
+      expect(result).toEqual(mockAccommodation)
+      expect(client.request).toHaveBeenCalledWith(
+        `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}/accommodations`,
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    it('propagates errors', async () => {
+      vi.mocked(client.request).mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/quiz/v1/...'),
+      )
+      await expect(
+        mod.setQuizAccommodation(COURSE_ID, ASSIGNMENT_ID, USER_ID, 1.5),
+      ).rejects.toThrow('Not Found')
+    })
+  })
+
+  describe('getAccommodation', () => {
+    it('returns the record when it exists', async () => {
+      const result = await mod.getAccommodation(COURSE_ID, USER_ID)
+      expect(result).toEqual(mockAccommodation)
+      expect(client.request).toHaveBeenCalledWith(
+        `/api/quiz/v1/courses/${COURSE_ID}/accommodations/${USER_ID}`,
+      )
+    })
+
+    it('returns null on 404', async () => {
+      vi.mocked(client.request).mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/quiz/v1/...'),
+      )
+      const result = await mod.getAccommodation(COURSE_ID, USER_ID)
+      expect(result).toBeNull()
+    })
+
+    it('propagates non-404 errors', async () => {
+      vi.mocked(client.request).mockRejectedValueOnce(
+        new CanvasApiError('Forbidden', 403, '/api/quiz/v1/...'),
+      )
+      await expect(mod.getAccommodation(COURSE_ID, USER_ID)).rejects.toThrow('Forbidden')
     })
   })
 })

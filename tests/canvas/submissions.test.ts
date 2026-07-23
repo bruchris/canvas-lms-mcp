@@ -223,6 +223,25 @@ describe('SubmissionsModule', () => {
         student_ids: ['self'],
       })
     })
+
+    it('omits include[] entirely when no opts are provided (backward-compatible)', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listMy(10, {})
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
+        student_ids: ['self'],
+      })
+    })
+
+    it('forwards include[] when provided', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+      await submissions.listMy(10, {
+        include: ['submission_comments', 'user', 'assignment', 'course', 'read_status'],
+      })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/10/students/submissions', {
+        student_ids: ['self'],
+        include: ['submission_comments', 'user', 'assignment', 'course', 'read_status'],
+      })
+    })
   })
 
   describe('listForStudents', () => {

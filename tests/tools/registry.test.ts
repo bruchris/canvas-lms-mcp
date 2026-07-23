@@ -105,6 +105,7 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       delete: async () => undefined,
+      listWithBodies: async () => [],
     },
     calendar: {
       list: async () => [],
@@ -168,6 +169,9 @@ function buildFullMockCanvas(): CanvasClient {
       createItem: async () => ({}),
       updateItem: async () => ({}),
       deleteItem: async () => undefined,
+      setAccommodation: async () => ({}),
+      setQuizAccommodation: async () => ({}),
+      getAccommodation: async () => null,
     },
     contentExports: {
       create: async () => ({}),
@@ -189,7 +193,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 137 tools across all domains', () => {
+  it('returns all 139 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -319,11 +323,12 @@ describe('getAllTools', () => {
     expect(names).toContain('get_outcome_rollups')
     expect(names).toContain('get_outcome_contributing_scores')
     expect(names).toContain('get_outcome_mastery_distribution')
-    // Student (4)
+    // Student (5)
     expect(names).toContain('get_my_courses')
     expect(names).toContain('get_my_grades')
     expect(names).toContain('get_my_submissions')
     expect(names).toContain('get_my_upcoming_assignments')
+    expect(names).toContain('get_my_submission_feedback')
     // Dashboard (4)
     expect(names).toContain('get_dashboard_cards')
     expect(names).toContain('get_todo_items')
@@ -352,6 +357,9 @@ describe('getAllTools', () => {
     // Quiz Accommodations (2)
     expect(names).toContain('set_student_quiz_accommodation')
     expect(names).toContain('list_student_quiz_accommodations')
+    // New Quiz Accommodations (2)
+    expect(names).toContain('set_student_new_quiz_accommodation')
+    expect(names).toContain('list_student_new_quiz_accommodations')
     // Assignment Overrides (3)
     expect(names).toContain('list_assignment_overrides')
     expect(names).toContain('create_assignment_override')
@@ -362,8 +370,16 @@ describe('getAllTools', () => {
     expect(names).toContain('explain_grade')
     // Grading Policy (1)
     expect(names).toContain('explain_grading_policy')
+    // Link Audit (1)
+    expect(names).toContain('audit_course_links')
+    // Submissions Awaiting Grading (1)
+    expect(names).toContain('list_submissions_awaiting_grading')
+    // Files (1)
+    expect(names).toContain('find_duplicate_files')
+    // Quiz Question Responses (1)
+    expect(names).toContain('get_quiz_question_responses')
 
-    expect(tools).toHaveLength(137)
+    expect(tools).toHaveLength(144)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -414,6 +430,7 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
     ]
@@ -474,6 +491,7 @@ describe('getAllTools', () => {
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
+      'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
     ])

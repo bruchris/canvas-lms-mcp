@@ -49,6 +49,10 @@ export interface ListStudentSubmissionsOptions {
   workflow_state?: SubmissionWorkflowState
 }
 
+export interface ListMySubmissionsOptions {
+  include?: ReadonlyArray<SubmissionListInclude>
+}
+
 const DEFAULT_LIST_INCLUDE: ReadonlyArray<SubmissionListInclude> = ['submission_comments']
 const DEFAULT_GET_INCLUDE: ReadonlyArray<SubmissionGetInclude> = ['submission_comments']
 
@@ -127,10 +131,12 @@ export class SubmissionsModule {
     )
   }
 
-  async listMy(courseId: number): Promise<CanvasSubmission[]> {
+  async listMy(courseId: number, opts: ListMySubmissionsOptions = {}): Promise<CanvasSubmission[]> {
+    const params: CanvasQueryParams = { student_ids: ['self'] }
+    if (opts.include && opts.include.length > 0) params.include = opts.include
     return this.client.paginate<CanvasSubmission>(
       `/api/v1/courses/${courseId}/students/submissions`,
-      { student_ids: ['self'] },
+      params,
     )
   }
 

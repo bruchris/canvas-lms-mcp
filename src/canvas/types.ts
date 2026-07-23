@@ -194,6 +194,7 @@ export interface CanvasAssignment {
   }
   assignment_visibility?: number[]
   is_quiz_assignment?: boolean
+  is_quiz_lti_assignment?: boolean // true when backed by the New Quizzes (Quizzes.Next) LTI tool
   in_closed_grading_period?: boolean
   post_to_sis?: boolean
   integration_id?: string | null
@@ -387,6 +388,7 @@ export interface CanvasQuiz {
   id: number
   title: string
   quiz_type: string
+  description?: string | null // HTML shown above the quiz's questions
   points_possible: number
   question_count: number
   due_at: string | null
@@ -423,7 +425,15 @@ export interface CanvasQuizQuestion {
 export interface CanvasQuizSubmissionQuestion {
   id: number
   quiz_id: number
-  answer: string | number | null
+  // Widened from `string | number | null`: matching / multiple-answer question
+  // types return arrays or keyed objects, not a plain scalar. Still backward
+  // compatible — the scalar members remain valid.
+  answer: string | number | string[] | Record<string, unknown> | null
+  // Present once Canvas has graded an auto-graded question type; omitted for
+  // manually-graded (essay / file-upload) answers not yet scored, so it is
+  // optional and surfaced as `correct ?? null`. See
+  // docs/superpowers/specs/2026-07-09-issue-240-quiz-question-responses.md §3.
+  correct?: boolean | null
   flagged: boolean
 }
 
@@ -1069,6 +1079,12 @@ export interface CanvasNewQuizItem {
     scoring_algorithm?: string
     feedback?: Record<string, unknown>
   }
+}
+
+export interface CanvasNewQuizAccommodation {
+  user_id: number
+  time_multiplier: number | null
+  extra_attempts: number | null
 }
 
 // --- Peer Reviews ---
