@@ -102,4 +102,31 @@ describe('AnalyticsModule', () => {
       expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/activity_stream/summary')
     })
   })
+
+  describe('getAssignmentAnalytics', () => {
+    it('paginates the analytics assignments endpoint', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+        {
+          assignment_id: 1,
+          title: 'Essay',
+          points_possible: 100,
+          due_at: '2024-03-01T23:59:00Z',
+          unlock_at: null,
+          muted: false,
+          min_score: 40,
+          max_score: 98,
+          median: 78,
+          first_quartile: 65,
+          third_quartile: 90,
+          tardiness_breakdown: { total: 25, on_time: 20, late: 3, missing: 2, floating: 0 },
+          non_digital_submission: false,
+          submission_count: 25,
+        },
+      ])
+      const result = await analytics.getAssignmentAnalytics(100)
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({ assignment_id: 1, title: 'Essay', median: 78 })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/analytics/assignments')
+    })
+  })
 })

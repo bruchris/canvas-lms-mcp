@@ -1280,6 +1280,18 @@
       "relatedWorkflows": []
     },
     {
+      "name": "get_assignment_analytics",
+      "domain": "analytics",
+      "description": "Get score distribution analytics for assignments in a course. Returns statistical summary (min, max, median, first/third quartile), submission count, and tardiness breakdown (on_time, late, missing) for each assignment. Provide assignment_id to scope to one assignment; omit to return analytics for all assignments in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
       "name": "get_root_outcome_group",
       "domain": "outcomes",
       "description": "Get the root outcome group for an account or course context.",
