@@ -68,4 +68,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/quiz-question-responses.ts
   'get_quiz_question_responses',
+
+  // src/tools/student-search.ts
+  'find_student_across_courses',
 ] as const

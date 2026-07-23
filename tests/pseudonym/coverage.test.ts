@@ -33,6 +33,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'project_grade',
   'get_my_submission_feedback',
   'get_quiz_question_responses',
+  'find_student_across_courses',
 ])
 
 function buildMinimalCanvas(): CanvasClient {

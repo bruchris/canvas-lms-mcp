@@ -32,6 +32,7 @@ import { newQuizAccommodationTools } from './new-quiz-accommodations'
 import { newQuizTools } from './new-quizzes'
 import { rubricTools } from './rubrics'
 import { studentTools } from './student'
+import { studentSearchTools } from './student-search'
 import { submissionTools } from './submissions'
 import { submissionFileTools } from './submission-files'
 import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'
@@ -170,6 +171,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'student',
     defaultPrimaryAudience: 'student',
     getTools: studentTools,
+  },
+  {
+    domain: 'student_search',
+    defaultPrimaryAudience: 'educator',
+    getTools: studentSearchTools,
   },
   {
     domain: 'dashboard',
