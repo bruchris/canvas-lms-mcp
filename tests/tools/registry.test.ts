@@ -383,7 +383,7 @@ describe('getAllTools', () => {
     // Quiz Question Responses (1)
     expect(names).toContain('get_quiz_question_responses')
 
-    expect(tools).toHaveLength(146)
+    expect(tools).toHaveLength(147)
   })
 
   it('all tools have openWorldHint: true', () => {
