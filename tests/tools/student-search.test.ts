@@ -570,6 +570,36 @@ describe('studentSearchTools', () => {
     expect(r.courses_failed[0].message).toContain('boom')
   })
 
+  it('processes courses in batches of 10 to limit concurrent requests', async () => {
+    // 15 courses → batch 1 (10) then batch 2 (5); max concurrent must stay ≤ 10
+    const manyCourses: CanvasCourse[] = Array.from({ length: 15 }, (_, i) => ({
+      ...activeCourse,
+      id: 100 + i,
+    }))
+
+    const canvas = buildMockCanvas()
+    ;(canvas.courses.list as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(manyCourses)
+      .mockResolvedValueOnce([])
+
+    let concurrentCount = 0
+    let maxConcurrentCount = 0
+
+    ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      concurrentCount++
+      maxConcurrentCount = Math.max(maxConcurrentCount, concurrentCount)
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      concurrentCount--
+      return []
+    })
+
+    const tool = studentSearchTools(canvas)[0]
+    await tool.handler({ search_term: 'Jane' })
+
+    expect(canvas.users.listCourseUsers).toHaveBeenCalledTimes(15)
+    expect(maxConcurrentCount).toBeLessThanOrEqual(10)
+  })
+
   describe('pseudonymizer', () => {
     let tmpDir: string
 

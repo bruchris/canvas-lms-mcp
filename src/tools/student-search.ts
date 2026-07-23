@@ -6,6 +6,7 @@ import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 
 const INSTRUCTOR_ENROLLMENT_TYPES = new Set(['TeacherEnrollment', 'TaEnrollment'])
+const CONCURRENT_COURSE_LIMIT = 10
 
 interface FindStudentMatchedCourse {
   course_id: number
@@ -99,36 +100,38 @@ export function studentSearchTools(
         const truncated = coursesFound > maxCourses
         const coursesToScan = truncated ? sorted.slice(0, maxCourses) : sorted
 
-        // 3. Fan out per-course search with per-course failure tolerance.
+        // 3. Fan out per-course search in batches to bound concurrent Canvas API requests.
         const coursesFailed: Array<{ course_id: number; status: number | null; message: string }> =
           []
         const perCourseMatches: Array<{ course: CanvasCourse; users: CanvasUser[] }> = []
 
-        const results = await Promise.all(
-          coursesToScan.map(async (course) => {
-            try {
-              const users = await canvas.users.listCourseUsers(course.id, {
-                search_term: searchTerm,
-                enrollment_type: ['student'],
-                enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
-                include: ['enrollments'],
+        for (let i = 0; i < coursesToScan.length; i += CONCURRENT_COURSE_LIMIT) {
+          const batch = coursesToScan.slice(i, i + CONCURRENT_COURSE_LIMIT)
+          const batchResults = await Promise.all(
+            batch.map(async (course) => {
+              try {
+                const users = await canvas.users.listCourseUsers(course.id, {
+                  search_term: searchTerm,
+                  enrollment_type: ['student'],
+                  enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
+                  include: ['enrollments'],
+                })
+                return { ok: true as const, course, users }
+              } catch (err) {
+                return { ok: false as const, course, err }
+              }
+            }),
+          )
+          for (const r of batchResults) {
+            if (r.ok) {
+              perCourseMatches.push({ course: r.course, users: r.users })
+            } else {
+              coursesFailed.push({
+                course_id: r.course.id,
+                status: r.err instanceof CanvasApiError ? r.err.status : null,
+                message: r.err instanceof CanvasApiError ? r.err.message : String(r.err),
               })
-              return { ok: true as const, course, users }
-            } catch (err) {
-              return { ok: false as const, course, err }
             }
-          }),
-        )
-
-        for (const r of results) {
-          if (r.ok) {
-            perCourseMatches.push({ course: r.course, users: r.users })
-          } else {
-            coursesFailed.push({
-              course_id: r.course.id,
-              status: r.err instanceof CanvasApiError ? r.err.status : null,
-              message: r.err instanceof CanvasApiError ? r.err.message : String(r.err),
-            })
           }
         }
 
