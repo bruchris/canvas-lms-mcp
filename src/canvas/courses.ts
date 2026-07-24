@@ -31,10 +31,7 @@ export type CourseListInclude =
   | 'post_manually'
 
 export type CourseGetInclude =
-  | CourseListInclude
-  | 'all_courses'
-  | 'permissions'
-  | 'public_description'
+  CourseListInclude | 'all_courses' | 'permissions' | 'public_description'
 
 export interface ListCoursesOptions {
   enrollment_state?: CourseEnrollmentState

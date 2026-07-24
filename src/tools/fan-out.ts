@@ -6,8 +6,7 @@ import { CanvasApiError } from '../canvas/client'
  * never construct a `failed` outcome — they simply let the action throw.
  */
 export type FanOutOutcome<TResult> =
-  | { status: 'applied'; result: TResult }
-  | { status: 'skipped'; result: TResult }
+  { status: 'applied'; result: TResult } | { status: 'skipped'; result: TResult }
 
 /**
  * Canonical result envelope shared by every "apply X across a course" write
