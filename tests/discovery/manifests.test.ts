@@ -83,6 +83,35 @@ describe('tool manifest generation', () => {
     expect(committed).toEqual(generated)
   })
 
+  it('spec Totals line matches manifest counts', () => {
+    const spec = readFileSync(
+      resolve('docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md'),
+      'utf8',
+    )
+    const match = spec.match(/\*\*Totals:\s*(\d+)\s*tools\s*\((\d+)\s*read,\s*(\d+)\s*write\)/)
+    if (!match)
+      throw new Error('Could not find **Totals: N tools (R read, W write)** in design spec')
+    const [specTotal, specRead, specWrite] = match.slice(1).map(Number)
+
+    const manifest = buildToolManifest()
+    const manifestRead = manifest.tools.filter((t) => t.access === 'read').length
+    const manifestWrite = manifest.tools.filter((t) => t.access === 'write').length
+    const specPath = 'docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md'
+
+    expect(
+      specTotal,
+      `Spec **Totals:** says ${specTotal} tools but manifest has ${manifest.tools.length}. Update the **Totals:** line in ${specPath}.`,
+    ).toBe(manifest.tools.length)
+    expect(
+      specRead,
+      `Spec **Totals:** says ${specRead} read tools but manifest has ${manifestRead}. Update the **Totals:** line in ${specPath}.`,
+    ).toBe(manifestRead)
+    expect(
+      specWrite,
+      `Spec **Totals:** says ${specWrite} write tools but manifest has ${manifestWrite}. Update the **Totals:** line in ${specPath}.`,
+    ).toBe(manifestWrite)
+  })
+
   it('fails when an audience override references an unknown tool', () => {
     expect(() =>
       buildToolManifest({

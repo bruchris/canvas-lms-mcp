@@ -3,13 +3,7 @@ import { posix as posixPath, win32 as winPath } from 'node:path'
 import type { FileSystem } from './io'
 
 export type ClientId =
-  | 'claude-desktop'
-  | 'claude-code'
-  | 'cursor'
-  | 'vscode'
-  | 'windsurf'
-  | 'codex'
-  | 'continue'
+  'claude-desktop' | 'claude-code' | 'cursor' | 'vscode' | 'windsurf' | 'codex' | 'continue'
 
 export type ConfigFormat = 'json' | 'toml'
 
