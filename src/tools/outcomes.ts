@@ -264,8 +264,7 @@ export function outcomeTools(
           outcome_ids: params.outcome_ids as number[] | undefined,
           include_courses: params.include_courses as boolean | undefined,
           exclude: params.exclude as
-            | Array<'missing_user_rollups' | 'missing_outcome_results'>
-            | undefined,
+            Array<'missing_user_rollups' | 'missing_outcome_results'> | undefined,
           sort_by: params.sort_by as 'student' | 'outcome' | undefined,
           sort_outcome_id: params.sort_outcome_id as number | undefined,
           sort_order: params.sort_order as 'asc' | 'desc' | undefined,
@@ -304,8 +303,7 @@ export function outcomeTools(
             user_ids: params.user_ids as Array<number | string> | undefined,
             only_assignment_alignments: params.only_assignment_alignments as boolean | undefined,
             show_unpublished_assignments: params.show_unpublished_assignments as
-              | boolean
-              | undefined,
+              boolean | undefined,
           },
         ),
     },
@@ -348,13 +346,11 @@ export function outcomeTools(
       handler: async (params) =>
         canvas.outcomes.getOutcomeMasteryDistribution(params.course_id as number, {
           exclude: params.exclude as
-            | Array<'missing_user_rollups' | 'missing_outcome_results'>
-            | undefined,
+            Array<'missing_user_rollups' | 'missing_outcome_results'> | undefined,
           outcome_ids: params.outcome_ids as number[] | undefined,
           student_ids: params.student_ids as Array<number | string> | undefined,
           include_alignment_distributions: params.include_alignment_distributions as
-            | boolean
-            | undefined,
+            boolean | undefined,
           only_assignment_alignments: params.only_assignment_alignments as boolean | undefined,
           show_unpublished_assignments: params.show_unpublished_assignments as boolean | undefined,
           add_defaults: params.add_defaults as boolean | undefined,

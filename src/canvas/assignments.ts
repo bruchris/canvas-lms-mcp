@@ -28,13 +28,7 @@ export type AssignmentGetInclude =
   | 'all_dates'
 
 export type AssignmentBucket =
-  | 'past'
-  | 'overdue'
-  | 'undated'
-  | 'ungraded'
-  | 'unsubmitted'
-  | 'upcoming'
-  | 'future'
+  'past' | 'overdue' | 'undated' | 'ungraded' | 'unsubmitted' | 'upcoming' | 'future'
 
 export type AssignmentOrderBy = 'position' | 'name' | 'due_at'
 
