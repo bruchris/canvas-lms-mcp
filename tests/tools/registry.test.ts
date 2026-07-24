@@ -374,6 +374,8 @@ describe('getAllTools', () => {
     expect(names).toContain('explain_grading_policy')
     // Link Audit (1)
     expect(names).toContain('audit_course_links')
+    // Accessibility Audit (1)
+    expect(names).toContain('audit_course_accessibility')
     // Submissions Awaiting Grading (1)
     expect(names).toContain('list_submissions_awaiting_grading')
     // Files (1)
@@ -383,7 +385,7 @@ describe('getAllTools', () => {
     // Grade Projection (1)
     expect(names).toContain('project_grade')
 
-    expect(tools).toHaveLength(147)
+    expect(tools).toHaveLength(148)
   })
 
   it('all tools have openWorldHint: true', () => {

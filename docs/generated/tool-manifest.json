@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 147,
+  "toolCount": 148,
   "tools": [
     {
       "name": "health_check",
@@ -1799,6 +1799,18 @@
       "name": "audit_course_links",
       "domain": "link_audit",
       "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems — these break silently for students while still rendering in the instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "audit_course_accessibility",
+      "domain": "accessibility_audit",
+      "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for structurally-detectable WCAG 2.1 accessibility problems: images missing alt text or with low-quality (filename/generic) alt text, non-descriptive link text (\"click here\"), adjacent duplicate links, skipped/empty/overlong headings, and tables missing headers, header scope, or captions. Each finding carries a WCAG success criterion and a severity (error = unambiguous failure, advisory = needs human review). Structural checks only — no color-contrast checking (requires rendered theme CSS this tool cannot see) and no list-misuse detection in this version. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems (opt-in, off by default). Complements — does not replace — Canvas's own in-app Accessibility Checker (course navigation → Accessibility → Scan Course), which covers the same WCAG areas plus rendered color contrast and offers in-UI remediation. Requires instructor permissions in the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

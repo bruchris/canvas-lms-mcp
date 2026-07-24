@@ -39,6 +39,7 @@ import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'
 import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
 import { linkAuditTools } from './link-audit'
+import { accessibilityAuditTools } from './accessibility-audit'
 
 export interface ToolDomainRegistration {
   domain: string
@@ -236,5 +237,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'link_audit',
     defaultPrimaryAudience: 'educator',
     getTools: linkAuditTools,
+  },
+  {
+    domain: 'accessibility_audit',
+    defaultPrimaryAudience: 'educator',
+    getTools: accessibilityAuditTools,
   },
 ]
