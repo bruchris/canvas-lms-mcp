@@ -1,5 +1,83 @@
 # Changelog
 
+## [1.23.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.22.0...canvas-lms-mcp-v1.23.0) (2026-07-24)
+
+
+### Features
+
+* **accessibility:** add audit_course_accessibility tool (issue [#245](https://github.com/bruchris/canvas-lms-mcp/issues/245)) ([#249](https://github.com/bruchris/canvas-lms-mcp/issues/249)) ([1d6b438](https://github.com/bruchris/canvas-lms-mcp/commit/1d6b438d7a2c13442c67c8ebbe86ec4e2e8e7368))
+* **accounts:** add list_account_notifications tool ([#178](https://github.com/bruchris/canvas-lms-mcp/issues/178)) ([6b3097e](https://github.com/bruchris/canvas-lms-mcp/commit/6b3097e09033594247a1db4f4abe28383ad7fd03))
+* **accounts:** add view_account_notifications interactive MCP Apps widget ([#179](https://github.com/bruchris/canvas-lms-mcp/issues/179)) ([c844933](https://github.com/bruchris/canvas-lms-mcp/commit/c844933990b6844527afacba57d797643aa83105))
+* add list_students_needing_attention tool (Signal B) [BRU-1593] ([#176](https://github.com/bruchris/canvas-lms-mcp/issues/176)) ([76f790c](https://github.com/bruchris/canvas-lms-mcp/commit/76f790c8ba2e69b8741b4acb4ce5101cb74764bc))
+* add list_submission_comments_needing_attention tool (Signal A) [BRU-1592] ([#174](https://github.com/bruchris/canvas-lms-mcp/issues/174)) ([3bd8afa](https://github.com/bruchris/canvas-lms-mcp/commit/3bd8afa06e4faf0346320099a35e421e277d7aac))
+* **analytics:** add get_assignment_analytics tool (per-assignment score distribution) ([#244](https://github.com/bruchris/canvas-lms-mcp/issues/244)) ([30831f4](https://github.com/bruchris/canvas-lms-mcp/commit/30831f4a539f380e635bd474421409256856d4ba))
+* **assignments:** create and audit assignment date/availability overrides ([3874dcc](https://github.com/bruchris/canvas-lms-mcp/commit/3874dcc868fbd2c1265d91d0a97a46a00961fbae))
+* **content-exports:** add course content export tools (create, get, list) ([77bdead](https://github.com/bruchris/canvas-lms-mcp/commit/77bdead30f7e6c3f1b0e8b287d4300ab1da5b03e))
+* **course-setup:** add check_course_setup course-readiness report ([31a0b4f](https://github.com/bruchris/canvas-lms-mcp/commit/31a0b4fa469d140b1dd8241a64ea7efe31d05341))
+* **course-setup:** flag assignments still open past their due date ([26d071c](https://github.com/bruchris/canvas-lms-mcp/commit/26d071c80ac6c8e9a916ff498608cb88cfc08f9d))
+* **discussions:** expose is_announcement and delayed_post_at params ([#195](https://github.com/bruchris/canvas-lms-mcp/issues/195)) ([8e23c1f](https://github.com/bruchris/canvas-lms-mcp/commit/8e23c1f2222a739b5855a291243ce9874117dc50))
+* **files:** add find_duplicate_files tool for accessibility cleanup ([b28a2a7](https://github.com/bruchris/canvas-lms-mcp/commit/b28a2a79bda09392a3ea14276809f5c360eea84c))
+* **grade-explanation:** add explain_grade weighted-grade reconciliation tool ([f7ef60a](https://github.com/bruchris/canvas-lms-mcp/commit/f7ef60aa13b03547317b944fbc43cb8f709801ca))
+* **grade-projection:** add project_grade tool for grade projection ([#248](https://github.com/bruchris/canvas-lms-mcp/issues/248)) ([32e0fcc](https://github.com/bruchris/canvas-lms-mcp/commit/32e0fcc2f567a18a3019769b0c53f6abe7717aa7))
+* **grading-policy:** explain a course's grading automation policy ([459bc16](https://github.com/bruchris/canvas-lms-mcp/commit/459bc16510001ec595f71ac56bd4c0a5cf6e4c74))
+* **grading-standards:** list, create, and apply course grading standards ([09c49ca](https://github.com/bruchris/canvas-lms-mcp/commit/09c49cabfe74640b9e615234ebdb809033c43b43)), closes [#186](https://github.com/bruchris/canvas-lms-mcp/issues/186)
+* **link-audit:** detect broken and cross-course links in course content ([614d063](https://github.com/bruchris/canvas-lms-mcp/commit/614d063a1ae58725e14c324265a78d36a9e9f4b8)), closes [#218](https://github.com/bruchris/canvas-lms-mcp/issues/218)
+* **link-audit:** scan quizzes for broken and cross-course links ([f0add9e](https://github.com/bruchris/canvas-lms-mcp/commit/f0add9e0ac0931072cb5118a1c553d1f440ed00c)), closes [#227](https://github.com/bruchris/canvas-lms-mcp/issues/227)
+* **quiz-accommodations:** add New Quizzes accommodation tools ([#226](https://github.com/bruchris/canvas-lms-mcp/issues/226)) ([d558989](https://github.com/bruchris/canvas-lms-mcp/commit/d5589899722644a5c67d731ad65db5236b1cd03e))
+* **quizzes:** add get_quiz_question_responses grade-by-question tool ([08913f5](https://github.com/bruchris/canvas-lms-mcp/commit/08913f55e29431271477eda1b42ea3df46dfeab5))
+* **quizzes:** add get_quiz_submission_events tool ([87a1639](https://github.com/bruchris/canvas-lms-mcp/commit/87a1639914dc6f4f0417f71ed1a71e58ecb83fc4))
+* **quizzes:** apply per-student quiz accommodations across a course ([fb86f6b](https://github.com/bruchris/canvas-lms-mcp/commit/fb86f6bdbfdf73951366cd37edb333d5030ba6ae))
+* **roles:** add role-based tool filtering (student/teacher/admin) [BRU-1637] ([#190](https://github.com/bruchris/canvas-lms-mcp/issues/190)) ([da82137](https://github.com/bruchris/canvas-lms-mcp/commit/da821379601094b748371bfef4c51624d5fb38de))
+* **student-search:** add find_student_across_courses tool ([#246](https://github.com/bruchris/canvas-lms-mcp/issues/246)) ([a0fa063](https://github.com/bruchris/canvas-lms-mcp/commit/a0fa063cf38ad3ba2eb1b59728a33f54c8aad8eb))
+* **student:** surface instructor and peer feedback comments on my submissions ([aeb87bc](https://github.com/bruchris/canvas-lms-mcp/commit/aeb87bc07ff2a4f3089e29f093ff5b52fa909a41))
+* **submissions:** surface course submissions awaiting manual grading ([00a794f](https://github.com/bruchris/canvas-lms-mcp/commit/00a794f6717074d0788c7a1ff54587d599a918fe)), closes [#221](https://github.com/bruchris/canvas-lms-mcp/issues/221)
+* **tools:** add list_course_submission_files for bulk student-work archiving ([025746b](https://github.com/bruchris/canvas-lms-mcp/commit/025746b7b6e4e961cd8a5f7098f9f520734e4689))
+
+
+### Bug Fixes
+
+* **student-search:** cap concurrent Canvas API fan-out to 10 at a time ([#252](https://github.com/bruchris/canvas-lms-mcp/issues/252)) ([bab2234](https://github.com/bruchris/canvas-lms-mcp/commit/bab22347c9fd3062b053e76053d1c93f68bfc639))
+
+
+### Miscellaneous
+
+* **deps:** batch 9 minor/patch dependency bumps ([#251](https://github.com/bruchris/canvas-lms-mcp/issues/251)) ([d6eeeed](https://github.com/bruchris/canvas-lms-mcp/commit/d6eeeed0588d9dd02a567f86b28a6714b3ce57d7))
+* **deps:** batch minor/patch bumps (13 packages, incl. zod runtime) ([#177](https://github.com/bruchris/canvas-lms-mcp/issues/177)) ([fd6eb0f](https://github.com/bruchris/canvas-lms-mcp/commit/fd6eb0f31cd493fa3eb0ec60677ac05872d71c89))
+* **deps:** patch pnpm.overrides for 8 audit advisories ([#243](https://github.com/bruchris/canvas-lms-mcp/issues/243)) ([d1e9ef4](https://github.com/bruchris/canvas-lms-mcp/commit/d1e9ef4f2270f7a6599293d6feb1b0f6de0e2001))
+* **deps:** refresh lockfile to clear audit advisories ([#203](https://github.com/bruchris/canvas-lms-mcp/issues/203)) ([254c3d5](https://github.com/bruchris/canvas-lms-mcp/commit/254c3d56fe251e23727711a09484227a7ba8b537))
+* ignore .tmp scratch directory ([#171](https://github.com/bruchris/canvas-lms-mcp/issues/171)) ([3961ba5](https://github.com/bruchris/canvas-lms-mcp/commit/3961ba5c248b8e24e51b80acfeaa423974924b0a))
+* **tools:** unify partial-failure fan-out envelope across write tools [BRU-1704] ([#205](https://github.com/bruchris/canvas-lms-mcp/issues/205)) ([6c121e3](https://github.com/bruchris/canvas-lms-mcp/commit/6c121e3b873ef7293bfad924012518660fb7e944))
+
+
+### Documentation
+
+* add project landing page for GitHub Pages ([#255](https://github.com/bruchris/canvas-lms-mcp/issues/255)) ([cffb82e](https://github.com/bruchris/canvas-lms-mcp/commit/cffb82eca8d5e43974d2f2202707ae2471886eda))
+* allow issue-worker routine to auto-merge its own gated PRs ([#175](https://github.com/bruchris/canvas-lms-mcp/issues/175)) ([38835da](https://github.com/bruchris/canvas-lms-mcp/commit/38835da0fd6a62eed2ca68a957eff65ae2c04916))
+* **marketing:** add July 2026 outreach draft for r/mcp, r/ClaudeAI, Show HN ([#253](https://github.com/bruchris/canvas-lms-mcp/issues/253)) ([17016a6](https://github.com/bruchris/canvas-lms-mcp/commit/17016a6acc5ca3116a077667aa1ff6c7d07a726e))
+* **spec:** accessibility WCAG content-audit tool spec (spec for [#245](https://github.com/bruchris/canvas-lms-mcp/issues/245)) ([#247](https://github.com/bruchris/canvas-lms-mcp/issues/247)) ([a15b523](https://github.com/bruchris/canvas-lms-mcp/commit/a15b52360de766a764dffa2e5154efb952521aab))
+* **spec:** audit course links — link/image audit tool (spec for [#218](https://github.com/bruchris/canvas-lms-mcp/issues/218)) ([3108642](https://github.com/bruchris/canvas-lms-mcp/commit/31086421a25a2a18c9434edd97fd5e5cbabcd71d))
+* **spec:** content exports via content_exports API (spec for [#181](https://github.com/bruchris/canvas-lms-mcp/issues/181)) ([9d39159](https://github.com/bruchris/canvas-lms-mcp/commit/9d3915960bb8db0c43daf790edcb2ec5a0e57b4b))
+* **spec:** course submission file manifest tool (spec for [#210](https://github.com/bruchris/canvas-lms-mcp/issues/210)) ([a4bb0fe](https://github.com/bruchris/canvas-lms-mcp/commit/a4bb0fe5f029b36995f8beb29e69ad61c2f10433))
+* **spec:** course-setup health check tool (spec for [#200](https://github.com/bruchris/canvas-lms-mcp/issues/200)) ([9a63545](https://github.com/bruchris/canvas-lms-mcp/commit/9a63545fb8dd923737d1082aa37aa6e3d513fb09))
+* **spec:** explain_grade tool — weighted grade reconciliation (spec for [#206](https://github.com/bruchris/canvas-lms-mcp/issues/206)) ([3e4d79d](https://github.com/bruchris/canvas-lms-mcp/commit/3e4d79d0fd208417eb7de47e6b7fd071905ad7c4))
+* **spec:** explain_grading_policy tool — late/missing policy + group weights (spec for [#213](https://github.com/bruchris/canvas-lms-mcp/issues/213)) ([9db8d54](https://github.com/bruchris/canvas-lms-mcp/commit/9db8d54c7b6b739845ba9598cb3a69683c666061))
+* **spec:** find student across courses tool spec (spec for [#235](https://github.com/bruchris/canvas-lms-mcp/issues/235)) ([#236](https://github.com/bruchris/canvas-lms-mcp/issues/236)) ([f3d1f0b](https://github.com/bruchris/canvas-lms-mcp/commit/f3d1f0b0ab0c22e3c9887e8e30e8fe5429afead3))
+* **spec:** grade projection tool spec (spec for [#216](https://github.com/bruchris/canvas-lms-mcp/issues/216)) ([#217](https://github.com/bruchris/canvas-lms-mcp/issues/217)) ([8d39a7f](https://github.com/bruchris/canvas-lms-mcp/commit/8d39a7fe31e9daeedbb14edbddf15fc60d63d13a))
+* **spec:** grade-by-question quiz review tool spec (spec for [#240](https://github.com/bruchris/canvas-lms-mcp/issues/240)) ([29a52de](https://github.com/bruchris/canvas-lms-mcp/commit/29a52dea546840de8159f2ed1586cf838f1e36d3))
+* **spec:** grading standards tools — list, create, apply (spec for [#186](https://github.com/bruchris/canvas-lms-mcp/issues/186)) ([d092eed](https://github.com/bruchris/canvas-lms-mcp/commit/d092eed478e7b063159604a59415898390dd5951))
+* **spec:** instructor needs-attention tooling design [BRU-1591] ([#173](https://github.com/bruchris/canvas-lms-mcp/issues/173)) ([e3cc531](https://github.com/bruchris/canvas-lms-mcp/commit/e3cc531e4484fd3ebf7657696730b45fe4ac0591))
+* **spec:** New Quizzes accommodations tool spec (spec for [#224](https://github.com/bruchris/canvas-lms-mcp/issues/224)) ([e633f05](https://github.com/bruchris/canvas-lms-mcp/commit/e633f054131fb177221f64c68e9e1d5760edd193))
+* **spec:** per-student assignment due-date/availability overrides (spec for [#197](https://github.com/bruchris/canvas-lms-mcp/issues/197)) ([0e65266](https://github.com/bruchris/canvas-lms-mcp/commit/0e652667ba02267f975762f2a932a21b819c7e28))
+* **spec:** per-student quiz accommodations fan-out tools (spec for [#191](https://github.com/bruchris/canvas-lms-mcp/issues/191)) ([36734d2](https://github.com/bruchris/canvas-lms-mcp/commit/36734d201e5e6e425e090776c32a2592a8e4852e))
+* **spec:** quiz link/image audit tool (spec for [#227](https://github.com/bruchris/canvas-lms-mcp/issues/227)) ([df1392f](https://github.com/bruchris/canvas-lms-mcp/commit/df1392ff36c2d211ea4d2e30032cbad2215be56d))
+* **spec:** quiz submission event logs tool (spec for [#182](https://github.com/bruchris/canvas-lms-mcp/issues/182)) ([5303bfe](https://github.com/bruchris/canvas-lms-mcp/commit/5303bfe373ae30d224370fbe06957371cbd7159f))
+* **spec:** reconcile tool count 133→144, stop recurring drift ([05c9f8c](https://github.com/bruchris/canvas-lms-mcp/commit/05c9f8c44b7a14cfe6662437d40f7785c459eb85))
+* **spec:** student submission feedback tool (spec for [#230](https://github.com/bruchris/canvas-lms-mcp/issues/230)) ([3b45cbe](https://github.com/bruchris/canvas-lms-mcp/commit/3b45cbe1ab7021bbe203bdf6d4d1c99086cdec21))
+* **spec:** submissions awaiting manual grading tool (spec for [#221](https://github.com/bruchris/canvas-lms-mcp/issues/221)) ([a978668](https://github.com/bruchris/canvas-lms-mcp/commit/a978668607a16531b25bffcf2aa8bad2f24af132))
+* **spec:** submissions open past due tool spec (spec for [#237](https://github.com/bruchris/canvas-lms-mcp/issues/237)) ([08ec67e](https://github.com/bruchris/canvas-lms-mcp/commit/08ec67e0ab3e2f67f2b0985a72cf99e2992d80ee))
+* **spec:** update tool inventory to 133 tools (+ per-domain tallies) [BRU-1706] ([#204](https://github.com/bruchris/canvas-lms-mcp/issues/204)) ([3cbbc58](https://github.com/bruchris/canvas-lms-mcp/commit/3cbbc583a67c0e92edcf92c2ed56319c2d97f185))
+* update tool count 119→144, add 25 missing tools to inventory table ([#250](https://github.com/bruchris/canvas-lms-mcp/issues/250)) ([095dc40](https://github.com/bruchris/canvas-lms-mcp/commit/095dc40cbd38577ffa3eb8d7b7c63433f6e0d6c6))
+
 ## [1.22.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.21.0...canvas-lms-mcp-v1.22.0) (2026-06-11)
 
 
