@@ -83,6 +83,33 @@ describe('tool manifest generation', () => {
     expect(committed).toEqual(generated)
   })
 
+  it('README.md comparison-table tool count matches manifest', () => {
+    const readme = readFileSync(resolve('README.md'), 'utf8')
+    const match = readme.match(/\| Tools \| (\d+) \|/)
+    if (!match) throw new Error('Could not find "| Tools | N |" row in README.md comparison table')
+    const readmeCount = Number(match[1])
+
+    const manifest = buildToolManifest()
+    expect(
+      readmeCount,
+      `README.md comparison table says ${readmeCount} tools but manifest has ${manifest.tools.length}. Update "| Tools | N |" in README.md.`,
+    ).toBe(manifest.tools.length)
+  })
+
+  it('docs/index.html ledger-num matches manifest tool count', () => {
+    const html = readFileSync(resolve('docs/index.html'), 'utf8')
+    const match = html.match(/<div class="ledger-num">(\d+)<small>/)
+    if (!match)
+      throw new Error('Could not find <div class="ledger-num">N<small> in docs/index.html')
+    const htmlCount = Number(match[1])
+
+    const manifest = buildToolManifest()
+    expect(
+      htmlCount,
+      `docs/index.html ledger-num says ${htmlCount} tools but manifest has ${manifest.tools.length}. Update the ledger-num div in docs/index.html.`,
+    ).toBe(manifest.tools.length)
+  })
+
   it('spec Totals line matches manifest counts', () => {
     const spec = readFileSync(
       resolve('docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md'),
