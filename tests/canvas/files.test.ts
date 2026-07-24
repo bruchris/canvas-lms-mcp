@@ -282,6 +282,80 @@ describe('FilesModule', () => {
         files.upload(100, 'file.txt', 'not-valid-base64!!!', 'text/plain'),
       ).rejects.toThrow('Invalid base64 content')
     })
+
+    it('resolves relative upload_url (leading slash) against Canvas baseUrl for self-hosted instances', async () => {
+      const confirmedFile = {
+        id: 55,
+        display_name: 'probe.txt',
+        filename: 'probe.txt',
+        content_type: 'text/plain',
+        url: 'https://canvas.example.com/files/55/download',
+        size: 5,
+        folder_id: 1,
+      }
+
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce({
+          upload_url: '/canvas-files/course-4/probe.txt',
+          upload_params: { key: 'course-4/probe.txt' },
+        })
+        .mockResolvedValueOnce(confirmedFile)
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://canvas.example.com/api/v1/files/55/confirm' },
+          }),
+        ),
+      )
+
+      const result = await files.upload(100, 'probe.txt', btoa('hello'), 'text/plain')
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://canvas.example.com/canvas-files/course-4/probe.txt',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
+      expect(result).toMatchObject({ id: 55, display_name: 'probe.txt' })
+    })
+
+    it('resolves relative upload_url (no leading slash) against Canvas baseUrl for self-hosted instances', async () => {
+      const confirmedFile = {
+        id: 56,
+        display_name: 'doc.txt',
+        filename: 'doc.txt',
+        content_type: 'text/plain',
+        url: 'https://canvas.example.com/files/56/download',
+        size: 3,
+        folder_id: 1,
+      }
+
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce({
+          upload_url: 'canvas-files/course-4/doc.txt',
+          upload_params: {},
+        })
+        .mockResolvedValueOnce(confirmedFile)
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://canvas.example.com/api/v1/files/56/confirm' },
+          }),
+        ),
+      )
+
+      const result = await files.upload(100, 'doc.txt', btoa('hey'), 'text/plain')
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://canvas.example.com/canvas-files/course-4/doc.txt',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
+      expect(result).toMatchObject({ id: 56 })
+    })
   })
 
   describe('delete', () => {
