@@ -630,6 +630,12 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 |------|------|-------------|
 | `audit_course_links` | read | Scan a course's pages, assignments, syllabus, and announcements for broken or outdated links and images — returns structured findings with location and reason |
 
+#### Accessibility Audit (1 tool)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `audit_course_accessibility` | read | Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for structurally-detectable WCAG 2.1 accessibility problems — images missing or with low-quality alt text, non-descriptive link text, adjacent duplicate links, skipped/empty/overlong headings, and tables missing headers, header scope, or captions. Each finding includes a WCAG success criterion and severity. Requires instructor permissions. |
+
 **Totals: 148 tools (106 read, 42 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 149th tool (read).
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand.
