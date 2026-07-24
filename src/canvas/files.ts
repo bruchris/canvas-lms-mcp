@@ -64,10 +64,16 @@ export class FilesModule {
     }
     form.append('file', new Blob([content], { type: contentType }), name)
 
+    // Self-hosted Canvas instances (local/instfs storage) return a relative upload_url.
+    // Resolve it against baseUrl so Node's fetch receives a valid absolute URL.
+    const uploadUrl = uploadInfo.upload_url.startsWith('http')
+      ? uploadInfo.upload_url
+      : new URL(uploadInfo.upload_url, `${this.client.baseUrl}/`).toString()
+
     // Use redirect: 'manual' so we can handle the 303 → Canvas confirm step ourselves
     let s3Response: Response
     try {
-      s3Response = await fetch(uploadInfo.upload_url, {
+      s3Response = await fetch(uploadUrl, {
         method: 'POST',
         body: form,
         redirect: 'manual',
@@ -75,9 +81,9 @@ export class FilesModule {
     } catch (networkErr) {
       let hostname: string
       try {
-        hostname = new URL(uploadInfo.upload_url).hostname
+        hostname = new URL(uploadUrl).hostname
       } catch {
-        hostname = uploadInfo.upload_url
+        hostname = uploadUrl
       }
       throw new Error(`Unable to reach file storage (${hostname})`, { cause: networkErr })
     }
