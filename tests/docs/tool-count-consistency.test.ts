@@ -8,8 +8,11 @@ const manifest = JSON.parse(
 )
 const readme = readFileSync(resolve(ROOT, 'README.md'), 'utf8')
 const indexHtml = readFileSync(resolve(ROOT, 'docs/index.html'), 'utf8')
+const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'))
+const bundleManifest = JSON.parse(readFileSync(resolve(ROOT, 'manifest.json'), 'utf8'))
 
 interface ManifestTool {
+  domain: string
   annotations?: { readOnlyHint?: boolean }
   primaryAudience: 'shared' | 'student' | 'educator' | 'admin'
 }
@@ -17,7 +20,8 @@ interface ManifestTool {
 const tools = manifest.tools as ManifestTool[]
 const TOTAL = manifest.toolCount as number
 const READ_ONLY = tools.filter((t) => t.annotations?.readOnlyHint === true).length
-const WRITE = TOTAL - READ_ONLY
+const WRITE = tools.filter((t) => t.annotations?.readOnlyHint !== true).length
+const DOMAIN_COUNT = new Set(tools.map((t) => t.domain)).size
 
 // Role visibility mirrors src/tools/roles.ts ROLE_VISIBILITY
 const STUDENT_COUNT = tools.filter(
@@ -43,6 +47,32 @@ describe('doc tool-count consistency', () => {
       READ_ONLY + WRITE,
       `manifest read(${READ_ONLY}) + write(${WRITE}) should equal toolCount(${TOTAL})`,
     ).toBe(TOTAL)
+  })
+
+  describe('package.json', () => {
+    it('description total count', () => {
+      const m = pkg.description.match(/(\d+) tools across Canvas/)
+      expect(m, 'package.json description "N tools across Canvas" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `package.json description has ${m![1]} but manifest.toolCount is ${TOTAL} — update package.json`,
+      ).toBe(TOTAL)
+    })
+  })
+
+  describe('manifest.json', () => {
+    it('description tool count and domain count', () => {
+      const m = bundleManifest.description.match(/(\d+) tools across (\d+) domains/)
+      expect(m, 'manifest.json description "N tools across N domains" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `manifest.json description has ${m![1]} but manifest.toolCount is ${TOTAL} — update manifest.json`,
+      ).toBe(TOTAL)
+      expect(
+        Number(m![2]),
+        `manifest.json description has ${m![2]} domains but manifest has ${DOMAIN_COUNT} distinct domains — update manifest.json`,
+      ).toBe(DOMAIN_COUNT)
+    })
   })
 
   describe('README.md', () => {
@@ -71,6 +101,42 @@ describe('doc tool-count consistency', () => {
         Number(m![2]),
         `README.md write count is ${m![2]} but manifest says ${WRITE} — update README.md`,
       ).toBe(WRITE)
+    })
+
+    it('role-filter unset/all count', () => {
+      const m = readme.match(/\| all \(~(\d+)\)/)
+      expect(m, 'README.md role-filter table "| all (~N)" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `README.md role-filter unset count is ${m![1]} but manifest.toolCount is ${TOTAL} — update README.md`,
+      ).toBe(TOTAL)
+    })
+
+    it('role-filter student count', () => {
+      const m = readme.match(/`student` \| ~(\d+)/)
+      expect(m, 'README.md role-filter table "`student` | ~N" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `README.md role-filter student count is ${m![1]} but manifest audience sums to ${STUDENT_COUNT} — update README.md`,
+      ).toBe(STUDENT_COUNT)
+    })
+
+    it('role-filter teacher count', () => {
+      const m = readme.match(/`teacher` \| ~(\d+)/)
+      expect(m, 'README.md role-filter table "`teacher` | ~N" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `README.md role-filter teacher count is ${m![1]} but manifest audience sums to ${TEACHER_COUNT} — update README.md`,
+      ).toBe(TEACHER_COUNT)
+    })
+
+    it('role-filter admin count', () => {
+      const m = readme.match(/`admin` \| ~(\d+)/)
+      expect(m, 'README.md role-filter table "`admin` | ~N" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `README.md role-filter admin count is ${m![1]} but manifest audience sums to ${ADMIN_COUNT} — update README.md`,
+      ).toBe(ADMIN_COUNT)
     })
   })
 
