@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 148,
+  "toolCount": 155,
   "tools": [
     {
       "name": "health_check",
@@ -1624,6 +1624,90 @@
         "openWorldHint": true
       },
       "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_content_migrations",
+      "domain": "content_migrations",
+      "description": "List all content migrations for a course (most recent first).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_content_migration",
+      "domain": "content_migrations",
+      "description": "Get the status of a single content migration. When workflow_state is \"running\", poll progress_url for live updates. When \"completed\", the migration is done.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_content_migration_types",
+      "domain": "content_migrations",
+      "description": "List available migration types (migrators) for a course. Returns migrator type keys such as course_copy_importer, common_cartridge_importer, zip_file_importer, qti_converter, moodle_converter.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_migration_selective_data",
+      "domain": "content_migrations",
+      "description": "Get the selective import tree for a migration — the list of content items available to selectively import. Only meaningful for migrations in the \"waiting_for_select\" state.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_migration_asset_id_mapping",
+      "domain": "content_migrations",
+      "description": "Get the old-to-new asset ID mapping for a completed migration. Useful for resolving references to content that existed in the source course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_migration_issues",
+      "domain": "content_migrations",
+      "description": "List issues encountered during a content migration. Each issue has a type (todo, warning, or error) and a description.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_content_migration",
+      "domain": "content_migrations",
+      "description": "Start a content migration (course copy, Common Cartridge import, zip import, QTI conversion, or Moodle conversion). Migrations are asynchronous — this tool returns immediately with a migration ID and progress_url. Poll get_content_migration or progress_url to track completion.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
       "primaryAudience": "educator",
       "relatedWorkflows": []
     },

@@ -22,6 +22,7 @@ import { OutcomesModule } from './outcomes'
 import { GradebookHistoryModule } from './gradebook-history'
 import { NewQuizzesModule } from './new-quizzes'
 import { ContentExportsModule } from './content-exports'
+import { ContentMigrationsModule } from './content-migrations'
 import { GradingStandardsModule } from './grading-standards'
 import { LatePolicyModule } from './late-policy'
 
@@ -61,6 +62,7 @@ export class CanvasClient {
   gradebookHistory: GradebookHistoryModule
   newQuizzes: NewQuizzesModule
   contentExports: ContentExportsModule
+  contentMigrations: ContentMigrationsModule
   gradingStandards: GradingStandardsModule
   latePolicy: LatePolicyModule
 
@@ -88,6 +90,7 @@ export class CanvasClient {
     this.gradebookHistory = new GradebookHistoryModule(this.client)
     this.newQuizzes = new NewQuizzesModule(this.client)
     this.contentExports = new ContentExportsModule(this.client)
+    this.contentMigrations = new ContentMigrationsModule(this.client)
     this.gradingStandards = new GradingStandardsModule(this.client)
     this.latePolicy = new LatePolicyModule(this.client)
   }

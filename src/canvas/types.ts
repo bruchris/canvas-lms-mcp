@@ -1154,3 +1154,49 @@ export interface CanvasContentExport {
   created_at: string
   updated_at: string
 }
+
+// --- Content Migrations ---
+
+export type ContentMigrationWorkflowState =
+  'created' | 'queued' | 'running' | 'waiting_for_select' | 'completed' | 'failed' | (string & {})
+
+export interface CanvasContentMigration {
+  id: number
+  migration_type: string
+  migration_type_title?: string
+  workflow_state: ContentMigrationWorkflowState
+  /** URL to poll for async progress. Present once the migration is queued. */
+  progress_url: string | null
+  migration_issues_url: string
+  finished_at: string | null
+  started_at: string | null
+  created_at: string
+  updated_at: string
+  user_id?: number
+  attachment?: {
+    url: string
+    filename: string
+  } | null
+  /** Set when migration_type is 'course_copy_importer'. */
+  settings?: Record<string, unknown>
+}
+
+export interface CanvasContentMigrator {
+  type: string
+  name: string
+  requires_file_upload: boolean
+  specification_url: string | null
+}
+
+export interface CanvasMigrationIssue {
+  id: number
+  content_migration_url: string
+  description: string
+  workflow_state: 'active' | 'resolved'
+  fix_issue_html_url?: string
+  issue_type: 'todo' | 'warning' | 'error'
+  error_message?: string
+  error_report_html_url?: string
+  created_at: string
+  updated_at: string
+}

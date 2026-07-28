@@ -179,6 +179,15 @@ function buildFullMockCanvas(): CanvasClient {
       get: async () => ({}),
       list: async () => [],
     },
+    contentMigrations: {
+      list: async () => [],
+      get: async () => ({}),
+      listMigrators: async () => [],
+      getSelectiveData: async () => [],
+      getAssetIdMapping: async () => ({}),
+      listMigrationIssues: async () => [],
+      create: async () => ({}),
+    },
     gradingStandards: {
       listForCourse: async () => [],
       listForAccount: async () => [],
@@ -194,7 +203,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 147 tools across all domains', () => {
+  it('returns all 155 tools across all domains', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -385,7 +394,7 @@ describe('getAllTools', () => {
     // Grade Projection (1)
     expect(names).toContain('project_grade')
 
-    expect(tools).toHaveLength(148)
+    expect(tools).toHaveLength(155)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -433,6 +442,7 @@ describe('getAllTools', () => {
       'update_new_quiz_item',
       'delete_new_quiz_item',
       'create_content_export',
+      'create_content_migration',
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',
@@ -494,6 +504,7 @@ describe('getAllTools', () => {
       'update_new_quiz_item',
       'delete_new_quiz_item',
       'create_content_export',
+      'create_content_migration',
       'create_grading_standard',
       'apply_grading_standard_to_course',
       'set_student_quiz_accommodation',

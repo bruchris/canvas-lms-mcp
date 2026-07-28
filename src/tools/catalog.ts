@@ -7,6 +7,7 @@ import { assignmentTools } from './assignments'
 import { assignmentOverrideTools } from './assignment-overrides'
 import { calendarTools } from './calendar'
 import { contentExportsTools } from './content-exports'
+import { contentMigrationsTools } from './content-migrations'
 import { conversationTools } from './conversations'
 import { courseSetupTools } from './course-setup'
 import { courseTools } from './courses'
@@ -192,6 +193,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'content_exports',
     defaultPrimaryAudience: 'educator',
     getTools: contentExportsTools,
+  },
+  {
+    domain: 'content_migrations',
+    defaultPrimaryAudience: 'educator',
+    getTools: contentMigrationsTools,
   },
   {
     domain: 'grading_standards',
