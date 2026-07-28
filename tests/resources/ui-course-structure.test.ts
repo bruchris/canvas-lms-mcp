@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server'
+import { RESOURCE_MIME_TYPE } from '../../src/mcp-apps'
 import { registerCourseStructureUI } from '../../src/resources/ui-course-structure'
 
 const RESOURCE_URI = 'ui://canvas-lms-mcp/course-structure.html'

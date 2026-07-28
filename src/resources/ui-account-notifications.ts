@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { registerAppResource, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server'
+import { registerAppResource, RESOURCE_MIME_TYPE } from '../mcp-apps'
 import { ACCOUNT_NOTIFICATIONS_HTML } from '../ui/account-notifications.html'
 
 const RESOURCE_URI = 'ui://canvas-lms-mcp/account-notifications.html'

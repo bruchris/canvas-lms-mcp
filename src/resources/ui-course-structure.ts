@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { registerAppResource, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server'
+import { registerAppResource, RESOURCE_MIME_TYPE } from '../mcp-apps'
 import { COURSE_STRUCTURE_HTML } from '../ui/course-structure.html'
 
 const RESOURCE_URI = 'ui://canvas-lms-mcp/course-structure.html'
