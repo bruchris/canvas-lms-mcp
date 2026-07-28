@@ -130,7 +130,7 @@ Once configured, try these prompts with your AI client:
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — registered only when `CANVAS_PSEUDONYMIZE_STUDENTS=true` |
 
-106 tools are read-only and 42 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` adds a 149th read tool.
+112 tools are read-only and 43 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` is registered as the 156th tool overall (113th read tool).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
