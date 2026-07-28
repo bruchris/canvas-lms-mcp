@@ -12,7 +12,7 @@ const { mockToolHandler, mockUiToolHandler, registerAppToolSpy } = vi.hoisted(()
   registerAppToolSpy: vi.fn(),
 }))
 
-vi.mock('@modelcontextprotocol/ext-apps/server', () => ({
+vi.mock('../../src/mcp-apps', () => ({
   registerAppTool: registerAppToolSpy,
 }))
 
