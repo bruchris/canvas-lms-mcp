@@ -323,10 +323,13 @@ pnpm typecheck     # TypeScript strict type check
 
 ### Dependency audit
 
-The `pnpm.overrides.hono` entry pins `hono` to `4.12.14` because
-`@modelcontextprotocol/sdk@1.29.0` allows vulnerable `hono <4.12.14`
-versions. Remove the override when the MCP SDK publishes a release that
-depends on a patched `hono` range.
+The `pnpm.overrides.hono` entry pins `hono` to `^4.12.27` as a
+belt-and-suspenders guard. `@modelcontextprotocol/sdk@1.30.0` pulls in
+`@hono/node-server@2.0.11`, which already declares
+`peerDependencies: { hono: "^4.12.27" }` — a floor above the
+vulnerability threshold (4.12.14). The override is therefore redundant
+but harmless and can be removed once you have confirmed your resolved
+`hono` version is ≥ 4.12.27.
 
 ### Architecture
 
