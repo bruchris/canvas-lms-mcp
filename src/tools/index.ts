@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { registerAppTool } from '@modelcontextprotocol/ext-apps/server'
+import { registerAppTool } from '../mcp-apps'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
