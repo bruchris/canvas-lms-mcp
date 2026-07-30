@@ -82,4 +82,7 @@ export const toolAudienceOverrides: Readonly<Record<string, ToolAudience>> = {
   get_submission_peer_reviews: 'student',
   create_peer_review: 'educator',
   delete_peer_review: 'educator',
+  list_appointment_groups: 'shared',
+  get_appointment_group: 'shared',
+  next_appointment: 'shared',
 }

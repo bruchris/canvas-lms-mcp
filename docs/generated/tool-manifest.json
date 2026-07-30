@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 155,
+  "toolCount": 163,
   "tools": [
     {
       "name": "health_check",
@@ -1901,6 +1901,102 @@
       },
       "access": "read",
       "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_appointment_groups",
+      "domain": "appointment_groups",
+      "description": "List appointment groups (Canvas Scheduler sign-up slots). Use scope=reservable to find groups students can reserve, or scope=manageable for groups the current user manages.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "get_appointment_group",
+      "domain": "appointment_groups",
+      "description": "Get a single appointment group by ID, including its time slots and participant counts.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "create_appointment_group",
+      "domain": "appointment_groups",
+      "description": "Create a new appointment group (sign-up slots) in Canvas Scheduler. Provide at least one context_code (e.g. \"course_123\") and a title. Add new_appointments as [start_at, end_at] pairs to define time slots.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "update_appointment_group",
+      "domain": "appointment_groups",
+      "description": "Update an existing appointment group. Use publish=true to make a draft group visible to participants, or add new time slots via new_appointments.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "delete_appointment_group",
+      "domain": "appointment_groups",
+      "description": "Delete an appointment group and cancel any existing reservations. Provide cancel_reason to notify participants.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_appointment_group_users",
+      "domain": "appointment_groups",
+      "description": "List participants (users) who have reserved a slot in an appointment group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "list_appointment_group_groups",
+      "domain": "appointment_groups",
+      "description": "List student groups that have reserved a slot in an appointment group (when participant_type=Group).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "educator",
+      "relatedWorkflows": []
+    },
+    {
+      "name": "next_appointment",
+      "domain": "appointment_groups",
+      "description": "Get the current user's next upcoming appointment across all (or specified) appointment groups.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
       "relatedWorkflows": []
     }
   ]

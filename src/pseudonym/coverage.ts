@@ -71,4 +71,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/student-search.ts
   'find_student_across_courses',
+
+  // src/tools/appointment-groups.ts
+  'list_appointment_group_users',
 ] as const
