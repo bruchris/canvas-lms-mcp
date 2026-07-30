@@ -74,4 +74,6 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/appointment-groups.ts
   'list_appointment_group_users',
+  'list_appointment_groups',
+  'get_appointment_group',
 ] as const

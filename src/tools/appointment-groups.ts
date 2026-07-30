@@ -34,13 +34,16 @@ export function appointmentGroupTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       audience: 'shared',
-      handler: async (params) =>
-        canvas.appointmentGroups.list({
+      handler: async (params) => {
+        const groups = await canvas.appointmentGroups.list({
           scope: params.scope as 'reservable' | 'manageable' | undefined,
           include: params.include as
             Array<'appointments' | 'child_events' | 'participant_count'> | undefined,
           context_codes: params.context_codes as string[] | undefined,
-        }),
+        })
+        if (!pseudonymizer?.isEnabled()) return groups
+        return Promise.all(groups.map((g) => pseudonymizer.anonymizeAppointmentGroupResponse(g)))
+      },
     },
     {
       name: 'get_appointment_group',
@@ -52,12 +55,15 @@ export function appointmentGroupTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       audience: 'shared',
-      handler: async (params) =>
-        canvas.appointmentGroups.get(
+      handler: async (params) => {
+        const group = await canvas.appointmentGroups.get(
           params.appointment_group_id as number,
           params.include as
             Array<'appointments' | 'child_events' | 'participant_count'> | undefined,
-        ),
+        )
+        if (!pseudonymizer?.isEnabled()) return group
+        return pseudonymizer.anonymizeAppointmentGroupResponse(group)
+      },
     },
     {
       name: 'create_appointment_group',
