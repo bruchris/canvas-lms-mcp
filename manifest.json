@@ -4,7 +4,7 @@
   "name": "canvas-lms-mcp",
   "display_name": "Canvas LMS",
   "version": "1.26.0",
-  "description": "TypeScript MCP server for Canvas LMS — 163 tools across 41 domains.",
+  "description": "TypeScript MCP server for Canvas LMS — 165 tools across 42 domains.",
   "long_description": "MCP server for Canvas LMS. Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.",
   "author": {
     "name": "Christian Bru",

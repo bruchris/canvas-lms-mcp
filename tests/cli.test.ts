@@ -26,6 +26,7 @@ describe('parseArgs', () => {
       mode: 'stdio',
       port: 3001,
       allowedOrigin: 'http://localhost:3000',
+      enableAssignmentSubmission: false,
     })
   })
 
@@ -168,6 +169,7 @@ describe('parseArgs', () => {
       mode: 'http',
       port: 9000,
       allowedOrigin: 'http://localhost:3000',
+      enableAssignmentSubmission: false,
     })
   })
 
@@ -238,6 +240,43 @@ describe('parseArgs', () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {})
       process.env.CANVAS_ROLE = 'admin'
       expect(parseArgs([...base, '--role', 'nope']).role).toBeUndefined()
+    })
+  })
+
+  describe('--enable-assignment-submission / CANVAS_ENABLE_ASSIGNMENT_SUBMISSION', () => {
+    const base = ['--token', 'my-token', '--base-url', 'https://canvas.example.com']
+
+    it('defaults enableAssignmentSubmission to false when neither flag nor env is set', () => {
+      expect(parseArgs([...base]).enableAssignmentSubmission).toBe(false)
+    })
+
+    it('sets enableAssignmentSubmission to true with --enable-assignment-submission flag', () => {
+      expect(
+        parseArgs([...base, '--enable-assignment-submission']).enableAssignmentSubmission,
+      ).toBe(true)
+    })
+
+    it('sets enableAssignmentSubmission to true when CANVAS_ENABLE_ASSIGNMENT_SUBMISSION=true', () => {
+      process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION = 'true'
+      expect(parseArgs([...base]).enableAssignmentSubmission).toBe(true)
+    })
+
+    it('recognises truthy env values: "1", "yes", "on"', () => {
+      for (const val of ['1', 'yes', 'on']) {
+        process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION = val
+        expect(parseArgs([...base]).enableAssignmentSubmission).toBe(true)
+      }
+    })
+
+    it('ignores non-truthy env value "false"', () => {
+      process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION = 'false'
+      expect(parseArgs([...base]).enableAssignmentSubmission).toBe(false)
+    })
+
+    it('CLI flag overrides absent env (env off + flag on = true)', () => {
+      expect(
+        parseArgs([...base, '--enable-assignment-submission']).enableAssignmentSubmission,
+      ).toBe(true)
     })
   })
 })

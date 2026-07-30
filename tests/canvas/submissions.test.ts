@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SubmissionsModule } from '../../src/canvas/submissions'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 import type { CanvasSubmission } from '../../src/canvas/types'
 
 describe('SubmissionsModule', () => {
@@ -348,6 +348,78 @@ describe('SubmissionsModule', () => {
           body: JSON.stringify({ comment: { text_comment: comment } }),
         },
       )
+    })
+  })
+
+  describe('submit', () => {
+    const mockSubmission: CanvasSubmission = {
+      id: 500,
+      assignment_id: 20,
+      user_id: 1,
+      submitted_at: '2026-07-30T10:00:00Z',
+      score: null,
+      grade: null,
+      body: null,
+      url: null,
+      attempt: 1,
+      workflow_state: 'submitted',
+    }
+
+    // Test 1: online_text_entry — no comment key when omitted
+    it('posts online_text_entry with body and no comment key when omitted', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockSubmission)
+      await submissions.submit(1, 20, {
+        submission_type: 'online_text_entry',
+        body: 'My essay',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1/assignments/20/submissions', {
+        method: 'POST',
+        body: JSON.stringify({
+          submission: { submission_type: 'online_text_entry', body: 'My essay' },
+        }),
+      })
+    })
+
+    // Test 2: online_url + comment
+    it('posts online_url with url and comment.text_comment', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockSubmission)
+      await submissions.submit(1, 20, {
+        submission_type: 'online_url',
+        url: 'https://example.com',
+        comment: 'Here it is',
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1/assignments/20/submissions', {
+        method: 'POST',
+        body: JSON.stringify({
+          submission: { submission_type: 'online_url', url: 'https://example.com' },
+          comment: { text_comment: 'Here it is' },
+        }),
+      })
+    })
+
+    // Test 3: online_upload with file_ids
+    it('posts online_upload with file_ids array', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockSubmission)
+      await submissions.submit(1, 20, {
+        submission_type: 'online_upload',
+        file_ids: [99, 100],
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/1/assignments/20/submissions', {
+        method: 'POST',
+        body: JSON.stringify({
+          submission: { submission_type: 'online_upload', file_ids: [99, 100] },
+        }),
+      })
+    })
+
+    // Test 4: propagates CanvasApiError
+    it('propagates CanvasApiError (403)', async () => {
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError(403, '/api/v1/courses/1/assignments/20/submissions', 'Forbidden'),
+      )
+      await expect(
+        submissions.submit(1, 20, { submission_type: 'online_text_entry', body: 'test' }),
+      ).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
 })

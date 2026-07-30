@@ -1,6 +1,7 @@
 import type { CanvasClient } from '../canvas'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import { accountTools } from './accounts'
+import { assignmentSubmissionTools } from './assignment-submission'
 import { analyticsTools } from './analytics'
 import { attentionTools } from './attention'
 import { assignmentTools } from './assignments'
@@ -37,7 +38,7 @@ import { studentSearchTools } from './student-search'
 import { submissionTools } from './submissions'
 import { submissionFileTools } from './submission-files'
 import { submissionsAwaitingGradingTools } from './submissions-awaiting-grading'
-import type { ToolAudience, ToolDefinition } from './types'
+import type { ToolAudience, ToolDefinition, ToolFeatureFlags } from './types'
 import { userTools } from './users'
 import { linkAuditTools } from './link-audit'
 import { accessibilityAuditTools } from './accessibility-audit'
@@ -47,6 +48,8 @@ export interface ToolDomainRegistration {
   domain: string
   defaultPrimaryAudience: ToolAudience
   getTools: (canvas: CanvasClient, pseudonymizer?: Pseudonymizer) => ToolDefinition[]
+  /** Feature-flag key that must be enabled for this domain to register. Omitted = always on. */
+  gate?: keyof ToolFeatureFlags
 }
 
 export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
@@ -254,5 +257,11 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'appointment_groups',
     defaultPrimaryAudience: 'educator',
     getTools: appointmentGroupTools,
+  },
+  {
+    domain: 'assignment_submission',
+    defaultPrimaryAudience: 'student',
+    gate: 'assignmentSubmission',
+    getTools: assignmentSubmissionTools,
   },
 ]

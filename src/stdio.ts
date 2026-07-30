@@ -11,6 +11,7 @@ async function main() {
     token: config.token,
     baseUrl: config.baseUrl,
     role: config.role,
+    enableAssignmentSubmission: config.enableAssignmentSubmission,
   })
 
   const transport = new StdioServerTransport()

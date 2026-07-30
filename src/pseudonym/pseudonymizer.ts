@@ -22,6 +22,7 @@ import type {
   CanvasSubmissionComment,
   CanvasUser,
 } from '../canvas/types'
+import { isEnvTruthy } from '../env'
 import { conversationsFilePath, mapFilePath, normalizeHost, resolvePseudonymDir } from './paths'
 import { classifyRole, shouldPseudonymize, type Role } from './roles'
 import {
@@ -58,13 +59,6 @@ export interface ReverseLookupResult {
 export interface PseudonymizationStatus {
   enabled: boolean
   reverseLookupEnabled: boolean
-}
-
-const TRUTHY_ENV_VALUES = new Set(['true', '1', 'yes', 'on'])
-
-function isEnvTruthy(value: string | undefined): boolean {
-  if (!value) return false
-  return TRUTHY_ENV_VALUES.has(value.trim().toLowerCase())
 }
 
 /**

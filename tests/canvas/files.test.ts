@@ -374,4 +374,106 @@ describe('FilesModule', () => {
       expect(client.request).toHaveBeenCalledWith('/api/v1/files/99', { method: 'DELETE' })
     })
   })
+
+  // Test 5-7: uploadToSubmission
+  describe('uploadToSubmission', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    const confirmedFile = {
+      id: 77,
+      display_name: 'essay.pdf',
+      filename: 'essay.pdf',
+      content_type: 'application/pdf',
+      url: 'https://canvas.example.com/files/77/download',
+      size: 512,
+      folder_id: 0,
+    }
+
+    // Test 5: step-1 POST hits the submission-scoped endpoint with no parent_folder_path
+    it('hits assignment submission endpoint, no parent_folder_path, and completes upload', async () => {
+      const uploadInfo = {
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: { key: 'submission/file' },
+      }
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce(uploadInfo) // step 1
+        .mockResolvedValueOnce(confirmedFile) // step 3 confirm
+
+      const mockS3Response = new Response(null, {
+        status: 303,
+        headers: { location: 'https://canvas.example.com/api/v1/files/77/confirm' },
+      })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(mockS3Response))
+
+      const contentBase64 = btoa('essay content')
+      const result = await files.uploadToSubmission(
+        1,
+        20,
+        'essay.pdf',
+        contentBase64,
+        'application/pdf',
+      )
+
+      // Step 1: hits the submission-scoped endpoint, no parent_folder_path
+      expect(client.request).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/courses/1/assignments/20/submissions/self/files',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringMatching(/"name":"essay\.pdf"/),
+        }),
+      )
+      const step1Body = JSON.parse(
+        (client.request as ReturnType<typeof vi.spyOn>).mock.calls[0][1].body as string,
+      )
+      expect(step1Body).not.toHaveProperty('parent_folder_path')
+      expect(step1Body).toMatchObject({ name: 'essay.pdf', content_type: 'application/pdf' })
+
+      // Steps 2-3 flow through completeUpload
+      expect(fetch).toHaveBeenCalledWith(
+        'https://s3.example.com/upload',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
+      expect(result).toMatchObject({ id: 77, display_name: 'essay.pdf' })
+    })
+
+    // Test 5b: relative upload_url is resolved against baseUrl (same as upload)
+    it('resolves relative upload_url against baseUrl', async () => {
+      const uploadInfo = {
+        upload_url: '/files/upload',
+        upload_params: {},
+      }
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce(uploadInfo)
+        .mockResolvedValueOnce(confirmedFile)
+
+      const mockS3Response = new Response(null, {
+        status: 303,
+        headers: { location: 'https://canvas.example.com/api/v1/files/77/confirm' },
+      })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(mockS3Response))
+
+      await files.uploadToSubmission(1, 20, 'essay.pdf', btoa('content'), 'application/pdf')
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://canvas.example.com/files/upload',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
+    })
+
+    // Test 6: invalid base64 rejects before any network call
+    it('rejects invalid base64 before any network call', async () => {
+      vi.spyOn(client, 'request')
+      const mockFetch = vi.fn()
+      vi.stubGlobal('fetch', mockFetch)
+
+      await expect(
+        files.uploadToSubmission(1, 20, 'essay.pdf', 'not-valid-base64!!!', 'application/pdf'),
+      ).rejects.toThrow('Invalid base64 content')
+      expect(client.request).not.toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
 })

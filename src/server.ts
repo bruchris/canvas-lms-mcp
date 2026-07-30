@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient } from './canvas'
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { registerAllTools } from './tools'
-import type { CanvasRole } from './tools/types'
+import type { CanvasRole, ToolFeatureFlags } from './tools/types'
 import { registerAllResources } from './resources'
 
 export interface CanvasMCPServerConfig {
@@ -25,6 +25,12 @@ export interface CanvasMCPServerConfig {
    * filter only — Canvas still enforces real permissions server-side.
    */
   role?: CanvasRole
+  /**
+   * When true, registers the opt-in assignment submission tools
+   * (submit_assignment, upload_submission_file). Controlled by
+   * CANVAS_ENABLE_ASSIGNMENT_SUBMISSION env / --enable-assignment-submission flag.
+   */
+  enableAssignmentSubmission?: boolean
 }
 
 export interface CanvasMCPServer {
@@ -46,7 +52,10 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
     version,
   })
 
-  registerAllTools(server, canvas, pseudonymizer, config.role)
+  const features: ToolFeatureFlags = {
+    assignmentSubmission: config.enableAssignmentSubmission,
+  }
+  registerAllTools(server, canvas, pseudonymizer, config.role, features)
   registerAllResources(server, canvas)
 
   return { server, canvas, pseudonymizer }

@@ -29,6 +29,7 @@ function buildFullMockCanvas(): CanvasClient {
       comment: async () => ({}),
       listMy: async () => [],
       listForStudents: async () => [],
+      submit: async () => ({}),
     },
     rubrics: {
       list: async () => [],
@@ -54,6 +55,7 @@ function buildFullMockCanvas(): CanvasClient {
       upload: async () => ({}),
       delete: async () => undefined,
       download: async () => ({}),
+      uploadToSubmission: async () => ({}),
     },
     gradebookHistory: {
       listDays: async () => [],
@@ -414,6 +416,15 @@ describe('getAllTools', () => {
     expect(names).toContain('next_appointment')
 
     expect(tools).toHaveLength(163)
+  })
+
+  it('returns 165 tools when assignmentSubmission feature flag is enabled', () => {
+    const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
+      assignmentSubmission: true,
+    })
+    expect(tools).toHaveLength(165)
+    expect(tools.map((t) => t.name)).toContain('submit_assignment')
+    expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
 
   it('all tools have openWorldHint: true', () => {

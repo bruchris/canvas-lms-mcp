@@ -11,6 +11,7 @@ export function createHttpHandler(defaultConfig: {
   baseUrl?: string
   allowedOrigin?: string
   role?: CanvasRole
+  enableAssignmentSubmission?: boolean
 }) {
   // Process-wide pseudonymizer keyed on the configured base URL. Pseudonyms
   // are stable across requests because every fresh MCP server reuses this
@@ -103,7 +104,13 @@ export function createHttpHandler(defaultConfig: {
     // Fresh MCP server per request (per-request credentials); the pseudonymizer
     // is the singleton constructed above so pseudonyms remain stable across
     // requests for this host.
-    const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer, role })
+    const { server } = createCanvasMCPServer({
+      token,
+      baseUrl,
+      pseudonymizer,
+      role,
+      enableAssignmentSubmission: defaultConfig.enableAssignmentSubmission,
+    })
 
     try {
       const transport = new StreamableHTTPServerTransport({
@@ -145,6 +152,7 @@ async function main() {
       baseUrl: config.baseUrl,
       allowedOrigin: config.allowedOrigin,
       role: config.role,
+      enableAssignmentSubmission: config.enableAssignmentSubmission,
     }),
   )
 

@@ -1,3 +1,4 @@
+import { isEnvTruthy } from './env'
 import { parseRole } from './tools/roles'
 import type { CanvasRole } from './tools/types'
 
@@ -9,6 +10,8 @@ export interface CliConfig {
   allowedOrigin: string
   /** Canvas role for tool filtering; undefined = register all tools. */
   role?: CanvasRole
+  /** Opt-in: register assignment submission tools when true. */
+  enableAssignmentSubmission?: boolean
 }
 
 export function parseArgs(args: string[]): CliConfig {
@@ -26,6 +29,7 @@ export function parseArgs(args: string[]): CliConfig {
     port: 3001,
     allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
     role: envRole.role,
+    enableAssignmentSubmission: isEnvTruthy(process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION),
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -57,6 +61,9 @@ export function parseArgs(args: string[]): CliConfig {
         config.role = parsed.role
         break
       }
+      case '--enable-assignment-submission':
+        config.enableAssignmentSubmission = true
+        break
     }
   }
 
