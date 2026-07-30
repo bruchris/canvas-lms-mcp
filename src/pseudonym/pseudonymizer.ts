@@ -11,6 +11,8 @@
 // full threat model and rationale.
 
 import type {
+  CanvasAppointmentGroup,
+  CanvasCalendarEvent,
   CanvasConversation,
   CanvasConversationDetail,
   CanvasEnrollment,
@@ -235,6 +237,30 @@ export class Pseudonymizer {
   }
 
   /**
+   * Pseudonymize `child_events[].user` fields embedded in an appointment group
+   * response (present when the caller requests `include[]=appointments,child_events`
+   * and the group is viewed under the `manageable` scope). Each reservation event
+   * may carry the booking participant as `user`. We key the pseudonym namespace
+   * on `_apptgrp_<group.id>` for consistency with `list_appointment_group_users`.
+   */
+  async anonymizeAppointmentGroupResponse(
+    group: CanvasAppointmentGroup,
+  ): Promise<CanvasAppointmentGroup> {
+    if (!this.isEnabled() || !this.host || !group.appointments?.length) return group
+
+    const appointments = await Promise.all(
+      group.appointments.map(async (slot) => {
+        if (!slot.child_events?.length) return slot
+        const child_events = await Promise.all(
+          slot.child_events.map((event) => this.anonymizeCalendarEventUser(group.id, event)),
+        )
+        return { ...slot, child_events }
+      }),
+    )
+    return { ...group, appointments }
+  }
+
+  /**
    * Look up the real user_id behind a pseudonym. Returns `null` when reverse
    * lookup is disabled, the host is invalid, or the pseudonym is unknown.
    * Audit-logs every successful and failed lookup.
@@ -266,6 +292,15 @@ export class Pseudonymizer {
   }
 
   // --- Internals --------------------------------------------------------------
+
+  private async anonymizeCalendarEventUser(
+    apptGroupId: number,
+    event: CanvasCalendarEvent,
+  ): Promise<CanvasCalendarEvent> {
+    if (!event.user) return event
+    const anonymizedUser = await this.anonymizeUser(`_apptgrp_${apptGroupId}`, event.user)
+    return { ...event, user: anonymizedUser }
+  }
 
   /**
    * Allocate (or restore) the pseudonym for a given (host, courseId, userId).

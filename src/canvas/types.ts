@@ -676,6 +676,10 @@ export interface CanvasCalendarEvent {
   context_code: string
   location_name?: string | null
   type: string
+  /** Reservation events nested under an appointment slot (present when include[]=child_events). */
+  child_events?: CanvasCalendarEvent[]
+  /** Participant user on a reservation event when viewed by a manager. Contains student PII. */
+  user?: CanvasUser
 }
 
 // --- Appointment Groups ---

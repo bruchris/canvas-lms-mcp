@@ -42,6 +42,26 @@ const mockEvent: CanvasCalendarEvent = {
   type: 'CalendarEvent',
 }
 
+const mockReservationEvent: CanvasCalendarEvent = {
+  id: 30,
+  title: 'Office Hours - slot 1 reservation',
+  start_at: '2026-02-01T10:00:00Z',
+  end_at: '2026-02-01T10:30:00Z',
+  context_code: 'course_10',
+  type: 'CalendarEvent',
+  user: mockUser,
+}
+
+const mockSlotWithChildEvents: CanvasCalendarEvent = {
+  ...mockEvent,
+  child_events: [mockReservationEvent],
+}
+
+const mockAppointmentGroupWithChildEvents: CanvasAppointmentGroup = {
+  ...mockAppointmentGroup,
+  appointments: [mockSlotWithChildEvents],
+}
+
 function buildMockCanvas(): CanvasClient {
   return {
     appointmentGroups: {
@@ -165,6 +185,70 @@ describe('appointmentGroupTools', () => {
         context_codes: ['course_10'],
       })
     })
+
+    describe('pseudonymization of child_events', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'appt-group-list-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      it('pseudonymizes user in child_events when pseudonymizer is enabled', async () => {
+        const canvas = {
+          ...buildMockCanvas(),
+          appointmentGroups: {
+            ...buildMockCanvas().appointmentGroups,
+            list: vi.fn().mockResolvedValue([mockAppointmentGroupWithChildEvents]),
+          },
+        } as unknown as CanvasClient
+        const tool = appointmentGroupTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_appointment_groups',
+        )!
+        const result = (await tool.handler({
+          include: ['appointments', 'child_events'],
+        })) as CanvasAppointmentGroup[]
+        const childUser = result[0].appointments?.[0].child_events?.[0].user
+        expect(childUser?.name).toMatch(/^Student \d+$/)
+        expect(childUser?.email).toMatch(/@anon\.invalid$/)
+      })
+
+      it('passes through real names in child_events when pseudonymizer is disabled', async () => {
+        const canvas = {
+          ...buildMockCanvas(),
+          appointmentGroups: {
+            ...buildMockCanvas().appointmentGroups,
+            list: vi.fn().mockResolvedValue([mockAppointmentGroupWithChildEvents]),
+          },
+        } as unknown as CanvasClient
+        const tool = appointmentGroupTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'list_appointment_groups',
+        )!
+        const result = (await tool.handler({
+          include: ['appointments', 'child_events'],
+        })) as CanvasAppointmentGroup[]
+        const childUser = result[0].appointments?.[0].child_events?.[0].user
+        expect(childUser?.name).toBe('Alice')
+      })
+
+      it('returns groups unchanged when no appointments are embedded', async () => {
+        const canvas = buildMockCanvas()
+        const tool = appointmentGroupTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'list_appointment_groups',
+        )!
+        const result = (await tool.handler({})) as CanvasAppointmentGroup[]
+        expect(result[0]).toEqual(mockAppointmentGroup)
+      })
+    })
   })
 
   describe('get_appointment_group', () => {
@@ -181,6 +265,63 @@ describe('appointmentGroupTools', () => {
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'get_appointment_group')!
       await tool.handler({ appointment_group_id: 1, include: ['appointments'] })
       expect(canvas.appointmentGroups.get).toHaveBeenCalledWith(1, ['appointments'])
+    })
+
+    describe('pseudonymization of child_events', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'appt-group-get-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      it('pseudonymizes user in child_events when pseudonymizer is enabled', async () => {
+        const canvas = {
+          ...buildMockCanvas(),
+          appointmentGroups: {
+            ...buildMockCanvas().appointmentGroups,
+            get: vi.fn().mockResolvedValue(mockAppointmentGroupWithChildEvents),
+          },
+        } as unknown as CanvasClient
+        const tool = appointmentGroupTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'get_appointment_group',
+        )!
+        const result = (await tool.handler({
+          appointment_group_id: 1,
+          include: ['appointments', 'child_events'],
+        })) as CanvasAppointmentGroup
+        const childUser = result.appointments?.[0].child_events?.[0].user
+        expect(childUser?.name).toMatch(/^Student \d+$/)
+        expect(childUser?.email).toMatch(/@anon\.invalid$/)
+      })
+
+      it('passes through real names in child_events when pseudonymizer is disabled', async () => {
+        const canvas = {
+          ...buildMockCanvas(),
+          appointmentGroups: {
+            ...buildMockCanvas().appointmentGroups,
+            get: vi.fn().mockResolvedValue(mockAppointmentGroupWithChildEvents),
+          },
+        } as unknown as CanvasClient
+        const tool = appointmentGroupTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'get_appointment_group',
+        )!
+        const result = (await tool.handler({
+          appointment_group_id: 1,
+          include: ['appointments', 'child_events'],
+        })) as CanvasAppointmentGroup
+        const childUser = result.appointments?.[0].child_events?.[0].user
+        expect(childUser?.name).toBe('Alice')
+      })
     })
   })
 

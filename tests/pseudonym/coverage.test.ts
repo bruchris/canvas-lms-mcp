@@ -35,6 +35,8 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'get_quiz_question_responses',
   'find_student_across_courses',
   'list_appointment_group_users',
+  'list_appointment_groups',
+  'get_appointment_group',
 ])
 
 function buildMinimalCanvas(): CanvasClient {
