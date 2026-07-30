@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.24.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.23.0...canvas-lms-mcp-v1.24.0) (2026-07-30)
+
+
+### Features
+
+* **tools:** add appointment_groups domain (Canvas Scheduler) ([#270](https://github.com/bruchris/canvas-lms-mcp/issues/270)) ([34294cc](https://github.com/bruchris/canvas-lms-mcp/commit/34294ccd7691e75297dafb41466ab1fdfee0d1ae))
+* **tools:** add content_migrations domain (course copy / import) ([#262](https://github.com/bruchris/canvas-lms-mcp/issues/262)) ([0cb74c1](https://github.com/bruchris/canvas-lms-mcp/commit/0cb74c135bfef41188893829d5108dc9943a54ef))
+
+
+### Bug Fixes
+
+* **docs:** update security note for SDK 1.30.0 / hono ^4.12.27 ([#264](https://github.com/bruchris/canvas-lms-mcp/issues/264)) ([e2ef3b0](https://github.com/bruchris/canvas-lms-mcp/commit/e2ef3b0c4eb2e91b45abae0abe2eac339cec2b74))
+* **docs:** update stale tool counts in package.json + manifest.json to 155/40 ([#269](https://github.com/bruchris/canvas-lms-mcp/issues/269)) ([b1b663f](https://github.com/bruchris/canvas-lms-mcp/commit/b1b663f60899d6055c449da735bfb48d11363339))
+* **files:** resolve relative upload_url against Canvas baseUrl for self-hosted instances ([#259](https://github.com/bruchris/canvas-lms-mcp/issues/259)) ([65b59a6](https://github.com/bruchris/canvas-lms-mcp/commit/65b59a662984f321c3946b031fb046d99d78c03b)), closes [#258](https://github.com/bruchris/canvas-lms-mcp/issues/258)
+* **pseudonym:** pseudonymize child_events user PII in appointment_groups responses ([#273](https://github.com/bruchris/canvas-lms-mcp/issues/273)) ([41bdf68](https://github.com/bruchris/canvas-lms-mcp/commit/41bdf68b8b7fd5b73b10c214a125b2416f9313ac))
+
+
+### Miscellaneous
+
+* **deps:** bump @modelcontextprotocol/sdk ^1.29.0 -&gt; ^1.30.0 ([#261](https://github.com/bruchris/canvas-lms-mcp/issues/261)) ([d4abe11](https://github.com/bruchris/canvas-lms-mcp/commit/d4abe1140612d428b8b50e0faf8051d88fcd70f4))
+* **deps:** vendor ext-apps helpers, drop @modelcontextprotocol/ext-apps (BRU-1924) ([#266](https://github.com/bruchris/canvas-lms-mcp/issues/266)) ([1886b2a](https://github.com/bruchris/canvas-lms-mcp/commit/1886b2a35942bbcf1526d4ef032f860ddc519eda))
+
+
+### Documentation
+
+* fix stale read/write tool split (106/42 -&gt; 112/43) ([#267](https://github.com/bruchris/canvas-lms-mcp/issues/267)) ([de9a15c](https://github.com/bruchris/canvas-lms-mcp/commit/de9a15c860c7bc25d80ca2aebf855f8c72f9217d))
+* **plans:** MCP SDK v2 + 2026-07-28 revision migration design ([#263](https://github.com/bruchris/canvas-lms-mcp/issues/263)) ([b103eaa](https://github.com/bruchris/canvas-lms-mcp/commit/b103eaac44bf48bd490a7c7548d104bfe123fbda))
+* **spec:** fix off-by-one in resolve_pseudonym conditional-tool ordinal ([#265](https://github.com/bruchris/canvas-lms-mcp/issues/265)) ([ceebef7](https://github.com/bruchris/canvas-lms-mcp/commit/ceebef730d138ced98244c0bb9c65686e7de9a64))
+* **spec:** student assignment submission with integrity gating (BRU-1966) ([#271](https://github.com/bruchris/canvas-lms-mcp/issues/271)) ([d448348](https://github.com/bruchris/canvas-lms-mcp/commit/d4483482800747a1123ed50a88ca595d6ce9a3eb))
+
 ## [1.23.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.22.0...canvas-lms-mcp-v1.23.0) (2026-07-24)
 
 
