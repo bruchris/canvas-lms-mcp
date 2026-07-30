@@ -678,6 +678,32 @@ export interface CanvasCalendarEvent {
   type: string
 }
 
+// --- Appointment Groups ---
+
+export interface CanvasAppointmentGroup {
+  id: number
+  title: string
+  context_codes: string[]
+  sub_context_codes?: string[]
+  workflow_state: string
+  created_at: string
+  updated_at: string
+  start_at?: string | null
+  end_at?: string | null
+  description?: string | null
+  location_name?: string | null
+  location_address?: string | null
+  participant_count?: number
+  reserved_times?: Array<{ id: number; start_at: string; end_at: string }>
+  appointment_count?: number
+  appointments?: CanvasCalendarEvent[]
+  participant_type?: string
+  participant_visibility?: string
+  max_appointments_per_participant?: number | null
+  min_appointments_per_participant?: number | null
+  html_url?: string
+}
+
 // --- Conversations ---
 
 export interface CanvasConversation {

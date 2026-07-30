@@ -25,6 +25,7 @@ import { ContentExportsModule } from './content-exports'
 import { ContentMigrationsModule } from './content-migrations'
 import { GradingStandardsModule } from './grading-standards'
 import { LatePolicyModule } from './late-policy'
+import { AppointmentGroupsModule } from './appointment-groups'
 
 /**
  * Standalone Canvas REST API client. Composed of modular per-domain classes
@@ -65,6 +66,7 @@ export class CanvasClient {
   contentMigrations: ContentMigrationsModule
   gradingStandards: GradingStandardsModule
   latePolicy: LatePolicyModule
+  appointmentGroups: AppointmentGroupsModule
 
   constructor(config: CanvasClientConfig) {
     this.client = new CanvasHttpClient(config)
@@ -93,6 +95,7 @@ export class CanvasClient {
     this.contentMigrations = new ContentMigrationsModule(this.client)
     this.gradingStandards = new GradingStandardsModule(this.client)
     this.latePolicy = new LatePolicyModule(this.client)
+    this.appointmentGroups = new AppointmentGroupsModule(this.client)
   }
 }
 

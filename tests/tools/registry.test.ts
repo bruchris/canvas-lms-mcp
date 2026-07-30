@@ -194,6 +194,16 @@ function buildFullMockCanvas(): CanvasClient {
       createForCourse: async () => ({}),
       createForAccount: async () => ({}),
     },
+    appointmentGroups: {
+      list: async () => [],
+      get: async () => ({}),
+      create: async () => ({}),
+      update: async () => ({}),
+      delete: async () => undefined,
+      listUsers: async () => [],
+      listGroups: async () => [],
+      nextAppointment: async () => [],
+    },
   } as unknown as CanvasClient
 }
 
@@ -393,8 +403,17 @@ describe('getAllTools', () => {
     expect(names).toContain('get_quiz_question_responses')
     // Grade Projection (1)
     expect(names).toContain('project_grade')
+    // Appointment Groups (8)
+    expect(names).toContain('list_appointment_groups')
+    expect(names).toContain('get_appointment_group')
+    expect(names).toContain('create_appointment_group')
+    expect(names).toContain('update_appointment_group')
+    expect(names).toContain('delete_appointment_group')
+    expect(names).toContain('list_appointment_group_users')
+    expect(names).toContain('list_appointment_group_groups')
+    expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(155)
+    expect(tools).toHaveLength(163)
   })
 
   it('all tools have openWorldHint: true', () => {
@@ -449,6 +468,9 @@ describe('getAllTools', () => {
       'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
+      'create_appointment_group',
+      'update_appointment_group',
+      'delete_appointment_group',
     ]
     const tools = getAllTools(buildFullMockCanvas())
     for (const name of writeToolNames) {
@@ -511,6 +533,9 @@ describe('getAllTools', () => {
       'set_student_new_quiz_accommodation',
       'create_assignment_override',
       'set_student_assignment_dates',
+      'create_appointment_group',
+      'update_appointment_group',
+      'delete_appointment_group',
     ])
     const tools = getAllTools(buildFullMockCanvas())
     for (const tool of tools) {

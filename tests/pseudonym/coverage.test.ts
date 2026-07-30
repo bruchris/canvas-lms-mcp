@@ -34,6 +34,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'get_my_submission_feedback',
   'get_quiz_question_responses',
   'find_student_across_courses',
+  'list_appointment_group_users',
 ])
 
 function buildMinimalCanvas(): CanvasClient {
@@ -147,6 +148,16 @@ function buildMinimalCanvas(): CanvasClient {
       createItem: noop,
       updateItem: noop,
       deleteItem: noop,
+    },
+    appointmentGroups: {
+      list,
+      get: noop,
+      create: noop,
+      update: noop,
+      delete: noop,
+      listUsers: list,
+      listGroups: list,
+      nextAppointment: list,
     },
   } as unknown as CanvasClient
 }

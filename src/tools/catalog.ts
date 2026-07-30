@@ -41,6 +41,7 @@ import type { ToolAudience, ToolDefinition } from './types'
 import { userTools } from './users'
 import { linkAuditTools } from './link-audit'
 import { accessibilityAuditTools } from './accessibility-audit'
+import { appointmentGroupTools } from './appointment-groups'
 
 export interface ToolDomainRegistration {
   domain: string
@@ -248,5 +249,10 @@ export const toolDomainCatalog: readonly ToolDomainRegistration[] = [
     domain: 'accessibility_audit',
     defaultPrimaryAudience: 'educator',
     getTools: accessibilityAuditTools,
+  },
+  {
+    domain: 'appointment_groups',
+    defaultPrimaryAudience: 'educator',
+    getTools: appointmentGroupTools,
   },
 ]
