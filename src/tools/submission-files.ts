@@ -38,6 +38,7 @@ export function submissionFileTools(
   return [
     {
       name: 'list_course_submission_files',
+      title: 'List Course Submission Files',
       description:
         'List every file attachment submitted by students across all assignments in a course. ' +
         'Returns a manifest — one entry per file — including the original filename, a file_id for ' +

@@ -38,6 +38,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
   return [
     {
       name: 'list_students',
+      title: 'List Students',
       description: 'List all students enrolled in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -55,6 +56,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     },
     {
       name: 'get_user',
+      title: 'Get User',
       description: 'Get details for a single user by ID.',
       inputSchema: {
         user_id: z.number().describe('The Canvas user ID'),
@@ -73,6 +75,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     },
     {
       name: 'get_profile',
+      title: 'Get Profile',
       audience: 'shared',
       description: 'Get the profile of the currently authenticated user.',
       inputSchema: {},
@@ -87,6 +90,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     },
     {
       name: 'search_users',
+      title: 'Search Users',
       description:
         'Search for users in a Canvas account by name, login, or email. Use `include` to request email, last_login, avatar_url, time_zone, or uuid in the response.',
       inputSchema: {
@@ -118,6 +122,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     },
     {
       name: 'list_course_users',
+      title: 'List Course Users',
       description:
         'List users in a course with optional Canvas filters. Use `include` to request email, enrollments, avatar_url, bio, and other fields otherwise omitted from the default response. Use `enrollment_type` / `enrollment_state` to narrow by role or status, `search_term` to filter by name/login, `user_ids` to fetch a specific subset, and `sort`/`order` to control ordering.',
       inputSchema: {

@@ -393,6 +393,7 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
   return [
     {
       name: 'audit_course_accessibility',
+      title: 'Audit Course Accessibility',
       description:
         "Scan a course's content (pages, assignments, syllabus, announcements, and optionally " +
         'quizzes) for structurally-detectable WCAG 2.1 accessibility problems: images missing ' +

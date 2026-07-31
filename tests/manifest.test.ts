@@ -41,6 +41,17 @@ describe('manifest.json (.mcpb bundle)', () => {
     )
   })
 
+  it('declares a privacy_policies array of HTTPS URLs (Connectors Directory)', () => {
+    expect(Array.isArray(manifest.privacy_policies)).toBe(true)
+    expect(manifest.privacy_policies.length).toBeGreaterThan(0)
+    for (const url of manifest.privacy_policies) {
+      expect(url).toMatch(/^https:\/\//)
+    }
+    expect(manifest.privacy_policies).toContain(
+      'https://github.com/bruchris/canvas-lms-mcp/blob/main/PRIVACY.md',
+    )
+  })
+
   describe('FERPA pseudonymization opt-in', () => {
     it('declares pseudonymize_students as an optional boolean defaulting off', () => {
       expect(manifest.user_config.pseudonymize_students).toMatchObject({

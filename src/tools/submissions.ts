@@ -42,6 +42,7 @@ export function submissionTools(
   return [
     {
       name: 'list_submissions',
+      title: 'List Submissions',
       description:
         'List all submissions for an assignment. Use `include` to attach user, assignment, rubric_assessment, submission_history, or visibility. Filter with `student_ids`, `workflow_state`, or `grading_period_id`. Defaults to including submission_comments.',
       inputSchema: {
@@ -102,6 +103,7 @@ export function submissionTools(
     },
     {
       name: 'get_submission',
+      title: 'Get Submission',
       description:
         'Get a single submission for a specific user on an assignment. Defaults to including submission_comments. Pass `include` to add rubric_assessment, submission_history, visibility, course, user, or read_status.',
       inputSchema: {
@@ -136,6 +138,7 @@ export function submissionTools(
     },
     {
       name: 'grade_submission',
+      title: 'Grade Submission',
       description: 'Post or update a grade for a submission. Requires grading permissions.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -158,6 +161,7 @@ export function submissionTools(
     },
     {
       name: 'comment_on_submission',
+      title: 'Comment on Submission',
       description: 'Add a text comment to a submission.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

@@ -18,6 +18,7 @@ export function outcomeTools(
   return [
     {
       name: 'get_root_outcome_group',
+      title: 'Get Root Outcome Group',
       description: 'Get the root outcome group for an account or course context.',
       inputSchema: {
         context_type: z
@@ -34,6 +35,7 @@ export function outcomeTools(
     },
     {
       name: 'list_outcome_groups',
+      title: 'List Outcome Groups',
       description: 'List all outcome groups for an account or course context.',
       inputSchema: {
         context_type: z
@@ -50,6 +52,7 @@ export function outcomeTools(
     },
     {
       name: 'list_outcome_group_links',
+      title: 'List Outcome Group Links',
       description: 'List all outcome links in an account or course context.',
       inputSchema: {
         context_type: z
@@ -80,6 +83,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_group',
+      title: 'Get Outcome Group',
       description: 'Get details for a specific outcome group in an account or course context.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
@@ -96,6 +100,7 @@ export function outcomeTools(
     },
     {
       name: 'list_outcome_group_outcomes',
+      title: 'List Outcome Group Outcomes',
       description: 'List the linked outcomes directly under a specific outcome group.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
@@ -119,6 +124,7 @@ export function outcomeTools(
     },
     {
       name: 'list_outcome_group_subgroups',
+      title: 'List Outcome Group Subgroups',
       description: 'List the immediate child outcome groups under a specific outcome group.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
@@ -135,6 +141,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome',
+      title: 'Get Outcome',
       description: 'Get the full details for a specific learning outcome by ID.',
       inputSchema: {
         outcome_id: z.number().describe('The Canvas outcome ID.'),
@@ -151,6 +158,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_alignments',
+      title: 'Get Outcome Alignments',
       description:
         'Get outcome alignments for a course, optionally filtered to a specific student or assignment.',
       inputSchema: {
@@ -173,6 +181,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_results',
+      title: 'Get Outcome Results',
       description:
         'Get per-student outcome results for a course, with optional outcome, student, and alignment filters.',
       inputSchema: {
@@ -209,6 +218,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_rollups',
+      title: 'Get Outcome Rollups',
       description:
         'Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.',
       inputSchema: {
@@ -276,6 +286,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_contributing_scores',
+      title: 'Get Outcome Contributing Scores',
       description:
         'Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.',
       inputSchema: {
@@ -309,6 +320,7 @@ export function outcomeTools(
     },
     {
       name: 'get_outcome_mastery_distribution',
+      title: 'Get Outcome Mastery Distribution',
       description:
         'Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.',
       inputSchema: {

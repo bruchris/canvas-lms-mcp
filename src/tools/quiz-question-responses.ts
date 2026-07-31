@@ -46,6 +46,7 @@ export function quizQuestionResponseTools(
   return [
     {
       name: 'get_quiz_question_responses',
+      title: 'Get Quiz Question Responses',
       description:
         "Review every student's answer to one or all questions in a Classic Quiz, pivoted by " +
         'question instead of by student — for grading essay/short-answer/file-upload questions ' +

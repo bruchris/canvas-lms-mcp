@@ -19,6 +19,7 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_grading_standards',
+      title: 'List Grading Standards',
       description:
         'List grading standards available in a course or account context. ' +
         'Provide either course_id (to see standards scoped to a course) or account_id ' +
@@ -62,6 +63,7 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_grading_standard',
+      title: 'Create Grading Standard',
       description:
         'Create a new grading standard (letter-to-percentage scheme) in a course or account context. ' +
         'Provide either course_id or account_id (account requires admin). ' +
@@ -143,6 +145,7 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'apply_grading_standard_to_course',
+      title: 'Apply Grading Standard to Course',
       description:
         'Apply an existing grading standard to a course so the gradebook uses it. ' +
         'Pass the grading_standard_id returned by create_grading_standard or list_grading_standards. ' +

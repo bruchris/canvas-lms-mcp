@@ -5,6 +5,7 @@
   "tools": [
     {
       "name": "health_check",
+      "title": "Health Check",
       "domain": "health",
       "description": "Check if the Canvas API is reachable and the token is valid. Returns ok/error status.",
       "annotations": {
@@ -17,6 +18,7 @@
     },
     {
       "name": "list_courses",
+      "title": "List Courses",
       "domain": "courses",
       "description": "List courses for the authenticated user. Use fields=\"slim\" when enumerating courses for selection; switch to \"full\" once you have identified the target. slim returns id, name, course_code, term name, and workflow_state only. \"full\" (default) includes all Canvas fields plus `include` extras (teachers, total_students, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller's enrollment state.",
       "annotations": {
@@ -29,6 +31,7 @@
     },
     {
       "name": "get_course",
+      "title": "Get Course",
       "domain": "courses",
       "description": "Get details for a single course. Defaults to requesting `term` and `total_students`. Pass `include` to replace the default set with custom Canvas include[] fields (teachers, permissions, syllabus_body, sections, etc.).",
       "annotations": {
@@ -41,6 +44,7 @@
     },
     {
       "name": "get_syllabus",
+      "title": "Get Syllabus",
       "domain": "courses",
       "description": "Get the syllabus HTML body for a course.",
       "annotations": {
@@ -53,6 +57,7 @@
     },
     {
       "name": "create_course",
+      "title": "Create Course",
       "domain": "courses",
       "description": "Create a new course in a Canvas account. Returns the created course object.",
       "annotations": {
@@ -65,6 +70,7 @@
     },
     {
       "name": "update_course",
+      "title": "Update Course",
       "domain": "courses",
       "description": "Update an existing course. Only provided fields are changed; omitted fields are left as-is.",
       "annotations": {
@@ -78,6 +84,7 @@
     },
     {
       "name": "list_assignments",
+      "title": "List Assignments",
       "domain": "assignments",
       "description": "List all assignments in a course. Use fields=\"slim\" when enumerating assignments for selection; switch to \"full\" once you've identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. \"full\" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.",
       "annotations": {
@@ -92,6 +99,7 @@
     },
     {
       "name": "get_assignment",
+      "title": "Get Assignment",
       "domain": "assignments",
       "description": "Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.",
       "annotations": {
@@ -106,6 +114,7 @@
     },
     {
       "name": "list_assignment_groups",
+      "title": "List Assignment Groups",
       "domain": "assignments",
       "description": "List assignment groups (categories like Homework, Exams) in a course. Use `include=assignments` to nest assignments under each group; other includes add submission, overrides, score_statistics, etc.",
       "annotations": {
@@ -118,6 +127,7 @@
     },
     {
       "name": "create_assignment",
+      "title": "Create Assignment",
       "domain": "assignments",
       "description": "Create a new assignment in a course.",
       "annotations": {
@@ -130,6 +140,7 @@
     },
     {
       "name": "update_assignment",
+      "title": "Update Assignment",
       "domain": "assignments",
       "description": "Update an existing assignment in a course.",
       "annotations": {
@@ -143,6 +154,7 @@
     },
     {
       "name": "delete_assignment",
+      "title": "Delete Assignment",
       "domain": "assignments",
       "description": "Delete an assignment from a course. This action is permanent.",
       "annotations": {
@@ -156,6 +168,7 @@
     },
     {
       "name": "list_submissions",
+      "title": "List Submissions",
       "domain": "submissions",
       "description": "List all submissions for an assignment. Use `include` to attach user, assignment, rubric_assessment, submission_history, or visibility. Filter with `student_ids`, `workflow_state`, or `grading_period_id`. Defaults to including submission_comments.",
       "annotations": {
@@ -170,6 +183,7 @@
     },
     {
       "name": "get_submission",
+      "title": "Get Submission",
       "domain": "submissions",
       "description": "Get a single submission for a specific user on an assignment. Defaults to including submission_comments. Pass `include` to add rubric_assessment, submission_history, visibility, course, user, or read_status.",
       "annotations": {
@@ -184,6 +198,7 @@
     },
     {
       "name": "grade_submission",
+      "title": "Grade Submission",
       "domain": "submissions",
       "description": "Post or update a grade for a submission. Requires grading permissions.",
       "annotations": {
@@ -199,6 +214,7 @@
     },
     {
       "name": "comment_on_submission",
+      "title": "Comment on Submission",
       "domain": "submissions",
       "description": "Add a text comment to a submission.",
       "annotations": {
@@ -213,6 +229,7 @@
     },
     {
       "name": "list_course_submission_files",
+      "title": "List Course Submission Files",
       "domain": "submission_files",
       "description": "List every file attachment submitted by students across all assignments in a course. Returns a manifest — one entry per file — including the original filename, a file_id for re-fetching via download_file, content type, and size. Useful for bulk-archiving student work before a course expires or a Free-For-Teacher account is concluded. Outputs are bounded by max_files (default 500); when the limit is hit, truncated is true and truncation_note explains how to retrieve the rest. Download URLs are time-limited (typically 1 hour) — use the returned file_id with download_file to get a fresh URL at download time. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, user_name is a stable per-course pseudonym (e.g. \"Student 1\"); user_id (the raw numeric Canvas ID) is always returned and works as a stable per-student folder key.",
       "annotations": {
@@ -225,6 +242,7 @@
     },
     {
       "name": "list_submissions_awaiting_grading",
+      "title": "List Submissions Awaiting Grading",
       "domain": "submissions_awaiting_grading",
       "description": "Lists all submissions in a course that still need a human grade, sorted oldest-waiting first.\n\nSurfaces two categories:\n- workflow_state=submitted: assignments submitted by students but not yet graded at all.\n- workflow_state=pending_review: Classic Quiz submissions where Canvas auto-graded the objective questions but left essays or manually-scored questions for the instructor.\n\nReturns a triage list grouped by assignment or Classic Quiz, with per-submission details: student identity, workflow state, submitted_at, and whether the submission has pending manual-grading questions.\n\nParameters:\n- course_id (required): Canvas course ID to scan.\n- assignment_ids (optional): limit the scan to specific assignment IDs.\n- include_quizzes (default true): include Classic Quiz assignments in the scan.\n- include_assignments (default true): include non-quiz assignments.\n- only_pending_review (default false): when true, return only pending_review submissions (quiz essays awaiting manual scoring), omitting regular ungraded assignments.\n\nKnown limitations:\n- New Quizzes (Quizzes.Next) may not appear with 'pending_review' workflow state here; use SpeedGrader or the New Quizzes interface for their grading queue.\n- Fill-in-the-blank answers that Canvas auto-marked are not surfaced.\n- V1 returns submission-level state only; per-question detail is not included.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with pseudonyms. Use resolve_pseudonym to look up the real identity.",
       "annotations": {
@@ -237,6 +255,7 @@
     },
     {
       "name": "list_rubrics",
+      "title": "List Rubrics",
       "domain": "rubrics",
       "description": "List all rubrics in a course.",
       "annotations": {
@@ -249,6 +268,7 @@
     },
     {
       "name": "get_rubric",
+      "title": "Get Rubric",
       "domain": "rubrics",
       "description": "Get details for a single rubric by ID, including criteria.",
       "annotations": {
@@ -263,6 +283,7 @@
     },
     {
       "name": "get_rubric_assessment",
+      "title": "Get Rubric Assessment",
       "domain": "rubrics",
       "description": "Get the rubric assessment for a specific student submission on an assignment.",
       "annotations": {
@@ -277,6 +298,7 @@
     },
     {
       "name": "submit_rubric_assessment",
+      "title": "Submit Rubric Assessment",
       "domain": "rubrics",
       "description": "Submit a rubric assessment with scores and comments for each criterion.",
       "annotations": {
@@ -292,6 +314,7 @@
     },
     {
       "name": "create_rubric",
+      "title": "Create Rubric",
       "domain": "rubrics",
       "description": "Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.",
       "annotations": {
@@ -304,6 +327,7 @@
     },
     {
       "name": "list_quizzes",
+      "title": "List Quizzes",
       "domain": "quizzes",
       "description": "List all quizzes in a course.",
       "annotations": {
@@ -316,6 +340,7 @@
     },
     {
       "name": "get_quiz",
+      "title": "Get Quiz",
       "domain": "quizzes",
       "description": "Get details for a single quiz by ID.",
       "annotations": {
@@ -328,6 +353,7 @@
     },
     {
       "name": "list_quiz_submissions",
+      "title": "List Quiz Submissions",
       "domain": "quizzes",
       "description": "List all submissions for a quiz.",
       "annotations": {
@@ -340,6 +366,7 @@
     },
     {
       "name": "list_quiz_questions",
+      "title": "List Quiz Questions",
       "domain": "quizzes",
       "description": "List all questions in a quiz.",
       "annotations": {
@@ -352,6 +379,7 @@
     },
     {
       "name": "get_quiz_submission_answers",
+      "title": "Get Quiz Submission Answers",
       "domain": "quizzes",
       "description": "Get a student's answers for a quiz submission.",
       "annotations": {
@@ -364,6 +392,7 @@
     },
     {
       "name": "score_quiz_question",
+      "title": "Score Quiz Question",
       "domain": "quizzes",
       "description": "Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.",
       "annotations": {
@@ -377,6 +406,7 @@
     },
     {
       "name": "get_quiz_submission_events",
+      "title": "Get Quiz Submission Events",
       "domain": "quizzes",
       "description": "Get the event log for a Classic Quiz submission in chronological order. Events include session_started, question_answered, question_flagged, page_blurred, and page_focused. Use this to understand the timeline of a student's attempt. Classic Quizzes only — New Quizzes does not expose event logs via the Canvas REST API. Events are scoped to a single submission; Canvas enforces access permissions (instructors and the submitting student only). Do not use event logs as the sole basis for academic-integrity conclusions; present them with context.",
       "annotations": {
@@ -389,6 +419,7 @@
     },
     {
       "name": "create_new_quiz",
+      "title": "Create New Quiz",
       "domain": "new_quizzes",
       "description": "Create a New Quiz (LTI) in a Canvas course. New Quizzes is the modern quiz engine; for Classic quizzes use create_quiz.",
       "annotations": {
@@ -401,6 +432,7 @@
     },
     {
       "name": "update_new_quiz",
+      "title": "Update New Quiz",
       "domain": "new_quizzes",
       "description": "Update an existing New Quiz (LTI) in a Canvas course.",
       "annotations": {
@@ -414,6 +446,7 @@
     },
     {
       "name": "delete_new_quiz",
+      "title": "Delete New Quiz",
       "domain": "new_quizzes",
       "description": "Delete a New Quiz (LTI) from a Canvas course. This action is permanent. Use assignment_id (not quiz_id).",
       "annotations": {
@@ -427,6 +460,7 @@
     },
     {
       "name": "list_new_quiz_items",
+      "title": "List New Quiz Items",
       "domain": "new_quizzes",
       "description": "List all items (questions) in a New Quiz (LTI).",
       "annotations": {
@@ -439,6 +473,7 @@
     },
     {
       "name": "get_new_quiz_item",
+      "title": "Get New Quiz Item",
       "domain": "new_quizzes",
       "description": "Get a single item (question) from a New Quiz (LTI) by item ID.",
       "annotations": {
@@ -451,6 +486,7 @@
     },
     {
       "name": "create_new_quiz_item",
+      "title": "Create New Quiz Item",
       "domain": "new_quizzes",
       "description": "Create an item (question) in a New Quiz (LTI). Supports 5 types: choice (MCQ), true-false, essay, matching, numeric. Canvas may rate-limit rapid sequential creates. Call serially (not in parallel). For >50 items, chunk and pause between batches.",
       "annotations": {
@@ -463,6 +499,7 @@
     },
     {
       "name": "update_new_quiz_item",
+      "title": "Update New Quiz Item",
       "domain": "new_quizzes",
       "description": "Update an existing item (question) in a New Quiz (LTI). All fields are optional; supply only what changes. Canvas may rate-limit rapid sequential updates. Call serially (not in parallel). For >50 items, chunk and pause between batches.",
       "annotations": {
@@ -476,6 +513,7 @@
     },
     {
       "name": "delete_new_quiz_item",
+      "title": "Delete New Quiz Item",
       "domain": "new_quizzes",
       "description": "Delete an item (question) from a New Quiz (LTI). This action is permanent.",
       "annotations": {
@@ -489,6 +527,7 @@
     },
     {
       "name": "get_quiz_question_responses",
+      "title": "Get Quiz Question Responses",
       "domain": "quiz_question_responses",
       "description": "Review every student's answer to one or all questions in a Classic Quiz, pivoted by question instead of by student — for grading essay/short-answer/file-upload questions consistently across a class instead of paging through SpeedGrader one student at a time. Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New Quizzes exposes responses through a different API. Omit question_id to get every question; provide it to scope to one. Each question reports needs_manual_grading (true for essay and file-upload questions) and points_possible. Scans one Canvas API call per completed or pending-review submission; a failed per-submission fetch is recorded in submissions_failed rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with stable pseudonyms.",
       "annotations": {
@@ -501,6 +540,7 @@
     },
     {
       "name": "list_files",
+      "title": "List Files",
       "domain": "files",
       "description": "List all files in a course.",
       "annotations": {
@@ -513,6 +553,7 @@
     },
     {
       "name": "list_folders",
+      "title": "List Folders",
       "domain": "files",
       "description": "List all folders in a course.",
       "annotations": {
@@ -525,6 +566,7 @@
     },
     {
       "name": "get_file",
+      "title": "Get File",
       "domain": "files",
       "description": "Get metadata for a single file by ID, including download URL.",
       "annotations": {
@@ -537,6 +579,7 @@
     },
     {
       "name": "upload_file",
+      "title": "Upload File",
       "domain": "files",
       "description": "Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.",
       "annotations": {
@@ -549,6 +592,7 @@
     },
     {
       "name": "delete_file",
+      "title": "Delete File",
       "domain": "files",
       "description": "Delete a file by ID. This action is permanent.",
       "annotations": {
@@ -561,6 +605,7 @@
     },
     {
       "name": "download_file",
+      "title": "Download File",
       "domain": "files",
       "description": "Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.",
       "annotations": {
@@ -573,6 +618,7 @@
     },
     {
       "name": "find_duplicate_files",
+      "title": "Find Duplicate Files",
       "domain": "files",
       "description": "Find duplicate files in a course's Files area — copies with the same name and size, typically left behind by repeated course copies. Each duplicate gets flagged separately by accessibility checkers, so this surfaces them for cleanup with the existing delete_file tool. Groups by display name + size (Canvas file listings carry no content hash), so same-name files of different sizes are not considered duplicates.",
       "annotations": {
@@ -585,6 +631,7 @@
     },
     {
       "name": "list_gradebook_history_days",
+      "title": "List Gradebook History Days",
       "domain": "gradebook_history",
       "description": "List the dates in a course gradebook history that contain grading activity, grouped by grader and assignment.",
       "annotations": {
@@ -597,6 +644,7 @@
     },
     {
       "name": "get_gradebook_history_day",
+      "title": "Get Gradebook History Day",
       "domain": "gradebook_history",
       "description": "Get the graders and assignment IDs that had gradebook activity on a specific course date.",
       "annotations": {
@@ -609,6 +657,7 @@
     },
     {
       "name": "list_gradebook_history_submissions",
+      "title": "List Gradebook History Submissions",
       "domain": "gradebook_history",
       "description": "List versioned submission history for one grader and assignment on a specific gradebook history date.",
       "annotations": {
@@ -621,6 +670,7 @@
     },
     {
       "name": "get_gradebook_history_feed",
+      "title": "Get Gradebook History Feed",
       "domain": "gradebook_history",
       "description": "Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.",
       "annotations": {
@@ -633,6 +683,7 @@
     },
     {
       "name": "list_students",
+      "title": "List Students",
       "domain": "users",
       "description": "List all students enrolled in a course.",
       "annotations": {
@@ -645,6 +696,7 @@
     },
     {
       "name": "get_user",
+      "title": "Get User",
       "domain": "users",
       "description": "Get details for a single user by ID.",
       "annotations": {
@@ -657,6 +709,7 @@
     },
     {
       "name": "get_profile",
+      "title": "Get Profile",
       "domain": "users",
       "description": "Get the profile of the currently authenticated user.",
       "annotations": {
@@ -669,6 +722,7 @@
     },
     {
       "name": "search_users",
+      "title": "Search Users",
       "domain": "users",
       "description": "Search for users in a Canvas account by name, login, or email. Use `include` to request email, last_login, avatar_url, time_zone, or uuid in the response.",
       "annotations": {
@@ -681,6 +735,7 @@
     },
     {
       "name": "list_course_users",
+      "title": "List Course Users",
       "domain": "users",
       "description": "List users in a course with optional Canvas filters. Use `include` to request email, enrollments, avatar_url, bio, and other fields otherwise omitted from the default response. Use `enrollment_type` / `enrollment_state` to narrow by role or status, `search_term` to filter by name/login, `user_ids` to fetch a specific subset, and `sort`/`order` to control ordering.",
       "annotations": {
@@ -693,6 +748,7 @@
     },
     {
       "name": "list_groups",
+      "title": "List Groups",
       "domain": "groups",
       "description": "List all groups in a course.",
       "annotations": {
@@ -705,6 +761,7 @@
     },
     {
       "name": "list_group_members",
+      "title": "List Group Members",
       "domain": "groups",
       "description": "List all members of a group.",
       "annotations": {
@@ -717,6 +774,7 @@
     },
     {
       "name": "list_enrollments",
+      "title": "List Enrollments",
       "domain": "enrollments",
       "description": "List all enrollments for the authenticated user across courses. Optional filters and includes mirror Canvas `GET /users/self/enrollments`.",
       "annotations": {
@@ -729,6 +787,7 @@
     },
     {
       "name": "list_course_enrollments",
+      "title": "List Course Enrollments",
       "domain": "enrollments",
       "description": "List enrollments within a specific course with Canvas filters. Use `include=grades` / `include=current_points` for richer grade data, `type[]` to limit to a role, and `user_id` to focus on a single user.",
       "annotations": {
@@ -741,6 +800,7 @@
     },
     {
       "name": "enroll_user",
+      "title": "Enroll User",
       "domain": "enrollments",
       "description": "Enroll a user in a course with a specified role.",
       "annotations": {
@@ -753,6 +813,7 @@
     },
     {
       "name": "remove_enrollment",
+      "title": "Remove Enrollment",
       "domain": "enrollments",
       "description": "Remove or conclude an enrollment from a course. The 'delete' task is permanent; 'conclude' and 'deactivate' are reversible.",
       "annotations": {
@@ -765,6 +826,7 @@
     },
     {
       "name": "list_discussions",
+      "title": "List Discussions",
       "domain": "discussions",
       "description": "List all discussion topics in a course.",
       "annotations": {
@@ -777,6 +839,7 @@
     },
     {
       "name": "get_discussion",
+      "title": "Get Discussion",
       "domain": "discussions",
       "description": "Get details for a single discussion topic by ID.",
       "annotations": {
@@ -789,6 +852,7 @@
     },
     {
       "name": "list_announcements",
+      "title": "List Announcements",
       "domain": "discussions",
       "description": "List all announcements in a course.",
       "annotations": {
@@ -801,6 +865,7 @@
     },
     {
       "name": "post_discussion_entry",
+      "title": "Post Discussion Entry",
       "domain": "discussions",
       "description": "Post a new entry (reply) to a discussion topic.",
       "annotations": {
@@ -813,6 +878,7 @@
     },
     {
       "name": "create_discussion",
+      "title": "Create Discussion",
       "domain": "discussions",
       "description": "Create a new discussion topic in a course.",
       "annotations": {
@@ -825,6 +891,7 @@
     },
     {
       "name": "update_discussion",
+      "title": "Update Discussion",
       "domain": "discussions",
       "description": "Update an existing discussion topic.",
       "annotations": {
@@ -837,6 +904,7 @@
     },
     {
       "name": "delete_discussion",
+      "title": "Delete Discussion",
       "domain": "discussions",
       "description": "Delete a discussion topic from a course. This action is permanent.",
       "annotations": {
@@ -849,6 +917,7 @@
     },
     {
       "name": "list_modules",
+      "title": "List Modules",
       "domain": "modules",
       "description": "List all modules in a course.",
       "annotations": {
@@ -861,6 +930,7 @@
     },
     {
       "name": "get_module",
+      "title": "Get Module",
       "domain": "modules",
       "description": "Get details for a single module by ID.",
       "annotations": {
@@ -873,6 +943,7 @@
     },
     {
       "name": "list_module_items",
+      "title": "List Module Items",
       "domain": "modules",
       "description": "List all items within a module.",
       "annotations": {
@@ -885,6 +956,7 @@
     },
     {
       "name": "get_course_structure",
+      "title": "Get Course Structure",
       "domain": "modules",
       "description": "Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.",
       "annotations": {
@@ -897,6 +969,7 @@
     },
     {
       "name": "view_course_structure",
+      "title": "View Course Structure",
       "domain": "modules",
       "description": "Interactive tree view of a course's modules and items. Returns the same payload as `get_course_structure` and additionally links to an MCP Apps UI resource that renders an explorable tree with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `get_course_structure`).",
       "annotations": {
@@ -909,6 +982,7 @@
     },
     {
       "name": "create_module",
+      "title": "Create Module",
       "domain": "modules",
       "description": "Create a new module in a course.",
       "annotations": {
@@ -921,6 +995,7 @@
     },
     {
       "name": "update_module",
+      "title": "Update Module",
       "domain": "modules",
       "description": "Update an existing module (rename, reposition, publish/unpublish).",
       "annotations": {
@@ -933,6 +1008,7 @@
     },
     {
       "name": "create_module_item",
+      "title": "Create Module Item",
       "domain": "modules",
       "description": "Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader) to a module.",
       "annotations": {
@@ -945,6 +1021,7 @@
     },
     {
       "name": "list_pages",
+      "title": "List Pages",
       "domain": "pages",
       "description": "List all wiki pages in a course.",
       "annotations": {
@@ -957,6 +1034,7 @@
     },
     {
       "name": "get_page",
+      "title": "Get Page",
       "domain": "pages",
       "description": "Get a single wiki page by its URL slug.",
       "annotations": {
@@ -969,6 +1047,7 @@
     },
     {
       "name": "create_page",
+      "title": "Create Page",
       "domain": "pages",
       "description": "Create a new wiki page in a course.",
       "annotations": {
@@ -981,6 +1060,7 @@
     },
     {
       "name": "update_page",
+      "title": "Update Page",
       "domain": "pages",
       "description": "Update an existing wiki page.",
       "annotations": {
@@ -993,6 +1073,7 @@
     },
     {
       "name": "delete_page",
+      "title": "Delete Page",
       "domain": "pages",
       "description": "Delete a wiki page from a course. This action is permanent.",
       "annotations": {
@@ -1005,6 +1086,7 @@
     },
     {
       "name": "list_calendar_events",
+      "title": "List Calendar Events",
       "domain": "calendar",
       "description": "List calendar events for a course.",
       "annotations": {
@@ -1017,6 +1099,7 @@
     },
     {
       "name": "create_calendar_event",
+      "title": "Create Calendar Event",
       "domain": "calendar",
       "description": "Create a new calendar event in Canvas.",
       "annotations": {
@@ -1029,6 +1112,7 @@
     },
     {
       "name": "update_calendar_event",
+      "title": "Update Calendar Event",
       "domain": "calendar",
       "description": "Update an existing calendar event. Only provided fields are changed.",
       "annotations": {
@@ -1041,6 +1125,7 @@
     },
     {
       "name": "list_conversations",
+      "title": "List Conversations",
       "domain": "conversations",
       "description": "List conversations (inbox messages) for the authenticated user.",
       "annotations": {
@@ -1053,6 +1138,7 @@
     },
     {
       "name": "get_conversation",
+      "title": "Get Conversation",
       "domain": "conversations",
       "description": "Get a single conversation with its full message thread.",
       "annotations": {
@@ -1065,6 +1151,7 @@
     },
     {
       "name": "get_conversation_unread_count",
+      "title": "Get Conversation Unread Count",
       "domain": "conversations",
       "description": "Get the number of unread conversations for the authenticated user.",
       "annotations": {
@@ -1077,6 +1164,7 @@
     },
     {
       "name": "send_conversation",
+      "title": "Send Conversation",
       "domain": "conversations",
       "description": "Send a new conversation message to one or more recipients.",
       "annotations": {
@@ -1089,6 +1177,7 @@
     },
     {
       "name": "list_peer_reviews",
+      "title": "List Peer Reviews",
       "domain": "peer_reviews",
       "description": "List all peer reviews for an assignment in a course.",
       "annotations": {
@@ -1101,6 +1190,7 @@
     },
     {
       "name": "get_submission_peer_reviews",
+      "title": "Get Submission Peer Reviews",
       "domain": "peer_reviews",
       "description": "List peer reviews assigned to a specific submission.",
       "annotations": {
@@ -1113,6 +1203,7 @@
     },
     {
       "name": "create_peer_review",
+      "title": "Create Peer Review",
       "domain": "peer_reviews",
       "description": "Assign a user to peer-review a submission.",
       "annotations": {
@@ -1125,6 +1216,7 @@
     },
     {
       "name": "delete_peer_review",
+      "title": "Delete Peer Review",
       "domain": "peer_reviews",
       "description": "Remove a peer review assignment from a submission. This action is permanent.",
       "annotations": {
@@ -1137,6 +1229,7 @@
     },
     {
       "name": "get_account",
+      "title": "Get Account",
       "domain": "accounts",
       "description": "Get details for a Canvas account by ID.",
       "annotations": {
@@ -1149,6 +1242,7 @@
     },
     {
       "name": "list_accounts",
+      "title": "List Accounts",
       "domain": "accounts",
       "description": "List all accounts accessible to the authenticated user.",
       "annotations": {
@@ -1161,6 +1255,7 @@
     },
     {
       "name": "list_sub_accounts",
+      "title": "List Sub-Accounts",
       "domain": "accounts",
       "description": "List sub-accounts under a given Canvas account.",
       "annotations": {
@@ -1173,6 +1268,7 @@
     },
     {
       "name": "list_account_courses",
+      "title": "List Account Courses",
       "domain": "accounts",
       "description": "List courses under a given Canvas account.",
       "annotations": {
@@ -1185,6 +1281,7 @@
     },
     {
       "name": "list_account_users",
+      "title": "List Account Users",
       "domain": "accounts",
       "description": "List users in a Canvas account.",
       "annotations": {
@@ -1197,6 +1294,7 @@
     },
     {
       "name": "get_account_reports",
+      "title": "Get Account Reports",
       "domain": "accounts",
       "description": "List available report types for a Canvas account.",
       "annotations": {
@@ -1209,6 +1307,7 @@
     },
     {
       "name": "list_account_notifications",
+      "title": "List Account Notifications",
       "domain": "accounts",
       "description": "List active global institution-wide announcements for the current user (maintenance windows, term deadlines, policy notices).",
       "annotations": {
@@ -1221,6 +1320,7 @@
     },
     {
       "name": "view_account_notifications",
+      "title": "View Account Notifications",
       "domain": "accounts",
       "description": "Interactive panel of active institution-wide announcements. Returns the same payload as `list_account_notifications` and additionally links to an MCP Apps UI resource that renders scannable announcement cards with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `list_account_notifications`).",
       "annotations": {
@@ -1233,6 +1333,7 @@
     },
     {
       "name": "search_course_content",
+      "title": "Search Course Content",
       "domain": "analytics",
       "description": "Search for content within a course. Searches pages, assignments, discussions, and announcements by keyword.",
       "annotations": {
@@ -1245,6 +1346,7 @@
     },
     {
       "name": "get_course_analytics",
+      "title": "Get Course Analytics",
       "domain": "analytics",
       "description": "Get course-level activity analytics. Returns daily page view and participation counts.",
       "annotations": {
@@ -1257,6 +1359,7 @@
     },
     {
       "name": "get_student_analytics",
+      "title": "Get Student Analytics",
       "domain": "analytics",
       "description": "Get per-student activity analytics for a course. Returns page views, participations, and submission timeline for a specific student.",
       "annotations": {
@@ -1269,6 +1372,7 @@
     },
     {
       "name": "get_course_activity_stream",
+      "title": "Get Course Activity Stream",
       "domain": "analytics",
       "description": "Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).",
       "annotations": {
@@ -1281,6 +1385,7 @@
     },
     {
       "name": "get_assignment_analytics",
+      "title": "Get Assignment Analytics",
       "domain": "analytics",
       "description": "Get score distribution analytics for assignments in a course. Returns statistical summary (min, max, median, first/third quartile), submission count, and tardiness breakdown (on_time, late, missing) for each assignment. Provide assignment_id to scope to one assignment; omit to return analytics for all assignments in the course.",
       "annotations": {
@@ -1293,6 +1398,7 @@
     },
     {
       "name": "get_root_outcome_group",
+      "title": "Get Root Outcome Group",
       "domain": "outcomes",
       "description": "Get the root outcome group for an account or course context.",
       "annotations": {
@@ -1305,6 +1411,7 @@
     },
     {
       "name": "list_outcome_groups",
+      "title": "List Outcome Groups",
       "domain": "outcomes",
       "description": "List all outcome groups for an account or course context.",
       "annotations": {
@@ -1317,6 +1424,7 @@
     },
     {
       "name": "list_outcome_group_links",
+      "title": "List Outcome Group Links",
       "domain": "outcomes",
       "description": "List all outcome links in an account or course context.",
       "annotations": {
@@ -1329,6 +1437,7 @@
     },
     {
       "name": "get_outcome_group",
+      "title": "Get Outcome Group",
       "domain": "outcomes",
       "description": "Get details for a specific outcome group in an account or course context.",
       "annotations": {
@@ -1341,6 +1450,7 @@
     },
     {
       "name": "list_outcome_group_outcomes",
+      "title": "List Outcome Group Outcomes",
       "domain": "outcomes",
       "description": "List the linked outcomes directly under a specific outcome group.",
       "annotations": {
@@ -1353,6 +1463,7 @@
     },
     {
       "name": "list_outcome_group_subgroups",
+      "title": "List Outcome Group Subgroups",
       "domain": "outcomes",
       "description": "List the immediate child outcome groups under a specific outcome group.",
       "annotations": {
@@ -1365,6 +1476,7 @@
     },
     {
       "name": "get_outcome",
+      "title": "Get Outcome",
       "domain": "outcomes",
       "description": "Get the full details for a specific learning outcome by ID.",
       "annotations": {
@@ -1377,6 +1489,7 @@
     },
     {
       "name": "get_outcome_alignments",
+      "title": "Get Outcome Alignments",
       "domain": "outcomes",
       "description": "Get outcome alignments for a course, optionally filtered to a specific student or assignment.",
       "annotations": {
@@ -1389,6 +1502,7 @@
     },
     {
       "name": "get_outcome_results",
+      "title": "Get Outcome Results",
       "domain": "outcomes",
       "description": "Get per-student outcome results for a course, with optional outcome, student, and alignment filters.",
       "annotations": {
@@ -1401,6 +1515,7 @@
     },
     {
       "name": "get_outcome_rollups",
+      "title": "Get Outcome Rollups",
       "domain": "outcomes",
       "description": "Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.",
       "annotations": {
@@ -1413,6 +1528,7 @@
     },
     {
       "name": "get_outcome_contributing_scores",
+      "title": "Get Outcome Contributing Scores",
       "domain": "outcomes",
       "description": "Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.",
       "annotations": {
@@ -1425,6 +1541,7 @@
     },
     {
       "name": "get_outcome_mastery_distribution",
+      "title": "Get Outcome Mastery Distribution",
       "domain": "outcomes",
       "description": "Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.",
       "annotations": {
@@ -1437,6 +1554,7 @@
     },
     {
       "name": "get_my_courses",
+      "title": "Get My Courses",
       "domain": "student",
       "description": "List active courses for the authenticated student.",
       "annotations": {
@@ -1451,6 +1569,7 @@
     },
     {
       "name": "get_my_grades",
+      "title": "Get My Grades",
       "domain": "student",
       "description": "Get grade data for the authenticated student. If course_id is omitted, returns grades across all enrolled courses.",
       "annotations": {
@@ -1465,6 +1584,7 @@
     },
     {
       "name": "get_my_submissions",
+      "title": "Get My Submissions",
       "domain": "student",
       "description": "List all submissions for the authenticated student in a course.",
       "annotations": {
@@ -1477,6 +1597,7 @@
     },
     {
       "name": "get_my_upcoming_assignments",
+      "title": "Get My Upcoming Assignments",
       "domain": "student",
       "description": "List upcoming assignment events for the authenticated student.",
       "annotations": {
@@ -1491,6 +1612,7 @@
     },
     {
       "name": "get_my_submission_feedback",
+      "title": "Get My Submission Feedback",
       "domain": "student",
       "description": "List the authenticated student's own submissions that carry feedback comments from an instructor or a peer reviewer — comments left by the student themselves do not count as feedback and submissions with no non-self comments are omitted. Omit `course_id` to scan every active course; a course that errors during a scan is skipped and reported in `courses_failed` rather than failing the whole call. Sorted most-recent-feedback-first. Comment author role is best-effort: 'teacher' is only identified when the author is the submission's recorded grader; other non-self authors are labeled 'peer', including any staff member who comments without being the recorded grader.",
       "annotations": {
@@ -1503,6 +1625,7 @@
     },
     {
       "name": "find_student_across_courses",
+      "title": "Find Student Across Courses",
       "domain": "student_search",
       "description": "Search the caller's teaching courses — active and, by default, concluded (past-term) ones — for a student by name, login, or email, and report every matching course with the student's enrollment state and last activity. Set `include_concluded: false` to only search current courses. `max_courses` bounds how many of the caller's courses are scanned (most recent term first); when exceeded, `truncated: true` is set rather than silently dropping courses. A course that errors during the scan is skipped and reported in `courses_failed` rather than failing the whole call.",
       "annotations": {
@@ -1515,6 +1638,7 @@
     },
     {
       "name": "get_dashboard_cards",
+      "title": "Get Dashboard Cards",
       "domain": "dashboard",
       "description": "Get the current user's dashboard course cards with position, color, and image.",
       "annotations": {
@@ -1529,6 +1653,7 @@
     },
     {
       "name": "get_todo_items",
+      "title": "Get To-Do Items",
       "domain": "dashboard",
       "description": "Get the current user's to-do items, including upcoming assignments and grading tasks.",
       "annotations": {
@@ -1543,6 +1668,7 @@
     },
     {
       "name": "get_upcoming_events",
+      "title": "Get Upcoming Events",
       "domain": "dashboard",
       "description": "Get the current user's upcoming calendar events and assignments.",
       "annotations": {
@@ -1557,6 +1683,7 @@
     },
     {
       "name": "get_missing_submissions",
+      "title": "Get Missing Submissions",
       "domain": "dashboard",
       "description": "Get assignments with missing submissions for the current user.",
       "annotations": {
@@ -1569,6 +1696,7 @@
     },
     {
       "name": "list_submission_comments_needing_attention",
+      "title": "List Submission Comments Needing Attention",
       "domain": "attention",
       "description": "List submissions where the most recent comment is from the student and has not been addressed by grading or a reply — i.e. comments the instructor has likely not seen. Returns a triage list, oldest-unaddressed first. Requires instructor/TA permissions in the course.",
       "annotations": {
@@ -1581,6 +1709,7 @@
     },
     {
       "name": "list_students_needing_attention",
+      "title": "List Students Needing Attention",
       "domain": "attention",
       "description": "Report students who may need instructor attention based on inactivity, missing or late submissions, and low current score. Each finding lists the exact signals that fired and the thresholds used — this is a factual report, not a prediction. Requires instructor/TA permissions in the course.",
       "annotations": {
@@ -1593,6 +1722,7 @@
     },
     {
       "name": "create_content_export",
+      "title": "Create Content Export",
       "domain": "content_exports",
       "description": "Start a Canvas course content export (Common Cartridge / QTI / zip). Exports are asynchronous — this tool returns immediately with an export ID and initial workflow_state (\"created\"). Call get_content_export to poll progress and retrieve the time-limited download link when the export finishes.",
       "annotations": {
@@ -1605,6 +1735,7 @@
     },
     {
       "name": "get_content_export",
+      "title": "Get Content Export",
       "domain": "content_exports",
       "description": "Get the status of a content export. When workflow_state is \"exported\", attachment.url contains a time-limited download link — download it promptly, as the URL expires (re-fetch to get a fresh one). Returns attachment: null while still \"created\"/\"exporting\" or on \"failed\".",
       "annotations": {
@@ -1617,6 +1748,7 @@
     },
     {
       "name": "list_content_exports",
+      "title": "List Content Exports",
       "domain": "content_exports",
       "description": "List all content exports for a course (most recent first).",
       "annotations": {
@@ -1629,6 +1761,7 @@
     },
     {
       "name": "list_content_migrations",
+      "title": "List Content Migrations",
       "domain": "content_migrations",
       "description": "List all content migrations for a course (most recent first).",
       "annotations": {
@@ -1641,6 +1774,7 @@
     },
     {
       "name": "get_content_migration",
+      "title": "Get Content Migration",
       "domain": "content_migrations",
       "description": "Get the status of a single content migration. When workflow_state is \"running\", poll progress_url for live updates. When \"completed\", the migration is done.",
       "annotations": {
@@ -1653,6 +1787,7 @@
     },
     {
       "name": "list_content_migration_types",
+      "title": "List Content Migration Types",
       "domain": "content_migrations",
       "description": "List available migration types (migrators) for a course. Returns migrator type keys such as course_copy_importer, common_cartridge_importer, zip_file_importer, qti_converter, moodle_converter.",
       "annotations": {
@@ -1665,6 +1800,7 @@
     },
     {
       "name": "get_migration_selective_data",
+      "title": "Get Migration Selective Data",
       "domain": "content_migrations",
       "description": "Get the selective import tree for a migration — the list of content items available to selectively import. Only meaningful for migrations in the \"waiting_for_select\" state.",
       "annotations": {
@@ -1677,6 +1813,7 @@
     },
     {
       "name": "get_migration_asset_id_mapping",
+      "title": "Get Migration Asset ID Mapping",
       "domain": "content_migrations",
       "description": "Get the old-to-new asset ID mapping for a completed migration. Useful for resolving references to content that existed in the source course.",
       "annotations": {
@@ -1689,6 +1826,7 @@
     },
     {
       "name": "list_migration_issues",
+      "title": "List Migration Issues",
       "domain": "content_migrations",
       "description": "List issues encountered during a content migration. Each issue has a type (todo, warning, or error) and a description.",
       "annotations": {
@@ -1701,6 +1839,7 @@
     },
     {
       "name": "create_content_migration",
+      "title": "Create Content Migration",
       "domain": "content_migrations",
       "description": "Start a content migration (course copy, Common Cartridge import, zip import, QTI conversion, or Moodle conversion). Migrations are asynchronous — this tool returns immediately with a migration ID and progress_url. Poll get_content_migration or progress_url to track completion.",
       "annotations": {
@@ -1713,6 +1852,7 @@
     },
     {
       "name": "list_grading_standards",
+      "title": "List Grading Standards",
       "domain": "grading_standards",
       "description": "List grading standards available in a course or account context. Provide either course_id (to see standards scoped to a course) or account_id (to see account-level standards, requires admin access). Returns an array of grading standard objects, each with an id, title, context, and grading_scheme array of { name, value } entries.",
       "annotations": {
@@ -1725,6 +1865,7 @@
     },
     {
       "name": "create_grading_standard",
+      "title": "Create Grading Standard",
       "domain": "grading_standards",
       "description": "Create a new grading standard (letter-to-percentage scheme) in a course or account context. Provide either course_id or account_id (account requires admin). scheme_entries is an array of { name, value } objects where value is the lower-bound percentage as a fraction 0–1 (e.g. { name: \"A\", value: 0.94 } means A ≥ 94%). Entries will be sorted descending by value before sending to Canvas. Canvas POST body key is grading_scheme_entry (singular); the returned object uses grading_scheme (plural). Returns the created grading standard object including its id — use that id with apply_grading_standard_to_course to activate it on a course.",
       "annotations": {
@@ -1737,6 +1878,7 @@
     },
     {
       "name": "apply_grading_standard_to_course",
+      "title": "Apply Grading Standard to Course",
       "domain": "grading_standards",
       "description": "Apply an existing grading standard to a course so the gradebook uses it. Pass the grading_standard_id returned by create_grading_standard or list_grading_standards. Pass null for grading_standard_id to remove the current grading standard from the course. Returns the updated course object.",
       "annotations": {
@@ -1749,6 +1891,7 @@
     },
     {
       "name": "set_student_quiz_accommodation",
+      "title": "Set Student Quiz Accommodation",
       "domain": "quiz_accommodations",
       "description": "Apply extra time and/or extra attempts to a specific student across all Classic Quizzes in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. New Quizzes (quiz_type quizzes.next) are skipped — use set_student_new_quiz_accommodation instead. Only applies to quizzes that exist at call time; re-run after creating new quizzes. Assignment due-date overrides are not handled here (separate fast-follow feature). Note: for courses with many quizzes this makes one Canvas API call per quiz. Partial failures are tolerated — a failure on one quiz does not abort the rest. Returns the standard fan-out envelope: separated applied[], skipped[] (each with a skip_reason), and failed[] (each with an error) arrays, a not_found list of any requested quiz_ids absent from the course, and a summary of counts. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
       "annotations": {
@@ -1761,6 +1904,7 @@
     },
     {
       "name": "list_student_quiz_accommodations",
+      "title": "List Student Quiz Accommodations",
       "domain": "quiz_accommodations",
       "description": "List the current quiz accommodation (extra time and/or extra attempts) for a specific student across all Classic Quizzes in a course. Useful for auditing before or after calling set_student_quiz_accommodation. New Quizzes (quiz_type quizzes.next) are excluded. Reads extra_time / extra_attempts from each quiz's submission records (Canvas exposes no read endpoint for quiz extensions directly) — one Canvas API call per Classic Quiz, so it may be slow for courses with many quizzes. Errors from any quiz's read propagate immediately (no per-quiz error catching). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
       "annotations": {
@@ -1773,6 +1917,7 @@
     },
     {
       "name": "set_student_new_quiz_accommodation",
+      "title": "Set Student New Quiz Accommodation",
       "domain": "new_quiz_accommodations",
       "description": "Apply a time and/or attempts accommodation for a student across all New Quizzes in a course (course-level, single Canvas API call when no assignment_ids are given) or for a specified subset of New Quizzes (per-quiz fan-out when assignment_ids are given). New Quizzes use a time_multiplier (ratio, e.g. 1.5 for 1.5× time), not absolute minutes. For Classic Quizzes (quiz_type: assignment / practice_quiz / etc.) use set_student_quiz_accommodation instead. Partial per-quiz failures are tolerated — a failure on one quiz does not abort the rest. In per-quiz mode, fan-out is sequential (one Canvas API call per assignment ID, awaited in series). Canvas errors on the course-level path (no assignment_ids) propagate as a top-level error (no envelope). Returns a uniform envelope: scope (\"course\" or \"per_quiz\"), applied[], failed[], and summary. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
       "annotations": {
@@ -1785,6 +1930,7 @@
     },
     {
       "name": "list_student_new_quiz_accommodations",
+      "title": "List Student New Quiz Accommodations",
       "domain": "new_quiz_accommodations",
       "description": "Read the current course-level New Quizzes accommodation (time multiplier and/or extra attempts) for a specific student in a course. Useful for auditing before or after calling set_student_new_quiz_accommodation. Returns has_accommodation: false when no accommodation is set (Canvas 404 is treated as \"no record\", not an error). New Quizzes store a single course-level accommodation record per student; this is not per-quiz. For Classic Quizzes, use list_student_quiz_accommodations instead. Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first.",
       "annotations": {
@@ -1797,6 +1943,7 @@
     },
     {
       "name": "list_assignment_overrides",
+      "title": "List Assignment Overrides",
       "domain": "assignment_overrides",
       "description": "List all due-date / availability overrides for a specific assignment in a course. Returns overrides targeting individual students, sections, or groups. Useful for auditing before creating a new override — Canvas returns a 422 if a student-set override already exists for the same students on the same assignment.",
       "annotations": {
@@ -1809,6 +1956,7 @@
     },
     {
       "name": "create_assignment_override",
+      "title": "Create Assignment Override",
       "domain": "assignment_overrides",
       "description": "Create a due-date / availability override for a specific assignment, targeting a set of students, a course section, or a group. Exactly one of student_ids, course_section_id, or group_id must be provided. At least one date field (due_at, unlock_at, lock_at) should be provided; omit a date field to leave the corresponding date unchanged for the override target. Dates must be ISO 8601 strings (e.g. \"2026-09-15T23:59:00Z\"). Canvas returns a 422 if a student-set override already exists for the same students on this assignment — use list_assignment_overrides to audit first. Provide student_ids as real Canvas user IDs. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to resolve pseudonyms to real user IDs.",
       "annotations": {
@@ -1821,6 +1969,7 @@
     },
     {
       "name": "set_student_assignment_dates",
+      "title": "Set Student Assignment Dates",
       "domain": "assignment_overrides",
       "description": "Fan a due-date / availability override for a specific student across all (or a filtered subset of) assignments in a course. Creates one student-set override per assignment via the Canvas assignment overrides API. Partial failures are tolerated — a failure on one assignment does not abort the rest. Note: for courses with many assignments this makes one Canvas API call per assignment. V1 is create-only: if an override for this student already exists on an assignment, Canvas returns a 422 and that assignment appears in the failed[] list. Use list_assignment_overrides to audit first. Dates must be ISO 8601 strings. To shift dates by a relative amount, first call list_assignments with include=overrides to retrieve current dates, compute absolute timestamps, then call this tool. Returns the standard fan-out envelope: separated applied[], skipped[] (unused in this create-only version, always empty), and failed[] (each with an error) arrays, a not_found list, and a summary of counts. Any assignment_ids that do not exist in the course are reported in not_found (they are neither applied nor failed). Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, call resolve_pseudonym first to obtain the real user_id from a pseudonym.",
       "annotations": {
@@ -1833,6 +1982,7 @@
     },
     {
       "name": "check_course_setup",
+      "title": "Check Course Setup",
       "domain": "course_setup",
       "description": "Run a factual course-readiness report that surfaces common configuration problems — assignments missing due dates, unpublished items students will not see, gradebook weighting gaps, graded assignments with no points, and published assignments still accepting submissions after their due date. Returns findings grouped by check with a plain-language detail per item. This is a config-health report only; it does not inspect student submissions or performance (see list_students_needing_attention / get_missing_submissions for those). Requires instructor permissions in the course.",
       "annotations": {
@@ -1845,6 +1995,7 @@
     },
     {
       "name": "explain_grade",
+      "title": "Explain Grade",
       "domain": "grade_explanation",
       "description": "Recomputes and explains the weighted course grade for a student, including assignment-group weights, drop_lowest / drop_highest / never_drop rules, per-group breakdowns (earned points, dropped assignments, weighted contributions), the mapped letter grade (via the course grading standard when present), and a reconciliation check against Canvas's posted current_score / final_score.\n\nUse this when you need to verify that Canvas's displayed grade matches the rules, or to explain to a student or instructor how their grade was calculated.\n\nLimitations:\n- V1 computes one student per call. Omit student_id to compute for the authenticated user.\n- Instructor-applied curves and fudge points are not exposed via the Canvas REST API and cannot be reflected in the computation; a caveat is added when the discrepancy exceeds 0.5 pp.\n- When the course uses grading periods, reconciliation is against the overall (cross-period) grade.\n- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled and you are passing a student_id, first call resolve_pseudonym to obtain the real Canvas user_id.",
       "annotations": {
@@ -1857,6 +2008,7 @@
     },
     {
       "name": "explain_grading_policy",
+      "title": "Explain Grading Policy",
       "domain": "grading_policy",
       "description": "Explains the grading automation rules configured for a Canvas course:\n- Missing-submission policy: whether blank/unsubmitted work is automatically scored 0 (or another deduction), or left unpenalised.\n- Late-submission policy: whether Canvas applies a per-day or per-hour percentage deduction to late submissions, and whether there is a floor below which the grade cannot fall.\n- Assignment-group weighting: whether the course uses weighted groups, and the weight of each group.\n- Grading scheme: whether a letter-grade scheme (A/B/C/F mapping) is applied to the final score.\n\nAlso returns a plain-language summary paragraph you can share with students or instructors.\n\nNote: the late/missing policy section requires instructor or admin permissions. Students receive the group-weighting and grading-scheme sections only, with a caveat noting what is unavailable. Use explain_grade to compute the actual weighted grade for a specific student.",
       "annotations": {
@@ -1869,6 +2021,7 @@
     },
     {
       "name": "project_grade",
+      "title": "Project Grade",
       "domain": "grade_projection",
       "description": "Projects the minimum score needed on remaining assignments to reach a target course grade.\n\nGiven a target (as a percentage, e.g. 90, or a letter grade, e.g. \"A\") and the student's current scores, computes the minimum uniform percentage that must be earned on all remaining (not yet graded) assignments for the overall course grade to reach the target. Accounts for assignment-group weights, drop_lowest / drop_highest / never_drop rules, and the course grading scheme (for letter-grade targets and output letter mapping).\n\nReturns:\n- minimum_pct_on_remaining: the uniform percentage needed on all remaining items.\n- feasibility: 'achievable' | 'already_secured' | 'impossible'.\n- Per-group breakdown of locked-in scores and remaining assignments.\n- A plain-language summary.\n\nLimitations:\n- Uses a uniform-x model: the same percentage is assumed for every remaining item. This is the natural interpretation of \"minimum average needed.\" Per-item optimization is not supported.\n- Drop rules are frozen at their current state (based on already-graded scores); which items are dropped may shift as remaining assignments are graded.\n- Late-submission penalties are not factored in.\n- V1 computes one student per call. Omit student_id to compute for the authenticated user. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.",
       "annotations": {
@@ -1881,6 +2034,7 @@
     },
     {
       "name": "audit_course_links",
+      "title": "Audit Course Links",
       "domain": "link_audit",
       "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for broken or outdated links and images. Returns structured findings: cross-course references (links that still point at a previous copy of the course — the canonical stale-copy failure after a course import) and empty/malformed URLs. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems — these break silently for students while still rendering in the instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks only — no outbound HTTP requests. Requires instructor permissions in the course.",
       "annotations": {
@@ -1893,6 +2047,7 @@
     },
     {
       "name": "audit_course_accessibility",
+      "title": "Audit Course Accessibility",
       "domain": "accessibility_audit",
       "description": "Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for structurally-detectable WCAG 2.1 accessibility problems: images missing alt text or with low-quality (filename/generic) alt text, non-descriptive link text (\"click here\"), adjacent duplicate links, skipped/empty/overlong headings, and tables missing headers, header scope, or captions. Each finding carries a WCAG success criterion and a severity (error = unambiguous failure, advisory = needs human review). Structural checks only — no color-contrast checking (requires rendered theme CSS this tool cannot see) and no list-misuse detection in this version. Pass \"quizzes\" in `include` to also scan Classic quiz descriptions/questions and New Quiz item stems (opt-in, off by default). Complements — does not replace — Canvas's own in-app Accessibility Checker (course navigation → Accessibility → Scan Course), which covers the same WCAG areas plus rendered color contrast and offers in-UI remediation. Requires instructor permissions in the course.",
       "annotations": {
@@ -1905,6 +2060,7 @@
     },
     {
       "name": "list_appointment_groups",
+      "title": "List Appointment Groups",
       "domain": "appointment_groups",
       "description": "List appointment groups (Canvas Scheduler sign-up slots). Use scope=reservable to find groups students can reserve, or scope=manageable for groups the current user manages.",
       "annotations": {
@@ -1917,6 +2073,7 @@
     },
     {
       "name": "get_appointment_group",
+      "title": "Get Appointment Group",
       "domain": "appointment_groups",
       "description": "Get a single appointment group by ID, including its time slots and participant counts.",
       "annotations": {
@@ -1929,6 +2086,7 @@
     },
     {
       "name": "create_appointment_group",
+      "title": "Create Appointment Group",
       "domain": "appointment_groups",
       "description": "Create a new appointment group (sign-up slots) in Canvas Scheduler. Provide at least one context_code (e.g. \"course_123\") and a title. Add new_appointments as [start_at, end_at] pairs to define time slots.",
       "annotations": {
@@ -1941,6 +2099,7 @@
     },
     {
       "name": "update_appointment_group",
+      "title": "Update Appointment Group",
       "domain": "appointment_groups",
       "description": "Update an existing appointment group. Use publish=true to make a draft group visible to participants, or add new time slots via new_appointments.",
       "annotations": {
@@ -1953,6 +2112,7 @@
     },
     {
       "name": "delete_appointment_group",
+      "title": "Delete Appointment Group",
       "domain": "appointment_groups",
       "description": "Delete an appointment group and cancel any existing reservations. Provide cancel_reason to notify participants.",
       "annotations": {
@@ -1965,6 +2125,7 @@
     },
     {
       "name": "list_appointment_group_users",
+      "title": "List Appointment Group Users",
       "domain": "appointment_groups",
       "description": "List participants (users) who have reserved a slot in an appointment group.",
       "annotations": {
@@ -1977,6 +2138,7 @@
     },
     {
       "name": "list_appointment_group_groups",
+      "title": "List Appointment Group Groups",
       "domain": "appointment_groups",
       "description": "List student groups that have reserved a slot in an appointment group (when participant_type=Group).",
       "annotations": {
@@ -1989,6 +2151,7 @@
     },
     {
       "name": "next_appointment",
+      "title": "Next Appointment",
       "domain": "appointment_groups",
       "description": "Get the current user's next upcoming appointment across all (or specified) appointment groups.",
       "annotations": {

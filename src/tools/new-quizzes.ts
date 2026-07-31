@@ -75,6 +75,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'create_new_quiz',
+      title: 'Create New Quiz',
       description:
         'Create a New Quiz (LTI) in a Canvas course. New Quizzes is the modern quiz engine; for Classic quizzes use create_quiz.',
       inputSchema: {
@@ -110,6 +111,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_new_quiz',
+      title: 'Update New Quiz',
       description: 'Update an existing New Quiz (LTI) in a Canvas course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -147,6 +149,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_new_quiz',
+      title: 'Delete New Quiz',
       description:
         'Delete a New Quiz (LTI) from a Canvas course. This action is permanent. Use assignment_id (not quiz_id).',
       inputSchema: {
@@ -163,6 +166,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_new_quiz_items',
+      title: 'List New Quiz Items',
       description: 'List all items (questions) in a New Quiz (LTI).',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -177,6 +181,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_new_quiz_item',
+      title: 'Get New Quiz Item',
       description: 'Get a single item (question) from a New Quiz (LTI) by item ID.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -193,6 +198,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_new_quiz_item',
+      title: 'Create New Quiz Item',
       description:
         'Create an item (question) in a New Quiz (LTI). Supports 5 types: choice (MCQ), true-false, essay, matching, numeric. Canvas may rate-limit rapid sequential creates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
       inputSchema: {
@@ -219,6 +225,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_new_quiz_item',
+      title: 'Update New Quiz Item',
       description:
         'Update an existing item (question) in a New Quiz (LTI). All fields are optional; supply only what changes. Canvas may rate-limit rapid sequential updates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
       inputSchema: {
@@ -246,6 +253,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_new_quiz_item',
+      title: 'Delete New Quiz Item',
       description: 'Delete an item (question) from a New Quiz (LTI). This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

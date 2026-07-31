@@ -6,6 +6,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_quizzes',
+      title: 'List Quizzes',
       audience: 'shared',
       description: 'List all quizzes in a course.',
       inputSchema: {
@@ -22,6 +23,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_quiz',
+      title: 'Get Quiz',
       audience: 'shared',
       description: 'Get details for a single quiz by ID.',
       inputSchema: {
@@ -40,6 +42,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_quiz_submissions',
+      title: 'List Quiz Submissions',
       description: 'List all submissions for a quiz.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -57,6 +60,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_quiz_questions',
+      title: 'List Quiz Questions',
       description: 'List all questions in a quiz.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -74,6 +78,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_quiz_submission_answers',
+      title: 'Get Quiz Submission Answers',
       description: "Get a student's answers for a quiz submission.",
       inputSchema: {
         quiz_submission_id: z.number().describe('The Canvas quiz submission ID'),
@@ -89,6 +94,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'score_quiz_question',
+      title: 'Score Quiz Question',
       description:
         'Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.',
       inputSchema: {
@@ -127,6 +133,7 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_quiz_submission_events',
+      title: 'Get Quiz Submission Events',
       // `shared`: the submitting student can read their own attempt's events
       // (the #182 user story explicitly serves "a student reviewing their own
       // attempt"), matching the `shared` audience on get_quiz / list_quizzes.

@@ -32,6 +32,7 @@ export function gradebookHistoryTools(
   return [
     {
       name: 'list_gradebook_history_days',
+      title: 'List Gradebook History Days',
       description:
         'List the dates in a course gradebook history that contain grading activity, grouped by grader and assignment.',
       inputSchema: {
@@ -48,6 +49,7 @@ export function gradebookHistoryTools(
     },
     {
       name: 'get_gradebook_history_day',
+      title: 'Get Gradebook History Day',
       description:
         'Get the graders and assignment IDs that had gradebook activity on a specific course date.',
       inputSchema: {
@@ -66,6 +68,7 @@ export function gradebookHistoryTools(
     },
     {
       name: 'list_gradebook_history_submissions',
+      title: 'List Gradebook History Submissions',
       description:
         'List versioned submission history for one grader and assignment on a specific gradebook history date.',
       inputSchema: {
@@ -104,6 +107,7 @@ export function gradebookHistoryTools(
     },
     {
       name: 'get_gradebook_history_feed',
+      title: 'Get Gradebook History Feed',
       description:
         'Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.',
       inputSchema: {

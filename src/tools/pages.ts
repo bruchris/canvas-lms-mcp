@@ -6,6 +6,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_pages',
+      title: 'List Pages',
       audience: 'shared',
       description: 'List all wiki pages in a course.',
       inputSchema: {
@@ -22,6 +23,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_page',
+      title: 'Get Page',
       audience: 'shared',
       description: 'Get a single wiki page by its URL slug.',
       inputSchema: {
@@ -40,6 +42,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_page',
+      title: 'Create Page',
       description: 'Create a new wiki page in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -67,6 +70,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_page',
+      title: 'Update Page',
       description: 'Update an existing wiki page.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -96,6 +100,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_page',
+      title: 'Delete Page',
       description: 'Delete a wiki page from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

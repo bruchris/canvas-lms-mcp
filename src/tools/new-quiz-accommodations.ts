@@ -14,6 +14,7 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
   return [
     {
       name: 'set_student_new_quiz_accommodation',
+      title: 'Set Student New Quiz Accommodation',
       description:
         'Apply a time and/or attempts accommodation for a student across all New Quizzes in a course ' +
         '(course-level, single Canvas API call when no assignment_ids are given) or for a specified ' +
@@ -131,6 +132,7 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
     },
     {
       name: 'list_student_new_quiz_accommodations',
+      title: 'List Student New Quiz Accommodations',
       description:
         'Read the current course-level New Quizzes accommodation (time multiplier and/or extra attempts) ' +
         'for a specific student in a course. Useful for auditing before or after calling ' +

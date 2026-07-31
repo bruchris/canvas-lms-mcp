@@ -45,6 +45,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_courses',
+      title: 'List Courses',
       description:
         'List courses for the authenticated user. Use fields="slim" when enumerating courses for selection; switch to "full" once you have identified the target. slim returns id, name, course_code, term name, and workflow_state only. "full" (default) includes all Canvas fields plus `include` extras (teachers, total_students, syllabus_body, etc.). `state[]` narrows by course workflow state; `enrollment_state` narrows by the caller\'s enrollment state.',
       inputSchema: {
@@ -101,6 +102,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course',
+      title: 'Get Course',
       description:
         'Get details for a single course. Defaults to requesting `term` and `total_students`. Pass `include` to replace the default set with custom Canvas include[] fields (teachers, permissions, syllabus_body, sections, etc.).',
       inputSchema: {
@@ -129,6 +131,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_syllabus',
+      title: 'Get Syllabus',
       description: 'Get the syllabus HTML body for a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -145,6 +148,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_course',
+      title: 'Create Course',
       audience: 'admin',
       description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
@@ -183,6 +187,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_course',
+      title: 'Update Course',
       audience: 'educator',
       description:
         'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',

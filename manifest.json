@@ -18,6 +18,9 @@
     "url": "https://github.com/bruchris/canvas-lms-mcp"
   },
   "license": "MIT",
+  "privacy_policies": [
+    "https://github.com/bruchris/canvas-lms-mcp/blob/main/PRIVACY.md"
+  ],
   "keywords": [
     "canvas",
     "canvas-lms",

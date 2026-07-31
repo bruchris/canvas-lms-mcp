@@ -84,6 +84,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_files',
+      title: 'List Files',
       description: 'List all files in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -99,6 +100,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_folders',
+      title: 'List Folders',
       description: 'List all folders in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -114,6 +116,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_file',
+      title: 'Get File',
       description: 'Get metadata for a single file by ID, including download URL.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -131,6 +134,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'upload_file',
+      title: 'Upload File',
       audience: 'educator',
       description:
         'Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.',
@@ -159,6 +163,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_file',
+      title: 'Delete File',
       audience: 'educator',
       description: 'Delete a file by ID. This action is permanent.',
       inputSchema: {
@@ -175,6 +180,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'download_file',
+      title: 'Download File',
       description:
         'Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.',
       inputSchema: {
@@ -196,6 +202,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'find_duplicate_files',
+      title: 'Find Duplicate Files',
       description:
         "Find duplicate files in a course's Files area — copies with the same name and size, " +
         'typically left behind by repeated course copies. Each duplicate gets flagged separately ' +

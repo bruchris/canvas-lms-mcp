@@ -17,6 +17,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
   return [
     {
       name: 'list_assignment_overrides',
+      title: 'List Assignment Overrides',
       description:
         'List all due-date / availability overrides for a specific assignment in a course. ' +
         'Returns overrides targeting individual students, sections, or groups. ' +
@@ -38,6 +39,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
     },
     {
       name: 'create_assignment_override',
+      title: 'Create Assignment Override',
       description:
         'Create a due-date / availability override for a specific assignment, targeting a set of ' +
         'students, a course section, or a group. Exactly one of student_ids, course_section_id, ' +
@@ -137,6 +139,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
     },
     {
       name: 'set_student_assignment_dates',
+      title: 'Set Student Assignment Dates',
       description:
         'Fan a due-date / availability override for a specific student across all (or a filtered subset of) ' +
         'assignments in a course. Creates one student-set override per assignment via the Canvas assignment ' +

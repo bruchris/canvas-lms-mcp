@@ -373,6 +373,16 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validatio
 - [Educator Assignment Review Workflow](docs/workflows/educator-assignment-review.md) -- Read-first grading flow with write-safety guidance
 - [Student Weekly Planning Workflow](docs/workflows/student-weekly-planning.md) -- Read-only weekly planning sequence for students
 
+## Privacy Policy
+
+`canvas-lms-mcp` runs entirely on your own machine. The maintainers operate no
+servers and collect no telemetry or analytics — your Canvas API token and all
+Canvas data stay local and travel only between your machine and your own Canvas
+instance. Optional FERPA pseudonymization runs locally; the only data written to
+disk is the optional pseudonym map and audit log. Full details — data
+collection, usage, storage, third-party sharing, retention, and contact — are in
+[PRIVACY.md](PRIVACY.md).
+
 ## License
 
 MIT

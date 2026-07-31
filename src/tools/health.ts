@@ -5,6 +5,7 @@ export function healthTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'health_check',
+      title: 'Health Check',
       description:
         'Check if the Canvas API is reachable and the token is valid. Returns ok/error status.',
       inputSchema: {},

@@ -175,6 +175,7 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'audit_course_links',
+      title: 'Audit Course Links',
       description:
         "Scan a course's content (pages, assignments, syllabus, announcements, and optionally " +
         'quizzes) for broken or outdated links and images. Returns structured findings: ' +

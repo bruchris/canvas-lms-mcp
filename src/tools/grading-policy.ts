@@ -113,6 +113,7 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'explain_grading_policy',
+      title: 'Explain Grading Policy',
       description:
         'Explains the grading automation rules configured for a Canvas course:\n' +
         '- Missing-submission policy: whether blank/unsubmitted work is automatically scored 0 (or ' +

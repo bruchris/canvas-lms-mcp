@@ -49,6 +49,7 @@ export function enrollmentTools(
   return [
     {
       name: 'list_enrollments',
+      title: 'List Enrollments',
       description:
         'List all enrollments for the authenticated user across courses. Optional filters and includes mirror Canvas `GET /users/self/enrollments`.',
       inputSchema: {
@@ -103,6 +104,7 @@ export function enrollmentTools(
     },
     {
       name: 'list_course_enrollments',
+      title: 'List Course Enrollments',
       audience: 'educator',
       description:
         'List enrollments within a specific course with Canvas filters. Use `include=grades` / `include=current_points` for richer grade data, `type[]` to limit to a role, and `user_id` to focus on a single user.',
@@ -157,6 +159,7 @@ export function enrollmentTools(
     },
     {
       name: 'enroll_user',
+      title: 'Enroll User',
       description: 'Enroll a user in a course with a specified role.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -190,6 +193,7 @@ export function enrollmentTools(
     },
     {
       name: 'remove_enrollment',
+      title: 'Remove Enrollment',
       description:
         "Remove or conclude an enrollment from a course. The 'delete' task is permanent; 'conclude' and 'deactivate' are reversible.",
       inputSchema: {
