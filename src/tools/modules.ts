@@ -6,6 +6,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_modules',
+      title: 'List Modules',
       audience: 'shared',
       description: 'List all modules in a course.',
       inputSchema: {
@@ -22,6 +23,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_module',
+      title: 'Get Module',
       audience: 'shared',
       description: 'Get details for a single module by ID.',
       inputSchema: {
@@ -40,6 +42,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_module_items',
+      title: 'List Module Items',
       audience: 'shared',
       description: 'List all items within a module.',
       inputSchema: {
@@ -58,6 +61,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course_structure',
+      title: 'Get Course Structure',
       audience: 'shared',
       description:
         'Return the full module → items tree for a course in a single call, with summary stats. Avoids N+1 round-trips when an agent needs to reason over the whole course shape.',
@@ -92,6 +96,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       // include_progress, instructors[], or per-student fields, this tool MUST be added
       // to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped at the handler.
       name: 'view_course_structure',
+      title: 'View Course Structure',
       audience: 'shared',
       description:
         "Interactive tree view of a course's modules and items. Returns the same payload as `get_course_structure` and additionally links to an MCP Apps UI resource that renders an explorable tree with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `get_course_structure`).",
@@ -128,6 +133,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_module',
+      title: 'Create Module',
       description: 'Create a new module in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -155,6 +161,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_module',
+      title: 'Update Module',
       description: 'Update an existing module (rename, reposition, publish/unpublish).',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -179,6 +186,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_module_item',
+      title: 'Create Module Item',
       description:
         'Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader) to a module.',
       inputSchema: {

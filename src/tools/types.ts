@@ -33,6 +33,15 @@ export interface ToolUiBinding {
 
 export interface ToolDefinition {
   name: string
+  /**
+   * Human-friendly display title surfaced to MCP clients (top-level `title` on
+   * the MCP Tool, required for the Anthropic Connectors Directory). When
+   * omitted, the title is resolved centrally from the tool name via
+   * `resolveTitle` in `titles.ts` (its override map, else mechanical Title
+   * Case) — mirroring how `audience` defaults from the domain. Set this only to
+   * override the resolved title on a specific tool.
+   */
+  title?: string
   description: string
   inputSchema: Record<string, z.ZodType>
   annotations: ToolAnnotations

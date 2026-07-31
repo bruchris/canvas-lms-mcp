@@ -11,6 +11,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_rubrics',
+      title: 'List Rubrics',
       description: 'List all rubrics in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -26,6 +27,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_rubric',
+      title: 'Get Rubric',
       description: 'Get details for a single rubric by ID, including criteria.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -43,6 +45,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_rubric_assessment',
+      title: 'Get Rubric Assessment',
       description: 'Get the rubric assessment for a specific student submission on an assignment.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -62,6 +65,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'submit_rubric_assessment',
+      title: 'Submit Rubric Assessment',
       description: 'Submit a rubric assessment with scores and comments for each criterion.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -94,6 +98,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_rubric',
+      title: 'Create Rubric',
       description:
         'Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.',
       inputSchema: {

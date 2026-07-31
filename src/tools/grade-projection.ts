@@ -169,6 +169,7 @@ export function gradeProjectionTools(
   return [
     {
       name: 'project_grade',
+      title: 'Project Grade',
       description:
         'Projects the minimum score needed on remaining assignments to reach a target course grade.\n\n' +
         'Given a target (as a percentage, e.g. 90, or a letter grade, e.g. "A") and the student\'s ' +

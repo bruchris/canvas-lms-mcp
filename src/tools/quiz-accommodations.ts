@@ -23,6 +23,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'set_student_quiz_accommodation',
+      title: 'Set Student Quiz Accommodation',
       description:
         'Apply extra time and/or extra attempts to a specific student across all Classic Quizzes ' +
         'in a course (or a specified subset). Fans out to the Canvas quiz extensions API for each quiz. ' +
@@ -178,6 +179,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_student_quiz_accommodations',
+      title: 'List Student Quiz Accommodations',
       description:
         'List the current quiz accommodation (extra time and/or extra attempts) for a specific ' +
         'student across all Classic Quizzes in a course. Useful for auditing before or after ' +

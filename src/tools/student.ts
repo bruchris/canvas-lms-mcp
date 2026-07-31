@@ -68,6 +68,7 @@ export function studentTools(
   return [
     {
       name: 'get_my_courses',
+      title: 'Get My Courses',
       description: 'List active courses for the authenticated student.',
       inputSchema: {},
       annotations: {
@@ -80,6 +81,7 @@ export function studentTools(
     },
     {
       name: 'get_my_grades',
+      title: 'Get My Grades',
       description:
         'Get grade data for the authenticated student. If course_id is omitted, returns grades across all enrolled courses.',
       inputSchema: {
@@ -96,6 +98,7 @@ export function studentTools(
     },
     {
       name: 'get_my_submissions',
+      title: 'Get My Submissions',
       description: 'List all submissions for the authenticated student in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -111,6 +114,7 @@ export function studentTools(
     },
     {
       name: 'get_my_upcoming_assignments',
+      title: 'Get My Upcoming Assignments',
       description: 'List upcoming assignment events for the authenticated student.',
       inputSchema: {},
       annotations: {
@@ -123,6 +127,7 @@ export function studentTools(
     },
     {
       name: 'get_my_submission_feedback',
+      title: 'Get My Submission Feedback',
       description:
         "List the authenticated student's own submissions that carry feedback comments from an " +
         'instructor or a peer reviewer — comments left by the student themselves do not count as ' +

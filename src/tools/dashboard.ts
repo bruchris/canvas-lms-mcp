@@ -5,6 +5,7 @@ export function dashboardTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'get_dashboard_cards',
+      title: 'Get Dashboard Cards',
       audience: 'shared',
       description: "Get the current user's dashboard course cards with position, color, and image.",
       inputSchema: {},
@@ -18,6 +19,7 @@ export function dashboardTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_todo_items',
+      title: 'Get To-Do Items',
       audience: 'shared',
       description:
         "Get the current user's to-do items, including upcoming assignments and grading tasks.",
@@ -32,6 +34,7 @@ export function dashboardTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_upcoming_events',
+      title: 'Get Upcoming Events',
       audience: 'shared',
       description: "Get the current user's upcoming calendar events and assignments.",
       inputSchema: {},
@@ -45,6 +48,7 @@ export function dashboardTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_missing_submissions',
+      title: 'Get Missing Submissions',
       description: 'Get assignments with missing submissions for the current user.',
       inputSchema: {},
       annotations: {

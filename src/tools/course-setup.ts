@@ -121,6 +121,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'check_course_setup',
+      title: 'Check Course Setup',
       description:
         'Run a factual course-readiness report that surfaces common configuration problems — ' +
         'assignments missing due dates, unpublished items students will not see, ' +

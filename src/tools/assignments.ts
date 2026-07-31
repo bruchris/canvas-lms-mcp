@@ -60,6 +60,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_assignments',
+      title: 'List Assignments',
       audience: 'shared',
       description:
         'List all assignments in a course. Use fields="slim" when enumerating assignments for selection; switch to "full" once you\'ve identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. "full" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.',
@@ -138,6 +139,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_assignment',
+      title: 'Get Assignment',
       audience: 'shared',
       description:
         'Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.',
@@ -183,6 +185,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_assignment_groups',
+      title: 'List Assignment Groups',
       audience: 'shared',
       description:
         'List assignment groups (categories like Homework, Exams) in a course. Use `include=assignments` to nest assignments under each group; other includes add submission, overrides, score_statistics, etc.',
@@ -240,6 +243,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_assignment',
+      title: 'Create Assignment',
       description: 'Create a new assignment in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -280,6 +284,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_assignment',
+      title: 'Update Assignment',
       description: 'Update an existing assignment in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -315,6 +320,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_assignment',
+      title: 'Delete Assignment',
       description: 'Delete an assignment from a course. This action is permanent.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

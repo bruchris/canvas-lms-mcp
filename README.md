@@ -17,7 +17,7 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 
 1. **[Download `canvas-lms-mcp.mcpb`](https://github.com/bruchris/canvas-lms-mcp/releases/latest/download/canvas-lms-mcp.mcpb)** from the latest release.
 2. Double-click the file (or drag it into Claude Desktop's Extensions settings).
-3. When prompted, paste your Canvas API token and Canvas API base URL (e.g. `https://school.instructure.com/api/v1`). Teachers and staff handling student data can also flip **FERPA mode — pseudonymize students** on in the same dialog ([what it does](#ferpa-mode-student-pseudonymization)).
+3. When prompted, paste your Canvas API token and Canvas base URL — your institution's origin only, e.g. `https://school.instructure.com` (do not append `/api/v1`). Teachers and staff handling student data can also flip **FERPA mode — pseudonymize students** on in the same dialog ([what it does](#ferpa-mode-student-pseudonymization)).
 
 No terminal, no Node.js install, no config-file editing — Claude Desktop bundles the runtime and handles config for you. The same `.mcpb` works in Claude Code and MCP for Windows.
 
@@ -372,6 +372,16 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validatio
 - [Agent Discovery](docs/agent-discovery.md) -- Generated tool/workflow manifests and workflow-pack index
 - [Educator Assignment Review Workflow](docs/workflows/educator-assignment-review.md) -- Read-first grading flow with write-safety guidance
 - [Student Weekly Planning Workflow](docs/workflows/student-weekly-planning.md) -- Read-only weekly planning sequence for students
+
+## Privacy Policy
+
+`canvas-lms-mcp` runs entirely on your own machine. The maintainers operate no
+servers and collect no telemetry or analytics — your Canvas API token and all
+Canvas data stay local and travel only between your machine and your own Canvas
+instance. Optional FERPA pseudonymization runs locally; the only data written to
+disk is the optional pseudonym map and audit log. Full details — data
+collection, usage, storage, third-party sharing, retention, and contact — are in
+[PRIVACY.md](PRIVACY.md).
 
 ## License
 

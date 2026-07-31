@@ -26,7 +26,7 @@
         },
         {
           "name": "CANVAS_BASE_URL",
-          "description": "Canvas instance API URL, e.g. https://school.instructure.com/api/v1",
+          "description": "Canvas instance base URL, origin only with no path, e.g. https://school.instructure.com",
           "isRequired": true,
           "format": "string"
         }

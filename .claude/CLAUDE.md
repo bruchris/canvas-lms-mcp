@@ -95,7 +95,7 @@ Every tool must declare MCP annotations:
 ### Required Environment Variables
 
 - `CANVAS_API_TOKEN` — Canvas personal access token (or passed via `--token` CLI flag)
-- `CANVAS_BASE_URL` — Canvas instance URL, e.g., `https://school.instructure.com/api/v1` (or passed via `--base-url` CLI flag)
+- `CANVAS_BASE_URL` — Canvas instance base URL, origin only with no `/api/v1` suffix (the client embeds `/api/v1` per endpoint), e.g., `https://school.instructure.com` (or passed via `--base-url` CLI flag)
 
 ### How to Add a New Tool
 

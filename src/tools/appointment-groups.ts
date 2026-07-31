@@ -17,6 +17,7 @@ export function appointmentGroupTools(
   return [
     {
       name: 'list_appointment_groups',
+      title: 'List Appointment Groups',
       description:
         'List appointment groups (Canvas Scheduler sign-up slots). Use scope=reservable to find groups students can reserve, or scope=manageable for groups the current user manages.',
       inputSchema: {
@@ -47,6 +48,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'get_appointment_group',
+      title: 'Get Appointment Group',
       description:
         'Get a single appointment group by ID, including its time slots and participant counts.',
       inputSchema: {
@@ -67,6 +69,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'create_appointment_group',
+      title: 'Create Appointment Group',
       description:
         'Create a new appointment group (sign-up slots) in Canvas Scheduler. Provide at least one context_code (e.g. "course_123") and a title. Add new_appointments as [start_at, end_at] pairs to define time slots.',
       inputSchema: {
@@ -125,6 +128,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'update_appointment_group',
+      title: 'Update Appointment Group',
       description:
         'Update an existing appointment group. Use publish=true to make a draft group visible to participants, or add new time slots via new_appointments.',
       inputSchema: {
@@ -154,6 +158,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'delete_appointment_group',
+      title: 'Delete Appointment Group',
       description:
         'Delete an appointment group and cancel any existing reservations. Provide cancel_reason to notify participants.',
       inputSchema: {
@@ -172,6 +177,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'list_appointment_group_users',
+      title: 'List Appointment Group Users',
       description: 'List participants (users) who have reserved a slot in an appointment group.',
       inputSchema: {
         appointment_group_id: z.number().describe('The appointment group ID'),
@@ -190,6 +196,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'list_appointment_group_groups',
+      title: 'List Appointment Group Groups',
       description:
         'List student groups that have reserved a slot in an appointment group (when participant_type=Group).',
       inputSchema: {
@@ -201,6 +208,7 @@ export function appointmentGroupTools(
     },
     {
       name: 'next_appointment',
+      title: 'Next Appointment',
       description:
         "Get the current user's next upcoming appointment across all (or specified) appointment groups.",
       inputSchema: {

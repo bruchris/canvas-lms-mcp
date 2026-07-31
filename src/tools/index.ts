@@ -8,6 +8,7 @@ import { toolDomainCatalog } from './catalog'
 import { formatError } from './errors'
 import { pseudonymTools } from './pseudonym'
 import { isVisibleForRole, tagAudience } from './roles'
+import { tagTitle } from './titles'
 
 const PSEUDONYM_META_NOTE =
   'Student names and contact info in this response have been replaced with stable pseudonyms (CANVAS_PSEUDONYMIZE_STUDENTS=true). Real names are not available to this tool.'
@@ -29,7 +30,7 @@ export function getAllTools(
       .map(tagAudience(registration.defaultPrimaryAudience)),
   )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
-  const all = [...domainTools, ...conditional]
+  const all = [...domainTools, ...conditional].map(tagTitle())
   if (!role) return all
   return all.filter((tool) => isVisibleForRole(tool, role))
 }
@@ -82,6 +83,7 @@ export function registerAllTools(
         server,
         tool.name,
         {
+          title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
           annotations: tool.annotations,
@@ -90,7 +92,16 @@ export function registerAllTools(
         handler,
       )
     } else {
-      server.tool(tool.name, tool.description, tool.inputSchema, tool.annotations, handler)
+      server.registerTool(
+        tool.name,
+        {
+          title: tool.title,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          annotations: tool.annotations,
+        },
+        handler,
+      )
     }
   }
 }

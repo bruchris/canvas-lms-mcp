@@ -6,6 +6,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_content_migrations',
+      title: 'List Content Migrations',
       description: 'List all content migrations for a course (most recent first).',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -15,6 +16,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_content_migration',
+      title: 'Get Content Migration',
       description:
         'Get the status of a single content migration. When workflow_state is "running", poll progress_url for live updates. When "completed", the migration is done.',
       inputSchema: {
@@ -27,6 +29,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_content_migration_types',
+      title: 'List Content Migration Types',
       description:
         'List available migration types (migrators) for a course. Returns migrator type keys such as course_copy_importer, common_cartridge_importer, zip_file_importer, qti_converter, moodle_converter.',
       inputSchema: {
@@ -37,6 +40,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_migration_selective_data',
+      title: 'Get Migration Selective Data',
       description:
         'Get the selective import tree for a migration — the list of content items available to selectively import. Only meaningful for migrations in the "waiting_for_select" state.',
       inputSchema: {
@@ -59,6 +63,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_migration_asset_id_mapping',
+      title: 'Get Migration Asset ID Mapping',
       description:
         'Get the old-to-new asset ID mapping for a completed migration. Useful for resolving references to content that existed in the source course.',
       inputSchema: {
@@ -74,6 +79,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_migration_issues',
+      title: 'List Migration Issues',
       description:
         'List issues encountered during a content migration. Each issue has a type (todo, warning, or error) and a description.',
       inputSchema: {
@@ -89,6 +95,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_content_migration',
+      title: 'Create Content Migration',
       description:
         'Start a content migration (course copy, Common Cartridge import, zip import, QTI conversion, or Moodle conversion). Migrations are asynchronous — this tool returns immediately with a migration ID and progress_url. Poll get_content_migration or progress_url to track completion.',
       inputSchema: {

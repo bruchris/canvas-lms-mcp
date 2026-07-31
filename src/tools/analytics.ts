@@ -10,6 +10,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'search_course_content',
+      title: 'Search Course Content',
       audience: 'shared',
       description:
         'Search for content within a course. Searches pages, assignments, discussions, and announcements by keyword.',
@@ -67,6 +68,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course_analytics',
+      title: 'Get Course Analytics',
       description:
         'Get course-level activity analytics. Returns daily page view and participation counts.',
       inputSchema: {
@@ -83,6 +85,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_student_analytics',
+      title: 'Get Student Analytics',
       description:
         'Get per-student activity analytics for a course. Returns page views, participations, and submission timeline for a specific student.',
       inputSchema: {
@@ -101,6 +104,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_course_activity_stream',
+      title: 'Get Course Activity Stream',
       audience: 'shared',
       description:
         'Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).',
@@ -118,6 +122,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_assignment_analytics',
+      title: 'Get Assignment Analytics',
       audience: 'shared',
       description:
         'Get score distribution analytics for assignments in a course. Returns statistical summary ' +

@@ -56,6 +56,7 @@ export function attentionTools(
   return [
     {
       name: 'list_submission_comments_needing_attention',
+      title: 'List Submission Comments Needing Attention',
       description:
         'List submissions where the most recent comment is from the student and has not been addressed by grading or a reply — i.e. comments the instructor has likely not seen. Returns a triage list, oldest-unaddressed first. Requires instructor/TA permissions in the course.',
       inputSchema: {
@@ -148,6 +149,7 @@ export function attentionTools(
     },
     {
       name: 'list_students_needing_attention',
+      title: 'List Students Needing Attention',
       description:
         'Report students who may need instructor attention based on inactivity, missing or late submissions, and low current score. Each finding lists the exact signals that fired and the thresholds used — this is a factual report, not a prediction. Requires instructor/TA permissions in the course.',
       inputSchema: {

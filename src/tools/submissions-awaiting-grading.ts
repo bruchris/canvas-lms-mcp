@@ -67,6 +67,7 @@ export function submissionsAwaitingGradingTools(
   return [
     {
       name: 'list_submissions_awaiting_grading',
+      title: 'List Submissions Awaiting Grading',
       description:
         'Lists all submissions in a course that still need a human grade, sorted oldest-waiting ' +
         'first.\n\n' +

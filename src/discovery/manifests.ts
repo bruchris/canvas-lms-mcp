@@ -1,10 +1,12 @@
 import type { CanvasClient } from '../canvas'
 import { toolDomainCatalog, type ToolDomainRegistration } from '../tools/catalog'
 import type { ToolAnnotations, ToolAudience, ToolDefinition } from '../tools/types'
+import { resolveTitle } from '../tools/titles'
 import { toolAudienceOverrides, workflowCatalog, type WorkflowCatalogEntry } from './catalog'
 
 export interface ToolManifestEntry {
   name: string
+  title: string
   domain: string
   description: string
   annotations: ToolAnnotations
@@ -147,6 +149,7 @@ export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManif
 
   const tools = registeredTools.map(({ tool, domain, defaultPrimaryAudience }) => ({
     name: tool.name,
+    title: resolveTitle(tool.name, tool.title),
     domain,
     description: tool.description,
     annotations: compactAnnotations(tool.annotations),

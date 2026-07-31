@@ -10,6 +10,7 @@ export function accountTools(
   return [
     {
       name: 'get_account',
+      title: 'Get Account',
       description: 'Get details for a Canvas account by ID.',
       inputSchema: {
         account_id: z.number().describe('The Canvas account ID'),
@@ -24,6 +25,7 @@ export function accountTools(
     },
     {
       name: 'list_accounts',
+      title: 'List Accounts',
       description: 'List all accounts accessible to the authenticated user.',
       inputSchema: {},
       annotations: {
@@ -36,6 +38,7 @@ export function accountTools(
     },
     {
       name: 'list_sub_accounts',
+      title: 'List Sub-Accounts',
       description: 'List sub-accounts under a given Canvas account.',
       inputSchema: {
         account_id: z.number().describe('The parent Canvas account ID'),
@@ -50,6 +53,7 @@ export function accountTools(
     },
     {
       name: 'list_account_courses',
+      title: 'List Account Courses',
       description: 'List courses under a given Canvas account.',
       inputSchema: {
         account_id: z.number().describe('The Canvas account ID'),
@@ -67,6 +71,7 @@ export function accountTools(
     },
     {
       name: 'list_account_users',
+      title: 'List Account Users',
       description: 'List users in a Canvas account.',
       inputSchema: {
         account_id: z.number().describe('The Canvas account ID'),
@@ -88,6 +93,7 @@ export function accountTools(
     },
     {
       name: 'get_account_reports',
+      title: 'Get Account Reports',
       description: 'List available report types for a Canvas account.',
       inputSchema: {
         account_id: z.number().describe('The Canvas account ID'),
@@ -102,6 +108,7 @@ export function accountTools(
     },
     {
       name: 'list_account_notifications',
+      title: 'List Account Notifications',
       description:
         'List active global institution-wide announcements for the current user (maintenance windows, term deadlines, policy notices).',
       inputSchema: {
@@ -124,6 +131,7 @@ export function accountTools(
       // so no pseudonymizer wrap is required. If a future revision adds per-user
       // fields, this tool MUST be added to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped.
       name: 'view_account_notifications',
+      title: 'View Account Notifications',
       description:
         'Interactive panel of active institution-wide announcements. Returns the same payload as `list_account_notifications` and additionally links to an MCP Apps UI resource that renders scannable announcement cards with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `list_account_notifications`).',
       inputSchema: {

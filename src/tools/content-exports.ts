@@ -7,6 +7,7 @@ export function contentExportsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'create_content_export',
+      title: 'Create Content Export',
       description:
         'Start a Canvas course content export (Common Cartridge / QTI / zip). Exports are asynchronous — this tool returns immediately with an export ID and initial workflow_state ("created"). Call get_content_export to poll progress and retrieve the time-limited download link when the export finishes.',
       inputSchema: {
@@ -26,6 +27,7 @@ export function contentExportsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_content_export',
+      title: 'Get Content Export',
       description:
         'Get the status of a content export. When workflow_state is "exported", attachment.url contains a time-limited download link — download it promptly, as the URL expires (re-fetch to get a fresh one). Returns attachment: null while still "created"/"exporting" or on "failed".',
       inputSchema: {
@@ -38,6 +40,7 @@ export function contentExportsTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_content_exports',
+      title: 'List Content Exports',
       description: 'List all content exports for a course (most recent first).',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),

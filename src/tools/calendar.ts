@@ -6,6 +6,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_calendar_events',
+      title: 'List Calendar Events',
       description: 'List calendar events for a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -21,6 +22,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_calendar_event',
+      title: 'Create Calendar Event',
       description: 'Create a new calendar event in Canvas.',
       inputSchema: {
         context_code: z
@@ -52,6 +54,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_calendar_event',
+      title: 'Update Calendar Event',
       description: 'Update an existing calendar event. Only provided fields are changed.',
       inputSchema: {
         event_id: z.number().describe('The Canvas calendar event ID'),

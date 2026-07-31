@@ -38,6 +38,7 @@ describe('tool manifest generation', () => {
     expect(manifest.tools).toHaveLength(163)
     expect(manifest.tools.find((tool) => tool.name === 'grade_submission')).toEqual({
       name: 'grade_submission',
+      title: 'Grade Submission',
       domain: 'submissions',
       description: 'Post or update a grade for a submission. Requires grading permissions.',
       annotations: {
@@ -51,6 +52,7 @@ describe('tool manifest generation', () => {
     })
     expect(manifest.tools.find((tool) => tool.name === 'get_gradebook_history_feed')).toEqual({
       name: 'get_gradebook_history_feed',
+      title: 'Get Gradebook History Feed',
       domain: 'gradebook_history',
       description:
         'Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.',
@@ -64,6 +66,7 @@ describe('tool manifest generation', () => {
     })
     expect(manifest.tools.find((tool) => tool.name === 'get_outcome')).toEqual({
       name: 'get_outcome',
+      title: 'Get Outcome',
       domain: 'outcomes',
       description: 'Get the full details for a specific learning outcome by ID.',
       annotations: {

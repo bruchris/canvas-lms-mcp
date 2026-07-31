@@ -6,7 +6,7 @@ Guide for AI agents consuming or contributing to `canvas-lms-mcp`.
 
 ```bash
 # Run with npx (no install needed)
-npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url https://school.instructure.com/api/v1
+npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url https://school.instructure.com
 
 # Or install globally
 npm install -g canvas-lms-mcp
@@ -17,7 +17,7 @@ Environment variables are also supported:
 
 ```bash
 export CANVAS_API_TOKEN=your_token_here
-export CANVAS_BASE_URL=https://school.instructure.com/api/v1
+export CANVAS_BASE_URL=https://school.instructure.com
 npx canvas-lms-mcp
 ```
 
@@ -157,7 +157,7 @@ import { CanvasClient } from 'canvas-lms-mcp/canvas'
 
 const canvas = new CanvasClient({
   token: process.env.CANVAS_API_TOKEN!,
-  baseUrl: 'https://school.instructure.com/api/v1',
+  baseUrl: 'https://school.instructure.com',
 })
 
 const courses = await canvas.courses.list()

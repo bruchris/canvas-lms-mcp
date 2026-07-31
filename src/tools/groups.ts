@@ -7,6 +7,7 @@ export function groupTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer):
   return [
     {
       name: 'list_groups',
+      title: 'List Groups',
       description: 'List all groups in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -22,6 +23,7 @@ export function groupTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer):
     },
     {
       name: 'list_group_members',
+      title: 'List Group Members',
       description: 'List all members of a group.',
       inputSchema: {
         group_id: z.number().describe('The Canvas group ID'),

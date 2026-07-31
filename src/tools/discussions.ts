@@ -6,6 +6,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
   return [
     {
       name: 'list_discussions',
+      title: 'List Discussions',
       description: 'List all discussion topics in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -21,6 +22,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'get_discussion',
+      title: 'Get Discussion',
       description: 'Get details for a single discussion topic by ID.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -38,6 +40,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'list_announcements',
+      title: 'List Announcements',
       description: 'List all announcements in a course.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -53,6 +56,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'post_discussion_entry',
+      title: 'Post Discussion Entry',
       description: 'Post a new entry (reply) to a discussion topic.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -72,6 +76,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'create_discussion',
+      title: 'Create Discussion',
       audience: 'educator',
       description: 'Create a new discussion topic in a course.',
       inputSchema: {
@@ -116,6 +121,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'update_discussion',
+      title: 'Update Discussion',
       audience: 'educator',
       description: 'Update an existing discussion topic.',
       inputSchema: {
@@ -161,6 +167,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     },
     {
       name: 'delete_discussion',
+      title: 'Delete Discussion',
       audience: 'educator',
       description: 'Delete a discussion topic from a course. This action is permanent.',
       inputSchema: {

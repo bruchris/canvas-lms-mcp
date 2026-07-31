@@ -49,7 +49,7 @@ const PSEUDONYM_META_NOTE =
   'Student names and contact info in this response have been replaced with stable pseudonyms (CANVAS_PSEUDONYMIZE_STUDENTS=true). Real names are not available to this tool.'
 
 function buildMockServer() {
-  return { tool: vi.fn() } as unknown as McpServer
+  return { registerTool: vi.fn() } as unknown as McpServer
 }
 
 function buildMockCanvas(): CanvasClient {
@@ -65,7 +65,7 @@ function buildMockPseudonymizer(enabled: boolean): Pseudonymizer {
 
 /**
  * Calls registerAllTools on a fresh mock server and returns the handler
- * captured by server.tool for the given tool name.
+ * captured by server.registerTool for the given tool name.
  */
 function captureServerToolHandler(
   toolName: string,
@@ -73,10 +73,10 @@ function captureServerToolHandler(
 ): (params: Record<string, unknown>) => Promise<unknown> {
   const server = buildMockServer()
   registerAllTools(server, buildMockCanvas(), pseudonymizer)
-  const calls = (server.tool as ReturnType<typeof vi.fn>).mock.calls
+  const calls = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls
   const call = calls.find((c) => c[0] === toolName)
-  if (!call) throw new Error(`"${toolName}" was not registered via server.tool`)
-  return call[4]
+  if (!call) throw new Error(`"${toolName}" was not registered via server.registerTool`)
+  return call[2]
 }
 
 describe('buildHandler — success path', () => {
@@ -169,32 +169,46 @@ describe('buildHandler — pseudonymizer _meta tagging', () => {
   })
 })
 
-describe('registerAllTools — dispatch to server.tool vs registerAppTool', () => {
+describe('registerAllTools — dispatch to server.registerTool vs registerAppTool', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('calls server.tool for a tool without .ui', () => {
+  it('calls server.registerTool for a tool without .ui', () => {
     const server = buildMockServer()
     registerAllTools(server, buildMockCanvas())
-    const registeredNames = (server.tool as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    const registeredNames = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0],
+    )
     expect(registeredNames).toContain('test_plain_tool')
   })
 
-  it('does NOT call server.tool for a tool with .ui', () => {
+  it('passes a non-empty title through server.registerTool', () => {
     const server = buildMockServer()
     registerAllTools(server, buildMockCanvas())
-    const registeredNames = (server.tool as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    const call = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => c[0] === 'test_plain_tool',
+    )
+    expect(call?.[1]).toMatchObject({ title: 'Test Plain Tool' })
+  })
+
+  it('does NOT call server.registerTool for a tool with .ui', () => {
+    const server = buildMockServer()
+    registerAllTools(server, buildMockCanvas())
+    const registeredNames = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0],
+    )
     expect(registeredNames).not.toContain('test_ui_tool')
   })
 
-  it('calls registerAppTool for a tool with .ui, passing the resourceUri in _meta', () => {
+  it('calls registerAppTool for a tool with .ui, passing the resourceUri in _meta and a title', () => {
     const server = buildMockServer()
     registerAllTools(server, buildMockCanvas())
     expect(registerAppToolSpy).toHaveBeenCalledWith(
       server,
       'test_ui_tool',
       expect.objectContaining({
+        title: 'Test Ui Tool',
         _meta: { ui: { resourceUri: 'ui://test/tool.html' } },
       }),
       expect.any(Function),

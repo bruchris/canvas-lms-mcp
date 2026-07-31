@@ -109,6 +109,7 @@ export function gradeExplanationTools(
   return [
     {
       name: 'explain_grade',
+      title: 'Explain Grade',
       description:
         'Recomputes and explains the weighted course grade for a student, including assignment-group ' +
         'weights, drop_lowest / drop_highest / never_drop rules, per-group breakdowns (earned points, ' +

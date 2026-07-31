@@ -30,6 +30,7 @@ export function studentSearchTools(
   return [
     {
       name: 'find_student_across_courses',
+      title: 'Find Student Across Courses',
       description:
         "Search the caller's teaching courses — active and, by default, concluded (past-term) " +
         'ones — for a student by name, login, or email, and report every matching course with ' +

@@ -10,6 +10,7 @@ export function conversationTools(
   return [
     {
       name: 'list_conversations',
+      title: 'List Conversations',
       description: 'List conversations (inbox messages) for the authenticated user.',
       inputSchema: {},
       annotations: {
@@ -24,6 +25,7 @@ export function conversationTools(
     },
     {
       name: 'get_conversation',
+      title: 'Get Conversation',
       description: 'Get a single conversation with its full message thread.',
       inputSchema: {
         conversation_id: z.number().describe('The conversation ID'),
@@ -40,6 +42,7 @@ export function conversationTools(
     },
     {
       name: 'get_conversation_unread_count',
+      title: 'Get Conversation Unread Count',
       description: 'Get the number of unread conversations for the authenticated user.',
       inputSchema: {},
       annotations: {
@@ -52,6 +55,7 @@ export function conversationTools(
     },
     {
       name: 'send_conversation',
+      title: 'Send Conversation',
       description: 'Send a new conversation message to one or more recipients.',
       inputSchema: {
         recipients: z.array(z.string()).describe('Array of recipient user IDs (as strings)'),
