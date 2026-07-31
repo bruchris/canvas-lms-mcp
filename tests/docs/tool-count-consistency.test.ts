@@ -10,6 +10,7 @@ const readme = readFileSync(resolve(ROOT, 'README.md'), 'utf8')
 const indexHtml = readFileSync(resolve(ROOT, 'docs/index.html'), 'utf8')
 const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'))
 const bundleManifest = JSON.parse(readFileSync(resolve(ROOT, 'manifest.json'), 'utf8'))
+const serverJson = JSON.parse(readFileSync(resolve(ROOT, 'server.json'), 'utf8'))
 
 interface ManifestTool {
   domain: string
@@ -57,6 +58,21 @@ describe('doc tool-count consistency', () => {
         Number(m![1]),
         `package.json description has ${m![1]} but manifest.toolCount is ${TOTAL} — update package.json`,
       ).toBe(TOTAL)
+    })
+  })
+
+  describe('server.json', () => {
+    it('description tool count and domain count', () => {
+      const m = serverJson.description.match(/(\d+) tools across (\d+) domains/)
+      expect(m, 'server.json description "N tools across N domains" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `server.json description has ${m![1]} but manifest.toolCount is ${TOTAL} — update server.json`,
+      ).toBe(TOTAL)
+      expect(
+        Number(m![2]),
+        `server.json description has ${m![2]} domains but manifest has ${DOMAIN_COUNT} distinct domains — update server.json`,
+      ).toBe(DOMAIN_COUNT)
     })
   })
 

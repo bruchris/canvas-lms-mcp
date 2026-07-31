@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![npm downloads](https://img.shields.io/npm/dw/canvas-lms-mcp)](https://www.npmjs.com/package/canvas-lms-mcp)
-[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.bruchris%2Fcanvas--lms--mcp-blue)](https://registry.modelcontextprotocol.io/v0/servers/io.github.bruchris%2Fcanvas-lms-mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.bruchris%2Fcanvas--lms--mcp-blue)](https://registry.modelcontextprotocol.io/v0/servers/io.github.bruchris%2Fcanvas-lms-mcp/versions/latest)
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
@@ -22,6 +22,14 @@ MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, a
 No terminal, no Node.js install, no config-file editing — Claude Desktop bundles the runtime and handles config for you. The same `.mcpb` works in Claude Code and MCP for Windows.
 
 Prefer the terminal? Use the [Quick Start](#quick-start) below.
+
+## One-click install (Cursor / VS Code)
+
+[![Add to Cursor](https://img.shields.io/badge/Add%20to-Cursor-black?logo=cursor&logoColor=white)](cursor://anysphere.cursor-deeplink/mcp/install?name=canvas-lms-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImNhbnZhcy1sbXMtbWNwIl0sImVudiI6eyJDQU5WQVNfQVBJX1RPS0VOIjoieW91ci10b2tlbi1oZXJlIiwiQ0FOVkFTX0JBU0VfVVJMIjoiaHR0cHM6Ly95b3VyLWluc3RpdHV0aW9uLmluc3RydWN0dXJlLmNvbSJ9fQ==)
+[![Install in VS Code](https://img.shields.io/badge/Install%20in-VS%20Code-007ACC?logo=visual-studio-code&logoColor=white)](vscode:mcp/install?%7B%22name%22%3A%22canvas-lms%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22canvas-lms-mcp%22%5D%2C%22env%22%3A%7B%22CANVAS_API_TOKEN%22%3A%22your-token-here%22%2C%22CANVAS_BASE_URL%22%3A%22https%3A%2F%2Fyour-institution.instructure.com%22%7D%7D)
+[![Install in VS Code Insiders](https://img.shields.io/badge/Install%20in-VS%20Code%20Insiders-24bfa5?logo=visual-studio-code&logoColor=white)](vscode-insiders:mcp/install?%7B%22name%22%3A%22canvas-lms%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22canvas-lms-mcp%22%5D%2C%22env%22%3A%7B%22CANVAS_API_TOKEN%22%3A%22your-token-here%22%2C%22CANVAS_BASE_URL%22%3A%22https%3A%2F%2Fyour-institution.instructure.com%22%7D%7D)
+
+Click a badge to open Cursor or VS Code with canvas-lms-mcp pre-configured (placeholder credentials filled in — replace with your actual Canvas API token and base URL after install). For manual config-file setup, see [docs/manual-setup.md](./docs/manual-setup.md).
 
 ## Comparison
 
