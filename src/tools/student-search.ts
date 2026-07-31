@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { CanvasApiError } from '../canvas'
 import type { CanvasClient } from '../canvas'
+import { mapWithConcurrency } from '../canvas/concurrency'
 import type { CanvasCourse, CanvasUser } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
@@ -101,38 +102,37 @@ export function studentSearchTools(
         const truncated = coursesFound > maxCourses
         const coursesToScan = truncated ? sorted.slice(0, maxCourses) : sorted
 
-        // 3. Fan out per-course search in batches to bound concurrent Canvas API requests.
+        // 3. Fan out per-course search, bounding concurrent Canvas API requests.
         const coursesFailed: Array<{ course_id: number; status: number | null; message: string }> =
           []
         const perCourseMatches: Array<{ course: CanvasCourse; users: CanvasUser[] }> = []
 
-        for (let i = 0; i < coursesToScan.length; i += CONCURRENT_COURSE_LIMIT) {
-          const batch = coursesToScan.slice(i, i + CONCURRENT_COURSE_LIMIT)
-          const batchResults = await Promise.all(
-            batch.map(async (course) => {
-              try {
-                const users = await canvas.users.listCourseUsers(course.id, {
-                  search_term: searchTerm,
-                  enrollment_type: ['student'],
-                  enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
-                  include: ['enrollments'],
-                })
-                return { ok: true as const, course, users }
-              } catch (err) {
-                return { ok: false as const, course, err }
-              }
-            }),
-          )
-          for (const r of batchResults) {
-            if (r.ok) {
-              perCourseMatches.push({ course: r.course, users: r.users })
-            } else {
-              coursesFailed.push({
-                course_id: r.course.id,
-                status: r.err instanceof CanvasApiError ? r.err.status : null,
-                message: r.err instanceof CanvasApiError ? r.err.message : String(r.err),
+        const scanResults = await mapWithConcurrency(
+          coursesToScan,
+          CONCURRENT_COURSE_LIMIT,
+          async (course) => {
+            try {
+              const users = await canvas.users.listCourseUsers(course.id, {
+                search_term: searchTerm,
+                enrollment_type: ['student'],
+                enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
+                include: ['enrollments'],
               })
+              return { ok: true as const, course, users }
+            } catch (err) {
+              return { ok: false as const, course, err }
             }
+          },
+        )
+        for (const r of scanResults) {
+          if (r.ok) {
+            perCourseMatches.push({ course: r.course, users: r.users })
+          } else {
+            coursesFailed.push({
+              course_id: r.course.id,
+              status: r.err instanceof CanvasApiError ? r.err.status : null,
+              message: r.err instanceof CanvasApiError ? r.err.message : String(r.err),
+            })
           }
         }
 

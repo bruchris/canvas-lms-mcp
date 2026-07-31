@@ -11,8 +11,13 @@ const indexHtml = readFileSync(resolve(ROOT, 'docs/index.html'), 'utf8')
 const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'))
 const bundleManifest = JSON.parse(readFileSync(resolve(ROOT, 'manifest.json'), 'utf8'))
 const serverJson = JSON.parse(readFileSync(resolve(ROOT, 'server.json'), 'utf8'))
+const designSpec = readFileSync(
+  resolve(ROOT, 'docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md'),
+  'utf8',
+)
 
 interface ManifestTool {
+  name: string
   domain: string
   annotations?: { readOnlyHint?: boolean }
   primaryAudience: 'shared' | 'student' | 'educator' | 'admin'
@@ -235,5 +240,24 @@ describe('doc tool-count consistency', () => {
         `docs/index.html role-filter admin count is ${m![1]} but manifest audience sums to ${ADMIN_COUNT} — update docs/index.html`,
       ).toBe(ADMIN_COUNT)
     })
+  })
+})
+
+describe('design spec tool inventory enumeration', () => {
+  // The Totals line in the design spec is already gated above via the manifest,
+  // but the per-domain inventory tables are hand-maintained and drift silently
+  // when new domains ship (BRU-1882, BRU-1900, BRU-1990). Assert that EVERY tool
+  // in the generated manifest is actually enumerated in the spec, so a missing
+  // table row fails the build instead of waiting for the next manual scan.
+  // Tool names are written in backticks in every inventory row (`tool_name`),
+  // so match that exact form — this stays precise even when one name is a prefix
+  // of another (e.g. `list_appointment_groups` vs `list_appointment_group_users`).
+  it.each(tools.map((t) => t.name))('design spec per-domain inventory lists `%s`', (name) => {
+    expect(
+      designSpec.includes(`\`${name}\``),
+      `tool "${name}" is in docs/generated/tool-manifest.json but has no per-domain inventory row in ` +
+        `docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md — add a "\`${name}\` | read/write | ..." ` +
+        `row to the matching domain table (do NOT edit the CI-gated Totals line)`,
+    ).toBe(true)
   })
 })

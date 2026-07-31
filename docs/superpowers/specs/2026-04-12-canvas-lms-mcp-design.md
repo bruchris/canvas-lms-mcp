@@ -474,7 +474,7 @@ All errors returned as structured MCP content, never thrown:
 | `list_account_notifications` | read | Active institution-wide announcements (maintenance windows, term deadlines, policy notices) |
 | `view_account_notifications` | read | Interactive MCP Apps panel of institution-wide announcements (falls back to JSON on non-MCP-Apps hosts) |
 
-#### Analytics (4 tools)
+#### Analytics (5 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -482,6 +482,7 @@ All errors returned as structured MCP content, never thrown:
 | `get_course_analytics` | read | Course analytics activity |
 | `get_student_analytics` | read | Student analytics in a course |
 | `get_course_activity_stream` | read | Course activity stream |
+| `get_assignment_analytics` | read | Score distribution analytics (min, max, median, quartiles), submission counts, and on-time/late/missing tardiness breakdown per assignment; scope to one assignment or all in a course |
 
 #### Student (5 tools)
 
@@ -635,6 +636,37 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | Tool | Type | Description |
 |------|------|-------------|
 | `audit_course_accessibility` | read | Scan a course's content (pages, assignments, syllabus, announcements, and optionally quizzes) for structurally-detectable WCAG 2.1 accessibility problems — images missing or with low-quality alt text, non-descriptive link text, adjacent duplicate links, skipped/empty/overlong headings, and tables missing headers, header scope, or captions. Each finding includes a WCAG success criterion and severity. Requires instructor permissions. |
+
+#### Student Search (1 tool)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `find_student_across_courses` | read | Search the caller's teaching courses (active and, by default, concluded past-term courses) for a student by name, login, or email, reporting every matching course with the student's enrollment state and last activity |
+
+#### Content Migrations (7 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_content_migrations` | read | List all content migrations for a course (most recent first) |
+| `get_content_migration` | read | Get the status of a single content migration; while running, poll progress_url for live updates |
+| `list_content_migration_types` | read | List available migration types (migrators) for a course — course_copy_importer, common_cartridge_importer, zip_file_importer, qti_converter, moodle_converter |
+| `get_migration_selective_data` | read | Get the selective import tree for a migration in the waiting_for_select state — the content items available to selectively import |
+| `get_migration_asset_id_mapping` | read | Get the old-to-new asset ID mapping for a completed migration |
+| `list_migration_issues` | read | List issues (todo, warning, or error) encountered during a content migration |
+| `create_content_migration` | write | Start a content migration (course copy, Common Cartridge import, zip import, QTI conversion, or Moodle conversion); returns immediately with a migration ID and progress_url to poll |
+
+#### Appointment Groups (8 tools)
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_appointment_groups` | read | List appointment groups (Canvas Scheduler sign-up slots); scope=reservable for groups students can reserve, scope=manageable for groups the current user manages |
+| `get_appointment_group` | read | Get a single appointment group by ID, including its time slots and participant counts |
+| `create_appointment_group` | write | Create a new appointment group (sign-up slots); provide at least one context_code and a title, and add new_appointments as [start_at, end_at] pairs to define time slots |
+| `update_appointment_group` | write | Update an existing appointment group; publish=true makes a draft visible to participants, or add time slots via new_appointments |
+| `delete_appointment_group` | write | Delete an appointment group and cancel any existing reservations; provide cancel_reason to notify participants |
+| `list_appointment_group_users` | read | List participants (users) who have reserved a slot in an appointment group |
+| `list_appointment_group_groups` | read | List student groups that have reserved a slot in an appointment group (when participant_type=Group) |
+| `next_appointment` | read | Get the current user's next upcoming appointment across all (or specified) appointment groups |
 
 **Totals: 163 tools (117 read, 46 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 164th tool (read).
 
