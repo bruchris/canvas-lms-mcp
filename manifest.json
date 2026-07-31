@@ -56,7 +56,7 @@
     "canvas_base_url": {
       "type": "string",
       "title": "Canvas API Base URL",
-      "description": "Your Canvas instance API URL, e.g. https://school.instructure.com/api/v1",
+      "description": "Your Canvas instance base URL, origin only with no path, e.g. https://school.instructure.com",
       "required": true
     },
     "pseudonymize_students": {
