@@ -38,7 +38,9 @@ Add to your `claude_desktop_config.json`:
 
 ## Cursor
 
-Add to `.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally:
+**One-click install:** [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=canvas-lms-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImNhbnZhcy1sbXMtbWNwIl0sImVudiI6eyJDQU5WQVNfQVBJX1RPS0VOIjoieW91ci10b2tlbi1oZXJlIiwiQ0FOVkFTX0JBU0VfVVJMIjoiaHR0cHM6Ly95b3VyLWluc3RpdHV0aW9uLmluc3RydWN0dXJlLmNvbSJ9fQ==) — opens Cursor with canvas-lms-mcp pre-configured (replace placeholder credentials after install).
+
+Or add manually to `.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally:
 
 ```json
 {
@@ -57,7 +59,9 @@ Add to `.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally:
 
 ## VS Code
 
-Add to your VS Code settings (`settings.json` or `mcp.json`):
+**One-click install:** [Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22canvas-lms%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22canvas-lms-mcp%22%5D%2C%22env%22%3A%7B%22CANVAS_API_TOKEN%22%3A%22your-token-here%22%2C%22CANVAS_BASE_URL%22%3A%22https%3A%2F%2Fyour-institution.instructure.com%22%7D%7D) · [VS Code Insiders](vscode-insiders:mcp/install?%7B%22name%22%3A%22canvas-lms%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22canvas-lms-mcp%22%5D%2C%22env%22%3A%7B%22CANVAS_API_TOKEN%22%3A%22your-token-here%22%2C%22CANVAS_BASE_URL%22%3A%22https%3A%2F%2Fyour-institution.instructure.com%22%7D%7D) — opens VS Code with canvas-lms-mcp pre-configured (replace placeholder credentials after install).
+
+Or add manually to your VS Code settings (`settings.json` or `mcp.json`):
 
 ```json
 {

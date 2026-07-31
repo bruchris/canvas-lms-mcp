@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.bruchris/canvas-lms-mcp",
-  "description": "TypeScript MCP server for Canvas LMS — 115 read+write tools across 17 domains.",
+  "description": "TypeScript MCP server for Canvas LMS — 163 tools across 41 domains.",
   "repository": {
     "url": "https://github.com/bruchris/canvas-lms-mcp",
     "source": "github"
