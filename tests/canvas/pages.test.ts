@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PagesModule } from '../../src/canvas/pages'
+import { PagesModule, PAGE_BODY_CONCURRENCY_LIMIT } from '../../src/canvas/pages'
 import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
 describe('PagesModule', () => {
@@ -136,6 +136,77 @@ describe('PagesModule', () => {
       )
 
       await expect(pages.listWithBodies(42)).rejects.toBeInstanceOf(CanvasApiError)
+    })
+
+    it('caps concurrent page-body fetches at PAGE_BODY_CONCURRENCY_LIMIT', async () => {
+      // 25 pages against a limit of 10 forces batching; the unbounded version
+      // would fire all 25 at once and peak at 25.
+      const stubs = Array.from({ length: 25 }, (_, i) => ({
+        page_id: i + 1,
+        url: `page-${i + 1}`,
+        title: `Page ${i + 1}`,
+        published: true,
+        updated_at: '',
+      }))
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(stubs)
+
+      let inFlight = 0
+      let peak = 0
+      vi.spyOn(client, 'request').mockImplementation(async (endpoint) => {
+        inFlight++
+        peak = Math.max(peak, inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        inFlight--
+        return {
+          page_id: 0,
+          url: String(endpoint),
+          title: '',
+          body: '<p></p>',
+          published: true,
+          updated_at: '',
+        }
+      })
+
+      const result = await pages.listWithBodies(42)
+
+      expect(result).toHaveLength(25)
+      expect(peak).toBeLessThanOrEqual(PAGE_BODY_CONCURRENCY_LIMIT)
+      // Sanity: fetches actually overlapped, so the cap assertion is meaningful.
+      expect(peak).toBeGreaterThan(1)
+    })
+
+    it('preserves page order even when bodies resolve out of order', async () => {
+      const stubs = Array.from({ length: 25 }, (_, i) => ({
+        page_id: i + 1,
+        url: `page-${i + 1}`,
+        title: `Page ${i + 1}`,
+        published: true,
+        updated_at: '',
+      }))
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(stubs)
+      vi.spyOn(client, 'request').mockImplementation((endpoint) => {
+        const url = String(endpoint).split('/').pop()!
+        const index = stubs.findIndex((s) => s.url === url)
+        // Later-listed pages resolve sooner, inverting the settle order.
+        return new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                page_id: index + 1,
+                url,
+                title: `Page ${index + 1}`,
+                body: '<p></p>',
+                published: true,
+                updated_at: '',
+              }),
+            (stubs.length - index) * 2,
+          ),
+        )
+      })
+
+      const result = await pages.listWithBodies(42)
+
+      expect(result.map((p) => p.url)).toEqual(stubs.map((s) => s.url))
     })
   })
 })
