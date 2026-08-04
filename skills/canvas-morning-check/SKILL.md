@@ -23,18 +23,17 @@ Note each course ID, name, and enrollment count.
 
 ### 2. Check the Grading Queue (per course)
 
-For each active course:
+For each active course, call `list_submissions_awaiting_grading` with the course ID. This tool is purpose-built for the grading queue: it returns every submission still needing a human grade — both `workflow_state=submitted` (never graded) and `workflow_state=pending_review` (Classic Quiz essays Canvas auto-graded but left for manual scoring) — sorted oldest-waiting first and grouped by assignment or quiz. It replaces the old manual `list_assignments` → per-assignment `list_submissions` fan-out.
 
-1. Call `list_assignments` to find assignments whose due date has passed and that accept online submissions.
-2. For each such assignment, call `list_submissions` filtered to `workflow_state=submitted` (or `graded=false` if available) to count ungraded submissions.
+Build a grading backlog table: course → assignment → ungraded count → oldest wait.
 
-Build a grading backlog table: course → assignment → ungraded count → due date.
+> Pass `only_pending_review=true` for just the quiz-essay queue. Note: New Quizzes (Quizzes.Next) submissions may not surface here — grade those in the New Quizzes interface.
 
-### 3. Check Participation and Missing Submissions
+Also call `list_submission_comments_needing_attention` for each course to catch submissions where the student left the most recent comment with no reply or grade yet. These are easy to miss and often time-sensitive.
 
-For each course, call `list_course_enrollments` with `type=StudentEnrollment` and `state=active` to get the enrolled student list.
+### 3. Flag Students Who Need Attention
 
-For the most recent assignment with a past due date per course, cross-reference submitted student IDs against the enrollment list to identify students with no submission. Flag those with zero submissions in the past 2 assignments as participation gaps.
+For each course, call `list_students_needing_attention` with the course ID. This returns a factual report of students flagged by inactivity, missing or late submissions, and low current score — each finding lists the exact signals that fired and the thresholds used. Use it instead of manually cross-referencing enrollment lists against submissions.
 
 ### 4. Scan Engagement Trends
 
@@ -44,7 +43,7 @@ For individual students flagged in Step 3, call `get_student_analytics` (with co
 
 ### 5. Check Upcoming Deadlines
 
-From the `list_assignments` data gathered in Step 2, surface any assignments due within the next 48 hours that have not yet been published or that have zero submissions (possibly a reminder is needed for students).
+Call `list_assignments` for each active course and surface any assignments due within the next 48 hours that have not yet been published or that have zero submissions (a student reminder may be needed).
 
 ### 6. Present the Morning Briefing
 
@@ -83,6 +82,6 @@ All clear on remaining courses.
 ## Notes
 
 - This skill is **read-only** — it surfaces information but does not grade or message anyone. Use `canvas-at-risk-students` for the outreach step.
-- For courses with large enrolments (100+ students), `list_submissions` may return many pages. Focus on the most recently due assignment per course to keep the briefing concise.
+- For courses with large enrolments (100+ students), `list_submissions_awaiting_grading` and `list_students_needing_attention` do the pagination and cross-referencing server-side — you get a triage list back rather than raw submission pages. Still lead the briefing with the highest-count course to keep it concise.
 - `get_student_analytics` may be slow on large courses; call it only for students already flagged in Step 3, not for every student.
 - Gradebook data reflects posted grades only. Unposted grades will not appear in analytics trends.

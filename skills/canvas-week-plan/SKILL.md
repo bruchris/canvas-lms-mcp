@@ -36,6 +36,8 @@ Call `get_my_grades` to get current grades per course (useful for prioritisation
 
 Call `get_my_submissions` for each course where the student has recent activity to check which assignments are submitted, pending review, or returned with feedback.
 
+For any course whose grade is borderline (near a letter-grade or pass boundary), call `project_grade` with the course ID and a target — a percentage like `90` or a letter like `"A"`. It returns the minimum uniform percentage needed on all remaining assignments to reach that target, a feasibility flag (`achievable` / `already_secured` / `impossible`), and a plain-language summary. This turns "this course is borderline" into a concrete weekly goal — e.g. "average 84% on the three remaining assignments to hold an A-". `project_grade` accounts for assignment-group weights and drop rules; it does not factor in late penalties.
+
 ### 6. Check Peer Review Obligations
 
 For each course ID from Step 1, call `list_peer_reviews` (with the course ID and relevant assignment ID when known) to surface any assigned peer reviews that are due this week but not yet completed.
@@ -74,7 +76,7 @@ UPCOMING EVENTS
 
 GRADE SNAPSHOT
 • [Course A] — 88%  (on track)
-• [Course B] — 71%  (borderline — prioritise this week)
+• [Course B] — 71%  (borderline — need ≥84% on remaining work to reach a B)
 • [Course C] — 94%  (strong)
 ```
 
@@ -83,3 +85,4 @@ GRADE SNAPSHOT
 - This skill is fully **read-only** — it surfaces information but does not submit anything on the student's behalf.
 - `list_peer_reviews` requires a course ID and assignment ID. If the student has many courses, focus on courses where the assignment deadline is within 7 days.
 - Grades from `get_my_grades` reflect the current posted grade and may not include unposted scores. Mention this caveat if a course shows an unexpectedly low or missing grade.
+- `project_grade` uses a uniform-percentage model (the same percentage assumed on every remaining item) and freezes drop rules at their current state — treat its output as a planning target, not a guarantee. It computes one student per call; omit `student_id` to run it for the logged-in student.

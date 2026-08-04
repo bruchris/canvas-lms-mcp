@@ -75,6 +75,8 @@ npx skills add bruchris/canvas-lms-mcp
 | `canvas-at-risk-students` | Surface students with missing assignments or declining grades and send targeted outreach |
 | `canvas-gradebook-audit` | Inspect the full grade-change audit trail — who changed what grade, when, and by how much |
 | `canvas-outcome-tracker` | Track learning outcome mastery and class-wide proficiency for accreditation and program review |
+| `canvas-accessibility-sweep` | Pre-launch WCAG accessibility and broken-link sweep of a course, with a prioritised remediation list |
+| `canvas-office-hours` | Create, publish, and manage Canvas Scheduler office-hour sign-up slots and see who reserved |
 
 Skills are markdown workflow files (no extra dependencies). They work with the MCP server you already have installed. See the [`skills/` directory](./skills/) for the full list.
 
