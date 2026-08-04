@@ -29,7 +29,7 @@ Display the rubric criteria to the instructor before grading begins so they have
 
 ### 3. Retrieve Ungraded Submissions
 
-Call `list_submissions` for the course and assignment. Filter to submissions where `workflow_state` is `submitted` (not `graded`). Present the count:
+Call `list_submissions_awaiting_grading` with the course ID and `assignment_ids=[<assignment>]` to get exactly the submissions still needing a grade — it filters to `workflow_state=submitted` and `pending_review` for you and returns them oldest-waiting first, so you grade the longest-waiting students first. (Falling back to `list_submissions` and filtering `workflow_state=submitted` locally also works if you want the full submission list.) Present the count:
 
 > "Found [n] ungraded submissions for [Assignment]. Grading one at a time."
 
