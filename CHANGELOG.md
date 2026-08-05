@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.25.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.24.0...canvas-lms-mcp-v1.25.0) (2026-08-04)
+
+
+### Features
+
+* **tools:** tool titles + privacy policy for Connectors Directory readiness ([#280](https://github.com/bruchris/canvas-lms-mcp/issues/280)) ([e5ad732](https://github.com/bruchris/canvas-lms-mcp/commit/e5ad73270873aba243e1728abeedb51cf9a79d38))
+
+
+### Bug Fixes
+
+* **canvas:** bound HTTP fan-out in PagesModule.listWithBodies ([#284](https://github.com/bruchris/canvas-lms-mcp/issues/284)) ([5499bf9](https://github.com/bruchris/canvas-lms-mcp/commit/5499bf978b49c409aefec29ac812fe3eb34c797e))
+* **deps:** move pnpm.overrides to pnpm-workspace.yaml (pnpm 11 drops the pnpm field) ([#282](https://github.com/bruchris/canvas-lms-mcp/issues/282)) ([c078937](https://github.com/bruchris/canvas-lms-mcp/commit/c078937db9355c86ce84146455b85f3e8cb9a66c))
+* **deps:** pin body-parser &gt;=2.3.0 to clear GHSA-v422-hmwv-36x6 ([#285](https://github.com/bruchris/canvas-lms-mcp/issues/285)) ([172e2bd](https://github.com/bruchris/canvas-lms-mcp/commit/172e2bd3fc5517d12b400479eecfcf8f6441a742))
+* **docs:** MCP Registry metadata drift, badge 404, Cursor/VS Code deep links ([#278](https://github.com/bruchris/canvas-lms-mcp/issues/278)) ([37d5a51](https://github.com/bruchris/canvas-lms-mcp/commit/37d5a51eccab5afd81e2c5ac87ac06f6f9101f25)), closes [#275](https://github.com/bruchris/canvas-lms-mcp/issues/275) [#276](https://github.com/bruchris/canvas-lms-mcp/issues/276)
+
+
+### Documentation
+
+* **skills:** refresh skills against 163-tool surface + add accessibility-sweep and office-hours (BRU-2018) ([#286](https://github.com/bruchris/canvas-lms-mcp/issues/286)) ([31de1e6](https://github.com/bruchris/canvas-lms-mcp/commit/31de1e69950927ac6845933771a3f18c59d3b343))
+* **spec:** enumerate 17 missing tools + CI-gate spec inventory (BRU-1990) ([#283](https://github.com/bruchris/canvas-lms-mcp/issues/283)) ([07d2d2d](https://github.com/bruchris/canvas-lms-mcp/commit/07d2d2db144d27ff835ad0dafc8b53c912790e5d))
+
 ## [1.24.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.23.0...canvas-lms-mcp-v1.24.0) (2026-07-30)
 
 
