@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.26.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.25.0...canvas-lms-mcp-v1.26.0) (2026-08-05)
+
+
+### Features
+
+* ship a Claude Code plugin bundling MCP config + 16 skills ([#291](https://github.com/bruchris/canvas-lms-mcp/issues/291)) ([76f9651](https://github.com/bruchris/canvas-lms-mcp/commit/76f96513101dd7d645aecdd1ee25781d9a96d71c))
+
+
+### Documentation
+
+* **research:** document GitHub MCP Server Registry submission (BRU-2035) ([#290](https://github.com/bruchris/canvas-lms-mcp/issues/290)) ([cde6ba9](https://github.com/bruchris/canvas-lms-mcp/commit/cde6ba91a708bb32d22d15a83969ea40085c2799))
+* **research:** install-surfaces audit — one-click setup vs modern agent capability surfaces (BRU-2033) ([#289](https://github.com/bruchris/canvas-lms-mcp/issues/289)) ([d8b89fd](https://github.com/bruchris/canvas-lms-mcp/commit/d8b89fdb07a695ae5d0f7b9bdd1754d7016b6727))
+
+
+### CI/CD
+
+* bump GitHub Actions off Node 20 deprecation ([#287](https://github.com/bruchris/canvas-lms-mcp/issues/287)) ([5b157ef](https://github.com/bruchris/canvas-lms-mcp/commit/5b157efff38d15c7b7d9c73f18776b6ab0c947e0))
+
 ## [1.25.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.24.0...canvas-lms-mcp-v1.25.0) (2026-08-04)
 
 
