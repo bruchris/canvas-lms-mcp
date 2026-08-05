@@ -31,6 +31,15 @@ Prefer the terminal? Use the [Quick Start](#quick-start) below.
 
 Click a badge to open Cursor or VS Code with canvas-lms-mcp pre-configured (placeholder credentials filled in — replace with your actual Canvas API token and base URL after install). For manual config-file setup, see [docs/manual-setup.md](./docs/manual-setup.md).
 
+## One-click install (Claude Code plugin)
+
+```
+/plugin marketplace add bruchris/canvas-lms-mcp
+/plugin install canvas-lms-mcp
+```
+
+Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#agent-skills) in a single step, versioned and updatable through Claude Code's plugin manager. On enable, Claude Code prompts for your Canvas API token and base URL (and the optional FERPA pseudonymization settings). See the [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference) for how marketplaces and plugin manifests work.
+
 ## Comparison
 
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
