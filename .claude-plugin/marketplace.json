@@ -1,0 +1,29 @@
+{
+  "name": "canvas-lms-mcp",
+  "description": "Canvas LMS MCP server and Agent Skills, distributed as a Claude Code plugin.",
+  "owner": {
+    "name": "Christian Bru",
+    "url": "https://github.com/bruchris"
+  },
+  "plugins": [
+    {
+      "name": "canvas-lms-mcp",
+      "source": "./",
+      "description": "MCP server for Canvas LMS — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows — plus 16 educator/student workflow skills.",
+      "author": {
+        "name": "Christian Bru",
+        "url": "https://github.com/bruchris"
+      },
+      "homepage": "https://github.com/bruchris/canvas-lms-mcp#readme",
+      "license": "MIT",
+      "keywords": [
+        "canvas",
+        "canvas-lms",
+        "lms",
+        "education",
+        "grading",
+        "instructure"
+      ]
+    }
+  ]
+}
