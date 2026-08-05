@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "canvas-lms": {
+      "command": "npx",
+      "args": ["-y", "canvas-lms-mcp"],
+      "env": {
+        "CANVAS_API_TOKEN": "${user_config.canvas_api_token}",
+        "CANVAS_BASE_URL": "${user_config.canvas_base_url}",
+        "CANVAS_PSEUDONYMIZE_STUDENTS": "${user_config.pseudonymize_students}",
+        "CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP": "${user_config.pseudonymize_reverse_lookup}"
+      }
+    }
+  }
+}

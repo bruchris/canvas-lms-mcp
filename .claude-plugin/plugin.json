@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "canvas-lms-mcp",
+  "displayName": "Canvas LMS",
+  "version": "1.25.0",
+  "description": "Canvas LMS MCP server plus 16 educator/student workflow skills — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows.",
+  "author": {
+    "name": "Christian Bru",
+    "url": "https://github.com/bruchris"
+  },
+  "homepage": "https://github.com/bruchris/canvas-lms-mcp#readme",
+  "repository": "https://github.com/bruchris/canvas-lms-mcp",
+  "license": "MIT",
+  "keywords": [
+    "canvas",
+    "canvas-lms",
+    "lms",
+    "education",
+    "grading",
+    "instructure"
+  ],
+  "userConfig": {
+    "canvas_api_token": {
+      "type": "string",
+      "title": "Canvas API Token",
+      "description": "Personal access token from Account → Settings → Approved Integrations → New Access Token.",
+      "sensitive": true,
+      "required": true
+    },
+    "canvas_base_url": {
+      "type": "string",
+      "title": "Canvas API Base URL",
+      "description": "Your Canvas instance base URL, origin only with no path, e.g. https://school.instructure.com",
+      "required": true
+    },
+    "pseudonymize_students": {
+      "type": "boolean",
+      "title": "FERPA mode — pseudonymize students",
+      "description": "Replace student names and contact info with stable pseudonyms (Student-1, Student-2, …) in tool output. Recommended whenever you share Canvas data with an AI assistant in a FERPA-protected setting.",
+      "required": false,
+      "default": false
+    },
+    "pseudonymize_reverse_lookup": {
+      "type": "boolean",
+      "title": "Allow pseudonym reverse lookup",
+      "description": "When FERPA mode is on, exposes the resolve_pseudonym tool that can map a pseudonym back to a real student. Off by default; turn on only if you explicitly need a controlled way to reveal identities.",
+      "required": false,
+      "default": false
+    }
+  }
+}
