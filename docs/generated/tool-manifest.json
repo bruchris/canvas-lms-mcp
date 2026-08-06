@@ -2164,6 +2164,7 @@
     },
     {
       "name": "upload_submission_file",
+      "title": "Upload Submission File",
       "domain": "assignment_submission",
       "description": "Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called.",
       "annotations": {
@@ -2176,6 +2177,7 @@
     },
     {
       "name": "submit_assignment",
+      "title": "Submit Assignment",
       "domain": "assignment_submission",
       "description": "Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids.",
       "annotations": {
