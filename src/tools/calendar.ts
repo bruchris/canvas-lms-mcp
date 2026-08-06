@@ -7,9 +7,31 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_calendar_events',
       title: 'List Calendar Events',
-      description: 'List calendar events for a course.',
+      description:
+        'List calendar events for a course, unbounded by the ~1-week/20-item caps that ' +
+        '`get_upcoming_events` and `get_my_upcoming_assignments` are stuck with. By default ' +
+        'Canvas only returns `type="event"` items for today alone (end_date defaults to ' +
+        'start_date) — pass both start_date and end_date to cover a range, and type="assignment" ' +
+        'to list assignment due dates instead of plain events.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
+        type: z
+          .enum(['event', 'assignment', 'sub_assignment'])
+          .optional()
+          .describe('Kind of calendar item to return. Defaults to "event" if omitted.'),
+        start_date: z
+          .string()
+          .optional()
+          .describe(
+            'Inclusive range start (YYYY-MM-DD or ISO 8601 datetime). Defaults to today if omitted.',
+          ),
+        end_date: z
+          .string()
+          .optional()
+          .describe(
+            'Inclusive range end (YYYY-MM-DD or ISO 8601 datetime). Defaults to start_date if ' +
+              'omitted — i.e. a single day. Set this explicitly whenever you want more than one day.',
+          ),
       },
       annotations: {
         readOnlyHint: true,
@@ -17,7 +39,11 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const course_id = params.course_id as number
-        return canvas.calendar.list(course_id)
+        return canvas.calendar.list(course_id, {
+          type: params.type as 'event' | 'assignment' | 'sub_assignment' | undefined,
+          start_date: params.start_date as string | undefined,
+          end_date: params.end_date as string | undefined,
+        })
       },
     },
     {

@@ -136,11 +136,16 @@ describe('UsersModule', () => {
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/users', {})
   })
 
-  it('fetches upcoming assignment events filtered by type=Assignment', async () => {
-    vi.spyOn(client, 'request').mockResolvedValueOnce([])
-    await users.getUpcomingAssignments()
-    expect(client.request).toHaveBeenCalledWith(
-      '/api/v1/users/self/upcoming_events?type=Assignment',
-    )
+  it('fetches upcoming_events with no type param and filters to assignment-type events client-side', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce([
+      { id: 1, title: 'Essay due', type: 'assignment', context_code: 'course_1' },
+      { id: 2, title: 'Office hours', type: 'event', context_code: 'course_1' },
+      { id: 3, title: 'Checkpoint reply', type: 'sub_assignment', context_code: 'course_1' },
+    ])
+    const result = await users.getUpcomingAssignments()
+    expect(client.request).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events')
+    expect(result).toEqual([
+      { id: 1, title: 'Essay due', type: 'assignment', context_code: 'course_1' },
+    ])
   })
 })

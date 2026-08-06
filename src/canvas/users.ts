@@ -96,8 +96,14 @@ export class UsersModule {
   }
 
   async getUpcomingAssignments(): Promise<CanvasUpcomingEvent[]> {
-    return this.client.request<CanvasUpcomingEvent[]>(
-      '/api/v1/users/self/upcoming_events?type=Assignment',
+    // Canvas's upcoming_events endpoint ignores a `type` query param entirely (it calls
+    // user.upcoming_events with only context_codes) and always returns a mix of calendar
+    // events and assignments. Each item's own `type` field ("event" | "assignment" |
+    // "sub_assignment", set server-side in assignment_event_json/event_json) is the only
+    // reliable discriminator, so filter client-side instead.
+    const events = await this.client.request<CanvasUpcomingEvent[]>(
+      '/api/v1/users/self/upcoming_events',
     )
+    return events.filter((event) => event.type === 'assignment')
   }
 }

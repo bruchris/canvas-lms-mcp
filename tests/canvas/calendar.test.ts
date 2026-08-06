@@ -38,6 +38,29 @@ describe('CalendarModule', () => {
     expect(result).toEqual([])
   })
 
+  it('passes type, start_date, and end_date through when provided', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await calendar.list(100, {
+      type: 'assignment',
+      start_date: '2026-05-01',
+      end_date: '2026-05-31',
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/calendar_events', {
+      'context_codes[]': 'course_100',
+      type: 'assignment',
+      start_date: '2026-05-01',
+      end_date: '2026-05-31',
+    })
+  })
+
+  it('omits type/start_date/end_date from the query when not provided', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await calendar.list(100, {})
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/calendar_events', {
+      'context_codes[]': 'course_100',
+    })
+  })
+
   describe('createEvent', () => {
     it('POSTs to /api/v1/calendar_events with wrapped params', async () => {
       const created = {

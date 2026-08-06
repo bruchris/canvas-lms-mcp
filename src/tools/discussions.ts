@@ -95,7 +95,12 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         is_announcement: z
           .boolean()
           .optional()
-          .describe('When true, creates an announcement instead of a discussion topic'),
+          .describe(
+            'When true, requests an announcement instead of a discussion topic. Canvas silently ' +
+              'downgrades this to a plain discussion topic (no error) if the caller lacks ' +
+              "announcement permission in the course — check the response's own " +
+              '`is_announcement` field rather than assuming the request was honored.',
+          ),
         delayed_post_at: z
           .string()
           .datetime()
@@ -137,7 +142,12 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         is_announcement: z
           .boolean()
           .optional()
-          .describe('When true, marks the topic as an announcement'),
+          .describe(
+            'When true, requests marking the topic as an announcement. Canvas silently ' +
+              'downgrades this to a plain discussion topic (no error) if the caller lacks ' +
+              "announcement permission in the course — check the response's own " +
+              '`is_announcement` field rather than assuming the request was honored.',
+          ),
         delayed_post_at: z
           .string()
           .datetime()
