@@ -47,7 +47,8 @@ jobs:
             echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } > issue-body.md
 
-          existing=$(gh issue list --state open --json number,title --jq --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
+          existing=$(gh issue list --state open --json number,title \
+            | jq -r --arg t "$TITLE" '.[] | select(.title == $t) | .number' | head -n1)
           if [ -n "$existing" ]; then
             gh issue comment "$existing" --body-file issue-body.md
           else
