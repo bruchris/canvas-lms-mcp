@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.27.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.26.0...canvas-lms-mcp-v1.27.0) (2026-08-07)
+
+
+### Features
+
+* **tools:** add opt-in assignment_submission domain (submit_assignment, upload_submission_file) ([#274](https://github.com/bruchris/canvas-lms-mcp/issues/274)) ([faa8344](https://github.com/bruchris/canvas-lms-mcp/commit/faa834487fb5758190750df0143ca6c214519c5c))
+
+
+### Bug Fixes
+
+* **deps:** raise stale security-pin floors to clear 7 advisories ([#295](https://github.com/bruchris/canvas-lms-mcp/issues/295)) ([3d8f959](https://github.com/bruchris/canvas-lms-mcp/commit/3d8f959d1c577ba58bfb3994ca258266892db9a8))
+* **tools:** upcoming_events tools no longer promise behavior Canvas does not deliver ([#293](https://github.com/bruchris/canvas-lms-mcp/issues/293)) ([86bfb48](https://github.com/bruchris/canvas-lms-mcp/commit/86bfb482a7ab46a4f616c0d9231159cea53cd26c))
+
+
+### Miscellaneous
+
+* **security:** ignore .tmp-* / *.tmp scratch files, add CI guard ([#298](https://github.com/bruchris/canvas-lms-mcp/issues/298)) ([a87d008](https://github.com/bruchris/canvas-lms-mcp/commit/a87d0086a16acb820831fac5726b71f408e7e50f))
+
 ## [1.26.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.25.0...canvas-lms-mcp-v1.26.0) (2026-08-05)
 
 
