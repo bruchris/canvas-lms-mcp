@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-163 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+165 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -45,7 +45,7 @@ Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#ag
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 163 | 80+ | 54 |
+| Tools | 165 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -104,7 +104,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (163)
+### All Registered Tools (165)
 
 | Category | Tools |
 |----------|-------|
@@ -150,7 +150,7 @@ Once configured, try these prompts with your AI client:
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — registered only when `CANVAS_PSEUDONYMIZE_STUDENTS=true` |
 
-117 tools are read-only and 46 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` is registered as the 164th tool overall (118th read tool).
+117 tools are read-only and 48 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` is registered as the 166th tool overall (118th read tool).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -265,10 +265,33 @@ const courses = await canvas.courses.list()
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
 | `CANVAS_ROLE` | No | Filter the tool list by role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
+| `CANVAS_ENABLE_ASSIGNMENT_SUBMISSION` | No | Set to `true` to register the opt-in [assignment submission tools](#student-assignment-submission-opt-in) |
 | `CANVAS_PSEUDONYMIZE_STUDENTS` | No | Set to `true` to enable [FERPA mode](#ferpa-mode-student-pseudonymization) |
 | `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | No | Set to `true` (with `CANVAS_PSEUDONYMIZE_STUDENTS=true`) to register the `resolve_pseudonym` audit tool |
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
+
+## Student assignment submission (opt-in)
+
+Two write tools — `upload_submission_file` and `submit_assignment` — let a student submit their own work via the MCP server. They are **off by default** and must be explicitly enabled:
+
+```bash
+# Environment variable
+CANVAS_ENABLE_ASSIGNMENT_SUBMISSION=true canvas-lms-mcp --base-url https://school.instructure.com
+
+# CLI flag
+canvas-lms-mcp --base-url https://school.instructure.com --enable-assignment-submission
+```
+
+**Supported submission types:** `online_text_entry`, `online_url`, `online_upload`.
+
+**Two-step workflow for file uploads:**
+1. Call `upload_submission_file(course_id, assignment_id, name, content_base64, content_type)` once per file — returns a `CanvasFile` with an `id`.
+2. Call `submit_assignment(course_id, assignment_id, submission_type: 'online_upload', file_ids: [...])` with the collected ids.
+
+**Why off by default:** submissions are irreversible (Canvas has no unsubmit API) and may consume a limited attempt. An explicit opt-in makes agentic submission a deliberate, documented choice. The `destructiveHint: true` annotation on both tools also triggers the MCP host's own confirmation prompt. Before calling, the model shows the user exactly what will be submitted and asks for explicit confirmation.
+
+**Role filtering:** with `CANVAS_ROLE=teacher` or `admin`, these tools are hidden (they act on the token holder's own student enrollment and are meaningless for staff tokens).
 
 ## FERPA mode (student pseudonymization)
 
@@ -313,8 +336,8 @@ Three roles, plus the default of "unset = every tool":
 
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
-| _(unset)_ | all (~163) | default; backwards-compatible |
-| `student` | ~57 | a student's own courses, grades, submissions, and read-only course content |
+| _(unset)_ | all (~165) | default; backwards-compatible |
+| `student` | ~59 | a student's own courses, grades, submissions, and read-only course content |
 | `teacher` | ~138 | grading, roster, content authoring, analytics |
 | `admin` | ~150 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 

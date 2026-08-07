@@ -57,6 +57,38 @@ export class FilesModule {
       { method: 'POST', body: JSON.stringify(uploadBody) },
     )
 
+    return this.completeUpload(content, name, contentType, uploadInfo)
+  }
+
+  async uploadToSubmission(
+    courseId: number,
+    assignmentId: number,
+    name: string,
+    contentBase64: string,
+    contentType: string,
+  ): Promise<CanvasFile> {
+    const content = Buffer.from(contentBase64, 'base64')
+    if (content.toString('base64') !== contentBase64) {
+      throw new Error('Invalid base64 content: string is not valid base64 encoding')
+    }
+
+    const uploadInfo = await this.client.request<CanvasFileUploadInfo>(
+      `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self/files`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ name, content_type: contentType, size: String(content.length) }),
+      },
+    )
+
+    return this.completeUpload(content, name, contentType, uploadInfo)
+  }
+
+  private async completeUpload(
+    content: Uint8Array<ArrayBuffer>,
+    name: string,
+    contentType: string,
+    uploadInfo: CanvasFileUploadInfo,
+  ): Promise<CanvasFile> {
     // Step 2: POST file to upload_url (may be S3 — must NOT add Authorization header)
     const form = new FormData()
     for (const [key, value] of Object.entries(uploadInfo.upload_params)) {

@@ -31,6 +31,11 @@ export interface ToolUiBinding {
   csp?: ToolUiCsp
 }
 
+export interface ToolFeatureFlags {
+  /** CANVAS_ENABLE_ASSIGNMENT_SUBMISSION / --enable-assignment-submission */
+  assignmentSubmission?: boolean
+}
+
 export interface ToolDefinition {
   name: string
   /**

@@ -3,7 +3,7 @@ import { registerAppTool } from '../mcp-apps'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
-import type { CanvasRole, ToolDefinition } from './types'
+import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
 import { formatError } from './errors'
 import { pseudonymTools } from './pseudonym'
@@ -17,18 +17,22 @@ const PSEUDONYM_META_NOTE =
  * Build the tool set. Every returned tool carries a resolved `audience` (its own
  * or its domain default). When `role` is set, the set is filtered to the
  * audiences that role can see; when unset, every tool is returned (the default,
- * backwards-compatible behaviour).
+ * backwards-compatible behaviour). Domains with a `gate` are excluded unless the
+ * corresponding flag is enabled in `features`.
  */
 export function getAllTools(
   canvas: CanvasClient,
   pseudonymizer?: Pseudonymizer,
   role?: CanvasRole,
+  features?: ToolFeatureFlags,
 ): ToolDefinition[] {
-  const domainTools = toolDomainCatalog.flatMap((registration) =>
-    registration
-      .getTools(canvas, pseudonymizer)
-      .map(tagAudience(registration.defaultPrimaryAudience)),
-  )
+  const domainTools = toolDomainCatalog
+    .filter((registration) => !registration.gate || features?.[registration.gate])
+    .flatMap((registration) =>
+      registration
+        .getTools(canvas, pseudonymizer)
+        .map(tagAudience(registration.defaultPrimaryAudience)),
+    )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
   const all = [...domainTools, ...conditional].map(tagTitle())
   if (!role) return all
@@ -74,8 +78,9 @@ export function registerAllTools(
   canvas: CanvasClient,
   pseudonymizer?: Pseudonymizer,
   role?: CanvasRole,
+  features?: ToolFeatureFlags,
 ): void {
-  const tools = getAllTools(canvas, pseudonymizer, role)
+  const tools = getAllTools(canvas, pseudonymizer, role, features)
   for (const tool of tools) {
     const handler = buildHandler(tool, pseudonymizer)
     if (tool.ui) {

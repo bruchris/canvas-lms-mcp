@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
 import { getAllTools } from '../../src/tools'
 import { toolDomainCatalog } from '../../src/tools/catalog'
-import type { ToolAudience } from '../../src/tools/types'
+import type { ToolAudience, ToolFeatureFlags } from '../../src/tools/types'
 import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+
+// Enable all gated domains so every registered tool gets audience-checked.
+const ALL_FEATURES: ToolFeatureFlags = { assignmentSubmission: true }
 
 // Coverage gate — mirrors tests/pseudonym/coverage.test.ts. Every tool the
 // server can register MUST resolve to a concrete audience (its own `audience`
@@ -35,14 +38,14 @@ describe('tool audience coverage gate', () => {
     expect(missing.map((r) => r.domain)).toEqual([])
   })
 
-  it('every registered tool resolves to a valid audience (pseudonymizer off)', () => {
-    const unresolved = getAllTools(mockCanvas()).filter(
+  it('every registered tool resolves to a valid audience (pseudonymizer off, all gates on)', () => {
+    const unresolved = getAllTools(mockCanvas(), undefined, undefined, ALL_FEATURES).filter(
       (t) => t.audience === undefined || !VALID_AUDIENCES.has(t.audience),
     )
     expect(unresolved.map((t) => t.name)).toEqual([])
   })
 
-  it('every registered tool resolves to a valid audience (pseudonymizer + reverse lookup on)', () => {
+  it('every registered tool resolves to a valid audience (pseudonymizer + reverse lookup on, all gates on)', () => {
     const ps = new Pseudonymizer({
       baseUrl: 'https://h.example/api/v1',
       env: {
@@ -50,7 +53,7 @@ describe('tool audience coverage gate', () => {
         CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP: 'true',
       },
     })
-    const unresolved = getAllTools(mockCanvas(), ps).filter(
+    const unresolved = getAllTools(mockCanvas(), ps, undefined, ALL_FEATURES).filter(
       (t) => t.audience === undefined || !VALID_AUDIENCES.has(t.audience),
     )
     expect(unresolved.map((t) => t.name)).toEqual([])

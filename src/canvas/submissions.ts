@@ -53,6 +53,14 @@ export interface ListMySubmissionsOptions {
   include?: ReadonlyArray<SubmissionListInclude>
 }
 
+export interface SubmitAssignmentParams {
+  submission_type: 'online_text_entry' | 'online_url' | 'online_upload'
+  body?: string
+  url?: string
+  file_ids?: ReadonlyArray<number>
+  comment?: string
+}
+
 const DEFAULT_LIST_INCLUDE: ReadonlyArray<SubmissionListInclude> = ['submission_comments']
 const DEFAULT_GET_INCLUDE: ReadonlyArray<SubmissionGetInclude> = ['submission_comments']
 
@@ -137,6 +145,23 @@ export class SubmissionsModule {
     return this.client.paginate<CanvasSubmission>(
       `/api/v1/courses/${courseId}/students/submissions`,
       params,
+    )
+  }
+
+  async submit(
+    courseId: number,
+    assignmentId: number,
+    params: SubmitAssignmentParams,
+  ): Promise<CanvasSubmission> {
+    const submission: Record<string, unknown> = { submission_type: params.submission_type }
+    if (params.body !== undefined) submission.body = params.body
+    if (params.url !== undefined) submission.url = params.url
+    if (params.file_ids !== undefined) submission.file_ids = params.file_ids
+    const payload: Record<string, unknown> = { submission }
+    if (params.comment !== undefined) payload.comment = { text_comment: params.comment }
+    return this.client.request<CanvasSubmission>(
+      `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
+      { method: 'POST', body: JSON.stringify(payload) },
     )
   }
 
