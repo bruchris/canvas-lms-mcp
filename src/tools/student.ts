@@ -115,7 +115,12 @@ export function studentTools(
     {
       name: 'get_my_upcoming_assignments',
       title: 'Get My Upcoming Assignments',
-      description: 'List upcoming assignment events for the authenticated student.',
+      description:
+        'List upcoming assignment events for the authenticated student. Canvas caps this ' +
+        'endpoint at roughly the next 1 week and at most 20 events server-side — neither limit ' +
+        'is adjustable, and results silently stop there even if more assignments fall later. ' +
+        'For a longer or specific date range, use `list_calendar_events` with `type="assignment"` ' +
+        'and explicit `start_date`/`end_date` instead.',
       inputSchema: {},
       annotations: {
         readOnlyHint: true,

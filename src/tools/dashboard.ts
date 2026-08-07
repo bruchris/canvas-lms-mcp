@@ -36,7 +36,12 @@ export function dashboardTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'get_upcoming_events',
       title: 'Get Upcoming Events',
       audience: 'shared',
-      description: "Get the current user's upcoming calendar events and assignments.",
+      description:
+        "Get the current user's upcoming calendar events and assignments. Canvas caps this " +
+        'endpoint at roughly the next 1 week and at most 20 events server-side — neither limit ' +
+        'is adjustable, and results silently stop there even if more events fall later. For a ' +
+        'longer or specific date range, use `list_calendar_events` with explicit `start_date`/' +
+        '`end_date` instead.',
       inputSchema: {},
       annotations: {
         readOnlyHint: true,
