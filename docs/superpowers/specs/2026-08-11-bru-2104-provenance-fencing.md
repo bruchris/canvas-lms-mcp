@@ -189,7 +189,9 @@ Canvas gets published into live course content. Three properties make `buildHand
 
    Every composite tool — `audit_course_accessibility`, `audit_course_links`, `explain_grade`,
    `project_grade`, the `attention` tools — calls `canvas.*` directly. `audit_course_accessibility`
-   reads page bodies via `canvas.pages.listWithBodies(courseId)` (`src/tools/accessibility-audit.ts:433`)
+   reads page bodies via `canvas.pages.listWithBodies(courseId)` (in the `audit_course_accessibility`
+   handler, `src/tools/accessibility-audit.ts` — cited by symbol because open PR #297 reworks fan-out
+   in that file and will shift its line numbers)
    and scores the **raw** body; the fence is applied afterwards, to its findings, on the way out.
 
    This is a structural property, not an audited convention. The competitor had to verify by
