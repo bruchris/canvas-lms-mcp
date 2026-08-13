@@ -628,6 +628,13 @@ export interface CanvasDiscussionTopic {
   posted_at: string
   discussion_type: string
   published: boolean
+  /**
+   * Canvas's own record of whether this topic is an announcement. Canvas silently
+   * downgrades an `is_announcement: true` create/update request to a regular topic
+   * (still HTTP 200) when the caller lacks announcement-create permission, so callers
+   * must check this field rather than assume the request was honored.
+   */
+  is_announcement?: boolean
 }
 
 export interface CanvasDiscussionEntry {
