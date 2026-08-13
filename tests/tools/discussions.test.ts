@@ -168,6 +168,10 @@ describe('discussionTools', () => {
 
     it('forwards is_announcement and delayed_post_at to canvas.discussions.create', async () => {
       const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.create).mockResolvedValueOnce({
+        ...mockTopic,
+        is_announcement: true,
+      })
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
       await tool.handler({
         course_id: 1,
@@ -183,6 +187,50 @@ describe('discussionTools', () => {
         require_initial_post: undefined,
         is_announcement: true,
         delayed_post_at: '2026-09-01T08:00:00.000Z',
+      })
+    })
+
+    it('returns the topic when Canvas honors is_announcement: true', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.create).mockResolvedValueOnce({
+        ...mockTopic,
+        id: 42,
+        is_announcement: true,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      const result = await tool.handler({
+        course_id: 1,
+        title: 'Course Update',
+        is_announcement: true,
+      })
+      expect(result).toMatchObject({ id: 42, is_announcement: true })
+    })
+
+    it('throws when Canvas silently downgrades the announcement to a regular topic', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.create).mockResolvedValueOnce({
+        ...mockTopic,
+        id: 99,
+        is_announcement: false,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      await expect(
+        tool.handler({ course_id: 1, title: 'Course Update', is_announcement: true }),
+      ).rejects.toThrow(/99/)
+      await expect(
+        tool.handler({ course_id: 1, title: 'Course Update', is_announcement: true }),
+      ).rejects.toThrow(/announcement/i)
+    })
+
+    it('does not check the announcement postcondition for ordinary discussions', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.create).mockResolvedValueOnce({
+        ...mockTopic,
+        is_announcement: false,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
+      await expect(tool.handler({ course_id: 1, title: 'New Topic' })).resolves.toMatchObject({
+        is_announcement: false,
       })
     })
   })
@@ -209,6 +257,10 @@ describe('discussionTools', () => {
 
     it('forwards is_announcement and delayed_post_at to canvas.discussions.update', async () => {
       const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.update).mockResolvedValueOnce({
+        ...mockTopic,
+        is_announcement: true,
+      })
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
       await tool.handler({
         course_id: 1,
@@ -224,6 +276,46 @@ describe('discussionTools', () => {
         is_announcement: true,
         delayed_post_at: '2026-10-15T09:00:00.000Z',
       })
+    })
+
+    it('returns the topic when Canvas honors is_announcement: true', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.update).mockResolvedValueOnce({
+        ...mockTopic,
+        id: 7,
+        is_announcement: true,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      const result = await tool.handler({ course_id: 1, topic_id: 7, is_announcement: true })
+      expect(result).toMatchObject({ id: 7, is_announcement: true })
+    })
+
+    it('throws when Canvas silently downgrades the announcement update to a regular topic', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.update).mockResolvedValueOnce({
+        ...mockTopic,
+        id: 13,
+        is_announcement: false,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      await expect(
+        tool.handler({ course_id: 1, topic_id: 13, is_announcement: true }),
+      ).rejects.toThrow(/13/)
+      await expect(
+        tool.handler({ course_id: 1, topic_id: 13, is_announcement: true }),
+      ).rejects.toThrow(/announcement/i)
+    })
+
+    it('does not check the announcement postcondition for ordinary updates', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.discussions.update).mockResolvedValueOnce({
+        ...mockTopic,
+        is_announcement: false,
+      })
+      const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
+      await expect(
+        tool.handler({ course_id: 1, topic_id: 1, title: 'Updated' }),
+      ).resolves.toMatchObject({ is_announcement: false })
     })
   })
 

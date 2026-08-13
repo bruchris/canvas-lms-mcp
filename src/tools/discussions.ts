@@ -1,6 +1,26 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { CanvasDiscussionTopic } from '../canvas/types'
 import type { ToolDefinition } from './types'
+
+/**
+ * Canvas returns 200 with a plain discussion topic (no error) when the caller
+ * requests is_announcement: true but lacks announcement-create permission. Throwing
+ * here — rather than returning the downgraded topic as success — is what turns that
+ * into a structured tool failure instead of a false success.
+ */
+function assertAnnouncementHonored(
+  topic: CanvasDiscussionTopic,
+  action: 'created' | 'updated',
+): void {
+  if (topic.is_announcement) return
+  throw new Error(
+    `Canvas ${action} topic ${topic.id} as a regular discussion, not an announcement — the caller lacks ` +
+      'announcement-create permission in this course. The announcement was NOT honored; use topic ID ' +
+      `${topic.id} to find or clean up the discussion, or ask a course admin/teacher to grant announcement ` +
+      'permission and retry.',
+  )
+}
 
 export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -113,15 +133,18 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const course_id = params.course_id as number
-        return canvas.discussions.create(course_id, {
+        const is_announcement = params.is_announcement as boolean | undefined
+        const topic = await canvas.discussions.create(course_id, {
           title: params.title as string,
           message: params.message as string | undefined,
           discussion_type: params.discussion_type as 'side_comment' | 'threaded' | undefined,
           published: params.published as boolean | undefined,
           require_initial_post: params.require_initial_post as boolean | undefined,
-          is_announcement: params.is_announcement as boolean | undefined,
+          is_announcement,
           delayed_post_at: params.delayed_post_at as string | undefined,
         })
+        if (is_announcement) assertAnnouncementHonored(topic, 'created')
+        return topic
       },
     },
     {
@@ -161,18 +184,21 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       handler: async (params) => {
         const course_id = params.course_id as number
         const topic_id = params.topic_id as number
+        const is_announcement = params.is_announcement as boolean | undefined
         const updateParams = {
           title: params.title as string | undefined,
           message: params.message as string | undefined,
           published: params.published as boolean | undefined,
           require_initial_post: params.require_initial_post as boolean | undefined,
-          is_announcement: params.is_announcement as boolean | undefined,
+          is_announcement,
           delayed_post_at: params.delayed_post_at as string | undefined,
         }
         if (Object.values(updateParams).every((v) => v === undefined)) {
           throw new Error('At least one field must be provided to update a discussion topic')
         }
-        return canvas.discussions.update(course_id, topic_id, updateParams)
+        const topic = await canvas.discussions.update(course_id, topic_id, updateParams)
+        if (is_announcement) assertAnnouncementHonored(topic, 'updated')
+        return topic
       },
     },
     {
