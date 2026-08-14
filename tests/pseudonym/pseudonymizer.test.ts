@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -452,10 +452,11 @@ describe('audit log file (opt-in)', () => {
     })
     await p.anonymizeUser(COURSE_ID, student(1, 'Alice'))
     await p.reverseLookup(COURSE_ID, 'Student 1')
-    // Allow the fire-and-forget append a tick.
-    await new Promise((r) => setTimeout(r, 20))
-    const contents = await readFile(logFile, 'utf8')
-    expect(contents).toContain('Student 1')
-    expect(contents).toContain('reverse_lookup hit')
+    // Poll for the fire-and-forget append instead of sleeping a fixed duration.
+    await vi.waitFor(async () => {
+      const contents = await readFile(logFile, 'utf8')
+      expect(contents).toContain('Student 1')
+      expect(contents).toContain('reverse_lookup hit')
+    })
   })
 })
