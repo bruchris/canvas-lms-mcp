@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../../src/canvas'
+import { UNTRUSTED_CONTENT_META_NOTE } from '../../src/provenance/apply'
 import { UNTRUSTED_FIELDS } from '../../src/provenance/fields'
 import { MARKER_CLOSE, MARKER_OPEN_PREFIX } from '../../src/provenance/markers'
 import { getAllTools, registerAllTools } from '../../src/tools'
@@ -304,6 +305,118 @@ describe('slice 1 — pages and syllabus (§8.1 rank 4)', () => {
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §8.3 graduated — the UI-bound surfaces (BRU-2183). The widget half of this
+// contract is proven end-to-end in tests/ui/widget-provenance.test.ts; what
+// belongs here is that the boundary fences BOTH the base tool and its `view_*`
+// alias, and nothing structural alongside them.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('§8.3 graduated — course structure', () => {
+  const structure = {
+    modules: [
+      {
+        id: 10,
+        name: 'Week 1',
+        position: 1,
+        state: 'active',
+        unlock_at: null,
+        items: [
+          {
+            id: 100,
+            title: 'Syllabus',
+            type: 'Page',
+            published: true,
+            html_url: 'https://e.edu/p',
+          },
+        ],
+      },
+    ],
+    summary: { total_modules: 1, total_items: 1, items_by_type: { Page: 1 } },
+  }
+  const overrides = { 'modules.getCourseStructure': structure }
+
+  it.each(['get_course_structure', 'view_course_structure'])(
+    '%s fences the module name and the module-item title',
+    async (toolName) => {
+      const parsed = (await callToolJson(toolName, { course_id: 1 }, overrides)) as typeof structure
+
+      expect(parsed.modules[0].name).toBe(fencedWith('module name', 'Week 1'))
+      expect(parsed.modules[0].items[0].title).toBe(fencedWith('module item title', 'Syllabus'))
+    },
+  )
+
+  it.each(['get_course_structure', 'view_course_structure'])(
+    '%s leaves ids, types, urls and the summary counters untouched',
+    async (toolName) => {
+      const parsed = (await callToolJson(toolName, { course_id: 1 }, overrides)) as typeof structure
+
+      expect(parsed.modules[0].id).toBe(10)
+      expect(parsed.modules[0].state).toBe('active')
+      expect(parsed.modules[0].items[0].type).toBe('Page')
+      expect(parsed.modules[0].items[0].html_url).toBe('https://e.edu/p')
+      // `items_by_type` is keyed by type name — keys are never fenced (§7.6),
+      // and its values are numbers, so the whole summary must come back as-is.
+      expect(parsed.summary).toEqual({
+        total_modules: 1,
+        total_items: 1,
+        items_by_type: { Page: 1 },
+      })
+    },
+  )
+
+  it('reports the fenced field names once per response', async () => {
+    const response = await callTool('view_course_structure', { course_id: 1 }, overrides)
+    expect(response._meta?.untrusted_content).toEqual({
+      fields: ['name', 'title'],
+      note: UNTRUSTED_CONTENT_META_NOTE,
+    })
+  })
+})
+
+describe('§8.3 graduated — account notifications', () => {
+  const notifications = [
+    {
+      id: 1,
+      subject: 'Maintenance',
+      message: '<p>Canvas is down.</p>',
+      start_at: '2026-08-01T00:00:00Z',
+      end_at: null,
+      icon: 'warning',
+    },
+  ]
+  const overrides = { 'accounts.listNotifications': notifications }
+
+  it.each(['list_account_notifications', 'view_account_notifications'])(
+    '%s fences the announcement subject and message',
+    async (toolName) => {
+      const parsed = (await callToolJson(toolName, {}, overrides)) as typeof notifications
+
+      expect(parsed[0].subject).toBe(fencedWith('announcement subject', 'Maintenance'))
+      expect(parsed[0].message).toBe(fencedWith('announcement message', '<p>Canvas is down.</p>'))
+    },
+  )
+
+  it.each(['list_account_notifications', 'view_account_notifications'])(
+    '%s leaves the icon and the scheduling fields untouched',
+    async (toolName) => {
+      const parsed = (await callToolJson(toolName, {}, overrides)) as typeof notifications
+
+      expect(parsed[0].icon).toBe('warning')
+      expect(parsed[0].start_at).toBe('2026-08-01T00:00:00Z')
+      expect(parsed[0].end_at).toBeNull()
+      expect(parsed[0].id).toBe(1)
+    },
+  )
+
+  it('reports the fenced field names once per response', async () => {
+    const response = await callTool('view_account_notifications', {}, overrides)
+    expect(response._meta?.untrusted_content).toEqual({
+      fields: ['message', 'subject'],
+      note: UNTRUSTED_CONTENT_META_NOTE,
+    })
+  })
+})
+
 describe('slice 1 — student feedback (§8.1 rank 1)', () => {
   const submissionWithFeedback = {
     id: 9,
@@ -576,9 +689,10 @@ describe('write-side rejection (§6)', () => {
 // §10.3.5 — registry coverage, mirroring tests/pseudonym/coverage.test.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('field registry coverage', () => {
-  // Canonical slice-1 expectation, duplicated here on purpose so adding a fenced
-  // tool requires touching BOTH this file and src/provenance/fields.ts.
-  const EXPECTED_SLICE_1 = new Set([
+  // Canonical expectation, duplicated here on purpose so adding a fenced tool
+  // requires touching BOTH this file and src/provenance/fields.ts.
+  const EXPECTED_FENCED_TOOLS = new Set([
+    // Slice 1 (§8.1).
     'get_submission',
     'list_submissions',
     'list_submissions_awaiting_grading',
@@ -590,11 +704,45 @@ describe('field registry coverage', () => {
     'get_page',
     'list_pages',
     'get_syllabus',
+    // The UI-bound surfaces §8.3 deferred, graduated by BRU-2183 once the
+    // widgets learned to strip markers.
+    'get_course_structure',
+    'view_course_structure',
+    'list_account_notifications',
+    'view_account_notifications',
   ])
 
-  it('matches the canonical slice-1 list from §8.1 — 11 read tools', () => {
-    expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_SLICE_1)
-    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(11)
+  it('matches the canonical list — 15 read tools', () => {
+    expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_FENCED_TOOLS)
+    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(15)
+  })
+
+  // A `view_*` tool is a separate definition with its own handler that returns
+  // the same payload as its base tool plus a `ui` binding. Fencing one and not
+  // the other would leave the model reading the same Canvas text unmarked
+  // through the other name — and the `view_*` half is the one the widgets are
+  // attached to, so it is the easier of the two to forget.
+  it.each([
+    ['get_course_structure', 'view_course_structure'],
+    ['list_account_notifications', 'view_account_notifications'],
+  ])('keeps %s and %s at response parity', (base, view) => {
+    expect(UNTRUSTED_FIELDS[view]).toEqual(UNTRUSTED_FIELDS[base])
+  })
+
+  it('registers every tool that carries a ui binding', () => {
+    const { canvas } = buildCanvas()
+    const uiBound = getAllTools(canvas, undefined, undefined, FEATURES).filter((t) => t.ui)
+    expect(uiBound.length).toBeGreaterThan(0)
+    for (const tool of uiBound) {
+      // A widget-backed tool that renders Canvas text must be fenced, because
+      // the widget strip (src/ui/provenance-strip.ts) makes it free to do so.
+      // If a new widget lands whose payload is genuinely operator-authored,
+      // this is the line that forces the decision to be explicit.
+      expect(
+        UNTRUSTED_FIELDS[tool.name],
+        `${tool.name} is UI-bound but absent from the field registry`,
+      ).toBeDefined()
+    }
   })
 
   it('every tool in the registry is registered on a running server', () => {
