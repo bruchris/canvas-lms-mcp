@@ -433,35 +433,45 @@ describe('JSON parseability is preserved across the whole registry (§2.3)', () 
   it('every tool whose text parsed as JSON before fencing still parses after', async () => {
     const params = { course_id: 1, assignment_id: 1, user_id: 1, topic_id: 1, conversation_id: 1 }
 
-    vi.stubEnv('CANVAS_PROVENANCE_FENCING', 'false')
-    const { canvas: plainCanvas } = buildCanvas()
-    const plain = captureHandlers(plainCanvas)
-    const parsedBefore = new Set<string>()
-    for (const [name, handler] of plain) {
-      const response = await handler(params)
-      if (response.isError) continue
-      try {
-        JSON.parse(response.content[0].text)
-        parsedBefore.add(name)
-      } catch {
-        // "Operation completed successfully." — handlers that resolve undefined
-        // were never JSON, before this change or after it.
+    // Sweeping all 165 tools with one generic param set means a handful throw on
+    // the placeholder shapes, and buildHandler logs those via console.error. That
+    // is correct production behaviour but pure noise in CI, so it is silenced for
+    // the duration of the sweep only — the isError branch below is what the test
+    // actually reads.
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      vi.stubEnv('CANVAS_PROVENANCE_FENCING', 'false')
+      const { canvas: plainCanvas } = buildCanvas()
+      const plain = captureHandlers(plainCanvas)
+      const parsedBefore = new Set<string>()
+      for (const [name, handler] of plain) {
+        const response = await handler(params)
+        if (response.isError) continue
+        try {
+          JSON.parse(response.content[0].text)
+          parsedBefore.add(name)
+        } catch {
+          // "Operation completed successfully." — handlers that resolve undefined
+          // were never JSON, before this change or after it.
+        }
       }
-    }
-    vi.unstubAllEnvs()
+      vi.unstubAllEnvs()
 
-    const { canvas: fencedCanvas } = buildCanvas()
-    const fenced = captureHandlers(fencedCanvas)
-    for (const name of parsedBefore) {
-      const response = await fenced.get(name)!(params)
-      expect(
-        () => JSON.parse(response.content[0].text),
-        `${name} text is no longer JSON`,
-      ).not.toThrow()
-    }
+      const { canvas: fencedCanvas } = buildCanvas()
+      const fenced = captureHandlers(fencedCanvas)
+      for (const name of parsedBefore) {
+        const response = await fenced.get(name)!(params)
+        expect(
+          () => JSON.parse(response.content[0].text),
+          `${name} text is no longer JSON`,
+        ).not.toThrow()
+      }
 
-    // Anti-vacuity: an empty baseline would make the loop above assert nothing.
-    expect(parsedBefore.size).toBeGreaterThanOrEqual(100)
+      // Anti-vacuity: an empty baseline would make the loop above assert nothing.
+      expect(parsedBefore.size).toBeGreaterThanOrEqual(100)
+    } finally {
+      consoleSpy.mockRestore()
+    }
   })
 
   it('fencing is lossless — stripping the markers recovers the original value', async () => {
