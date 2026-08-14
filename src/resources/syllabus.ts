@@ -2,7 +2,14 @@ import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
+import { RESOURCE_LABELS } from '../provenance/fields'
+import { fenceBlock, isProvenanceFencingEnabled } from '../provenance/markers'
 import { formatError } from '../tools'
+
+function fenceSyllabus(body: string): string {
+  if (body.length === 0 || !isProvenanceFencingEnabled()) return body
+  return fenceBlock(body, RESOURCE_LABELS.syllabus)
+}
 
 export function registerSyllabusResource(server: McpServer, canvas: CanvasClient): void {
   const template = new ResourceTemplate('canvas://course/{courseId}/syllabus', {
@@ -33,7 +40,11 @@ export function registerSyllabusResource(server: McpServer, canvas: CanvasClient
             {
               uri: `canvas://course/${courseId}/syllabus`,
               mimeType: 'text/html',
-              text: body ?? '',
+              // Resources bypass buildHandler, so the fence is applied here
+              // (BRU-2104 §8.2). Block form: the payload is text/html, with no
+              // JSON string value to sit inside. An empty syllabus is returned
+              // bare — a marker around nothing is noise, not provenance.
+              text: fenceSyllabus(body ?? ''),
             },
           ],
         }
