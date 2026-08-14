@@ -49,6 +49,36 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
   get_page: { body: 'page body' },
   list_pages: { body: 'page body' },
   get_syllabus: { syllabus_body: 'syllabus body' },
+
+  // Rank 5 — the two UI-bound surfaces §8.3 deferred until their widgets could
+  // strip markers. Graduated by BRU-2183, which added that strip
+  // (`src/ui/provenance-strip.ts`). Fencing these without it would have shown
+  // the annotations to a human in the MCP Apps panel.
+  //
+  // Each surface is TWO tool names, not one. `view_*` is a separate definition
+  // with its own handler that happens to return the same payload plus a `ui`
+  // binding — and the `view_*` names are the ones the widgets are attached to,
+  // so omitting them would fence the wrong half. The registry is keyed by tool
+  // name with no alias indirection, so both are spelled out; the pairs are held
+  // identical by `tests/provenance/boundary.test.ts`.
+  //
+  // `name` and `title` are matched anywhere in the response subtree, as
+  // everywhere else in this file. In these two responses that is exactly the
+  // module name and the module-item title: no other `name`/`title` key exists
+  // in `CanvasCourseStructure`, and `summary.items_by_type` holds numbers.
+  // `content_details` is an untyped Canvas passthrough — if Canvas ever adds a
+  // `title` inside it, that title is Canvas-authored text too, so fencing it is
+  // correct rather than a miss.
+  get_course_structure: { name: 'module name', title: 'module item title' },
+  view_course_structure: { name: 'module name', title: 'module item title' },
+  list_account_notifications: {
+    subject: 'announcement subject',
+    message: 'announcement message',
+  },
+  view_account_notifications: {
+    subject: 'announcement subject',
+    message: 'announcement message',
+  },
 }
 
 /** Marker labels for the two MCP resources, which bypass `buildHandler` (§8.2). */

@@ -95,7 +95,13 @@ JSON document. That rules out the otherwise-attractive option of prepending a pl
 preamble ahead of the JSON. Fenced values must live _inside_ JSON string values.
 
 Second consequence: any field these two widgets _render_ would show marker text in the UI. Both
-tools are therefore deferred out of slice 1 (§8.3).
+tools are therefore deferred out of slice 1 — **graduated in slice 2, once the widgets learned to
+strip markers; see §8.3.1**.
+
+Correction to the sentence above, found during that work: the `ui` bindings are on
+`view_course_structure` (`src/tools/modules.ts`) and `view_account_notifications`
+(`src/tools/accounts.ts`), which are *separate tool definitions* from `get_course_structure` and
+`list_account_notifications`. There are four tool names across the two surfaces, not two.
 
 ### 2.4 The pseudonymizer is not a response-traversal hook
 
@@ -486,13 +492,60 @@ Deferral is a decision, not an omission. Each of these is out of slice 1 on purp
 | Deferred                                                                                | Reason                                                                                                                                |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | **Short labels** — discussion/page/assignment `title`, `user_name`, file `display_name` | Measured 4× field expansion for minimal payload capacity (§5.3). Revisit only with a compact marker form.                             |
-| **`get_course_structure`, `list_account_notifications`**                                | UI-bound (§2.3). Their widgets render these fields; fencing shows markers in the UI. Needs a widget-side strip first — separate task. |
+| ~~**`get_course_structure`, `list_account_notifications`**~~ — **GRADUATED, see §8.3.1**        | Was: UI-bound (§2.3); fencing would have shown markers in the UI. The widget-side strip landed in BRU-2183, so the reason no longer holds. |
 | **Assignment/quiz `description`**                                                       | Educator-authored. Real but lower-ranked: no student can write it, and the operator is usually its author.                            |
 | **Rubric criterion/rating `description`, `long_description`**                           | Educator-authored; deeply nested; high field count for low risk.                                                                      |
 | **Course `name`, `course_code`**                                                        | Institution/educator-set identity labels. Same call the competitor made.                                                              |
-| **Module names, module-item titles**                                                    | Educator-authored short labels; also the UI-bound tool above.                                                                         |
+| ~~**Module names, module-item titles**~~ — **GRADUATED, see §8.3.1**                            | Was: educator-authored short labels, and blocked behind the UI-bound tool above. Graduated with it; they are the only text those two tools carry. |
 | **Quiz question text, `item_body`**                                                     | Educator-authored; large surface; defer until slice 1 has real usage data.                                                            |
 | **File contents**                                                                       | Not returned as text by our tools today. Re-check if that changes.                                                                    |
+
+#### 8.3.1 Graduated: the UI-bound surfaces (BRU-2183)
+
+The deferral above was conditional — "needs a widget-side strip first" — and that strip now exists,
+so the two surfaces are fenced. Four field/tool pairs graduated:
+
+| Tool                                                        | Fenced fields                                                | Label                                       |
+| ----------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
+| `get_course_structure`, `view_course_structure`             | `name` (module), `title` (module item)                       | `module name`, `module item title`          |
+| `list_account_notifications`, `view_account_notifications`  | `subject`, `message`                                         | `announcement subject`, `announcement message` |
+
+**Four tool names, not two — the alias half is load-bearing.** `view_course_structure` and
+`view_account_notifications` are separate `ToolDefinition`s with their own handlers; each returns the
+same payload as its base tool and adds a `ui` binding. `UNTRUSTED_FIELDS` is keyed by tool name with
+no alias indirection, so each pair is spelled out twice. Registering only the base tools would leave
+the model reading the same Canvas text unmarked through the `view_*` name — and the `view_*` names
+are precisely the ones the widgets attach to, so they are the easier half to forget.
+`tests/provenance/boundary.test.ts` holds each pair at response parity and additionally fails if any
+tool carrying a `ui` binding is missing from the registry, so a third widget cannot land unfenced by
+omission.
+
+**The widget half.** `src/ui/provenance-strip.ts` exports `PROVENANCE_STRIP_JS`, an ES5 source
+string interpolated into both widget documents. Its marker literals come from
+`src/provenance/markers.ts` — the widgets never re-declare them, so the compatibility surface (§5.2)
+stays single-sourced. It is a source *string* rather than a function for the same reason the
+account-notifications sanitiser policy is data: the widgets ship as self-contained HTML and cannot
+import, yet the logic has to be executable by a test. `tests/ui/provenance-strip.test.ts` runs that
+exact string; a TypeScript twin would go green while the shipped widget was broken.
+
+Each widget calls `stripFencesDeep` at one choke point — immediately after payload extraction
+(`JSON.parse` included) and before any value reaches a text, HTML or attribute sink. For
+account-notifications that also puts the strip *ahead of* the sanitiser, so a fenced `message`
+is still parsed as the markup it is. The MCP tool response itself is untouched: the strip lives in
+the widget, never in `buildHandler`, so the model-facing JSON keeps its fences.
+
+**Exactness.** The strip removes complete server fences only. An unmatched or malformed marker is
+left visible on purpose — it means something bypassed the boundary, and §5.2 chose `[[…]]` precisely
+so that a leak is loud. A label is bounded (no brackets, no newline, ≤64 chars) so that
+marker-shaped text cannot pair its own opening bracket with a genuine suffix elsewhere in the string
+and delete the span between. Ordinary `[[wiki link]]` text survives; the neutralisation pass (§7)
+is what makes the parse unambiguous, since content can never contain a doubled delimiter by the time
+the widget sees it.
+
+**Cost.** These are the "short labels" §5.3 deferred, and the ratio there holds: a module name of
+~20 characters carries ~99 characters of marker. That is the accepted price on these two surfaces
+only, and it does not reopen the general short-label deferral — `title` elsewhere (discussions,
+pages, assignments) stays deferred.
 
 ### 8.4 Rollout control
 
@@ -615,6 +668,12 @@ Docs: README env table, `docs/` env reference, CHANGELOG under `feat`.
 
 Estimated shape: ~250 lines of source, ~400 lines of test. No new dependencies.
 
+**Actual, after both slices:** slice 1 held to that and added no dependency. Slice 2 (§8.3.1) added
+`jsdom` + `@types/jsdom` as **devDependencies**, because the widget half of the contract is only
+provable by rendering the widget — a structural "the HTML contains the strip call" assertion passes
+while the strip is wired to the wrong place. Not shipped: the npm `files` allowlist is
+`["bin/", "dist/"]`, and nothing under `src/` imports it.
+
 ---
 
 ## 12. Open questions for CTO
@@ -623,8 +682,9 @@ Estimated shape: ~250 lines of source, ~400 lines of test. No new dependencies.
    a behaviour change for existing users and costs +67% on a fenced list response. If v1.0 timing
    argues for shipping default-off and flipping in a later minor, that is a reasonable call — but it
    should be an explicit one.
-2. **The two UI-bound tools (§8.3).** Deferred pending a widget-side marker strip. Worth a follow-up
-   task now, or leave until slice 1 lands?
+2. ~~**The two UI-bound tools (§8.3).** Deferred pending a widget-side marker strip. Worth a
+   follow-up task now, or leave until slice 1 lands?~~ **Answered:** followed up after slice 1
+   landed, as BRU-2172 → BRU-2183. Resolved in §8.3.1 — and it turned out to be four tools, not two.
 3. **Marker text wording.** §5.4 is a starting point; the exact phrasing is worth one review pass
    since it is what the model actually reads, and changing it later is a breaking change to anything
    that greps for it.
