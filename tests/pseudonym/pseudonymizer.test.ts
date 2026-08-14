@@ -73,7 +73,9 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await rm(tmpRoot, { recursive: true, force: true })
+  // maxRetries/retryDelay absorb the transient ENOTEMPTY/EBUSY that Windows'
+  // recursive rmdir can raise under heavy scheduler contention — see BRU-2180.
+  await rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
 })
 
 function make(overrides: Partial<{ env: NodeJS.ProcessEnv; rootDir: string }> = {}) {
