@@ -103,7 +103,7 @@ export function appointmentGroupTools(
             'Who can see other sign-ups: "private" (instructors only) or "protected" (all participants)',
           ),
         new_appointments: z
-          .array(z.tuple([z.string(), z.string()]))
+          .array(z.array(z.string()).length(2))
           .optional()
           .describe('Time slots to create as [start_at, end_at] pairs (ISO 8601 strings)'),
       },
@@ -140,7 +140,7 @@ export function appointmentGroupTools(
         publish: z.boolean().optional().describe('Set to true to publish the group'),
         context_codes: z.array(z.string()).optional().describe('Update context associations'),
         new_appointments: z
-          .array(z.tuple([z.string(), z.string()]))
+          .array(z.array(z.string()).length(2))
           .optional()
           .describe('New time slots to add as [start_at, end_at] pairs'),
       },
