@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.27.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.0...canvas-lms-mcp-v1.27.1) (2026-08-15)
+
+
+### Performance Improvements
+
+* commits touching src/ compile into dist/, which package.json's ([adac93c](https://github.com/bruchris/canvas-lms-mcp/commit/adac93c65c36d83ca8023411a280a20bc46467b8))
+
+
+### Miscellaneous
+
+* add perf section to release-please changelog-sections ([#309](https://github.com/bruchris/canvas-lms-mcp/issues/309)) ([adac93c](https://github.com/bruchris/canvas-lms-mcp/commit/adac93c65c36d83ca8023411a280a20bc46467b8))
+
 ## [1.27.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.26.0...canvas-lms-mcp-v1.27.0) (2026-08-14)
 
 
