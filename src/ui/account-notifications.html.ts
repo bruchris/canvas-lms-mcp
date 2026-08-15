@@ -11,6 +11,7 @@
 // interpolated below, so a unit test of that module guards the exact policy the
 // widget runs.
 import { ALLOWED_TAGS, DROP_TAGS, SAFE_URL_PATTERNS } from './account-notifications-sanitizer'
+import { PROVENANCE_STRIP_JS } from './provenance-strip'
 
 export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
 <html lang="en">
@@ -194,6 +195,7 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
   var SAFE_URL_RES = ${JSON.stringify(SAFE_URL_PATTERNS)}.map(function (p) {
     return new RegExp(p, 'i');
   });
+${PROVENANCE_STRIP_JS}
 
   function readPayload() {
     // Multi-sink probe: try documented hosts in order, fall back to a known shim variable.
@@ -455,6 +457,11 @@ export const ACCOUNT_NOTIFICATIONS_HTML = `<!doctype html>
       renderEmpty('No active institution announcements.');
       return;
     }
+    // Single choke point, ahead of the sanitiser and every other sink: the
+    // provenance markers the boundary adds are addressed to the model, not to
+    // the person reading this panel (BRU-2104 §8.3). Stripping before
+    // sanitising also keeps a fenced message parseable as the markup it is.
+    notifications = stripFencesDeep(notifications);
     try {
       render(notifications);
     } catch (err) {

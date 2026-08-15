@@ -2,7 +2,14 @@ import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
+import { RESOURCE_LABELS } from '../provenance/fields'
+import { fenceBlock, isProvenanceFencingEnabled } from '../provenance/markers'
 import { formatError } from '../tools'
+
+function fenceDescription(description: string): string {
+  if (description.length === 0 || !isProvenanceFencingEnabled()) return description
+  return fenceBlock(description, RESOURCE_LABELS.assignmentDescription)
+}
 
 export function registerAssignmentDescriptionResource(
   server: McpServer,
@@ -33,7 +40,8 @@ export function registerAssignmentDescriptionResource(
             {
               uri,
               mimeType: 'text/html',
-              text: assignment.description ?? '',
+              // Fenced here because resources bypass buildHandler (BRU-2104 §8.2).
+              text: fenceDescription(assignment.description ?? ''),
             },
           ],
         }

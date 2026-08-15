@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.27.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.26.0...canvas-lms-mcp-v1.27.0) (2026-08-14)
+
+
+### Features
+
+* **security:** fence Canvas-authored content as untrusted in model context ([#305](https://github.com/bruchris/canvas-lms-mcp/issues/305)) ([240c027](https://github.com/bruchris/canvas-lms-mcp/commit/240c02729000bf699f67570224dc8bd409e7d069))
+* **tools:** add opt-in assignment_submission domain (submit_assignment, upload_submission_file) ([#274](https://github.com/bruchris/canvas-lms-mcp/issues/274)) ([faa8344](https://github.com/bruchris/canvas-lms-mcp/commit/faa834487fb5758190750df0143ca6c214519c5c))
+* **ui:** strip provenance fences in widgets and fence the 4 UI-bound tools ([#307](https://github.com/bruchris/canvas-lms-mcp/issues/307)) ([c5d5f1e](https://github.com/bruchris/canvas-lms-mcp/commit/c5d5f1e899cf5248d36d9f5700497133b1e32e34))
+
+
+### Bug Fixes
+
+* **deps:** raise stale security-pin floors to clear 7 advisories ([#295](https://github.com/bruchris/canvas-lms-mcp/issues/295)) ([3d8f959](https://github.com/bruchris/canvas-lms-mcp/commit/3d8f959d1c577ba58bfb3994ca258266892db9a8))
+* **tools:** reject Canvas announcement permission downgrades ([#303](https://github.com/bruchris/canvas-lms-mcp/issues/303)) ([e2a2415](https://github.com/bruchris/canvas-lms-mcp/commit/e2a2415715f776724787e6fc444d3c812decab99))
+* **tools:** upcoming_events tools no longer promise behavior Canvas does not deliver ([#293](https://github.com/bruchris/canvas-lms-mcp/issues/293)) ([86bfb48](https://github.com/bruchris/canvas-lms-mcp/commit/86bfb482a7ab46a4f616c0d9231159cea53cd26c))
+
+
+### Miscellaneous
+
+* **security:** ignore .tmp-* / *.tmp scratch files, add CI guard ([#298](https://github.com/bruchris/canvas-lms-mcp/issues/298)) ([a87d008](https://github.com/bruchris/canvas-lms-mcp/commit/a87d0086a16acb820831fac5726b71f408e7e50f))
+* **security:** pin GitHub Actions to commit SHAs, add dependabot ([#299](https://github.com/bruchris/canvas-lms-mcp/issues/299)) ([69c3695](https://github.com/bruchris/canvas-lms-mcp/commit/69c3695884d7420541c280e4bdebcc1437af25c9))
+
+
+### Documentation
+
+* **marketing:** add August 2026 outreach draft for r/mcp, r/ClaudeAI, r/ClaudeCode, Show HN ([#301](https://github.com/bruchris/canvas-lms-mcp/issues/301)) ([c09ba84](https://github.com/bruchris/canvas-lms-mcp/commit/c09ba84e3fc2b4f1da9cffe1c4dddb2a3c3efb27))
+* **spec:** provenance fencing design for Canvas-authored content (BRU-2104) ([#300](https://github.com/bruchris/canvas-lms-mcp/issues/300)) ([b894370](https://github.com/bruchris/canvas-lms-mcp/commit/b89437018f2e02ae24084b2a3959dd5b3d3cf098))
+
 ## [1.26.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.25.0...canvas-lms-mcp-v1.26.0) (2026-08-05)
 
 

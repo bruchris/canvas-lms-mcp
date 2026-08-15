@@ -1,6 +1,8 @@
 // Self-contained widget for `view_course_structure`. The host injects a CallToolResult
 // into a known sink (e.g., `window.openai.toolResult`); the widget renders an
 // interactive tree without making any network requests. CSP intentionally empty.
+import { PROVENANCE_STRIP_JS } from './provenance-strip'
+
 export const COURSE_STRUCTURE_HTML = `<!doctype html>
 <html lang="en">
 <head>
@@ -170,7 +172,7 @@ export const COURSE_STRUCTURE_HTML = `<!doctype html>
     'ExternalTool',
     'SubHeader',
   ];
-
+${PROVENANCE_STRIP_JS}
   function readPayload() {
     // Multi-sink probe: try documented hosts in order, fall back to a known shim variable.
     try {
@@ -364,6 +366,10 @@ export const COURSE_STRUCTURE_HTML = `<!doctype html>
       renderUnexpectedShape();
       return;
     }
+    // Single choke point: everything downstream of here is a text/HTML/attribute
+    // sink, and the provenance markers the boundary adds are addressed to the
+    // model, not to the person reading this panel (BRU-2104 §8.3).
+    structure = stripFencesDeep(structure);
     try {
       renderStructure(structure);
     } catch (err) {

@@ -3,6 +3,12 @@ import { registerAppTool } from '../mcp-apps'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
+import {
+  UNTRUSTED_CONTENT_META_NOTE,
+  applyFencing,
+  findMarkerBearingParam,
+} from '../provenance/apply'
+import { isProvenanceFencingEnabled, markerRejectionMessage } from '../provenance/markers'
 import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
 import { formatError } from './errors'
@@ -51,14 +57,44 @@ function buildHandler(
 ): (params: Record<string, unknown>, extra?: unknown) => Promise<ToolResponse> {
   return async (params) => {
     try {
+      // Provenance fencing (BRU-2104 §4). This is the single output boundary:
+      // every one of the registered tools is wrapped here, so the fence is a
+      // property of the server rather than a per-tool convention. It is also
+      // downstream of every write path — write tools take their content from
+      // `params`, and no tool consumes another tool's output — so a fenced value
+      // cannot round-trip into Canvas from inside the server.
+      const fencingEnabled = isProvenanceFencingEnabled()
+
+      // §6: reject marker-bearing input on every destructive tool, generically,
+      // so a new write tool is covered the day it lands. Rejected before the
+      // handler runs, so nothing reaches Canvas.
+      if (fencingEnabled && tool.annotations.destructiveHint === true) {
+        const offendingParam = findMarkerBearingParam(params)
+        if (offendingParam !== undefined) {
+          return {
+            content: [{ type: 'text' as const, text: markerRejectionMessage(offendingParam) }],
+            isError: true,
+          }
+        }
+      }
+
       const result = await tool.handler(params)
+      const { value, fencedFields } = fencingEnabled
+        ? applyFencing(tool.name, result)
+        : { value: result, fencedFields: [] as string[] }
       const text =
-        result === undefined ? 'Operation completed successfully.' : JSON.stringify(result, null, 2)
+        value === undefined ? 'Operation completed successfully.' : JSON.stringify(value, null, 2)
       const response: ToolResponse = {
         content: [{ type: 'text' as const, text }],
       }
       if (pseudonymizer?.isEnabled()) {
         response._meta = { pseudonymized: true, note: PSEUDONYM_META_NOTE }
+      }
+      if (fencedFields.length > 0) {
+        response._meta = {
+          ...response._meta,
+          untrusted_content: { fields: fencedFields, note: UNTRUSTED_CONTENT_META_NOTE },
+        }
       }
       return response
     } catch (error) {
