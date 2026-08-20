@@ -18,6 +18,7 @@
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance Improvements" },
         { "type": "chore", "section": "Miscellaneous" },
         { "type": "docs", "section": "Documentation" },
         { "type": "ci", "section": "CI/CD" }
