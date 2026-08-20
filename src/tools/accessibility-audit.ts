@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import { mapWithConcurrency } from '../canvas/concurrency'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -13,6 +14,15 @@ const DEFAULT_CONTENT_SOURCES: ContentSource[] = [
 ]
 
 const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])
+
+/**
+ * Max concurrent Canvas requests issued by {@link scanQuizzesAccessibility} while
+ * fetching per-quiz questions / per-New-Quiz items. Matches the
+ * `PAGE_BODY_CONCURRENCY_LIMIT` / `CONCURRENT_COURSE_LIMIT` precedent — a course
+ * with hundreds of quizzes would otherwise open one Canvas request per quiz all
+ * at once.
+ */
+export const QUIZ_SCAN_CONCURRENCY_LIMIT = 10
 
 type AccessibilityRule =
   | 'img_missing_alt'
@@ -348,8 +358,10 @@ async function scanQuizzesAccessibility(
   ])
 
   const classicQuizzes = quizzes.filter((quiz) => CLASSIC_QUIZ_TYPES.has(quiz.quiz_type))
-  const classicFindings = await Promise.all(
-    classicQuizzes.map(async (quiz) => {
+  const classicFindings = await mapWithConcurrency(
+    classicQuizzes,
+    QUIZ_SCAN_CONCURRENCY_LIMIT,
+    async (quiz) => {
       const location: ContentLocation = {
         type: 'quizzes',
         id: quiz.id,
@@ -367,12 +379,14 @@ async function scanQuizzesAccessibility(
         )
       }
       return findings
-    }),
+    },
   )
 
   const newQuizAssignments = assignments.filter((a) => a.is_quiz_lti_assignment === true)
-  const newQuizFindings = await Promise.all(
-    newQuizAssignments.map(async (assignment) => {
+  const newQuizFindings = await mapWithConcurrency(
+    newQuizAssignments,
+    QUIZ_SCAN_CONCURRENCY_LIMIT,
+    async (assignment) => {
       const location: ContentLocation = {
         type: 'quizzes',
         id: assignment.id,
@@ -383,7 +397,7 @@ async function scanQuizzesAccessibility(
       return items.flatMap((item) =>
         scanContentAccessibility(item.entry?.item_body, { ...location, question_id: item.id }),
       )
-    }),
+    },
   )
 
   return [...classicFindings.flat(), ...newQuizFindings.flat()]
