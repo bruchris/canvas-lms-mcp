@@ -10,6 +10,16 @@ const includeSchema = z
     'Extra data to include: appointments (time slots), child_events (per-slot reservations), participant_count',
   )
 
+// `new_appointments` MUST stay `z.array(z.array(z.string()).length(2))`, never
+// `z.array(z.tuple([z.string(), z.string()]))`. z.tuple() compiles to
+// draft-07 positional `"items": [...]` (or 2020-12 `prefixItems`); Anthropic
+// accepts that shape but OpenAI-compatible backends (Z.AI/GLM confirmed)
+// reject the *entire request* the moment either appointment-group tool is
+// registered, since MCP clients send all registered tools on every call.
+// Regression: https://github.com/bruchris/canvas-lms-mcp/pull/308. Guarded by
+// tests/tools/tool-schema-shape.test.ts, which walks the real tools/list wire
+// output for tuple-style array schemas across every tool, not just this one.
+
 export function appointmentGroupTools(
   canvas: CanvasClient,
   pseudonymizer?: Pseudonymizer,
