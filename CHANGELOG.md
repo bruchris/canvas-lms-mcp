@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.27.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.1...canvas-lms-mcp-v1.27.2) (2026-08-21)
+
+
+### Performance Improvements
+
+* **tools:** bound quiz fan-out in course audit tools ([#297](https://github.com/bruchris/canvas-lms-mcp/issues/297)) ([eb209c1](https://github.com/bruchris/canvas-lms-mcp/commit/eb209c1b00e6a8136bbc41a51542bd08ddbe6ae0))
+
+
+### CI/CD
+
+* add scheduled dependency audit workflow ([#296](https://github.com/bruchris/canvas-lms-mcp/issues/296)) ([7a20250](https://github.com/bruchris/canvas-lms-mcp/commit/7a202508e446c8d8fc2a21aa207689cbdb3a08e0))
+
 ## [1.27.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.0...canvas-lms-mcp-v1.27.1) (2026-08-15)
 
 
