@@ -352,6 +352,83 @@ describe('linkAuditTools', () => {
       expect(result.findings[0]).not.toHaveProperty('cross_course_id')
     })
 
+    // BRU-2290: `classifyUrl` decoded HTML entities but only checked the scheme
+    // with a plain `startsWith('javascript:')`, so an entity-obfuscated or
+    // uppercased `javascript:` href slipped through unflagged. Each `href` below
+    // is a real measurement from the bug report, run through the real
+    // `classifyUrl`.
+    it.each([
+      ['javascript:alert(1)', true],
+      ['&#106;avascript:alert(1)', true],
+      ['java&#115;cript:alert(1)', true],
+      ['&#x6a;avascript:alert(1)', true],
+      [' javascript:alert(1)', true],
+      ['JAVASCRIPT:alert(1)', true],
+      ['&#39;', false],
+    ])('href %j is flagged=%s', async (href, shouldFlag) => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: `<a href="${href}">x</a>`,
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      if (shouldFlag) {
+        expect(result.findings).toHaveLength(1)
+        expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
+      } else {
+        expect(result.findings).toHaveLength(0)
+      }
+    })
+
+    it('classifies a data: href as empty_or_malformed', async () => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<a href="data:text/html,<script>alert(1)</script>">x</a>',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      expect(result.findings).toHaveLength(1)
+      expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
+    })
+
+    it('classifies a vbscript: href as empty_or_malformed', async () => {
+      const canvas = makeCanvas({
+        pages: [
+          {
+            page_id: 1,
+            url: 'p',
+            title: 'P',
+            published: true,
+            updated_at: '',
+            body: '<a href="VBScript:msgbox(1)">x</a>',
+          },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+
+      expect(result.findings).toHaveLength(1)
+      expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
+    })
+
     it('classifies a pure # anchor as empty_or_malformed', async () => {
       const canvas = makeCanvas({
         pages: [

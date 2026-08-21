@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
+import { decodeHtmlEntities } from './html-entities'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -86,14 +87,6 @@ function makeFinding(
   detail: string,
 ): AccessibilityFinding {
   return { location, rule, wcag: WCAG_BY_RULE[rule], severity: SEVERITY_BY_RULE[rule], detail }
-}
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
 }
 
 function stripTags(html: string): string {
