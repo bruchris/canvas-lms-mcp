@@ -4,3 +4,24 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: 'development'
+    ignore:
+      # Majors (e.g. typescript 7.x, @types/node 26.x) need a deliberate
+      # feasibility pass, not an auto-grouped PR — bump those by hand.
+      - dependency-name: '*'
+        update-types:
+          - 'version-update:semver-major'
+      # vite's version is governed by the security override in
+      # pnpm-workspace.yaml, which Dependabot doesn't read. Bumping the
+      # devDependencies range here alone is a silent no-op — pnpm keeps
+      # resolving to the override's range regardless of this file. Bump
+      # vite and the override together by hand.
+      - dependency-name: 'vite'
