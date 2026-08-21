@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.27.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.2...canvas-lms-mcp-v1.27.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* **deps:** add nanoid override to clear one high advisory (dev-only) ([#312](https://github.com/bruchris/canvas-lms-mcp/issues/312)) ([36b78d9](https://github.com/bruchris/canvas-lms-mcp/commit/36b78d9adab2ed04bdc33858e0be3f9554a60b9f))
+* **tools:** decode HTML entities before javascript: scheme check in audit_course_links ([#316](https://github.com/bruchris/canvas-lms-mcp/issues/316)) ([969e3b9](https://github.com/bruchris/canvas-lms-mcp/commit/969e3b92807ca5973df7f08ea4197e78a545e0bc))
+
+
+### Miscellaneous
+
+* **ci:** add npm ecosystem to dependabot ([#317](https://github.com/bruchris/canvas-lms-mcp/issues/317)) ([919e6ca](https://github.com/bruchris/canvas-lms-mcp/commit/919e6ca4aa8762f29e8989cf6684867ed8a44635))
+
 ## [1.27.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.1...canvas-lms-mcp-v1.27.2) (2026-08-21)
 
 
