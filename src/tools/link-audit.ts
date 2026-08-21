@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
+import { decodeHtmlEntities } from './html-entities'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -81,20 +82,18 @@ function extractUrls(html: string | null | undefined): Array<{ kind: LinkKind; r
   return results
 }
 
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-}
+// Case-insensitive, scheme-shaped denylist mirroring the widget sanitizer's
+// posture (src/ui/account-notifications-sanitizer.ts uses an allowlist, which is
+// the safer default there — link-audit only reports findings, it never renders
+// these hrefs, so a denylist is sufficient here).
+const DANGEROUS_SCHEME_RE = /^(javascript|data|vbscript):/i
 
 function classifyUrl(
   raw: string,
   courseId: number,
 ): { reason: FindingReason; crossCourseId?: number } | null {
   const href = decodeHtmlEntities(raw).trim()
-  if (!href || href === '#' || href.startsWith('javascript:')) {
+  if (!href || href === '#' || DANGEROUS_SCHEME_RE.test(href)) {
     return { reason: 'empty_or_malformed' }
   }
   const crossCourseId = href.match(/\/courses\/(\d+)\//)?.[1]

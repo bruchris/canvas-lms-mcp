@@ -261,6 +261,19 @@ describe('accessibilityAuditTools', () => {
       const result = await runScan('<img src="x.jpg" data-alt="caption">')
       expect(result.findings).toContainEqual(expect.objectContaining({ rule: 'img_missing_alt' }))
     })
+
+    // BRU-2290: shared decodeHtmlEntities regression — alt text using a numeric
+    // entity for the filename's "." (Canvas RCE can emit this) must decode before
+    // the filename-extension check runs, so it's still caught as low-quality.
+    it('10c: alt text with a numeric HTML entity decodes before the low-quality check', async () => {
+      const result = await runScan('<img src="x.jpg" alt="photo&#46;jpg">')
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          rule: 'img_alt_low_quality',
+          detail: expect.stringContaining('photo.jpg'),
+        }),
+      )
+    })
   })
 
   // Link rule cases (11-17)
