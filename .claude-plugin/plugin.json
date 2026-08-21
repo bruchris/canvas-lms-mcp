@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "canvas-lms-mcp",
   "displayName": "Canvas LMS",
-  "version": "1.27.2",
+  "version": "1.27.3",
   "description": "Canvas LMS MCP server plus 16 educator/student workflow skills — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows.",
   "author": {
     "name": "Christian Bru",
