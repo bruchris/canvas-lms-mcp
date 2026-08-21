@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import { mapWithConcurrency } from '../canvas/concurrency'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -21,6 +22,14 @@ const DEFAULT_CONTENT_SOURCES: ContentSource[] = [
 // quiz whose quiz_type is not a known-Classic value (e.g. the `quizzes.next` stub
 // Canvas leaves after a New Quizzes migration, or any future/unrecognized type).
 const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])
+
+/**
+ * Max concurrent Canvas requests issued by {@link scanQuizzes} while fetching
+ * per-quiz questions / per-New-Quiz items. Matches the `PAGE_BODY_CONCURRENCY_LIMIT`
+ * / `CONCURRENT_COURSE_LIMIT` precedent — a course with hundreds of quizzes would
+ * otherwise open one Canvas request per quiz all at once.
+ */
+export const QUIZ_SCAN_CONCURRENCY_LIMIT = 10
 
 type LinkKind = 'link' | 'image' | 'video'
 type FindingReason = 'cross_course_reference' | 'empty_or_malformed'
@@ -126,8 +135,10 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
   ])
 
   const classicQuizzes = quizzes.filter((quiz) => CLASSIC_QUIZ_TYPES.has(quiz.quiz_type))
-  const classicFindings = await Promise.all(
-    classicQuizzes.map(async (quiz) => {
+  const classicFindings = await mapWithConcurrency(
+    classicQuizzes,
+    QUIZ_SCAN_CONCURRENCY_LIMIT,
+    async (quiz) => {
       const location: ContentLocation = {
         type: 'quizzes',
         id: quiz.id,
@@ -145,12 +156,14 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
         )
       }
       return findings
-    }),
+    },
   )
 
   const newQuizAssignments = assignments.filter((a) => a.is_quiz_lti_assignment === true)
-  const newQuizFindings = await Promise.all(
-    newQuizAssignments.map(async (assignment) => {
+  const newQuizFindings = await mapWithConcurrency(
+    newQuizAssignments,
+    QUIZ_SCAN_CONCURRENCY_LIMIT,
+    async (assignment) => {
       const location: ContentLocation = {
         type: 'quizzes',
         id: assignment.id,
@@ -165,7 +178,7 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
       return items.flatMap((item) =>
         scanHtml(item.entry?.item_body, courseId, { ...location, question_id: item.id }),
       )
-    }),
+    },
   )
 
   return [...classicFindings.flat(), ...newQuizFindings.flat()]

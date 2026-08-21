@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { accessibilityAuditTools } from '../../src/tools/accessibility-audit'
+import {
+  accessibilityAuditTools,
+  QUIZ_SCAN_CONCURRENCY_LIMIT,
+} from '../../src/tools/accessibility-audit'
 import type { CanvasClient } from '../../src/canvas'
 
 interface Finding {
@@ -610,6 +613,91 @@ describe('accessibilityAuditTools', () => {
       const [tool] = accessibilityAuditTools(canvas)
       // item-3 in the mock has no entry field — should not throw
       await expect(tool.handler({ course_id: 100, include: ['quizzes'] })).resolves.toBeDefined()
+    })
+
+    // BRU-2072: caps concurrent per-quiz Canvas requests instead of firing them
+    // all at once — a whole-course audit is the exact worst case this bounds.
+    it('caps concurrent listQuestions calls at QUIZ_SCAN_CONCURRENCY_LIMIT for a large classic-quiz course', async () => {
+      const classicQuizzes = Array.from({ length: 25 }, (_, i) => ({
+        id: i + 1,
+        title: `Quiz ${i + 1}`,
+        quiz_type: 'assignment',
+        description: null,
+        points_possible: 10,
+        question_count: 0,
+        due_at: null,
+        published: true,
+      }))
+
+      let inFlight = 0
+      let peak = 0
+      const canvas = {
+        pages: { listWithBodies: vi.fn().mockResolvedValue([]) },
+        assignments: { list: vi.fn().mockResolvedValue([]) },
+        courses: { getSyllabus: vi.fn().mockResolvedValue(null) },
+        discussions: { listAnnouncements: vi.fn().mockResolvedValue([]) },
+        quizzes: {
+          list: vi.fn().mockResolvedValue(classicQuizzes),
+          listQuestions: vi.fn().mockImplementation(async () => {
+            inFlight++
+            peak = Math.max(peak, inFlight)
+            await new Promise((resolve) => setTimeout(resolve, 1))
+            inFlight--
+            return []
+          }),
+        },
+        newQuizzes: { listItems: vi.fn().mockResolvedValue([]) },
+      } as unknown as CanvasClient
+
+      const [tool] = accessibilityAuditTools(canvas)
+      await tool.handler({ course_id: 100, include: ['quizzes'] })
+
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(25)
+      expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)
+      // Sanity: fetches actually overlapped, so the cap assertion is meaningful.
+      expect(peak).toBeGreaterThan(1)
+    })
+
+    // BRU-2072: same ceiling for the New Quiz item fan-out.
+    it('caps concurrent listItems calls at QUIZ_SCAN_CONCURRENCY_LIMIT for a large New-Quiz course', async () => {
+      const newQuizAssignments = Array.from({ length: 25 }, (_, i) => ({
+        id: i + 1,
+        name: `New Quiz ${i + 1}`,
+        description: null,
+        course_id: 100,
+        due_at: null,
+        points_possible: 10,
+        grading_type: 'points',
+        submission_types: ['external_tool'],
+        allowed_attempts: -1,
+        is_quiz_lti_assignment: true,
+      }))
+
+      let inFlight = 0
+      let peak = 0
+      const canvas = {
+        pages: { listWithBodies: vi.fn().mockResolvedValue([]) },
+        assignments: { list: vi.fn().mockResolvedValue(newQuizAssignments) },
+        courses: { getSyllabus: vi.fn().mockResolvedValue(null) },
+        discussions: { listAnnouncements: vi.fn().mockResolvedValue([]) },
+        quizzes: { list: vi.fn().mockResolvedValue([]), listQuestions: vi.fn() },
+        newQuizzes: {
+          listItems: vi.fn().mockImplementation(async () => {
+            inFlight++
+            peak = Math.max(peak, inFlight)
+            await new Promise((resolve) => setTimeout(resolve, 1))
+            inFlight--
+            return []
+          }),
+        },
+      } as unknown as CanvasClient
+
+      const [tool] = accessibilityAuditTools(canvas)
+      await tool.handler({ course_id: 100, include: ['quizzes'] })
+
+      expect(canvas.newQuizzes.listItems).toHaveBeenCalledTimes(25)
+      expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)
+      expect(peak).toBeGreaterThan(1)
     })
   })
 })
