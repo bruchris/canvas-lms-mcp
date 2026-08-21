@@ -289,4 +289,70 @@ describe('createHttpHandler', () => {
       )
     })
   })
+
+  describe('error handling', () => {
+    it('returns a 500 and logs when handling the MCP request throws', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const boom = new Error('boom')
+      vi.mocked(createCanvasMCPServer).mockReturnValueOnce({
+        server: { connect: vi.fn().mockRejectedValue(boom), close: vi.fn() },
+        canvas: {},
+      } as unknown as ReturnType<typeof createCanvasMCPServer>)
+
+      const req = createMockReq({ method: 'POST', url: '/mcp' })
+      const res = createMockRes()
+      await handler(req, res)
+
+      expect(res._status).toBe(500)
+      expect(JSON.parse(res._body)).toEqual({
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error' },
+        id: null,
+      })
+      expect(errorSpy).toHaveBeenCalledWith('Error handling MCP request:', boom)
+    })
+
+    it('does not send a second response when headers were already sent before the throw', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const boom = new Error('boom')
+      vi.mocked(createCanvasMCPServer).mockReturnValueOnce({
+        server: { connect: vi.fn().mockRejectedValue(boom), close: vi.fn() },
+        canvas: {},
+      } as unknown as ReturnType<typeof createCanvasMCPServer>)
+
+      const req = createMockReq({ method: 'POST', url: '/mcp' })
+      const res = createMockRes()
+      res.headersSent = true
+      await handler(req, res)
+
+      expect(res._status).toBe(0)
+      expect(res._body).toBe('')
+    })
+
+    it('logs a cleanup failure on close without masking the already-sent response', async () => {
+      const { StreamableHTTPServerTransport } =
+        await import('@modelcontextprotocol/sdk/server/streamableHttp.js')
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const cleanupError = new Error('cleanup boom')
+      const closeSpy = vi
+        .spyOn(StreamableHTTPServerTransport.prototype, 'close')
+        .mockImplementation(() => {
+          throw cleanupError
+        })
+
+      const req = createMockReq({ method: 'POST', url: '/mcp' })
+      const res = createMockRes()
+      await handler(req, res)
+
+      const onMock = res.on as unknown as { mock: { calls: Array<[string, () => void]> } }
+      const closeHandler = onMock.mock.calls.find(([event]) => event === 'close')?.[1]
+      expect(closeHandler).toBeTypeOf('function')
+      expect(() => closeHandler?.()).not.toThrow()
+      expect(errorSpy).toHaveBeenCalledWith('Error during MCP cleanup:', cleanupError)
+
+      closeSpy.mockRestore()
+    })
+  })
 })
