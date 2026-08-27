@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.27.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.4...canvas-lms-mcp-v1.27.5) (2026-08-27)
+
+
+### Documentation
+
+* **spec:** grading-ready submission content extraction design (BRU-2344) ([#321](https://github.com/bruchris/canvas-lms-mcp/issues/321)) ([f1a3444](https://github.com/bruchris/canvas-lms-mcp/commit/f1a3444b72d160f5165bafc196f85b9a8ec98b1a))
+
 ## [1.27.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.3...canvas-lms-mcp-v1.27.4) (2026-08-21)
 
 
