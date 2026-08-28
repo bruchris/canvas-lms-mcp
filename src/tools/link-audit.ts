@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
+import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -60,9 +61,14 @@ interface LinkFinding {
 // Canvas generates predictably structured HTML with double-quoted attributes, so
 // regex extraction is accurate here without pulling in a DOM parser. Single-quoted
 // attributes are a known v1 limitation (see PR / spec notes).
-const HREF_RE = /<a\b[^>]*\bhref="([^"]*)"[^>]*>/gi
-const IMG_SRC_RE = /<img\b[^>]*\bsrc="([^"]*)"[^>]*>/gi
-const EMBED_SRC_RE = /<(?:iframe|embed|video|source)\b[^>]*\bsrc="([^"]*)"[^>]*>/gi
+//
+// The filler segments (`[^>]{0,1024}?`) are bounded and lazy — a real tag's other
+// attributes are at most a few hundred characters, so 1024 is generous headroom.
+// Unbounded `[^>]*` here is quadratic-backtracking on a `>`-free run: the engine
+// rescans to end-of-string at every `<a `/`<img `/etc. start position (BRU-2360).
+const HREF_RE = /<a\b[^>]{0,1024}?\bhref="([^"]*)"[^>]{0,1024}?>/gi
+const IMG_SRC_RE = /<img\b[^>]{0,1024}?\bsrc="([^"]*)"[^>]{0,1024}?>/gi
+const EMBED_SRC_RE = /<(?:iframe|embed|video|source)\b[^>]{0,1024}?\bsrc="([^"]*)"[^>]{0,1024}?>/gi
 
 function extractUrls(html: string | null | undefined): Array<{ kind: LinkKind; raw: string }> {
   if (!html) return []
@@ -110,7 +116,13 @@ function scanHtml(
   html: string | null | undefined,
   courseId: number,
   location: ContentLocation,
+  warnings: ScanWarning<ContentLocation>[],
 ): LinkFinding[] {
+  if (!html) return []
+  if (isOversizedHtml(html)) {
+    warnings.push(oversizedWarning(html, location))
+    return []
+  }
   const findings: LinkFinding[] = []
   for (const { kind, raw } of extractUrls(html)) {
     const result = classifyUrl(raw, courseId)
@@ -122,7 +134,11 @@ function scanHtml(
   return findings
 }
 
-async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<LinkFinding[]> {
+async function scanQuizzes(
+  canvas: CanvasClient,
+  courseId: number,
+  warnings: ScanWarning<ContentLocation>[],
+): Promise<LinkFinding[]> {
   // `assignments` here is a separate, locally-scoped fetch from the outer
   // handler's `assignments` variable — the two never share state. When both the
   // `assignments` and `quizzes` sources are active, canvas.assignments.list is
@@ -144,14 +160,16 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
         title: quiz.title,
         quiz_engine: 'classic',
       }
-      const findings = scanHtml(quiz.description, courseId, location)
+      const findings = scanHtml(quiz.description, courseId, location, warnings)
       const questions = await canvas.quizzes.listQuestions(courseId, quiz.id)
       for (const question of questions) {
         findings.push(
-          ...scanHtml(question.question_text, courseId, {
-            ...location,
-            question_id: question.id,
-          }),
+          ...scanHtml(
+            question.question_text,
+            courseId,
+            { ...location, question_id: question.id },
+            warnings,
+          ),
         )
       }
       return findings
@@ -175,7 +193,7 @@ async function scanQuizzes(canvas: CanvasClient, courseId: number): Promise<Link
       // would otherwise throw a raw TypeError that aborts the whole audit. A
       // missing body is treated as "no links" by extractUrls' null-guard.
       return items.flatMap((item) =>
-        scanHtml(item.entry?.item_body, courseId, { ...location, question_id: item.id }),
+        scanHtml(item.entry?.item_body, courseId, { ...location, question_id: item.id }, warnings),
       )
     },
   )
@@ -218,6 +236,7 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
         const activeInclude = new Set<ContentSource>(
           (params.include as ContentSource[] | undefined) ?? DEFAULT_CONTENT_SOURCES,
         )
+        const warnings: ScanWarning<ContentLocation>[] = []
 
         const [pages, assignments, syllabus, announcements, quizFindings] = await Promise.all([
           activeInclude.has('pages') ? canvas.pages.listWithBodies(courseId) : Promise.resolve([]),
@@ -231,7 +250,7 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
             ? canvas.discussions.listAnnouncements(courseId)
             : Promise.resolve([]),
           activeInclude.has('quizzes')
-            ? scanQuizzes(canvas, courseId)
+            ? scanQuizzes(canvas, courseId, warnings)
             : Promise.resolve([] as LinkFinding[]),
         ])
 
@@ -240,11 +259,12 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
         if (activeInclude.has('pages')) {
           for (const page of pages) {
             findings.push(
-              ...scanHtml(page.body, courseId, {
-                type: 'pages',
-                id: page.page_id,
-                title: page.title,
-              }),
+              ...scanHtml(
+                page.body,
+                courseId,
+                { type: 'pages', id: page.page_id, title: page.title },
+                warnings,
+              ),
             )
           }
         }
@@ -252,29 +272,36 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
         if (activeInclude.has('assignments')) {
           for (const a of assignments) {
             findings.push(
-              ...scanHtml(a.description, courseId, {
-                type: 'assignments',
-                id: a.id,
-                title: a.name,
-              }),
+              ...scanHtml(
+                a.description,
+                courseId,
+                { type: 'assignments', id: a.id, title: a.name },
+                warnings,
+              ),
             )
           }
         }
 
         if (activeInclude.has('syllabus') && syllabus) {
           findings.push(
-            ...scanHtml(syllabus, courseId, { type: 'syllabus', id: courseId, title: 'Syllabus' }),
+            ...scanHtml(
+              syllabus,
+              courseId,
+              { type: 'syllabus', id: courseId, title: 'Syllabus' },
+              warnings,
+            ),
           )
         }
 
         if (activeInclude.has('announcements')) {
           for (const ann of announcements) {
             findings.push(
-              ...scanHtml(ann.message, courseId, {
-                type: 'announcements',
-                id: ann.id,
-                title: ann.title,
-              }),
+              ...scanHtml(
+                ann.message,
+                courseId,
+                { type: 'announcements', id: ann.id, title: ann.title },
+                warnings,
+              ),
             )
           }
         }
@@ -286,8 +313,10 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
             course_id: courseId,
             sources_scanned: CONTENT_SOURCES.filter((s) => activeInclude.has(s)),
             total_findings: findings.length,
+            oversized_content_skipped: warnings.length,
           },
           findings,
+          warnings,
         }
       },
     },

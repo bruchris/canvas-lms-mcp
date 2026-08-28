@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
+import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
@@ -89,15 +90,17 @@ function makeFinding(
   return { location, rule, wcag: WCAG_BY_RULE[rule], severity: SEVERITY_BY_RULE[rule], detail }
 }
 
+// See the LINK_RE comment below (BRU-2360 / BRU-2364) — every `[^>]*` in this
+// file is bounded the same way, for the same reason.
 function stripTags(html: string): string {
-  return decodeHtmlEntities(html.replace(/<[^>]*>/g, ''))
+  return decodeHtmlEntities(html.replace(/<[^>]{0,1024}?>/g, ''))
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 // Image scanning
 
-const IMG_RE = /<img\b([^>]*)>/gi
+const IMG_RE = /<img\b([^>]{0,1024}?)>/gi
 // Requires whitespace or start-of-attributes before `alt=` to avoid matching `data-alt="..."`.
 const ALT_ATTR_RE = /(?:^|\s)alt="([^"]*)"/i
 const FILENAME_EXT_RE = /\.(jpe?g|png|gif|svg|webp|bmp|tiff?)$/i
@@ -149,7 +152,15 @@ function scanImages(html: string, location: ContentLocation): AccessibilityFindi
 
 // Link scanning
 
-const LINK_RE = /<a\b[^>]*\bhref="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi
+// The filler segments (`[^>]{0,1024}?`) are bounded and lazy — a real tag's other
+// attributes are at most a few hundred characters, so 1024 is generous headroom.
+// Unbounded `[^>]*` here is quadratic-backtracking on a `>`-free run: the engine
+// rescans to end-of-string at every `<a ` start position (BRU-2360). IMG_RE,
+// HEADING_RE, TABLE_RE, TH_TAG_RE, CAPTION_RE, and stripTags()'s tag-stripper
+// have the same shape and are bounded the same way (BRU-2364 — the original
+// PR's "already linear" claim for those was wrong; they reproduce the same
+// quadratic blowup).
+const LINK_RE = /<a\b[^>]{0,1024}?\bhref="([^"]*)"[^>]{0,1024}?>([\s\S]*?)<\/a>/gi
 
 const NON_DESCRIPTIVE_LINK_TEXT = new Set([
   '',
@@ -238,7 +249,7 @@ function scanLinks(html: string, location: ContentLocation): AccessibilityFindin
 
 // Heading scanning
 
-const HEADING_RE = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi
+const HEADING_RE = /<h([1-6])\b[^>]{0,1024}?>([\s\S]*?)<\/h\1>/gi
 const MAX_HEADING_LENGTH = 120
 
 interface ExtractedHeading {
@@ -294,10 +305,10 @@ function scanHeadings(html: string, location: ContentLocation): AccessibilityFin
 
 // Table scanning
 
-const TABLE_RE = /<table\b[^>]*>([\s\S]*?)<\/table>/gi
-const TH_TAG_RE = /<th\b[^>]*>/gi
+const TABLE_RE = /<table\b[^>]{0,1024}?>([\s\S]*?)<\/table>/gi
+const TH_TAG_RE = /<th\b[^>]{0,1024}?>/gi
 const SCOPE_ATTR_RE = /(?:^|\s)scope="[^"]*"/i
-const CAPTION_RE = /<caption\b[^>]*>/i
+const CAPTION_RE = /<caption\b[^>]{0,1024}?>/i
 
 function scanTables(html: string, location: ContentLocation): AccessibilityFinding[] {
   const findings: AccessibilityFinding[] = []
@@ -331,8 +342,13 @@ function scanTables(html: string, location: ContentLocation): AccessibilityFindi
 function scanContentAccessibility(
   html: string | null | undefined,
   location: ContentLocation,
+  warnings: ScanWarning<ContentLocation>[],
 ): AccessibilityFinding[] {
   if (!html) return []
+  if (isOversizedHtml(html)) {
+    warnings.push(oversizedWarning(html, location))
+    return []
+  }
   return [
     ...scanImages(html, location),
     ...scanLinks(html, location),
@@ -344,6 +360,7 @@ function scanContentAccessibility(
 async function scanQuizzesAccessibility(
   canvas: CanvasClient,
   courseId: number,
+  warnings: ScanWarning<ContentLocation>[],
 ): Promise<AccessibilityFinding[]> {
   const [quizzes, assignments] = await Promise.all([
     canvas.quizzes.list(courseId),
@@ -361,14 +378,15 @@ async function scanQuizzesAccessibility(
         title: quiz.title,
         quiz_engine: 'classic',
       }
-      const findings = scanContentAccessibility(quiz.description, location)
+      const findings = scanContentAccessibility(quiz.description, location, warnings)
       const questions = await canvas.quizzes.listQuestions(courseId, quiz.id)
       for (const question of questions) {
         findings.push(
-          ...scanContentAccessibility(question.question_text, {
-            ...location,
-            question_id: question.id,
-          }),
+          ...scanContentAccessibility(
+            question.question_text,
+            { ...location, question_id: question.id },
+            warnings,
+          ),
         )
       }
       return findings
@@ -388,7 +406,11 @@ async function scanQuizzesAccessibility(
       }
       const items = await canvas.newQuizzes.listItems(courseId, assignment.id)
       return items.flatMap((item) =>
-        scanContentAccessibility(item.entry?.item_body, { ...location, question_id: item.id }),
+        scanContentAccessibility(
+          item.entry?.item_body,
+          { ...location, question_id: item.id },
+          warnings,
+        ),
       )
     },
   )
@@ -435,6 +457,7 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
         const activeInclude = new Set<ContentSource>(
           (params.include as ContentSource[] | undefined) ?? DEFAULT_CONTENT_SOURCES,
         )
+        const warnings: ScanWarning<ContentLocation>[] = []
 
         const [pages, assignments, syllabus, announcements, quizFindings] = await Promise.all([
           activeInclude.has('pages') ? canvas.pages.listWithBodies(courseId) : Promise.resolve([]),
@@ -448,7 +471,7 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
             ? canvas.discussions.listAnnouncements(courseId)
             : Promise.resolve([]),
           activeInclude.has('quizzes')
-            ? scanQuizzesAccessibility(canvas, courseId)
+            ? scanQuizzesAccessibility(canvas, courseId, warnings)
             : Promise.resolve([] as AccessibilityFinding[]),
         ])
 
@@ -457,11 +480,11 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
         if (activeInclude.has('pages')) {
           for (const page of pages) {
             findings.push(
-              ...scanContentAccessibility(page.body, {
-                type: 'pages',
-                id: page.page_id,
-                title: page.title,
-              }),
+              ...scanContentAccessibility(
+                page.body,
+                { type: 'pages', id: page.page_id, title: page.title },
+                warnings,
+              ),
             )
           }
         }
@@ -469,33 +492,33 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
         if (activeInclude.has('assignments')) {
           for (const a of assignments) {
             findings.push(
-              ...scanContentAccessibility(a.description, {
-                type: 'assignments',
-                id: a.id,
-                title: a.name,
-              }),
+              ...scanContentAccessibility(
+                a.description,
+                { type: 'assignments', id: a.id, title: a.name },
+                warnings,
+              ),
             )
           }
         }
 
         if (activeInclude.has('syllabus') && syllabus) {
           findings.push(
-            ...scanContentAccessibility(syllabus, {
-              type: 'syllabus',
-              id: courseId,
-              title: 'Syllabus',
-            }),
+            ...scanContentAccessibility(
+              syllabus,
+              { type: 'syllabus', id: courseId, title: 'Syllabus' },
+              warnings,
+            ),
           )
         }
 
         if (activeInclude.has('announcements')) {
           for (const ann of announcements) {
             findings.push(
-              ...scanContentAccessibility(ann.message, {
-                type: 'announcements',
-                id: ann.id,
-                title: ann.title,
-              }),
+              ...scanContentAccessibility(
+                ann.message,
+                { type: 'announcements', id: ann.id, title: ann.title },
+                warnings,
+              ),
             )
           }
         }
@@ -511,8 +534,10 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
             total_findings: findings.length,
             error_count: errorCount,
             advisory_count: findings.length - errorCount,
+            oversized_content_skipped: warnings.length,
           },
           findings,
+          warnings,
         }
       },
     },

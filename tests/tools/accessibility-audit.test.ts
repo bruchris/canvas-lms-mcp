@@ -713,4 +713,120 @@ describe('accessibilityAuditTools', () => {
       expect(peak).toBeGreaterThan(1)
     })
   })
+
+  // BRU-2360: LINK_RE used unbounded `[^>]*` twice per match with a required
+  // literal in between, which is quadratic-backtracking on a `>`-free run
+  // (measured: 320 KB of hostile input took ~8s before the fix).
+  describe('hostile input guard (BRU-2360)', () => {
+    it('scans a >-free-run page body in well under 1s (would have taken seconds before the fix)', async () => {
+      const n = 200_000
+      const hostile = '<a '.repeat(Math.floor(n / 20)) + 'x'.repeat(n - Math.floor(n / 20) * 3)
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      // Generous CI-safe ceiling: the fix runs this in ~tens of ms; the old
+      // unbounded regex took seconds at this input size, so this still catches
+      // a regression without being flaky on a loaded CI runner.
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+  })
+
+  describe('oversized content guard (BRU-2360)', () => {
+    it('reports an oversized page body as a warning instead of silently skipping it', async () => {
+      const oversized = '<a href="/x">link</a>'.repeat(30_000)
+
+      const result = (await runScan(oversized, 'pages')) as AuditResult & {
+        warnings: Array<{ location: unknown; reason: string; detail: string }>
+      }
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({
+          location: expect.objectContaining({ type: 'pages', id: 1 }),
+          reason: 'oversized_content_skipped',
+        }),
+      )
+      expect(result.findings).toHaveLength(0)
+    })
+  })
+
+  // BRU-2364: IMG_RE/HEADING_RE/TABLE_RE each used a single unbounded `[^>]*`
+  // before a required literal, which is quadratic-backtracking on a `>`-free
+  // run for the same reason LINK_RE was (BRU-2360) — measured: IMG_RE alone
+  // took ~37s at the 500,000-char MAX_HTML_SCAN_BYTES boundary before this fix.
+  // stripTags()/TH_TAG_RE/CAPTION_RE have the identical shape at a smaller
+  // blast radius (they run on already-captured inner content).
+  describe('hostile input guard (BRU-2364)', () => {
+    // Mirrors the LINK_RE fixture above: tag occurrences spread across the
+    // string (one per 20 chars) so each occurrence backtracks over a
+    // substantial remaining run, not just a fixed head of the string.
+    function hostileTagRun(tag: string, n: number): string {
+      const reps = Math.floor(n / 20)
+      return tag.repeat(reps) + 'x'.repeat(n - reps * tag.length)
+    }
+
+    it('scans a >-free-run of <img> tags in well under 1s at the MAX_HTML_SCAN_BYTES boundary', async () => {
+      const hostile = hostileTagRun('<img ', 500_000)
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+
+    it('scans a >-free-run of <h1> tags in well under 1s at the MAX_HTML_SCAN_BYTES boundary', async () => {
+      const hostile = hostileTagRun('<h1 ', 500_000)
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+
+    it('scans a >-free-run of <table> tags in well under 1s at the MAX_HTML_SCAN_BYTES boundary', async () => {
+      const hostile = hostileTagRun('<table ', 500_000)
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+
+    it('strips a >-free-run of nested tags inside link text in well under 1s (stripTags)', async () => {
+      const hostileInner = hostileTagRun('<x ', 300_000)
+      const hostile = `<a href="/x">${hostileInner}</a>`
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+
+    it('scans a >-free-run of <th> tags inside a table in well under 1s (TH_TAG_RE)', async () => {
+      const hostileInner = hostileTagRun('<th ', 300_000)
+      const hostile = `<table>${hostileInner}</table>`
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+
+    it('scans a >-free-run of <caption> tags inside a table in well under 1s (CAPTION_RE)', async () => {
+      const hostileInner = hostileTagRun('<caption ', 300_000)
+      const hostile = `<table>${hostileInner}</table>`
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+  })
 })
