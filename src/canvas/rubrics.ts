@@ -1,5 +1,19 @@
 import type { CanvasHttpClient } from './client'
+import type { CanvasQueryParams } from './query'
 import type { CanvasRubric, CanvasRubricAssessment, CanvasSubmission } from './types'
+
+export type RubricInclude =
+  | 'assessments'
+  | 'graded_assessments'
+  | 'peer_assessments'
+  | 'associations'
+  | 'assignment_associations'
+  | 'course_associations'
+  | 'account_associations'
+
+export interface GetRubricOptions {
+  include?: ReadonlyArray<RubricInclude>
+}
 
 export interface RubricRatingInput {
   description: string
@@ -30,8 +44,19 @@ export class RubricsModule {
     return this.client.paginate<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics`)
   }
 
-  async get(courseId: number, rubricId: number): Promise<CanvasRubric> {
-    return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics/${rubricId}`)
+  async get(
+    courseId: number,
+    rubricId: number,
+    options: GetRubricOptions = {},
+  ): Promise<CanvasRubric> {
+    if (!options.include || options.include.length === 0) {
+      return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics/${rubricId}`)
+    }
+    const query: CanvasQueryParams = {}
+    query.include = options.include
+    return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics/${rubricId}`, {
+      query,
+    })
   }
 
   async getAssessment(

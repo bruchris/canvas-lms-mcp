@@ -270,7 +270,7 @@
       "name": "get_rubric",
       "title": "Get Rubric",
       "domain": "rubrics",
-      "description": "Get details for a single rubric by ID, including criteria.",
+      "description": "Get details for a single rubric by ID, including criteria. Use include=[\"assignment_associations\"] to retrieve the rubric association IDs needed for rubric assessment writes.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
