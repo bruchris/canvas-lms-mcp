@@ -90,15 +90,17 @@ function makeFinding(
   return { location, rule, wcag: WCAG_BY_RULE[rule], severity: SEVERITY_BY_RULE[rule], detail }
 }
 
+// See the LINK_RE comment below (BRU-2360 / BRU-2364) — every `[^>]*` in this
+// file is bounded the same way, for the same reason.
 function stripTags(html: string): string {
-  return decodeHtmlEntities(html.replace(/<[^>]*>/g, ''))
+  return decodeHtmlEntities(html.replace(/<[^>]{0,1024}?>/g, ''))
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 // Image scanning
 
-const IMG_RE = /<img\b([^>]*)>/gi
+const IMG_RE = /<img\b([^>]{0,1024}?)>/gi
 // Requires whitespace or start-of-attributes before `alt=` to avoid matching `data-alt="..."`.
 const ALT_ATTR_RE = /(?:^|\s)alt="([^"]*)"/i
 const FILENAME_EXT_RE = /\.(jpe?g|png|gif|svg|webp|bmp|tiff?)$/i
@@ -153,7 +155,11 @@ function scanImages(html: string, location: ContentLocation): AccessibilityFindi
 // The filler segments (`[^>]{0,1024}?`) are bounded and lazy — a real tag's other
 // attributes are at most a few hundred characters, so 1024 is generous headroom.
 // Unbounded `[^>]*` here is quadratic-backtracking on a `>`-free run: the engine
-// rescans to end-of-string at every `<a ` start position (BRU-2360).
+// rescans to end-of-string at every `<a ` start position (BRU-2360). IMG_RE,
+// HEADING_RE, TABLE_RE, TH_TAG_RE, CAPTION_RE, and stripTags()'s tag-stripper
+// have the same shape and are bounded the same way (BRU-2364 — the original
+// PR's "already linear" claim for those was wrong; they reproduce the same
+// quadratic blowup).
 const LINK_RE = /<a\b[^>]{0,1024}?\bhref="([^"]*)"[^>]{0,1024}?>([\s\S]*?)<\/a>/gi
 
 const NON_DESCRIPTIVE_LINK_TEXT = new Set([
@@ -243,7 +249,7 @@ function scanLinks(html: string, location: ContentLocation): AccessibilityFindin
 
 // Heading scanning
 
-const HEADING_RE = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi
+const HEADING_RE = /<h([1-6])\b[^>]{0,1024}?>([\s\S]*?)<\/h\1>/gi
 const MAX_HEADING_LENGTH = 120
 
 interface ExtractedHeading {
@@ -299,10 +305,10 @@ function scanHeadings(html: string, location: ContentLocation): AccessibilityFin
 
 // Table scanning
 
-const TABLE_RE = /<table\b[^>]*>([\s\S]*?)<\/table>/gi
-const TH_TAG_RE = /<th\b[^>]*>/gi
+const TABLE_RE = /<table\b[^>]{0,1024}?>([\s\S]*?)<\/table>/gi
+const TH_TAG_RE = /<th\b[^>]{0,1024}?>/gi
 const SCOPE_ATTR_RE = /(?:^|\s)scope="[^"]*"/i
-const CAPTION_RE = /<caption\b[^>]*>/i
+const CAPTION_RE = /<caption\b[^>]{0,1024}?>/i
 
 function scanTables(html: string, location: ContentLocation): AccessibilityFinding[] {
   const findings: AccessibilityFinding[] = []
