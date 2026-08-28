@@ -15,9 +15,18 @@ import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
  * see https://github.com/bruchris/canvas-lms-mcp/pull/308. This test walks the
  * real `tools/list` wire output (not the Zod objects) so any future tool that
  * reintroduces `z.tuple()` fails CI instead of shipping silently.
+ *
+ * Two server configs are walked: the default (163 tools) and
+ * `enableAssignmentSubmission: true` (165 tools). The opt-in gate is the only
+ * server config that adds tools beyond the default set — role filtering only
+ * ever subsets it — so walking these two covers every tool the server can
+ * ever return. See BRU-2359.
  */
 
 type JsonSchemaNode = Record<string, unknown>
+
+const TEST_TOKEN = 'test-token'
+const TEST_BASE_URL = 'https://canvas.example.com'
 
 function isJsonSchemaNode(value: unknown): value is JsonSchemaNode {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -42,24 +51,30 @@ function walkSchema(node: unknown, path: string, violations: string[]): void {
   }
 }
 
+async function listClientFacingTools(enableAssignmentSubmission?: boolean): Promise<Tool[]> {
+  const { server } = createCanvasMCPServer({
+    token: TEST_TOKEN,
+    baseUrl: TEST_BASE_URL,
+    enableAssignmentSubmission,
+  })
+  const client = new Client({ name: 'schema-shape-test', version: '0.0.0' })
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
+  const result = await client.listTools()
+  return result.tools
+}
+
 describe('tool JSON Schema shape (client-facing wire output)', () => {
   let tools: Tool[]
+  let optInTools: Tool[]
 
   beforeAll(async () => {
-    const { server } = createCanvasMCPServer({
-      token: 'test-token',
-      baseUrl: 'https://canvas.example.com',
-    })
-    const client = new Client({ name: 'schema-shape-test', version: '0.0.0' })
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
-    const result = await client.listTools()
-    tools = result.tools
+    ;[tools, optInTools] = await Promise.all([listClientFacingTools(), listClientFacingTools(true)])
   })
 
   it('registers the same tool count as the registry (a walk over an empty list would pass vacuously)', () => {
-    const canvas = new CanvasClient({ token: 'test-token', baseUrl: 'https://canvas.example.com' })
-    const pseudonymizer = new Pseudonymizer({ baseUrl: 'https://canvas.example.com' })
+    const canvas = new CanvasClient({ token: TEST_TOKEN, baseUrl: TEST_BASE_URL })
+    const pseudonymizer = new Pseudonymizer({ baseUrl: TEST_BASE_URL })
     const registered = getAllTools(canvas, pseudonymizer)
     expect(tools.length).toBe(registered.length)
     expect(tools.length).toBeGreaterThan(0)
@@ -88,5 +103,34 @@ describe('tool JSON Schema shape (client-facing wire output)', () => {
       expect(pairSchema.minItems).toBe(2)
       expect(pairSchema.maxItems).toBe(2)
     }
+  })
+
+  describe('opt-in tools (enableAssignmentSubmission)', () => {
+    it('registers the same tool count as the registry, including the gated domain (a walk over just the default 163 would never see these)', () => {
+      const canvas = new CanvasClient({ token: TEST_TOKEN, baseUrl: TEST_BASE_URL })
+      const pseudonymizer = new Pseudonymizer({ baseUrl: TEST_BASE_URL })
+      const registered = getAllTools(canvas, pseudonymizer, undefined, {
+        assignmentSubmission: true,
+      })
+      expect(optInTools.length).toBe(registered.length)
+      expect(optInTools.length).toBeGreaterThan(tools.length)
+    })
+
+    it('adds exactly submit_assignment and upload_submission_file over the default tool set', () => {
+      const defaultNames = new Set(tools.map((t) => t.name))
+      const delta = optInTools
+        .map((t) => t.name)
+        .filter((name) => !defaultNames.has(name))
+        .sort()
+      expect(delta).toEqual(['submit_assignment', 'upload_submission_file'])
+    })
+
+    it('contains no tuple-style array schema anywhere in the client-facing inputSchema', () => {
+      const violations: string[] = []
+      for (const tool of optInTools) {
+        walkSchema(tool.inputSchema, `${tool.name}.inputSchema`, violations)
+      }
+      expect(violations).toEqual([])
+    })
   })
 })
