@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.27.6](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.5...canvas-lms-mcp-v1.27.6) (2026-08-28)
+
+
+### Bug Fixes
+
+* **tools:** bound quadratic-backtracking regexes in HTML audit tools ([#324](https://github.com/bruchris/canvas-lms-mcp/issues/324)) ([0fcada5](https://github.com/bruchris/canvas-lms-mcp/commit/0fcada5805df130bad13d51ec43ea78f34a539f3))
+
+
+### Miscellaneous
+
+* **deps:** bump @types/node to ^26.4.0 ([#325](https://github.com/bruchris/canvas-lms-mcp/issues/325)) ([2151237](https://github.com/bruchris/canvas-lms-mcp/commit/21512374fcf92c928ba0476698aa7e89b47ff7bf))
+
 ## [1.27.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.4...canvas-lms-mcp-v1.27.5) (2026-08-27)
 
 
