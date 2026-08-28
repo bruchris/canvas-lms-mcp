@@ -713,4 +713,41 @@ describe('accessibilityAuditTools', () => {
       expect(peak).toBeGreaterThan(1)
     })
   })
+
+  // BRU-2360: LINK_RE used unbounded `[^>]*` twice per match with a required
+  // literal in between, which is quadratic-backtracking on a `>`-free run
+  // (measured: 320 KB of hostile input took ~8s before the fix).
+  describe('hostile input guard (BRU-2360)', () => {
+    it('scans a >-free-run page body in well under 1s (would have taken seconds before the fix)', async () => {
+      const n = 200_000
+      const hostile = '<a '.repeat(Math.floor(n / 20)) + 'x'.repeat(n - Math.floor(n / 20) * 3)
+
+      const start = process.hrtime.bigint()
+      await runScan(hostile, 'pages')
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      // Generous CI-safe ceiling: the fix runs this in ~tens of ms; the old
+      // unbounded regex took seconds at this input size, so this still catches
+      // a regression without being flaky on a loaded CI runner.
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+  })
+
+  describe('oversized content guard (BRU-2360)', () => {
+    it('reports an oversized page body as a warning instead of silently skipping it', async () => {
+      const oversized = '<a href="/x">link</a>'.repeat(30_000)
+
+      const result = (await runScan(oversized, 'pages')) as AuditResult & {
+        warnings: Array<{ location: unknown; reason: string; detail: string }>
+      }
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({
+          location: expect.objectContaining({ type: 'pages', id: 1 }),
+          reason: 'oversized_content_skipped',
+        }),
+      )
+      expect(result.findings).toHaveLength(0)
+    })
+  })
 })

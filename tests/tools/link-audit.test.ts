@@ -940,4 +940,55 @@ describe('linkAuditTools', () => {
       expect(result.findings).toHaveLength(0)
     })
   })
+
+  // BRU-2360: HREF_RE/IMG_SRC_RE/EMBED_SRC_RE used unbounded `[^>]*` twice per
+  // match with a required literal in between, which is quadratic-backtracking on
+  // a `>`-free run (measured: 320 KB of hostile input took ~8s before the fix).
+  describe('hostile input guard (BRU-2360)', () => {
+    it('scans a >-free-run page body in well under 1s (would have taken seconds before the fix)', async () => {
+      const n = 200_000
+      const hostile = '<a '.repeat(Math.floor(n / 20)) + 'x'.repeat(n - Math.floor(n / 20) * 3)
+      const canvas = makeCanvas({
+        pages: [
+          { page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: hostile },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+
+      const start = process.hrtime.bigint()
+      await tool.handler({ course_id: 100, include: ['pages'] })
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+
+      // Generous CI-safe ceiling: the fix runs this in ~tens of ms; the old
+      // unbounded regex took seconds at this input size, so this still catches
+      // a regression without being flaky on a loaded CI runner.
+      expect(elapsedMs).toBeLessThan(2000)
+    })
+  })
+
+  describe('oversized content guard (BRU-2360)', () => {
+    it('reports an oversized page body as a warning instead of silently skipping it', async () => {
+      const oversized = '<a href="/courses/100/pages/x">link</a>'.repeat(20_000)
+      const canvas = makeCanvas({
+        pages: [
+          { page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: oversized },
+        ],
+      })
+      const [tool] = linkAuditTools(canvas)
+
+      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult & {
+        warnings: Array<{ location: unknown; reason: string; detail: string }>
+      }
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({
+          location: expect.objectContaining({ type: 'pages', id: 1 }),
+          reason: 'oversized_content_skipped',
+        }),
+      )
+      // The skipped body must not contribute findings — same-course hrefs would
+      // yield none anyway, so this guards against a partial/best-effort scan.
+      expect(result.findings.some((f) => f.location.type === 'pages')).toBe(false)
+    })
+  })
 })
