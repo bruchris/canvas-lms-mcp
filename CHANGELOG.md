@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.27.7](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.6...canvas-lms-mcp-v1.27.7) (2026-08-31)
+
+
+### Documentation
+
+* **spec:** server-enforced confirmation for destructive Canvas tools (BRU-2390) ([#328](https://github.com/bruchris/canvas-lms-mcp/issues/328)) ([0fc2e6b](https://github.com/bruchris/canvas-lms-mcp/commit/0fc2e6b4d1d96729077eda45cf20a920220215de))
+
 ## [1.27.6](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.5...canvas-lms-mcp-v1.27.6) (2026-08-28)
 
 
