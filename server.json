@@ -6,12 +6,12 @@
     "url": "https://github.com/bruchris/canvas-lms-mcp",
     "source": "github"
   },
-  "version": "1.15.1",
+  "version": "1.27.8",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "canvas-lms-mcp",
-      "version": "1.15.1",
+      "version": "1.27.8",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
