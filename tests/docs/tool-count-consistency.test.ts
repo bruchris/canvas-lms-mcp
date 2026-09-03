@@ -79,6 +79,25 @@ describe('doc tool-count consistency', () => {
         `server.json description has ${m![2]} domains but manifest has ${DOMAIN_COUNT} distinct domains — update server.json`,
       ).toBe(DOMAIN_COUNT)
     })
+
+    // BRU-2431: server.json drifted to a stale release version for months because
+    // nothing asserted it against package.json (unlike manifest.json, see
+    // tests/manifest.test.ts). release-please-config.json now carries server.json
+    // in extra-files, but this assertion is the CI-enforced backstop that catches
+    // it directly if that wiring ever regresses.
+    it('top-level version matches package.json', () => {
+      expect(
+        serverJson.version,
+        `server.json version is ${serverJson.version} but package.json is ${pkg.version} — update server.json`,
+      ).toBe(pkg.version)
+    })
+
+    it('packages[0].version matches package.json', () => {
+      expect(
+        serverJson.packages[0].version,
+        `server.json packages[0].version is ${serverJson.packages[0].version} but package.json is ${pkg.version} — update server.json`,
+      ).toBe(pkg.version)
+    })
   })
 
   describe('manifest.json', () => {
