@@ -13,6 +13,7 @@ import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
 import { formatError } from './errors'
 import { pseudonymTools } from './pseudonym'
+import { buildEnvelope, outputContractError, validateEnvelope } from './output/contract'
 import { isVisibleForRole, tagAudience } from './roles'
 import { tagTitle } from './titles'
 
@@ -47,6 +48,7 @@ export function getAllTools(
 
 type ToolResponse = {
   content: { type: 'text'; text: string }[]
+  structuredContent?: Record<string, unknown>
   isError?: boolean
   _meta?: Record<string, unknown>
 }
@@ -87,6 +89,27 @@ function buildHandler(
       const response: ToolResponse = {
         content: [{ type: 'text' as const, text }],
       }
+
+      // Structured output (BRU-2418). Built from `value` — the *fenced* value —
+      // so the two surfaces cannot disagree; a structured copy built from the
+      // raw result would hand the model an unfenced version of exactly the text
+      // the fence exists to neutralize. Error results never get here: they
+      // return early above or from the catch, and attaching structured content
+      // to one would mean an error satisfying the success schema.
+      if (tool.output) {
+        const structured = buildEnvelope(tool.output, value)
+        const validation = validateEnvelope(tool.output, structured)
+        if (!validation.ok) {
+          // Type and path only, never the offending value, and stderr only.
+          console.error(`Output contract violation in "${tool.name}":`, validation.issues)
+          return {
+            content: [{ type: 'text' as const, text: outputContractError(tool.name) }],
+            isError: true,
+          }
+        }
+        response.structuredContent = structured as Record<string, unknown>
+      }
+
       if (pseudonymizer?.isEnabled()) {
         response._meta = { pseudonymized: true, note: PSEUDONYM_META_NOTE }
       }
@@ -127,6 +150,7 @@ export function registerAllTools(
           title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.output ? { outputSchema: tool.output.schema } : {}),
           annotations: tool.annotations,
           _meta: { ui: { resourceUri: tool.ui.resourceUri } },
         },
@@ -139,6 +163,7 @@ export function registerAllTools(
           title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.output ? { outputSchema: tool.output.schema } : {}),
           annotations: tool.annotations,
         },
         handler,

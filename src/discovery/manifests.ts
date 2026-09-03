@@ -13,10 +13,18 @@ export interface ToolManifestEntry {
   access: 'read' | 'write'
   primaryAudience: ToolAudience
   relatedWorkflows: string[]
+  /**
+   * Whether the tool advertises an `outputSchema` and returns validated
+   * `structuredContent` alongside its (unchanged) text content. Migration is
+   * per-tool, so during the rollout this is how a consumer tells which tools
+   * carry a machine-readable contract. Added in schema version 1.1.
+   */
+  structuredOutput: boolean
 }
 
 export interface ToolManifestDocument {
-  schemaVersion: '1.0'
+  /** 1.1 added `structuredOutput` to every tool entry. Additive; 1.0 readers keep working. */
+  schemaVersion: '1.1'
   packageName: 'canvas-lms-mcp'
   toolCount: number
   tools: ToolManifestEntry[]
@@ -160,10 +168,11 @@ export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManif
       options.toolAudienceOverrides,
     ),
     relatedWorkflows: getRelatedWorkflowIds(tool.name, options.workflowCatalog),
+    structuredOutput: tool.output !== undefined,
   }))
 
   return {
-    schemaVersion: '1.0',
+    schemaVersion: '1.1',
     packageName: 'canvas-lms-mcp',
     toolCount: tools.length,
     tools,

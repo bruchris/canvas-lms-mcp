@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import type { ToolOutputContract } from './output/contract'
 
 /**
  * Internal audience tag on every tool. `'educator'` is the internal name for
@@ -59,4 +60,15 @@ export interface ToolDefinition {
    * diverges from its domain default.
    */
   audience?: ToolAudience
+  /**
+   * Structured-output contract (BRU-2418). When set, the tool advertises an
+   * `outputSchema` and every successful response carries a `structuredContent`
+   * envelope alongside the unchanged text content. Migration is per-tool and
+   * all-or-nothing: with a schema declared, a text-only result is rejected by
+   * both the server and the client.
+   *
+   * Adding this obliges you to add a fixture to `tests/tools/output-contract`'s
+   * registry — CI fails until you do.
+   */
+  output?: ToolOutputContract
 }

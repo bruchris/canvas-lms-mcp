@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import { listOutput, objectOutput } from './output/contract'
+import { canvasPageSchema, pageDeletionSchema } from './output/entities'
 import type { ToolDefinition } from './types'
 
 export function pageTools(canvas: CanvasClient): ToolDefinition[] {
@@ -12,6 +14,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
       },
+      output: listOutput('pages', canvasPageSchema),
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
@@ -30,6 +33,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
         course_id: z.number().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug (e.g. "welcome-page")'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
@@ -54,6 +58,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Who can edit: "teachers", "students", "members", or "public"'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
@@ -83,6 +88,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Who can edit: "teachers", "students", "members", or "public"'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
@@ -106,6 +112,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
         course_id: z.number().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug to delete'),
       },
+      output: objectOutput(pageDeletionSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
