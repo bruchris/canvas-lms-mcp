@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { z } from 'zod'
 import { CanvasClient } from '../../src/canvas'
+import { PSEUDONYMIZER_WRAPPED_TOOLS } from '../../src/pseudonym/coverage'
 import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { getAllTools } from '../../src/tools'
 import {
@@ -13,7 +17,27 @@ import {
   validateEnvelope,
 } from '../../src/tools/output/contract'
 import { canvasPageSchema, pageDeletionSchema } from '../../src/tools/output/entities'
-import { OUTPUT_FIXTURES, callArmed } from './fixtures/output-fixtures'
+import {
+  OUTPUT_FIXTURES,
+  callArmed,
+  callArmedWithPseudonymizer,
+  type OutputFixture,
+} from './fixtures/output-fixtures'
+
+/**
+ * The gap set between two tool-name registries and the pseudonymization-mode
+ * coverage each fixture declares. Pure so the anti-vacuity test can exercise
+ * it against synthetic registries without executing any handler (BRU-2426).
+ */
+function pseudonymizationCoverageGaps(
+  migrated: readonly string[],
+  wrapped: readonly string[],
+  fixtures: Readonly<Record<string, Pick<OutputFixture, 'pseudonymization'>>>,
+): string[] {
+  return migrated
+    .filter((name) => wrapped.includes(name))
+    .filter((name) => fixtures[name]?.pseudonymization == null)
+}
 
 /**
  * The shared gates for structured output (BRU-2418 §7).
@@ -64,6 +88,65 @@ describe('structured output — shared gates', () => {
     })
   })
 
+  describe('§7.5 pseudonymization-mode completeness (BRU-2426)', () => {
+    function applicableToolNames(): string[] {
+      const declared = new Set([
+        ...migratedToolNames(),
+        ...migratedToolNames({ assignmentSubmission: true }),
+      ])
+      return [...declared].filter((name) => PSEUDONYMIZER_WRAPPED_TOOLS.includes(name))
+    }
+
+    it('every migrated tool that also carries student PII has dual-mode fixture coverage', () => {
+      // Derived from the real migrated-tool registry (via migratedToolNames,
+      // same source as the completeness gate above) and the real
+      // PSEUDONYMIZER_WRAPPED_TOOLS registry — not a hand-maintained list.
+      const gaps = pseudonymizationCoverageGaps(
+        applicableToolNames(),
+        PSEUDONYMIZER_WRAPPED_TOOLS,
+        OUTPUT_FIXTURES,
+      )
+      expect(gaps).toEqual([])
+    })
+
+    it('documents the pages pilot: the intersection with PSEUDONYMIZER_WRAPPED_TOOLS is currently empty', () => {
+      // Pages carry no student PII, so the dual-mode round-trip loop below
+      // executes zero fixtures today. If this assertion starts failing, a PII
+      // tool has migrated to structured output — give it `pseudonymization`
+      // coverage in OUTPUT_FIXTURES rather than loosening the gate above.
+      expect(applicableToolNames()).toEqual([])
+    })
+
+    it('anti-vacuity: rejects an intentionally missing pseudonymization-mode case', () => {
+      // Synthetic registries standing in for "a PII tool migrated to
+      // structured output without dual-mode coverage" — necessary because the
+      // real intersection above is empty today, so this proves the gate is
+      // load-bearing rather than vacuously passing.
+      const gaps = pseudonymizationCoverageGaps(['get_user', 'list_pages'], ['get_user'], {
+        get_user: { pseudonymization: null },
+        list_pages: OUTPUT_FIXTURES.list_pages,
+      })
+      expect(gaps).toEqual(['get_user'])
+    })
+
+    it('anti-vacuity: accepts a case that does carry pseudonymization-mode coverage', () => {
+      const gaps = pseudonymizationCoverageGaps(['get_user'], ['get_user'], {
+        get_user: {
+          pseudonymization: {
+            buildCanvas: () => OUTPUT_FIXTURES.list_pages.buildCanvas(),
+            buildPseudonymizer: (enabled) =>
+              new Pseudonymizer({
+                baseUrl: TEST_BASE_URL,
+                env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+              }),
+            readPseudonymizedField: (structured) => structured.title,
+          },
+        },
+      })
+      expect(gaps).toEqual([])
+    })
+  })
+
   describe('§7.2 fixture round-trip through a real strict client', () => {
     for (const [name, fixture] of Object.entries(OUTPUT_FIXTURES)) {
       describe(name, () => {
@@ -92,6 +175,111 @@ describe('structured output — shared gates', () => {
         }
       })
     }
+  })
+
+  describe('§7.2 dual-mode round trip for PII-bearing migrated tools', () => {
+    // Data-driven from OUTPUT_FIXTURES itself, so a future fixture that adds
+    // `pseudonymization` coverage is exercised here with no test-file change.
+    // Zero iterations today — see "documents the pages pilot" above.
+    const applicable = Object.entries(OUTPUT_FIXTURES).filter(
+      ([, fixture]) => fixture.pseudonymization !== null,
+    )
+
+    if (applicable.length === 0) {
+      it('has nothing to execute yet — see "documents the pages pilot" above', () => {
+        expect(applicable).toEqual([])
+      })
+    }
+
+    for (const [name, fixture] of applicable) {
+      const coverage = fixture.pseudonymization!
+      describe(name, () => {
+        it('produces valid structured output with pseudonymization disabled', async () => {
+          const result = await callArmedWithPseudonymizer(
+            coverage.buildCanvas(),
+            coverage.buildPseudonymizer(false),
+            name,
+            fixture.args,
+          )
+
+          expect(result.isError).toBeFalsy()
+          expect(result.structuredContent).toBeDefined()
+        })
+
+        it('produces valid structured output with pseudonymization enabled, and the PII field changes', async () => {
+          const disabled = await callArmedWithPseudonymizer(
+            coverage.buildCanvas(),
+            coverage.buildPseudonymizer(false),
+            name,
+            fixture.args,
+          )
+          const enabled = await callArmedWithPseudonymizer(
+            coverage.buildCanvas(),
+            coverage.buildPseudonymizer(true),
+            name,
+            fixture.args,
+          )
+
+          expect(enabled.isError).toBeFalsy()
+          expect(enabled.structuredContent).toBeDefined()
+          expect(coverage.readPseudonymizedField(enabled.structuredContent!)).not.toEqual(
+            coverage.readPseudonymizedField(disabled.structuredContent!),
+          )
+        })
+      })
+    }
+  })
+
+  describe('callArmedWithPseudonymizer (dual-mode runner proof)', () => {
+    // The loop above has zero iterations while the pages pilot's intersection
+    // with PSEUDONYMIZER_WRAPPED_TOOLS is empty, so it never exercises
+    // callArmedWithPseudonymizer. Prove the runner itself works end to end
+    // against a real PII-wrapped tool (`get_user`, not structured-output —
+    // structuredContent is read from the parsed text surface instead) so the
+    // machinery the dual-mode loop depends on is not untested.
+    let pseudonymRoot: string
+
+    beforeEach(async () => {
+      pseudonymRoot = await mkdtemp(join(tmpdir(), 'output-contract-pseudonym-'))
+    })
+
+    afterEach(async () => {
+      await rm(pseudonymRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    })
+
+    it('threads pseudonymization through a real handler, off vs. on', async () => {
+      const canvas = {
+        users: {
+          get: async () => ({ id: 42, name: 'Ada Lovelace', sortable_name: 'Lovelace, Ada' }),
+        },
+      } as unknown as CanvasClient
+      const buildPseudonymizer = (enabled: boolean) =>
+        new Pseudonymizer({
+          baseUrl: TEST_BASE_URL,
+          rootDir: pseudonymRoot,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+
+      const disabled = await callArmedWithPseudonymizer(
+        canvas,
+        buildPseudonymizer(false),
+        'get_user',
+        { user_id: 42 },
+      )
+      const enabled = await callArmedWithPseudonymizer(
+        canvas,
+        buildPseudonymizer(true),
+        'get_user',
+        { user_id: 42 },
+      )
+
+      expect(disabled.isError).toBeFalsy()
+      expect(enabled.isError).toBeFalsy()
+      const disabledName = (JSON.parse(disabled.content[0].text) as { name: string }).name
+      const enabledName = (JSON.parse(enabled.content[0].text) as { name: string }).name
+      expect(disabledName).toBe('Ada Lovelace')
+      expect(enabledName).not.toBe('Ada Lovelace')
+    })
   })
 
   describe('§7.6 no tool advertises an unusable output schema', () => {
