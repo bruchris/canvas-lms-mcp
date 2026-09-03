@@ -21,6 +21,15 @@ import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
  * server config that adds tools beyond the default set — role filtering only
  * ever subsets it — so walking these two covers every tool the server can
  * ever return. See BRU-2359.
+ *
+ * The walk covers `outputSchema` as well as `inputSchema` (BRU-2418 §7.1): a
+ * tuple in an output schema breaks the same backends, and output schemas carry
+ * a hazard input schemas never had. `tools/list` builds every tool's schema
+ * inside one map, so a single unrepresentable type — `z.date()` is the easy
+ * mistake — throws and returns *zero* tools. That makes one tool's contract a
+ * whole-server outage, which is why the count assertions below are the load
+ * bearing part of this file rather than boilerplate: a throwing `tools/list`
+ * fails `beforeAll`, and a silently empty one fails the count. See §0.3, §7.4.
  */
 
 type JsonSchemaNode = Record<string, unknown>
@@ -88,6 +97,35 @@ describe('tool JSON Schema shape (client-facing wire output)', () => {
     expect(violations).toEqual([])
   })
 
+  it('contains no tuple-style array schema anywhere in the client-facing outputSchema', () => {
+    const violations: string[] = []
+    for (const tool of tools) {
+      if (tool.outputSchema) {
+        walkSchema(tool.outputSchema, `${tool.name}.outputSchema`, violations)
+      }
+    }
+    expect(violations).toEqual([])
+  })
+
+  it('advertises an outputSchema for exactly the tools that declare an output contract', () => {
+    // Guards the walk above against going vacuous: if registration ever stopped
+    // passing `outputSchema` through, the walk would sweep nothing and pass.
+    const canvas = new CanvasClient({ token: TEST_TOKEN, baseUrl: TEST_BASE_URL })
+    const pseudonymizer = new Pseudonymizer({ baseUrl: TEST_BASE_URL })
+    const declared = getAllTools(canvas, pseudonymizer)
+      .filter((tool) => tool.output !== undefined)
+      .map((tool) => tool.name)
+      .sort()
+
+    const advertised = tools
+      .filter((tool) => tool.outputSchema !== undefined)
+      .map((tool) => tool.name)
+      .sort()
+
+    expect(advertised).toEqual(declared)
+    expect(advertised.length).toBeGreaterThan(0)
+  })
+
   it('pins the #308 fix: new_appointments stays a fixed-length array schema, not a tuple', () => {
     for (const toolName of ['create_appointment_group', 'update_appointment_group']) {
       const tool = tools.find((t) => t.name === toolName)
@@ -129,6 +167,16 @@ describe('tool JSON Schema shape (client-facing wire output)', () => {
       const violations: string[] = []
       for (const tool of optInTools) {
         walkSchema(tool.inputSchema, `${tool.name}.inputSchema`, violations)
+      }
+      expect(violations).toEqual([])
+    })
+
+    it('contains no tuple-style array schema anywhere in the client-facing outputSchema', () => {
+      const violations: string[] = []
+      for (const tool of optInTools) {
+        if (tool.outputSchema) {
+          walkSchema(tool.outputSchema, `${tool.name}.outputSchema`, violations)
+        }
       }
       expect(violations).toEqual([])
     })

@@ -34,7 +34,7 @@ describe('tool manifest generation', () => {
   it('serializes the registered tool surface with discovery metadata', () => {
     const manifest = buildToolManifest()
 
-    expect(manifest.schemaVersion).toBe('1.0')
+    expect(manifest.schemaVersion).toBe('1.1')
     expect(manifest.tools).toHaveLength(165)
     expect(manifest.tools.find((tool) => tool.name === 'grade_submission')).toEqual({
       name: 'grade_submission',
@@ -49,6 +49,7 @@ describe('tool manifest generation', () => {
       access: 'write',
       primaryAudience: 'educator',
       relatedWorkflows: ['educator-assignment-review'],
+      structuredOutput: false,
     })
     expect(manifest.tools.find((tool) => tool.name === 'get_gradebook_history_feed')).toEqual({
       name: 'get_gradebook_history_feed',
@@ -63,6 +64,7 @@ describe('tool manifest generation', () => {
       access: 'read',
       primaryAudience: 'educator',
       relatedWorkflows: [],
+      structuredOutput: false,
     })
     expect(manifest.tools.find((tool) => tool.name === 'get_outcome')).toEqual({
       name: 'get_outcome',
@@ -76,6 +78,7 @@ describe('tool manifest generation', () => {
       access: 'read',
       primaryAudience: 'educator',
       relatedWorkflows: [],
+      structuredOutput: false,
     })
   })
 

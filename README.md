@@ -165,6 +165,33 @@ Canvas applies rate limits per-user. When creating many New Quizzes items (e.g.,
 | Course Syllabus | `canvas://course/{courseId}/syllabus` | text/html |
 | Assignment Description | `canvas://course/{courseId}/assignment/{assignmentId}/description` | text/html |
 
+### Structured output
+
+Some tools return machine-readable `structuredContent` alongside their text content, validated against an `outputSchema` the server advertises in `tools/list`. Migration is **per tool**, so the two surfaces coexist:
+
+| Client behaviour | Migrated tool | Unmigrated tool |
+|---|---|---|
+| Reads `content[0].text` | Works, byte-identical to before | Works |
+| Reads `structuredContent` | Works | Field is absent |
+| Validates against `outputSchema` | Works | No schema advertised |
+
+Three guarantees hold for every migrated tool:
+
+- **The text content is unchanged.** `content[0].text` carries exactly the bytes it did before migration. `structuredContent` is added alongside it, never in place of it, so text-only clients and the interactive widgets are unaffected.
+- **Canvas fields we do not declare are passed through, not stripped or rejected.** Entity schemas are open, because Canvas ships new fields continuously and a closed schema would turn each one into a failed tool call. Only the envelopes this server authors itself are closed.
+- **Errors are never structured.** A tool failure returns `isError: true` with plain text, exactly as before.
+
+A tool returning a list wraps it under a single plural key, since MCP requires an output schema to be an object:
+
+```jsonc
+{
+  "content": [{ "type": "text", "text": "[ ... unchanged JSON ... ]" }],
+  "structuredContent": { "pages": [ /* the same value */ ] }
+}
+```
+
+Which tools are migrated is recorded per tool as `structuredOutput` in [`docs/generated/tool-manifest.json`](docs/generated/tool-manifest.json) (manifest schema 1.1). Currently: the five `pages` tools.
+
 ### Interactive widgets
 
 `view_course_structure` is an [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) tool: hosts that support the spec render an interactive tree explorer (collapsible modules, type-filter chips, title search, published/unpublished badges, links open in a new tab); hosts that don't fall back transparently to the same JSON payload that `get_course_structure` returns. The widget is self-contained — no external scripts, fonts, or network calls — and is shipped inline with the tool definition.
