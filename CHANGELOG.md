@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.28.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.8...canvas-lms-mcp-v1.28.0) (2026-09-03)
+
+
+### Features
+
+* **tools:** add strict structured output contract and migrate pages ([#333](https://github.com/bruchris/canvas-lms-mcp/issues/333)) ([20540d9](https://github.com/bruchris/canvas-lms-mcp/commit/20540d9a56b213fabc193c7d0d01e968b6bebfa6))
+
+
+### Bug Fixes
+
+* **release:** sync server.json version with published release ([#335](https://github.com/bruchris/canvas-lms-mcp/issues/335)) ([d37aaef](https://github.com/bruchris/canvas-lms-mcp/commit/d37aaefbe44a77f6b9ba6cf70ea6ec85799530d1))
+
 ## [1.27.8](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.7...canvas-lms-mcp-v1.27.8) (2026-09-01)
 
 
