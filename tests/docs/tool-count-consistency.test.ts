@@ -277,8 +277,13 @@ describe('doc tool-count consistency', () => {
     it.each(WRITE_TOOLS.map((t) => t.name))(
       'write-operations reference table lists `%s`',
       (name) => {
+        // Anchor to the table's own "Tool" column (2nd `|`-delimited cell) so a
+        // tool can't pass merely by being cross-referenced from a sibling row's
+        // "Reversible?" column (e.g. "Yes (call `delete_x`)") — it must have its
+        // own dedicated row (BRU-2464).
+        const ownRow = new RegExp(`^\\|[^|]*\\|\\s*\`${name}\`\\s*\\|`, 'm')
         expect(
-          educatorGuide.includes(`\`${name}\``),
+          ownRow.test(educatorGuide),
           `write tool "${name}" is in docs/generated/tool-manifest.json but has no row in the ` +
             'docs/educator-guide.md "Write Operations Reference" section — add an ' +
             `"Operation | \`${name}\` | ... | Reversible?" row to the matching domain table`,
