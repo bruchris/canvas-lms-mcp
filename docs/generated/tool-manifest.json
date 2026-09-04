@@ -69,7 +69,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "educator",
+      "primaryAudience": "admin",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -400,7 +400,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -629,7 +629,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -643,7 +643,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -811,7 +811,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -825,7 +825,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -853,7 +853,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "admin",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -951,7 +951,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -965,7 +965,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -979,7 +979,7 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1035,7 +1035,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1049,7 +1049,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1273,7 +1273,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1287,7 +1287,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1441,7 +1441,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1483,7 +1483,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1497,7 +1497,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false
     },
@@ -1769,7 +1769,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
       ],
@@ -1785,7 +1785,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
       ],
@@ -1801,7 +1801,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
       ],

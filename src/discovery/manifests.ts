@@ -2,7 +2,7 @@ import type { CanvasClient } from '../canvas'
 import { toolDomainCatalog, type ToolDomainRegistration } from '../tools/catalog'
 import type { ToolAnnotations, ToolAudience, ToolDefinition } from '../tools/types'
 import { resolveTitle } from '../tools/titles'
-import { toolAudienceOverrides, workflowCatalog, type WorkflowCatalogEntry } from './catalog'
+import { workflowCatalog, type WorkflowCatalogEntry } from './catalog'
 
 export interface ToolManifestEntry {
   name: string
@@ -45,7 +45,6 @@ interface RegisteredToolContext {
 export interface ManifestBuildOptions {
   toolCatalog?: readonly ToolDomainRegistration[]
   workflowCatalog?: readonly WorkflowCatalogEntry[]
-  toolAudienceOverrides?: Readonly<Record<string, ToolAudience>>
 }
 
 function createManifestCanvasProxy(): CanvasClient {
@@ -116,12 +115,18 @@ function getRelatedWorkflowIds(
     .map((workflow) => workflow.id)
 }
 
+/**
+ * The tool's audience exactly as the server resolves it at runtime
+ * (`tagAudience` in `src/tools/roles.ts`): the tool's own declared `audience`,
+ * falling back to its domain's default. This is the single source of truth —
+ * there is no separate manifest-only override table, so the published docs
+ * can never disagree with what a role filter actually shows a caller.
+ */
 function getPrimaryAudience(
-  toolName: string,
+  tool: ToolDefinition,
   defaultPrimaryAudience: ToolAudience,
-  audienceOverrides: Readonly<Record<string, ToolAudience>> = toolAudienceOverrides,
 ): ToolAudience {
-  return audienceOverrides[toolName] ?? defaultPrimaryAudience
+  return tool.audience ?? defaultPrimaryAudience
 }
 
 function assertWorkflowLinksExist(
@@ -137,22 +142,10 @@ function assertWorkflowLinksExist(
   }
 }
 
-function assertAudienceOverrideLinksExist(
-  toolNames: Set<string>,
-  audienceOverrides: Readonly<Record<string, ToolAudience>> = toolAudienceOverrides,
-): void {
-  for (const toolName of Object.keys(audienceOverrides)) {
-    if (!toolNames.has(toolName)) {
-      throw new Error(`Audience override references unknown tool "${toolName}".`)
-    }
-  }
-}
-
 export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManifestDocument {
   const registeredTools = getRegisteredToolContexts(options.toolCatalog)
   const toolNames = new Set(registeredTools.map(({ tool }) => tool.name))
 
-  assertAudienceOverrideLinksExist(toolNames, options.toolAudienceOverrides)
   assertWorkflowLinksExist(toolNames, options.workflowCatalog)
 
   const tools = registeredTools.map(({ tool, domain, defaultPrimaryAudience }) => ({
@@ -162,11 +155,7 @@ export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManif
     description: tool.description,
     annotations: compactAnnotations(tool.annotations),
     access: getAccess(tool.name, tool.annotations),
-    primaryAudience: getPrimaryAudience(
-      tool.name,
-      defaultPrimaryAudience,
-      options.toolAudienceOverrides,
-    ),
+    primaryAudience: getPrimaryAudience(tool, defaultPrimaryAudience),
     relatedWorkflows: getRelatedWorkflowIds(tool.name, options.workflowCatalog),
     structuredOutput: tool.output !== undefined,
   }))
