@@ -145,17 +145,6 @@ describe('tool manifest generation', () => {
     ).toBe(manifestWrite)
   })
 
-  it('fails when an audience override references an unknown tool', () => {
-    expect(() =>
-      buildToolManifest({
-        toolCatalog: [createRegistration(createTool('known_tool', { readOnlyHint: true }))],
-        toolAudienceOverrides: {
-          missing_tool: 'student',
-        },
-      }),
-    ).toThrow('Audience override references unknown tool "missing_tool".')
-  })
-
   it('fails when a tool omits both readOnlyHint and destructiveHint', () => {
     expect(() =>
       buildToolManifest({
@@ -166,7 +155,6 @@ describe('tool manifest generation', () => {
             }),
           ),
         ],
-        toolAudienceOverrides: {},
         workflowCatalog: [],
       }),
     ).toThrow('Tool "ambiguous_tool" must declare exactly one of readOnlyHint or destructiveHint.')
@@ -183,12 +171,32 @@ describe('tool manifest generation', () => {
             }),
           ),
         ],
-        toolAudienceOverrides: {},
         workflowCatalog: [],
       }),
     ).toThrow(
       'Tool "contradictory_tool" must declare exactly one of readOnlyHint or destructiveHint.',
     )
+  })
+
+  it("primaryAudience mirrors the tool's own resolved audience, not a separate override table", () => {
+    const manifest = buildToolManifest({
+      toolCatalog: [
+        createRegistration(
+          {
+            name: 'divergent_tool',
+            description: 'divergent_tool description',
+            inputSchema: {},
+            annotations: { readOnlyHint: true },
+            audience: 'admin',
+            handler: async () => undefined,
+          },
+          'shared',
+        ),
+      ],
+      workflowCatalog: [],
+    })
+
+    expect(manifest.tools.find((t) => t.name === 'divergent_tool')?.primaryAudience).toBe('admin')
   })
 
   it('fails when tool registration touches the Canvas client during manifest generation', () => {
