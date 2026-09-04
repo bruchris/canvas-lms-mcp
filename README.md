@@ -338,6 +338,7 @@ undo (`create_peer_review` recreates the row) and it destroys no authored conten
 Notes:
 
 - **Invalid values stop startup.** The value is matched byte-exactly: `Block`, `BLOCK`, `block ` and an empty value are all errors, not a silent fall-back to `allow`. A kill switch that fails open on a typo is worse than none.
+- **The flag beats the environment outright.** When `--destructive-tools` is present, `CANVAS_DESTRUCTIVE_TOOLS` is not read or validated at all -- so a host that exports a typo'd value cannot stop you overriding it on the command line. Precedence is last-writer-wins, not strictest-wins: `--destructive-tools=allow` really does override `CANVAS_DESTRUCTIVE_TOOLS=block`.
 - **`confirm` is reserved but not implemented.** Setting it is a startup error naming it as such, so it can never be mistaken for protection you do not have.
 - **Server-side only.** Unlike `CANVAS_ROLE`, there is no request header for this in HTTP mode -- a client that could pick the mode could switch the gate off.
 - **This is a real boundary, not a UX filter.** `CANVAS_ROLE` hides tools from a listing; `block` means the handler is never registered.

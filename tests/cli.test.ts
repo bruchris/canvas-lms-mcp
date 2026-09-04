@@ -327,6 +327,57 @@ describe('parseArgs', () => {
       expect(parseArgs([...base, '--destructive-tools=allow']).destructiveTools).toBe('allow')
     })
 
+    /**
+     * Run parseArgs with process.exit stubbed to throw. Used by the tests that
+     * assert startup is *not* aborted: without the stub a regression would call
+     * the real process.exit and tear the vitest worker down, which reads as
+     * infrastructure noise rather than as this assertion failing.
+     */
+    function parseArgsNoExit(args: string[]): CliConfig {
+      vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+      return parseArgs(args)
+    }
+
+    // Whichever source wins must be the only one parsed — the same rule
+    // `resolveDestructiveToolsMode` follows. Validating the losing source too
+    // makes the flag unusable on exactly the hosts that need it: a deployment
+    // layer that exports a typo'd CANVAS_DESTRUCTIVE_TOOLS would abort startup
+    // no matter what the operator typed on the command line.
+    describe.each(['allow', 'block'] as const)('with --destructive-tools=%s supplied', (flag) => {
+      it.each(['Block', 'BLOCK', ' block', 'block ', 'blocked', '', 'true', '1', 'confirm'])(
+        'overrides the invalid environment value %j instead of aborting',
+        (envValue) => {
+          process.env.CANVAS_DESTRUCTIVE_TOOLS = envValue
+          expect(parseArgsNoExit([...base, `--destructive-tools=${flag}`]).destructiveTools).toBe(
+            flag,
+          )
+        },
+      )
+    })
+
+    it('a later flag wins over an earlier one', () => {
+      expect(
+        parseArgsNoExit([...base, '--destructive-tools=allow', '--destructive-tools=block'])
+          .destructiveTools,
+      ).toBe('block')
+    })
+
+    it('still rejects an invalid earlier flag even when a later flag is valid', () => {
+      // Deliberately unlike the env case above. A repeated flag is one operator
+      // typing twice in a single command line, so a bad value there is a typo
+      // with no legitimate override story — unlike an ambient env var, which the
+      // invoker may not control. Refusing to start is the safe direction.
+      const message = expectFatal([
+        ...base,
+        '--destructive-tools=Block',
+        '--destructive-tools=allow',
+      ])
+      expect(message).toContain('--destructive-tools')
+      expect(message).toContain('"Block"')
+    })
+
     it('parses correctly regardless of flag position', () => {
       expect(parseArgs(['--destructive-tools=block', ...base, 'serve']).destructiveTools).toBe(
         'block',

@@ -16,7 +16,8 @@ export interface CliConfig {
   /**
    * Destructive-tool policy. Always concrete: resolved from
    * `--destructive-tools` / `CANVAS_DESTRUCTIVE_TOOLS` here so that exactly one
-   * place in the CLI path decides it, and an invalid value stops startup.
+   * place in the CLI path decides it. The flag wins outright when present, and
+   * an invalid value *of the winning source* stops startup.
    */
   destructiveTools: DestructiveToolsMode
 }
@@ -54,7 +55,12 @@ export function parseArgs(args: string[]): CliConfig {
     )
   }
 
-  const config: CliConfig = {
+  // `destructiveTools` is deliberately absent from this object *and* from its
+  // type: it is resolved after the loop, once we know whether the command line
+  // supplied a flag. Omitting the key makes the compiler demand it at the
+  // `return` below, so the resolution cannot be dropped, and leaves no
+  // placeholder here that could survive and fail *open* into `allow`.
+  const config: Omit<CliConfig, 'destructiveTools'> = {
     token: process.env.CANVAS_API_TOKEN ?? '',
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
     mode: 'stdio',
@@ -62,11 +68,10 @@ export function parseArgs(args: string[]): CliConfig {
     allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
     role: envRole.role,
     enableAssignmentSubmission: isEnvTruthy(process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION),
-    destructiveTools: parseDestructiveToolsModeOrExit(
-      process.env.CANVAS_DESTRUCTIVE_TOOLS,
-      'CANVAS_DESTRUCTIVE_TOOLS',
-    ),
   }
+
+  /** Set only when `--destructive-tools` appears in argv; `undefined` = no flag. */
+  let destructiveToolsFromFlag: DestructiveToolsMode | undefined
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
@@ -81,7 +86,11 @@ export function parseArgs(args: string[]): CliConfig {
       if (raw === undefined) {
         fatal(`${DESTRUCTIVE_FLAG} requires a value. Use ${DESTRUCTIVE_FLAG}=allow or =block.`)
       }
-      config.destructiveTools = parseDestructiveToolsModeOrExit(raw, DESTRUCTIVE_FLAG)
+      // Parsed here, per occurrence, rather than deferred with the environment:
+      // a repeated flag is one operator typing twice in a single command line,
+      // so a bad value has no legitimate override story and refusing to start is
+      // the safe direction. Among *valid* values the last one still wins.
+      destructiveToolsFromFlag = parseDestructiveToolsModeOrExit(raw, DESTRUCTIVE_FLAG)
       continue
     }
 
@@ -119,6 +128,19 @@ export function parseArgs(args: string[]): CliConfig {
     }
   }
 
+  // Precedence mirrors `resolveDestructiveToolsMode` (src/tools/destructive-policy.ts):
+  // whichever source wins is the *only* source parsed. Reading the environment
+  // eagerly instead — as this function used to, while building `config` above —
+  // let an invalid ambient `CANVAS_DESTRUCTIVE_TOOLS` abort startup even when the
+  // command line carried a valid override, making the flag unusable on precisely
+  // the hosts where an operator needs it (BRU-2463).
+  const destructiveTools =
+    destructiveToolsFromFlag ??
+    parseDestructiveToolsModeOrExit(
+      process.env.CANVAS_DESTRUCTIVE_TOOLS,
+      'CANVAS_DESTRUCTIVE_TOOLS',
+    )
+
   if (!config.token) {
     console.error('Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN')
     process.exit(1)
@@ -128,5 +150,5 @@ export function parseArgs(args: string[]): CliConfig {
     process.exit(1)
   }
 
-  return config
+  return { ...config, destructiveTools }
 }
