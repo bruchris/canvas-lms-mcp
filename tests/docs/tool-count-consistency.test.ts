@@ -8,6 +8,8 @@ const manifest = JSON.parse(
 )
 const readme = readFileSync(resolve(ROOT, 'README.md'), 'utf8')
 const indexHtml = readFileSync(resolve(ROOT, 'docs/index.html'), 'utf8')
+const educatorGuide = readFileSync(resolve(ROOT, 'docs/educator-guide.md'), 'utf8')
+const integrationGuide = readFileSync(resolve(ROOT, 'docs/integration-guide.md'), 'utf8')
 const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'))
 const bundleManifest = JSON.parse(readFileSync(resolve(ROOT, 'manifest.json'), 'utf8'))
 const serverJson = JSON.parse(readFileSync(resolve(ROOT, 'server.json'), 'utf8'))
@@ -25,8 +27,9 @@ interface ManifestTool {
 
 const tools = manifest.tools as ManifestTool[]
 const TOTAL = manifest.toolCount as number
+const WRITE_TOOLS = tools.filter((t) => t.annotations?.readOnlyHint !== true)
 const READ_ONLY = tools.filter((t) => t.annotations?.readOnlyHint === true).length
-const WRITE = tools.filter((t) => t.annotations?.readOnlyHint !== true).length
+const WRITE = WRITE_TOOLS.length
 const DOMAIN_COUNT = new Set(tools.map((t) => t.domain)).size
 
 // Role visibility mirrors src/tools/roles.ts ROLE_VISIBILITY
@@ -258,6 +261,43 @@ describe('doc tool-count consistency', () => {
         Number(m![1]),
         `docs/index.html role-filter admin count is ${m![1]} but manifest audience sums to ${ADMIN_COUNT} — update docs/index.html`,
       ).toBe(ADMIN_COUNT)
+    })
+  })
+
+  describe('docs/educator-guide.md', () => {
+    it('write-operations reference total count', () => {
+      const m = educatorGuide.match(/The server includes (\d+) write tools/)
+      expect(m, 'docs/educator-guide.md "The server includes N write tools" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `docs/educator-guide.md write tool count is ${m![1]} but manifest says ${WRITE} — update docs/educator-guide.md`,
+      ).toBe(WRITE)
+    })
+
+    it.each(WRITE_TOOLS.map((t) => t.name))(
+      'write-operations reference table lists `%s`',
+      (name) => {
+        expect(
+          educatorGuide.includes(`\`${name}\``),
+          `write tool "${name}" is in docs/generated/tool-manifest.json but has no row in the ` +
+            'docs/educator-guide.md "Write Operations Reference" section — add an ' +
+            `"Operation | \`${name}\` | ... | Reversible?" row to the matching domain table`,
+        ).toBe(true)
+      },
+    )
+  })
+
+  describe('docs/integration-guide.md', () => {
+    it('registered tool and resource count', () => {
+      const m = integrationGuide.match(/all (\d+) tools and (\d+) resources registered/)
+      expect(
+        m,
+        'docs/integration-guide.md "all N tools and N resources registered" not found',
+      ).toBeTruthy()
+      expect(
+        Number(m![1]),
+        `docs/integration-guide.md tool count is ${m![1]} but manifest.toolCount is ${TOTAL} — update docs/integration-guide.md`,
+      ).toBe(TOTAL)
     })
   })
 })
