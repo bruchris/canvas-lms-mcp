@@ -11,6 +11,7 @@ import {
 import { isProvenanceFencingEnabled, markerRejectionMessage } from '../provenance/markers'
 import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
+import { DEFAULT_DESTRUCTIVE_TOOLS_MODE, applyDestructiveToolsPolicy } from './destructive-policy'
 import { formatError } from './errors'
 import { pseudonymTools } from './pseudonym'
 import { buildEnvelope, outputContractError, validateEnvelope } from './output/contract'
@@ -26,6 +27,12 @@ const PSEUDONYM_META_NOTE =
  * audiences that role can see; when unset, every tool is returned (the default,
  * backwards-compatible behaviour). Domains with a `gate` are excluded unless the
  * corresponding flag is enabled in `features`.
+ *
+ * This is also the single choke point for the destructive-tools policy
+ * (BRU-2444): `registerAllTools` builds its registration list from here, so
+ * `features.destructiveTools === 'block'` removes the seven irreversible
+ * deletes from every consumer of the tool set at once — no caller can route
+ * around it by assembling tools from the catalog directly.
  */
 export function getAllTools(
   canvas: CanvasClient,
@@ -41,7 +48,10 @@ export function getAllTools(
         .map(tagAudience(registration.defaultPrimaryAudience)),
     )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
-  const all = [...domainTools, ...conditional].map(tagTitle())
+  const all = applyDestructiveToolsPolicy(
+    [...domainTools, ...conditional].map(tagTitle()),
+    features?.destructiveTools ?? DEFAULT_DESTRUCTIVE_TOOLS_MODE,
+  )
   if (!role) return all
   return all.filter((tool) => isVisibleForRole(tool, role))
 }

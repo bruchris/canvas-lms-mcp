@@ -44,12 +44,24 @@ import { linkAuditTools } from './link-audit'
 import { accessibilityAuditTools } from './accessibility-audit'
 import { appointmentGroupTools } from './appointment-groups'
 
+/**
+ * Feature-flag keys usable as a domain `gate`. Only the boolean flags qualify.
+ *
+ * A gate is evaluated for truthiness, and every non-empty string mode of a
+ * policy flag such as `destructiveTools` is truthy — so `gate: 'destructiveTools'`
+ * would read as permanently on, including when the deployer set `block`.
+ * Constraining the key here makes that unrepresentable instead of latent.
+ */
+export type ToolDomainGateKey = {
+  [K in keyof ToolFeatureFlags]-?: boolean extends NonNullable<ToolFeatureFlags[K]> ? K : never
+}[keyof ToolFeatureFlags]
+
 export interface ToolDomainRegistration {
   domain: string
   defaultPrimaryAudience: ToolAudience
   getTools: (canvas: CanvasClient, pseudonymizer?: Pseudonymizer) => ToolDefinition[]
   /** Feature-flag key that must be enabled for this domain to register. Omitted = always on. */
-  gate?: keyof ToolFeatureFlags
+  gate?: ToolDomainGateKey
 }
 
 export const toolDomainCatalog: readonly ToolDomainRegistration[] = [

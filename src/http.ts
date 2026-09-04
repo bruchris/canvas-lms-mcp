@@ -4,6 +4,7 @@ import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 import { parseRole } from './tools/roles'
+import type { DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
 
 export function createHttpHandler(defaultConfig: {
@@ -12,6 +13,7 @@ export function createHttpHandler(defaultConfig: {
   allowedOrigin?: string
   role?: CanvasRole
   enableAssignmentSubmission?: boolean
+  destructiveTools?: DestructiveToolsMode
 }) {
   // Process-wide pseudonymizer keyed on the configured base URL. Pseudonyms
   // are stable across requests because every fresh MCP server reuses this
@@ -110,6 +112,10 @@ export function createHttpHandler(defaultConfig: {
       pseudonymizer,
       role,
       enableAssignmentSubmission: defaultConfig.enableAssignmentSubmission,
+      // Server config only. Unlike `role` there is deliberately no
+      // `X-Canvas-Destructive-Tools` header: the gate exists to bound what a
+      // client can do, so letting the client pick the mode would defeat it.
+      destructiveTools: defaultConfig.destructiveTools,
     })
 
     try {
@@ -153,6 +159,7 @@ async function main() {
       allowedOrigin: config.allowedOrigin,
       role: config.role,
       enableAssignmentSubmission: config.enableAssignmentSubmission,
+      destructiveTools: config.destructiveTools,
     }),
   )
 

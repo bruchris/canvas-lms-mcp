@@ -12,6 +12,7 @@ async function main() {
     baseUrl: config.baseUrl,
     role: config.role,
     enableAssignmentSubmission: config.enableAssignmentSubmission,
+    destructiveTools: config.destructiveTools,
   })
 
   const transport = new StdioServerTransport()

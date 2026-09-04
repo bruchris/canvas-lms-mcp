@@ -283,6 +283,7 @@ const courses = await canvas.courses.list()
 | `--port` | -- | `3001` | HTTP server port |
 | `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
 | `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
+| `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the seven irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 
 ## Environment Variables
 
@@ -298,6 +299,48 @@ const courses = await canvas.courses.list()
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 | `CANVAS_PROVENANCE_FENCING` | No | **On by default.** Set to exactly `false` to disable [provenance fencing](#provenance-fencing-untrusted-canvas-content) |
+| `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the seven irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
+
+## Destructive tool policy
+
+Canvas has no undo. This server cannot restore anything it deletes -- every recovery
+story for a mistaken delete is something you do outside this tooling, in Canvas or
+with your institution's admin. `CANVAS_DESTRUCTIVE_TOOLS=block` removes the seven
+irreversible delete tools from the server entirely, so no amount of model confusion
+or [prompt injection](#provenance-fencing-untrusted-canvas-content) can reach them.
+
+```bash
+CANVAS_DESTRUCTIVE_TOOLS=block canvas-lms-mcp --base-url https://school.instructure.com
+# or
+canvas-lms-mcp --destructive-tools=block --base-url https://school.instructure.com
+```
+
+| Mode | Behaviour |
+|------|-----------|
+| `allow` | **Default.** Every tool is registered -- unchanged from previous releases. |
+| `block` | The seven tools below are not registered at all. They are absent from `tools/list`, and a call naming one is refused by the MCP protocol layer before any Canvas request is made. |
+
+**Blocked by `block`:**
+
+| Tool | What is lost |
+|------|--------------|
+| `delete_assignment` | The assignment **plus its submissions and gradebook column** |
+| `delete_new_quiz` | The quiz, all its items, and all student results |
+| `delete_new_quiz_item` | One question and its responses; re-authoring is manual |
+| `delete_discussion` | The whole reply thread, including student-authored posts |
+| `delete_page` | Page body and revision history (keyed by URL slug, not a numeric ID) |
+| `delete_file` | A file, addressed by a **global** ID with no course scoping in the call |
+| `delete_appointment_group` | Every reservation -- and it **emails every signed-up student** |
+
+**Not blocked:** `delete_peer_review`. It is the only delete this server can itself
+undo (`create_peer_review` recreates the row) and it destroys no authored content.
+
+Notes:
+
+- **Invalid values stop startup.** The value is matched byte-exactly: `Block`, `BLOCK`, `block ` and an empty value are all errors, not a silent fall-back to `allow`. A kill switch that fails open on a typo is worse than none.
+- **`confirm` is reserved but not implemented.** Setting it is a startup error naming it as such, so it can never be mistaken for protection you do not have.
+- **Server-side only.** Unlike `CANVAS_ROLE`, there is no request header for this in HTTP mode -- a client that could pick the mode could switch the gate off.
+- **This is a real boundary, not a UX filter.** `CANVAS_ROLE` hides tools from a listing; `block` means the handler is never registered.
 
 ## Provenance fencing (untrusted Canvas content)
 

@@ -1,5 +1,6 @@
 import { isEnvTruthy } from './env'
 import { parseRole } from './tools/roles'
+import { parseDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
 
 export interface CliConfig {
@@ -12,6 +13,37 @@ export interface CliConfig {
   role?: CanvasRole
   /** Opt-in: register assignment submission tools when true. */
   enableAssignmentSubmission?: boolean
+  /**
+   * Destructive-tool policy. Always concrete: resolved from
+   * `--destructive-tools` / `CANVAS_DESTRUCTIVE_TOOLS` here so that exactly one
+   * place in the CLI path decides it, and an invalid value stops startup.
+   */
+  destructiveTools: DestructiveToolsMode
+}
+
+const DESTRUCTIVE_FLAG = '--destructive-tools'
+
+/** Print a startup error and exit. Never returns. */
+function fatal(message: string): never {
+  console.error(`Error: ${message}`)
+  process.exit(1)
+}
+
+/**
+ * Parse a destructive-tools mode, converting the parser's thrown error into the
+ * same `Error: …` + exit-1 shape the rest of this CLI uses for fatal config
+ * problems. Exiting is deliberate: the alternative is starting with the delete
+ * tools registered after the deployer asked for them to be blocked.
+ */
+function parseDestructiveToolsModeOrExit(
+  raw: string | undefined,
+  source: string,
+): DestructiveToolsMode {
+  try {
+    return parseDestructiveToolsMode(raw, source)
+  } catch (error) {
+    return fatal(error instanceof Error ? error.message : String(error))
+  }
 }
 
 export function parseArgs(args: string[]): CliConfig {
@@ -30,10 +62,30 @@ export function parseArgs(args: string[]): CliConfig {
     allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
     role: envRole.role,
     enableAssignmentSubmission: isEnvTruthy(process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION),
+    destructiveTools: parseDestructiveToolsModeOrExit(
+      process.env.CANVAS_DESTRUCTIVE_TOOLS,
+      'CANVAS_DESTRUCTIVE_TOOLS',
+    ),
   }
 
   for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
+    const arg = args[i]
+
+    // `--destructive-tools=<mode>` (the documented form) and
+    // `--destructive-tools <mode>` (the form every other flag in this parser
+    // uses) are both accepted, because a flag that is silently ignored fails
+    // *open* into `allow` — the one outcome a deployer typing this flag never
+    // wants. A missing value is a startup error for the same reason.
+    if (arg === DESTRUCTIVE_FLAG || arg?.startsWith(`${DESTRUCTIVE_FLAG}=`)) {
+      const raw = arg === DESTRUCTIVE_FLAG ? args[++i] : arg.slice(DESTRUCTIVE_FLAG.length + 1)
+      if (raw === undefined) {
+        fatal(`${DESTRUCTIVE_FLAG} requires a value. Use ${DESTRUCTIVE_FLAG}=allow or =block.`)
+      }
+      config.destructiveTools = parseDestructiveToolsModeOrExit(raw, DESTRUCTIVE_FLAG)
+      continue
+    }
+
+    switch (arg) {
       case '--token':
         config.token = args[++i] ?? ''
         break

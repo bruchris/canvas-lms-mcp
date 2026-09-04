@@ -275,6 +275,42 @@ describe('createHttpHandler', () => {
     })
   })
 
+  describe('destructive-tools policy', () => {
+    const blockedHandler = createHttpHandler({
+      token: 'test-token',
+      baseUrl: 'https://canvas.example.com/api/v1',
+      destructiveTools: 'block',
+    })
+
+    it('passes the configured policy through to the server factory', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      await blockedHandler(createMockReq({ method: 'POST', url: '/mcp' }), createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ destructiveTools: 'block' }),
+      )
+    })
+
+    it('ignores a client-supplied header — unlike role, the policy is server-only', async () => {
+      // `X-Canvas-Role` is deliberately client-overridable; this must not be.
+      // The gate exists to bound what a client can do, so a header override
+      // would let the caller switch it off. Asserted rather than left to a
+      // comment, because "there is no header" is exactly the kind of property
+      // a later copy-paste of the role block would quietly break.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-destructive-tools': 'allow' },
+      })
+      await blockedHandler(req, createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ destructiveTools: 'block' }),
+      )
+    })
+  })
+
   describe('MCP request handling', () => {
     it('creates fresh MCP server per POST /mcp request', async () => {
       const { createCanvasMCPServer } = await import('../src/server')

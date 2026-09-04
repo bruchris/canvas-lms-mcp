@@ -21,6 +21,7 @@ vi.mock('../src/cli', () => ({
     baseUrl: 'https://canvas.example.com',
     mode: 'stdio',
     port: 3001,
+    destructiveTools: 'block',
   }),
 }))
 
@@ -43,9 +44,13 @@ describe('stdio entry point', () => {
 
     expect(parseArgs).toHaveBeenCalledWith(process.argv.slice(2))
 
+    // `destructiveTools` is asserted explicitly: dropping the plumbing line in
+    // stdio.ts would otherwise leave the deployer's `--destructive-tools=block`
+    // silently unapplied on the default transport.
     expect(createCanvasMCPServer).toHaveBeenCalledWith({
       token: 'test-token',
       baseUrl: 'https://canvas.example.com',
+      destructiveTools: 'block',
     })
 
     expect(mockConnect).toHaveBeenCalled()
