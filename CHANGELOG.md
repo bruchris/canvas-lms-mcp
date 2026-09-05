@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.29.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.28.0...canvas-lms-mcp-v1.29.0) (2026-09-05)
+
+
+### Features
+
+* **tools:** add CANVAS_DESTRUCTIVE_TOOLS policy gate ([#337](https://github.com/bruchris/canvas-lms-mcp/issues/337)) ([1536eee](https://github.com/bruchris/canvas-lms-mcp/commit/1536eee04f2e43ed1850cddd9bf3fdd6716989d5))
+
+
+### Bug Fixes
+
+* **deps:** update fast-uri and qs to clear 6 audit advisories ([#336](https://github.com/bruchris/canvas-lms-mcp/issues/336)) ([22fd183](https://github.com/bruchris/canvas-lms-mcp/commit/22fd183fc9c9dd54454d6d544ce37187e01e3556))
+* **discovery:** derive manifest audience from runtime ToolDefinition, not a parallel table ([#340](https://github.com/bruchris/canvas-lms-mcp/issues/340)) ([9c1e8c0](https://github.com/bruchris/canvas-lms-mcp/commit/9c1e8c08cbb0f2a49a33647ddd3d9390622db7d8))
+
+
+### Documentation
+
+* **educator-guide:** document all 48 write tools, fix tool count drift ([#339](https://github.com/bruchris/canvas-lms-mcp/issues/339)) ([ce54e78](https://github.com/bruchris/canvas-lms-mcp/commit/ce54e781ba31cf5b38cedf8590634ab36d8f603a))
+
 ## [1.28.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.8...canvas-lms-mcp-v1.28.0) (2026-09-03)
 
 
