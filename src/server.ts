@@ -4,6 +4,7 @@ import { CanvasClient } from './canvas'
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { registerAllTools } from './tools'
 import type { CanvasRole, ToolFeatureFlags } from './tools/types'
+import { resolveDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import { registerAllResources } from './resources'
 
 export interface CanvasMCPServerConfig {
@@ -31,6 +32,20 @@ export interface CanvasMCPServerConfig {
    * CANVAS_ENABLE_ASSIGNMENT_SUBMISSION env / --enable-assignment-submission flag.
    */
   enableAssignmentSubmission?: boolean
+  /**
+   * Destructive-tool policy (BRU-2444, design BRU-2390 §7).
+   *
+   * - `allow` (default) — today's behaviour, byte-for-byte.
+   * - `block` — the seven irreversible delete tools are not registered at all.
+   *
+   * When omitted, `CANVAS_DESTRUCTIVE_TOOLS` from the environment is used, so a
+   * library embedder that never goes through `parseArgs` still honours the
+   * deployer's policy. An unrecognised value on either surface **throws here**
+   * rather than falling back to `allow` — a typo'd kill switch must not fail
+   * open. `confirm` is reserved by the design but unimplemented, and is
+   * rejected with its own message.
+   */
+  destructiveTools?: DestructiveToolsMode
 }
 
 export interface CanvasMCPServer {
@@ -54,6 +69,10 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
 
   const features: ToolFeatureFlags = {
     assignmentSubmission: config.enableAssignmentSubmission,
+    destructiveTools: resolveDestructiveToolsMode(
+      config.destructiveTools,
+      process.env.CANVAS_DESTRUCTIVE_TOOLS,
+    ),
   }
   registerAllTools(server, canvas, pseudonymizer, config.role, features)
   registerAllResources(server, canvas)

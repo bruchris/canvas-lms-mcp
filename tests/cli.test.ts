@@ -10,6 +10,7 @@ describe('parseArgs', () => {
     delete process.env.CANVAS_BASE_URL
     delete process.env.CANVAS_ALLOWED_ORIGIN
     delete process.env.CANVAS_ROLE
+    delete process.env.CANVAS_DESTRUCTIVE_TOOLS
   })
 
   afterEach(() => {
@@ -27,6 +28,7 @@ describe('parseArgs', () => {
       port: 3001,
       allowedOrigin: 'http://localhost:3000',
       enableAssignmentSubmission: false,
+      destructiveTools: 'allow',
     })
   })
 
@@ -170,6 +172,7 @@ describe('parseArgs', () => {
       port: 9000,
       allowedOrigin: 'http://localhost:3000',
       enableAssignmentSubmission: false,
+      destructiveTools: 'allow',
     })
   })
 
@@ -277,6 +280,143 @@ describe('parseArgs', () => {
       expect(
         parseArgs([...base, '--enable-assignment-submission']).enableAssignmentSubmission,
       ).toBe(true)
+    })
+  })
+  describe('--destructive-tools / CANVAS_DESTRUCTIVE_TOOLS', () => {
+    const base = ['--token', 'my-token', '--base-url', 'https://canvas.example.com']
+
+    /** Run parseArgs with process.exit and console.error stubbed out. */
+    function expectFatal(args: string[]): string {
+      vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(() => parseArgs(args)).toThrow('process.exit called')
+      expect(errorSpy).toHaveBeenCalled()
+      return String(errorSpy.mock.calls[0]?.[0] ?? '')
+    }
+
+    it('defaults to allow when neither flag nor env is set', () => {
+      expect(parseArgs([...base]).destructiveTools).toBe('allow')
+    })
+
+    it('reads block from CANVAS_DESTRUCTIVE_TOOLS', () => {
+      process.env.CANVAS_DESTRUCTIVE_TOOLS = 'block'
+      expect(parseArgs([...base]).destructiveTools).toBe('block')
+    })
+
+    it('accepts the documented --destructive-tools=<mode> form', () => {
+      expect(parseArgs([...base, '--destructive-tools=block']).destructiveTools).toBe('block')
+      expect(parseArgs([...base, '--destructive-tools=allow']).destructiveTools).toBe('allow')
+    })
+
+    it('also accepts the space-separated form used by every other flag', () => {
+      expect(parseArgs([...base, '--destructive-tools', 'block']).destructiveTools).toBe('block')
+    })
+
+    it('the flag overrides the environment', () => {
+      process.env.CANVAS_DESTRUCTIVE_TOOLS = 'allow'
+      expect(parseArgs([...base, '--destructive-tools=block']).destructiveTools).toBe('block')
+    })
+
+    it('a flag value of allow overrides a block environment', () => {
+      // The reverse direction matters just as much: the precedence rule must be
+      // "last writer wins", not "strictest wins", or the flag is unusable for
+      // a one-off override on a host configured to block.
+      process.env.CANVAS_DESTRUCTIVE_TOOLS = 'block'
+      expect(parseArgs([...base, '--destructive-tools=allow']).destructiveTools).toBe('allow')
+    })
+
+    /**
+     * Run parseArgs with process.exit stubbed to throw. Used by the tests that
+     * assert startup is *not* aborted: without the stub a regression would call
+     * the real process.exit and tear the vitest worker down, which reads as
+     * infrastructure noise rather than as this assertion failing.
+     */
+    function parseArgsNoExit(args: string[]): CliConfig {
+      vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+      return parseArgs(args)
+    }
+
+    // Whichever source wins must be the only one parsed — the same rule
+    // `resolveDestructiveToolsMode` follows. Validating the losing source too
+    // makes the flag unusable on exactly the hosts that need it: a deployment
+    // layer that exports a typo'd CANVAS_DESTRUCTIVE_TOOLS would abort startup
+    // no matter what the operator typed on the command line.
+    describe.each(['allow', 'block'] as const)('with --destructive-tools=%s supplied', (flag) => {
+      it.each(['Block', 'BLOCK', ' block', 'block ', 'blocked', '', 'true', '1', 'confirm'])(
+        'overrides the invalid environment value %j instead of aborting',
+        (envValue) => {
+          process.env.CANVAS_DESTRUCTIVE_TOOLS = envValue
+          expect(parseArgsNoExit([...base, `--destructive-tools=${flag}`]).destructiveTools).toBe(
+            flag,
+          )
+        },
+      )
+    })
+
+    it('a later flag wins over an earlier one', () => {
+      expect(
+        parseArgsNoExit([...base, '--destructive-tools=allow', '--destructive-tools=block'])
+          .destructiveTools,
+      ).toBe('block')
+    })
+
+    it('still rejects an invalid earlier flag even when a later flag is valid', () => {
+      // Deliberately unlike the env case above. A repeated flag is one operator
+      // typing twice in a single command line, so a bad value there is a typo
+      // with no legitimate override story — unlike an ambient env var, which the
+      // invoker may not control. Refusing to start is the safe direction.
+      const message = expectFatal([
+        ...base,
+        '--destructive-tools=Block',
+        '--destructive-tools=allow',
+      ])
+      expect(message).toContain('--destructive-tools')
+      expect(message).toContain('"Block"')
+    })
+
+    it('parses correctly regardless of flag position', () => {
+      expect(parseArgs(['--destructive-tools=block', ...base, 'serve']).destructiveTools).toBe(
+        'block',
+      )
+    })
+
+    it('does not swallow a following flag as its value', () => {
+      // `--destructive-tools --port 9000` must fail loudly, not consume `--port`
+      // and leave the port at its default while appearing to have worked.
+      const message = expectFatal([...base, '--destructive-tools', '--port', '9000'])
+      expect(message).toContain('--destructive-tools')
+      expect(message).toContain('"--port"')
+    })
+
+    it('exits on a bare --destructive-tools with no value rather than failing open', () => {
+      const message = expectFatal([...base, '--destructive-tools'])
+      expect(message).toContain('requires a value')
+    })
+
+    it.each(['Block', 'BLOCK', ' block', 'block ', 'blocked', '', 'true', '1', 'confirm'])(
+      'exits on the invalid flag value %j',
+      (value) => {
+        const message = expectFatal([...base, `--destructive-tools=${value}`])
+        expect(message).toContain('--destructive-tools')
+      },
+    )
+
+    it.each(['Block', 'BLOCK', ' block', 'block ', 'blocked', '', 'true', '1', 'confirm'])(
+      'exits on the invalid env value %j',
+      (value) => {
+        process.env.CANVAS_DESTRUCTIVE_TOOLS = value
+        const message = expectFatal([...base])
+        expect(message).toContain('CANVAS_DESTRUCTIVE_TOOLS')
+      },
+    )
+
+    it('names `confirm` as reserved-but-unimplemented, not as a typo', () => {
+      const message = expectFatal([...base, '--destructive-tools=confirm'])
+      expect(message).toMatch(/not implemented/i)
     })
   })
 })

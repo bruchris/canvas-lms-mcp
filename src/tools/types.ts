@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import type { DestructiveToolsMode } from './destructive-policy'
 import type { ToolOutputContract } from './output/contract'
 
 /**
@@ -35,6 +36,15 @@ export interface ToolUiBinding {
 export interface ToolFeatureFlags {
   /** CANVAS_ENABLE_ASSIGNMENT_SUBMISSION / --enable-assignment-submission */
   assignmentSubmission?: boolean
+  /**
+   * CANVAS_DESTRUCTIVE_TOOLS / --destructive-tools=<mode> (BRU-2444, design
+   * BRU-2390 §7). A policy, not a boolean: `block` removes the seven
+   * irreversible delete tools from the registry entirely. Unset resolves to
+   * `allow`, which is today's behaviour byte-for-byte.
+   *
+   * Not usable as a domain `gate` — see `ToolDomainGateKey` in `catalog.ts`.
+   */
+  destructiveTools?: DestructiveToolsMode
 }
 
 export interface ToolDefinition {
