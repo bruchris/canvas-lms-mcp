@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.0...canvas-lms-mcp-v1.29.1) (2026-09-08)
+
+
+### Miscellaneous
+
+* **deps-dev:** bump the dev-dependencies group with 5 updates ([#342](https://github.com/bruchris/canvas-lms-mcp/issues/342)) ([a9b1a38](https://github.com/bruchris/canvas-lms-mcp/commit/a9b1a38c65b8a30c4f8b321d440eb59cfcaab456))
+
 ## [1.29.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.28.0...canvas-lms-mcp-v1.29.0) (2026-09-05)
 
 
