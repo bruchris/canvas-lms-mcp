@@ -14,9 +14,15 @@ export interface CanvasMCPServerConfig {
    * Optional pseudonymizer instance. Passed through to the tool layer so the
    * `_meta.pseudonymized` envelope and the `resolve_pseudonym` tool registration
    * are driven by it. Defaults to a fresh instance keyed on `baseUrl` — the
-   * default is sufficient for stdio. HTTP transports should construct their own
-   * process-wide singleton (one map per host/course on disk) and reuse it
-   * across requests.
+   * default is sufficient for stdio, where one process serves one user holding
+   * one token.
+   *
+   * A transport or embedder that serves callers with **different** Canvas
+   * credentials from one process must construct its own process-wide singleton
+   * (one map per host/course on disk) **with `sharedAcrossCallers: true`**, which
+   * disables reverse lookup on that instance. Without it, `resolve_pseudonym`
+   * would resolve a pseudonym for any caller from a map another caller seeded,
+   * with no Canvas-side authorization (BRU-2511). `src/http.ts` does this.
    */
   pseudonymizer?: Pseudonymizer
   /**

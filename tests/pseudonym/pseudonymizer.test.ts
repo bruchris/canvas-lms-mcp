@@ -462,3 +462,106 @@ describe('audit log file (opt-in)', () => {
     })
   })
 })
+
+describe('sharedAcrossCallers instances (BRU-2511)', () => {
+  const BOTH_FLAGS: NodeJS.ProcessEnv = {
+    CANVAS_PSEUDONYMIZE_STUDENTS: 'true',
+    CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP: 'true',
+  }
+
+  function makeShared(auditLog: (line: string) => void = () => undefined) {
+    return new Pseudonymizer({
+      baseUrl: BASE_URL,
+      rootDir: tmpRoot,
+      env: BOTH_FLAGS,
+      auditLog,
+      sharedAcrossCallers: true,
+    })
+  }
+
+  /** Identical config minus the flag — the control for every assertion below. */
+  function makeSolo() {
+    return new Pseudonymizer({
+      baseUrl: BASE_URL,
+      rootDir: tmpRoot,
+      env: BOTH_FLAGS,
+      auditLog: () => undefined,
+    })
+  }
+
+  it('exposes the flag as a readable property', () => {
+    expect(makeShared().sharedAcrossCallers).toBe(true)
+    expect(makeSolo().sharedAcrossCallers).toBe(false)
+  })
+
+  it('keeps pseudonymization ON — the denial must not weaken PII protection', async () => {
+    const shared = makeShared()
+    expect(shared.isEnabled()).toBe(true)
+    const out = await shared.anonymizeUser(COURSE_ID, student(1, 'Alice Smith'))
+    expect(out.name).toBe('Student 1')
+    expect(out.email).toBe('student-1@anon.invalid')
+  })
+
+  it('reports reverse lookup disabled even with both env flags set', () => {
+    expect(makeShared().isReverseLookupEnabled()).toBe(false)
+    expect(makeShared().status()).toEqual({ enabled: true, reverseLookupEnabled: false })
+  })
+
+  it('control: the identical config WITHOUT the flag enables reverse lookup', () => {
+    // Anti-vacuity. Without this the assertion above would also pass if the
+    // env, the rootDir or the base URL were what actually disabled it.
+    expect(makeSolo().isReverseLookupEnabled()).toBe(true)
+    expect(makeSolo().status()).toEqual({ enabled: true, reverseLookupEnabled: true })
+  })
+
+  it('refuses reverseLookup() for a pseudonym that IS in the map, and audits the denial', async () => {
+    const lines: string[] = []
+    const shared = makeShared((line) => lines.push(line))
+    await shared.anonymizeUser(COURSE_ID, student(98765, 'Alice Smith'))
+
+    // Control first: a non-shared instance reading the same on-disk map does
+    // resolve it, so the null below is the denial and not an empty map.
+    expect(await makeSolo().reverseLookup(COURSE_ID, 'Student 1')).toEqual({
+      user_id: 98765,
+      pseudonym: 'Student 1',
+      status: 'active',
+    })
+
+    expect(await shared.reverseLookup(COURSE_ID, 'Student 1')).toBeNull()
+
+    // `reason=shared-instance` exists only in the early-return guard inside
+    // reverseLookup(). Asserting on it attributes the denial to that guard
+    // specifically, rather than to isReverseLookupEnabled() shadowing it —
+    // both are load-bearing and both are asserted.
+    expect(lines.filter((l) => l.includes('reverse_lookup denied'))).toHaveLength(1)
+    expect(lines[0]).toContain('reason=shared-instance')
+    expect(lines[0]).toContain(`course=${COURSE_ID}`)
+    expect(lines.some((l) => l.includes('reverse_lookup hit'))).toBe(false)
+  })
+
+  it('refuses reverseLookup() for an unknown pseudonym without touching the map', async () => {
+    const lines: string[] = []
+    const shared = makeShared((line) => lines.push(line))
+    await shared.anonymizeUser(COURSE_ID, student(98765, 'Alice Smith'))
+
+    expect(await shared.reverseLookup(COURSE_ID, 'Student 99')).toBeNull()
+    // A shared instance must not distinguish "no such pseudonym" from
+    // "not allowed" — the miss reasons would otherwise be an oracle.
+    expect(lines[0]).toContain('reason=shared-instance')
+    expect(lines.some((l) => l.includes('reason=not-found'))).toBe(false)
+    expect(lines.some((l) => l.includes('reason=no-map'))).toBe(false)
+  })
+
+  it('an explicit sharedAcrossCallers: false behaves exactly like the default', async () => {
+    const p = new Pseudonymizer({
+      baseUrl: BASE_URL,
+      rootDir: tmpRoot,
+      env: BOTH_FLAGS,
+      auditLog: () => undefined,
+      sharedAcrossCallers: false,
+    })
+    await p.anonymizeUser(COURSE_ID, student(4242, 'Bob Jones'))
+    expect(p.isReverseLookupEnabled()).toBe(true)
+    expect(await p.reverseLookup(COURSE_ID, 'Student 1')).toMatchObject({ user_id: 4242 })
+  })
+})

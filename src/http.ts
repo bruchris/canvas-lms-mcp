@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
+import { isEnvTruthy } from './env'
 import { parseRole } from './tools/roles'
 import type { DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
@@ -18,9 +19,30 @@ export function createHttpHandler(defaultConfig: {
   // Process-wide pseudonymizer keyed on the configured base URL. Pseudonyms
   // are stable across requests because every fresh MCP server reuses this
   // instance and its on-disk map.
+  //
+  // `sharedAcrossCallers: true` is the security-relevant part (BRU-2511). This
+  // one instance serves every caller regardless of the `X-Canvas-Token` they
+  // present, so its map is not a safe basis for identity disclosure: the
+  // pseudonym → user_id mapping is seeded by whoever fetched a roster first,
+  // and `resolve_pseudonym` performs no Canvas-side authorization. The flag
+  // makes `resolve_pseudonym` unregistrable on this transport, whatever
+  // `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` says. Pseudonymization itself is
+  // unaffected — student PII is still replaced in every tool response.
+  //
+  // This is the only construction site the HTTP transport has, and the handler
+  // below refuses the request if it is absent, so the factory's own non-shared
+  // default can never be reached from here.
   const pseudonymizer = defaultConfig.baseUrl
-    ? new Pseudonymizer({ baseUrl: defaultConfig.baseUrl })
+    ? new Pseudonymizer({ baseUrl: defaultConfig.baseUrl, sharedAcrossCallers: true })
     : undefined
+
+  if (pseudonymizer?.isEnabled() && isEnvTruthy(process.env.CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP)) {
+    console.warn(
+      'CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP is set, but resolve_pseudonym is not registered on the ' +
+        'HTTP transport: one pseudonym map is shared by every caller, so reverse lookup would let ' +
+        'an unrelated token resolve a student it was never shown. Run the stdio transport if you need it.',
+    )
+  }
 
   return async (
     req: import('node:http').IncomingMessage,
@@ -92,7 +114,10 @@ export function createHttpHandler(defaultConfig: {
       }
     }
 
-    if (!token || !baseUrl) {
+    // `!pseudonymizer` is equivalent to `!baseUrl` today; asserting it here
+    // narrows the type so the `createCanvasMCPServer` call below cannot fall
+    // back to the factory's own non-shared default.
+    if (!token || !baseUrl || !pseudonymizer) {
       res.writeHead(400, { 'Content-Type': 'application/json' })
       res.end(
         JSON.stringify({
@@ -104,8 +129,9 @@ export function createHttpHandler(defaultConfig: {
     }
 
     // Fresh MCP server per request (per-request credentials); the pseudonymizer
-    // is the singleton constructed above so pseudonyms remain stable across
-    // requests for this host.
+    // is the shared singleton constructed above so pseudonyms remain stable
+    // across requests for this host — and, being shared, refuses reverse
+    // lookup.
     const { server } = createCanvasMCPServer({
       token,
       baseUrl,
