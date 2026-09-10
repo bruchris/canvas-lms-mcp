@@ -141,6 +141,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 const { server, canvas } = createCanvasMCPServer({
   token: process.env.CANVAS_API_TOKEN!,
   baseUrl: process.env.CANVAS_BASE_URL!,
+  // One process, one user, one token. Say `true` instead if this process
+  // serves callers with different Canvas credentials — see below.
+  sharedAcrossCallers: false,
 })
 
 // Connect to any MCP transport
@@ -151,6 +154,36 @@ await server.connect(transport)
 The `server` is a standard `McpServer` instance with all 165 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
 
 **JSON Schema dialect.** Tool schemas are advertised as JSON Schema 2020-12 rather than the draft-07 `@modelcontextprotocol/sdk` v1 emits by default, so clients whose validator supports 2020-12 only accept them ([#341](https://github.com/bruchris/canvas-lms-mcp/issues/341)). The rewrite is installed during tool registration rather than in a transport, so it applies to the `server` this factory returns whatever transport you connect it to — including your own.
+
+#### Serving several callers from one process
+
+The example above is a single-caller embedding: one process, one Canvas token. If your transport reuses one process across users — a hosted gateway, a multi-tenant proxy, a per-request server built from a pooled listener — you must say so, because the FERPA pseudonym map is process-wide and `resolve_pseudonym` performs no Canvas-side authorization. Left undeclared, it would resolve pseudonyms from a map that a *different* caller seeded.
+
+The declaration is a fact about your deployment. Never derive it from a request header, an `X-Canvas-Role` value, an audience claim, or anything else the caller controls.
+
+```typescript
+import { createCanvasMCPServer, createSharedPseudonymizer } from 'canvas-lms-mcp'
+
+// Once, at startup: shared by construction, so reverse lookup is permanently
+// off on it and `resolve_pseudonym` is never registered.
+const pseudonymizer = createSharedPseudonymizer({ baseUrl: process.env.CANVAS_BASE_URL! })
+
+// Per request, with that caller's own token.
+const { server } = createCanvasMCPServer({
+  token: callerToken,
+  baseUrl: process.env.CANVAS_BASE_URL!,
+  pseudonymizer,
+})
+```
+
+Sharing the instance is also what keeps pseudonym allocation consistent — one in-memory cache and one set of write locks per process, rather than one per request.
+
+Two guards keep the declaration honest, and both fail closed:
+
+- Passing `sharedAcrossCallers: true` together with a pseudonymizer that was not built for shared use **throws**.
+- Leaving the shape undeclared while `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` is enabled **throws**, rather than pick an answer for you. Nothing changes if that flag is off, which is the default.
+
+The built-in transports make the same declaration for you: `canvas-lms-mcp serve` (HTTP) is shared, `canvas-lms-mcp` (stdio) is single-caller. See [FERPA mode](../README.md#ferpa-mode-student-pseudonymization) for the full flag table.
 
 ### Standalone Canvas Client
 

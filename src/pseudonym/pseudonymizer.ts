@@ -519,6 +519,61 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
   return out
 }
 
+/**
+ * Configuration for {@link createSharedPseudonymizer}. Deliberately narrower
+ * than {@link PseudonymizerConfig}: it has no `sharedAcrossCallers` field,
+ * because the whole point of this construction is that the answer is fixed.
+ */
+export interface SharedPseudonymizerConfig {
+  /** Canvas base URL — used to key the per-host map directory. */
+  baseUrl: string
+  /** Root directory for map files. Defaults to the platform/XDG location. */
+  rootDir?: string
+  /**
+   * Audit log writer. Defaults to `console.error`. On a shared instance the
+   * only lines written are reverse-lookup **denials**, which is what makes an
+   * attempt visible to a hosted deployment's log pipeline.
+   */
+  auditLog?: (line: string) => void
+}
+
+/**
+ * The supported way to build a pseudonymizer for a process that serves callers
+ * authenticating with **different** Canvas credentials — a hosted deployment, a
+ * multi-tenant gateway, or any custom MCP transport that reuses one server
+ * process across users.
+ *
+ * Reverse lookup is permanently unavailable on the returned instance, whatever
+ * `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` says, so `resolve_pseudonym` is never
+ * registered on a server built with it. `resolve_pseudonym` performs no
+ * Canvas-side authorization and reads a map seeded by whichever caller fetched
+ * a roster first, so honouring the flag here would let an unrelated caller
+ * recover a real `user_id` (BRU-2511).
+ *
+ * The fields are copied across explicitly rather than spread, so an untyped
+ * (JavaScript) caller cannot smuggle `sharedAcrossCallers: false` through this
+ * function and get a private instance back from a name that promises a shared
+ * one.
+ *
+ * ```ts
+ * import { createSharedPseudonymizer, createCanvasMCPServer } from 'canvas-lms-mcp'
+ *
+ * // Once, at startup:
+ * const pseudonymizer = createSharedPseudonymizer({ baseUrl: process.env.CANVAS_BASE_URL! })
+ *
+ * // Per request, with that caller's own token:
+ * const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer })
+ * ```
+ */
+export function createSharedPseudonymizer(config: SharedPseudonymizerConfig): Pseudonymizer {
+  return new Pseudonymizer({
+    baseUrl: config.baseUrl,
+    rootDir: config.rootDir,
+    auditLog: config.auditLog,
+    sharedAcrossCallers: true,
+  })
+}
+
 async function appendAuditFile(filePath: string, line: string): Promise<void> {
   try {
     const { appendFile, mkdir } = await import('node:fs/promises')

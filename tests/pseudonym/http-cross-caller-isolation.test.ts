@@ -394,8 +394,15 @@ describe('HTTP transport pseudonym isolation (BRU-2511)', () => {
   })
 
   describe('stdio behaviour is preserved', () => {
-    it('registers resolve_pseudonym when the factory builds its own pseudonymizer', () => {
-      const { server } = createCanvasMCPServer({ token: TOKEN_A, baseUrl: BASE_URL })
+    it('registers resolve_pseudonym when the deployment is declared single-caller', () => {
+      // `sharedAcrossCallers: false` is what `src/stdio.ts` passes. Since
+      // BRU-2515 the factory refuses to *guess* the deployment shape while
+      // reverse lookup is requested, so modelling stdio means saying so.
+      const { server } = createCanvasMCPServer({
+        token: TOKEN_A,
+        baseUrl: BASE_URL,
+        sharedAcrossCallers: false,
+      })
       expect(toolNames(server)).toContain('resolve_pseudonym')
     })
 

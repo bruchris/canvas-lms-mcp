@@ -437,7 +437,15 @@ Conversation participants are pseudonymized as `Person N` from a cross-course po
 
 Optional `resolve_pseudonym` reverse-lookup tool: register it only by also setting `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true`. Every call is audit-logged to stderr (and to `CANVAS_PSEUDONYM_AUDIT_LOG` if set). When the flag is off the tool is absent from `tools/list` — a prompt-injection attempt to call it fails at the protocol layer.
 
-**Reverse lookup is stdio-only.** One HTTP server shares a single pseudonym map across every caller, whatever `X-Canvas-Token` they present, and `resolve_pseudonym` makes no Canvas call — so over HTTP it would let one caller resolve a student another caller's token had seeded. The HTTP transport therefore never registers the tool, whatever `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` is set to, and prints a warning at startup if you set it. Pseudonymization itself is unaffected over HTTP.
+**Reverse lookup requires a single-caller deployment.** A server process that serves callers with **different** Canvas credentials shares one pseudonym map across all of them, and `resolve_pseudonym` makes no Canvas call — so on such a deployment it would let one caller resolve a student another caller's token had seeded. What that means depends on how the server is run:
+
+| Deployment | Reverse lookup | How it is decided |
+| --- | --- | --- |
+| **Built-in HTTP** (`canvas-lms-mcp serve`) | Never registered | Shared by construction. The flag is ignored and setting it prints a startup warning. |
+| **stdio** (`canvas-lms-mcp`) | Available | One process, one user, one token. |
+| **Your own transport** (`createCanvasMCPServer`) | You declare it | See [Embedding a custom transport](#embedding-a-custom-transport). The factory refuses to start rather than guess. |
+
+Pseudonymization itself is unaffected in all three.
 
 Safe configuration for a shared/hosted deployment:
 
@@ -451,6 +459,34 @@ CANVAS_PSEUDONYMIZE_STUDENTS=true CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true \
 ```
 
 `X-Canvas-Role` does not change this: the role is a client-supplied UX filter, so it can never authorize a reverse lookup.
+
+#### Embedding a custom transport
+
+The built-in transports declare their own shape. If you connect `createCanvasMCPServer` to a transport of your own, that declaration is yours to make — it is a fact about your deployment, and the server must never infer it from a request header, a role, or any other caller-supplied value.
+
+If one process serves callers with different Canvas credentials, build the pseudonymizer with `createSharedPseudonymizer` and give it to every server. It is shared by construction, so `resolve_pseudonym` is not registered and a direct `reverseLookup()` refuses before it reads the map:
+
+```typescript
+import { createCanvasMCPServer, createSharedPseudonymizer } from 'canvas-lms-mcp'
+
+// Once, at startup: one map, shared, reverse lookup permanently off.
+const pseudonymizer = createSharedPseudonymizer({ baseUrl: process.env.CANVAS_BASE_URL! })
+
+// Per request, with that caller's own token.
+const { server } = createCanvasMCPServer({
+  token: callerToken,
+  baseUrl: process.env.CANVAS_BASE_URL!,
+  pseudonymizer,
+})
+```
+
+If one process serves exactly one caller identity — a desktop client, a per-user sidecar — say so, and reverse lookup behaves as it does on stdio:
+
+```typescript
+const { server } = createCanvasMCPServer({ token, baseUrl, sharedAcrossCallers: false })
+```
+
+Say nothing and the deployment shape is undeclared. Nothing changes unless `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` is on, in which case `createCanvasMCPServer` throws rather than pick an answer for you.
 
 Threat model and design rationale in [docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md](docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md).
 
@@ -478,7 +514,7 @@ Notes:
 - **Equivalent to `CANVAS_ROLE` in [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp)** — set the same value to migrate.
 - Role values are **case-insensitive**; `all` is accepted as an explicit "no filter". An unrecognised value logs a warning to stderr and registers all tools (a config typo never stops the server).
 - `teacher` / `admin` do **not** see the student-only `get_my_*` tools in v1 — they should use `list_submissions` / `get_submission` etc. instead.
-- The FERPA `resolve_pseudonym` tool is `teacher`/`admin`-only and is never exposed to `student`, even when reverse lookup is enabled. It is also never exposed on the HTTP transport for **any** role — the role header is client-supplied, so it cannot be an authorization boundary.
+- The FERPA `resolve_pseudonym` tool is `teacher`/`admin`-only and is never exposed to `student`, even when reverse lookup is enabled. It is also never exposed on the built-in HTTP transport — or on any custom transport that declares itself shared across callers — for **any** role, because the role header is client-supplied and cannot be an authorization boundary.
 - **HTTP transport:** the role is read per request from the `X-Canvas-Role` header, falling back to `CANVAS_ROLE` from the server config. A valid header (or `all`) overrides the configured default; an invalid header is ignored with a warning.
 - Tool counts above are a snapshot and grow as tools are added — the authoritative guarantee is that every tool resolves to exactly one audience (enforced by `tests/tools/audience-coverage.test.ts`).
 
