@@ -192,6 +192,14 @@ A tool returning a list wraps it under a single plural key, since MCP requires a
 
 Which tools are migrated is recorded per tool as `structuredOutput` in [`docs/generated/tool-manifest.json`](docs/generated/tool-manifest.json) (manifest schema 1.1). Currently: the five `pages` tools.
 
+#### JSON Schema dialect
+
+Every advertised `inputSchema` and `outputSchema` declares **JSON Schema 2020-12** (`"$schema": "https://json-schema.org/draft/2020-12/schema"`).
+
+`@modelcontextprotocol/sdk` v1 converts Zod with a fixed draft-07 target and `registerTool` accepts no override, so the server re-declares the dialect on the `tools/list` response. That is a declaration change only: CI asks the SDK's own converter for both dialects and requires the emitted bodies to be byte-identical for every registered schema, with a tuple schema as the control for a case where the two genuinely differ. A 2020-12-only validator (Ajv's `2020` entry point, the same family Claude Desktop uses) compiles all 168 schemas in the guard suite.
+
+Clients that support 2020-12 only rejected the five tools advertising an `outputSchema` before this — see [#341](https://github.com/bruchris/canvas-lms-mcp/issues/341). The rewrite is installed during tool registration rather than in a transport, so stdio, HTTP and the library factory are all covered.
+
 ### Interactive widgets
 
 `view_course_structure` is an [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) tool: hosts that support the spec render an interactive tree explorer (collapsible modules, type-filter chips, title search, published/unpublished badges, links open in a new tab); hosts that don't fall back transparently to the same JSON payload that `get_course_structure` returns. The widget is self-contained — no external scripts, fonts, or network calls — and is shipped inline with the tool definition.

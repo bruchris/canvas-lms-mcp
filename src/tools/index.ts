@@ -9,6 +9,7 @@ import {
   findMarkerBearingParam,
 } from '../provenance/apply'
 import { isProvenanceFencingEnabled, markerRejectionMessage } from '../provenance/markers'
+import { installSchemaDialectCompat } from '../schema-dialect'
 import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
 import { DEFAULT_DESTRUCTIVE_TOOLS_MODE, applyDestructiveToolsPolicy } from './destructive-policy'
@@ -149,6 +150,13 @@ export function registerAllTools(
   role?: CanvasRole,
   features?: ToolFeatureFlags,
 ): void {
+  // Before the first `registerTool` call, which is what makes `McpServer`
+  // install the `tools/list` handler this wraps (issue #341). Installed here
+  // rather than in `createCanvasMCPServer` so that every server carrying these
+  // tools carries the compatibility fix too, including one an embedder wired
+  // up itself.
+  installSchemaDialectCompat(server)
+
   const tools = getAllTools(canvas, pseudonymizer, role, features)
   for (const tool of tools) {
     const handler = buildHandler(tool, pseudonymizer)
