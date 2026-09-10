@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.29.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.1...canvas-lms-mcp-v1.29.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **http:** deny pseudonym reverse lookup on the shared HTTP transport ([#344](https://github.com/bruchris/canvas-lms-mcp/issues/344)) ([9de298d](https://github.com/bruchris/canvas-lms-mcp/commit/9de298d738ed4517cbcfe8d2ff92f27ba3866ad0))
+* **tools:** advertise JSON Schema 2020-12 on every tool schema ([#345](https://github.com/bruchris/canvas-lms-mcp/issues/345)) ([5b6fc4d](https://github.com/bruchris/canvas-lms-mcp/commit/5b6fc4df5da10d6b8ebd0c6f8ba4d21457aa429e)), closes [#341](https://github.com/bruchris/canvas-lms-mcp/issues/341)
+
 ## [1.29.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.0...canvas-lms-mcp-v1.29.1) (2026-09-08)
 
 
