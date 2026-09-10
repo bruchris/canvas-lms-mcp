@@ -44,6 +44,22 @@ export interface PseudonymizerConfig {
   env?: NodeJS.ProcessEnv
   /** Audit log writer for `resolve_pseudonym` calls; defaults to `console.error`. */
   auditLog?: (line: string) => void
+  /**
+   * True when this instance is shared by callers that authenticate with
+   * **different** Canvas credentials — i.e. the HTTP transport, where one
+   * process-wide map is read and written on behalf of every caller.
+   *
+   * Reverse lookup is then permanently unavailable on this instance, whatever
+   * `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` says. The map is seeded by whichever
+   * caller happened to fetch a roster first and `resolve_pseudonym` performs no
+   * Canvas-side authorization, so honouring the flag would let an unrelated
+   * caller recover a real `user_id` that only the seeding caller's token could
+   * legitimately have produced (BRU-2511).
+   *
+   * The caller states a fact about its deployment; the policy is derived here,
+   * so "shared instance with reverse lookup on" is not representable.
+   */
+  sharedAcrossCallers?: boolean
 }
 
 export interface ReverseLookupResult {
@@ -64,13 +80,21 @@ export interface PseudonymizationStatus {
 /**
  * Single-process pseudonymizer. One instance per running server. Construct
  * once at startup and re-use across requests; an HTTP server that creates a
- * fresh MCP server per request still shares this singleton.
+ * fresh MCP server per request still shares this singleton — and must say so
+ * with `sharedAcrossCallers: true`, which disables reverse lookup on the
+ * instance (BRU-2511).
  */
 export class Pseudonymizer {
   private readonly host: string | null
   private readonly rootDir: string
   private readonly env: NodeJS.ProcessEnv
   private readonly auditLog: (line: string) => void
+
+  /**
+   * See `PseudonymizerConfig.sharedAcrossCallers`. Public so a transport can
+   * assert the arrangement it built rather than trusting it.
+   */
+  readonly sharedAcrossCallers: boolean
 
   // In-memory caches of loaded maps, keyed by `<host>/<courseId>` or
   // `<host>/_conversations`. Loaded lazily; written through on mutation.
@@ -87,6 +111,7 @@ export class Pseudonymizer {
     this.rootDir = config.rootDir ?? resolvePseudonymDir({ env: config.env })
     this.env = config.env ?? process.env
     this.auditLog = config.auditLog ?? ((line) => console.error(line))
+    this.sharedAcrossCallers = config.sharedAcrossCallers ?? false
   }
 
   /**
@@ -99,8 +124,14 @@ export class Pseudonymizer {
 
   /**
    * True when reverse lookup is enabled. Only meaningful when `isEnabled()`.
+   *
+   * Always false on a `sharedAcrossCallers` instance — this is what keeps
+   * `resolve_pseudonym` out of `tools/list` on the HTTP transport, which is
+   * strictly stronger than registering it and erroring: the MCP protocol layer
+   * refuses the call before it reaches us.
    */
   isReverseLookupEnabled(): boolean {
+    if (this.sharedAcrossCallers) return false
     return this.isEnabled() && isEnvTruthy(this.env.CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP)
   }
 
@@ -263,6 +294,17 @@ export class Pseudonymizer {
     courseId: number | string,
     pseudonym: string,
   ): Promise<ReverseLookupResult | null> {
+    // Deny before the map is read, and before any miss reason is computed:
+    // a shared instance must not distinguish "no such pseudonym" from "not
+    // allowed", or the miss reasons become an oracle. `isReverseLookupEnabled`
+    // already covers this case; the explicit guard is what makes the denial
+    // auditable and keeps it correct if that predicate is ever refactored.
+    if (this.sharedAcrossCallers) {
+      this.audit(
+        `reverse_lookup denied course=${courseId} pseudonym=${pseudonym} reason=shared-instance`,
+      )
+      return null
+    }
     if (!this.isReverseLookupEnabled() || !this.host) return null
 
     const map = await this.loadCourseMap(this.host, courseId)
@@ -475,6 +517,61 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
   if (user.last_login !== undefined) out.last_login = null
 
   return out
+}
+
+/**
+ * Configuration for {@link createSharedPseudonymizer}. Deliberately narrower
+ * than {@link PseudonymizerConfig}: it has no `sharedAcrossCallers` field,
+ * because the whole point of this construction is that the answer is fixed.
+ */
+export interface SharedPseudonymizerConfig {
+  /** Canvas base URL — used to key the per-host map directory. */
+  baseUrl: string
+  /** Root directory for map files. Defaults to the platform/XDG location. */
+  rootDir?: string
+  /**
+   * Audit log writer. Defaults to `console.error`. On a shared instance the
+   * only lines written are reverse-lookup **denials**, which is what makes an
+   * attempt visible to a hosted deployment's log pipeline.
+   */
+  auditLog?: (line: string) => void
+}
+
+/**
+ * The supported way to build a pseudonymizer for a process that serves callers
+ * authenticating with **different** Canvas credentials — a hosted deployment, a
+ * multi-tenant gateway, or any custom MCP transport that reuses one server
+ * process across users.
+ *
+ * Reverse lookup is permanently unavailable on the returned instance, whatever
+ * `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` says, so `resolve_pseudonym` is never
+ * registered on a server built with it. `resolve_pseudonym` performs no
+ * Canvas-side authorization and reads a map seeded by whichever caller fetched
+ * a roster first, so honouring the flag here would let an unrelated caller
+ * recover a real `user_id` (BRU-2511).
+ *
+ * The fields are copied across explicitly rather than spread, so an untyped
+ * (JavaScript) caller cannot smuggle `sharedAcrossCallers: false` through this
+ * function and get a private instance back from a name that promises a shared
+ * one.
+ *
+ * ```ts
+ * import { createSharedPseudonymizer, createCanvasMCPServer } from 'canvas-lms-mcp'
+ *
+ * // Once, at startup:
+ * const pseudonymizer = createSharedPseudonymizer({ baseUrl: process.env.CANVAS_BASE_URL! })
+ *
+ * // Per request, with that caller's own token:
+ * const { server } = createCanvasMCPServer({ token, baseUrl, pseudonymizer })
+ * ```
+ */
+export function createSharedPseudonymizer(config: SharedPseudonymizerConfig): Pseudonymizer {
+  return new Pseudonymizer({
+    baseUrl: config.baseUrl,
+    rootDir: config.rootDir,
+    auditLog: config.auditLog,
+    sharedAcrossCallers: true,
+  })
 }
 
 async function appendAuditFile(filePath: string, line: string): Promise<void> {

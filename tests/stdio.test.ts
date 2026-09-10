@@ -47,10 +47,16 @@ describe('stdio entry point', () => {
     // `destructiveTools` is asserted explicitly: dropping the plumbing line in
     // stdio.ts would otherwise leave the deployer's `--destructive-tools=block`
     // silently unapplied on the default transport.
+    //
+    // `sharedAcrossCallers: false` likewise: stdio is the one transport where
+    // reverse lookup is legitimate, and since BRU-2515 the factory throws
+    // rather than infer that. Dropping the line would break `resolve_pseudonym`
+    // on stdio for every deployer who enabled it.
     expect(createCanvasMCPServer).toHaveBeenCalledWith({
       token: 'test-token',
       baseUrl: 'https://canvas.example.com',
       destructiveTools: 'block',
+      sharedAcrossCallers: false,
     })
 
     expect(mockConnect).toHaveBeenCalled()

@@ -311,6 +311,45 @@ describe('createHttpHandler', () => {
     })
   })
 
+  describe('pseudonymizer wiring (BRU-2511)', () => {
+    it('hands every request the same shared-across-callers pseudonymizer', async () => {
+      // The arrangement assertion. `tests/pseudonym/http-cross-caller-isolation.test.ts`
+      // proves the resulting behaviour end-to-end against the real registry;
+      // this proves the wiring here, where a future edit would break it.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { 'x-canvas-token': 'a' } }),
+        createMockRes(),
+      )
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { 'x-canvas-token': 'b' } }),
+        createMockRes(),
+      )
+
+      const calls = vi.mocked(createCanvasMCPServer).mock.calls
+      expect(calls).toHaveLength(2)
+      const [first, second] = calls.map((c) => c[0].pseudonymizer)
+      expect(first).toBeDefined()
+      expect(first).toBe(second)
+      expect(first?.sharedAcrossCallers).toBe(true)
+      expect(first?.isReverseLookupEnabled()).toBe(false)
+    })
+
+    it('returns 400 rather than letting the factory build its own pseudonymizer', async () => {
+      // With no base URL there is no shared instance to hand over, and
+      // `createCanvasMCPServer` would otherwise construct a non-shared default.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const noBaseUrl = createHttpHandler({ token: 'tok' })
+      const res = createMockRes()
+      await noBaseUrl(createMockReq({ method: 'POST', url: '/mcp' }), res)
+      expect(res._status).toBe(400)
+      expect(createCanvasMCPServer).not.toHaveBeenCalled()
+    })
+  })
+
   describe('MCP request handling', () => {
     it('creates fresh MCP server per POST /mcp request', async () => {
       const { createCanvasMCPServer } = await import('../src/server')
