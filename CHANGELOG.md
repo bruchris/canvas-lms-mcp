@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.29.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.2...canvas-lms-mcp-v1.29.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** clear 3 moderate hono advisories ([#347](https://github.com/bruchris/canvas-lms-mcp/issues/347)) ([853164c](https://github.com/bruchris/canvas-lms-mcp/commit/853164c2bf64f1b995292a9840c3a6b1bc95f3e4))
+
+
+### Documentation
+
+* **spec:** fix five drifted claims in design spec, gate two mechanically ([#349](https://github.com/bruchris/canvas-lms-mcp/issues/349)) ([d4f574b](https://github.com/bruchris/canvas-lms-mcp/commit/d4f574b6c8cd04e87f71aa0cbfa6712e2fe73189))
+
 ## [1.29.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.1...canvas-lms-mcp-v1.29.2) (2026-09-10)
 
 
