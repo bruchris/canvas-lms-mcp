@@ -305,11 +305,46 @@ describe('doc tool-count consistency', () => {
       ).toBe(TOTAL)
     })
   })
+
+  describe('docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md', () => {
+    it('Totals line matches manifest counts', () => {
+      const m = designSpec.match(/\*\*Totals: (\d+) tools \((\d+) read, (\d+) write\)\.\*\*/)
+      expect(m, 'design spec "**Totals: N tools (N read, N write).**" line not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `design spec Totals line total is ${m![1]} but manifest.toolCount is ${TOTAL} — update the design spec`,
+      ).toBe(TOTAL)
+      expect(
+        Number(m![2]),
+        `design spec Totals line read count is ${m![2]} but manifest says ${READ_ONLY} — update the design spec`,
+      ).toBe(READ_ONLY)
+      expect(
+        Number(m![3]),
+        `design spec Totals line write count is ${m![3]} but manifest says ${WRITE} — update the design spec`,
+      ).toBe(WRITE)
+    })
+
+    it('runtime dependency claim matches package.json dependencies', () => {
+      const m = designSpec.match(/Runtime dependencies: ([^.]+)\./)
+      expect(m, 'design spec "Runtime dependencies: ..." sentence not found').toBeTruthy()
+      const specDeps = new Set([...m![1].matchAll(/`([^`]+)`/g)].map((match) => match[1]))
+      const pkgDeps = new Set(Object.keys(pkg.dependencies))
+      const missing = [...pkgDeps].filter((d) => !specDeps.has(d))
+      const extra = [...specDeps].filter((d) => !pkgDeps.has(d))
+      expect(
+        missing.length === 0 && extra.length === 0,
+        `design spec runtime-dependency sentence lists {${[...specDeps].join(', ')}} but ` +
+          `package.json dependencies are {${[...pkgDeps].join(', ')}} — missing: [${missing.join(', ')}], ` +
+          `extra: [${extra.join(', ')}] — update the design spec`,
+      ).toBe(true)
+    })
+  })
 })
 
 describe('design spec tool inventory enumeration', () => {
-  // The Totals line in the design spec is already gated above via the manifest,
-  // but the per-domain inventory tables are hand-maintained and drift silently
+  // The Totals line and the runtime-dependency sentence are gated above, in the
+  // "docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md" describe block.
+  // The per-domain inventory tables below are hand-maintained and drift silently
   // when new domains ship (BRU-1882, BRU-1900, BRU-1990). Assert that EVERY tool
   // in the generated manifest is actually enumerated in the spec, so a missing
   // table row fails the build instead of waiting for the next manual scan.

@@ -723,9 +723,9 @@ Full OAuth 2.0 authorization code flow for integration with apps like Fjordbyte 
 - Stored tokens managed by host application
 - Passed to MCP server factory at construction time
 
-### No Role-Based Filtering
+### Role-Based Tool Filtering
 
-Canvas enforces permissions server-side. A student token trying to grade returns 403. The MCP server registers all tools regardless and returns clear error messages when Canvas denies access. This is correct because users have context-aware roles — a single user can be a student in one course and an instructor in another.
+Canvas enforces permissions server-side. A student token trying to grade returns 403 regardless of which tools are registered. `--role` / `CANVAS_ROLE` (`student` | `teacher` | `admin`) narrows the *registered* tool list so a context-aware caller sees only what's relevant to it — implemented in `src/tools/roles.ts` (`ROLE_VISIBILITY`) against each tool's `audience`. This is a **client-side UX / context-reduction filter only**, not an authorization boundary: setting `CANVAS_ROLE=admin` does not grant admin powers, and Canvas still returns 403 if the token lacks the scope. Unlike `CANVAS_DESTRUCTIVE_TOOLS=block` (see Deliberate Constraints below), which is a real boundary — the server refuses to register the gated tools at all — this is a UX filter, not a security control. See [Role-based tool filtering](../../../README.md#role-based-tool-filtering) for the full role/tool-count breakdown.
 
 ## Tech Stack
 
@@ -743,7 +743,7 @@ Canvas enforces permissions server-side. A student token trying to grade returns
 | CI | GitHub Actions |
 | Releases | release-please + npm publish |
 
-No runtime dependencies beyond the MCP SDK and Zod. The Canvas client uses native `fetch`.
+Runtime dependencies: `@modelcontextprotocol/sdk`, `zod`, `@iarna/toml`, and `prompts` (the latter two power the init wizard's TOML config generation and interactive prompts). The Canvas client uses native `fetch` for HTTP requests.
 
 ## Release & CI/CD
 
@@ -828,8 +828,8 @@ All tools include MCP tool annotations to help clients (Claude, ChatGPT) make sa
 
 | Annotation | Applied to | Effect |
 |------------|-----------|--------|
-| `readOnlyHint: true` | All 60 read tools | Clients may auto-execute without confirmation |
-| `destructiveHint: true` | All 28 write tools | Clients should ask for user confirmation before executing |
+| `readOnlyHint: true` | All 117 read tools | Clients may auto-execute without confirmation |
+| `destructiveHint: true` | All 48 write tools | Clients should ask for user confirmation before executing |
 | `idempotentHint: true` | `grade_submission`, `submit_rubric_assessment`, `score_quiz_question` | Safe to retry — re-grading with same value is a no-op |
 | `openWorldHint: true` | All tools | Tools interact with external Canvas API |
 
@@ -1041,9 +1041,9 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 - OAuth 2.0 flow (v1.2)
 
 ### Deliberate constraints
-- No destructive write operations
+- Destructive write operations are opt-out, not opt-in: 48 write tools ship, including seven `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register those seven at all — "a real boundary, not a UX filter" (see [Destructive tool policy](../../../README.md#destructive-tool-policy))
 - No account-level admin tools
-- Canvas is the permission authority — MCP server never makes access control decisions
+- Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 
 ## Versioning Roadmap
 
