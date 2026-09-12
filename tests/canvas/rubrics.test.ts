@@ -35,6 +35,29 @@ describe('RubricsModule', () => {
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/rubrics/1')
   })
 
+  it('gets a rubric with assignment associations', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 1,
+      title: 'Essay Rubric',
+      points_possible: 100,
+      data: [],
+      associations: [
+        {
+          id: 7,
+          rubric_id: 1,
+          association_id: 42,
+          association_type: 'Assignment',
+        },
+      ],
+    })
+
+    await rubrics.get(100, 1, { include: ['assignment_associations'] })
+
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/rubrics/1', {
+      query: { include: ['assignment_associations'] },
+    })
+  })
+
   it('gets rubric assessment for a submission', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({
       id: 1,

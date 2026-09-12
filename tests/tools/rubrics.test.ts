@@ -87,6 +87,19 @@ describe('rubricTools', () => {
       expect(canvas.rubrics.get).toHaveBeenCalledWith(1, 10)
       expect(result).toEqual(mockRubric)
     })
+
+    it('passes requested rubric associations to canvas.rubrics.get', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric')!
+      await tool.handler({
+        course_id: 1,
+        rubric_id: 10,
+        include: ['assignment_associations'],
+      })
+      expect(canvas.rubrics.get).toHaveBeenCalledWith(1, 10, {
+        include: ['assignment_associations'],
+      })
+    })
   })
 
   describe('get_rubric_assessment', () => {

@@ -356,6 +356,16 @@ export interface CanvasRubric {
   title: string
   points_possible: number
   data: CanvasRubricCriterion[]
+  associations?: CanvasRubricAssociation[]
+}
+
+export interface CanvasRubricAssociation {
+  id: number
+  rubric_id: number
+  association_id: number
+  association_type: 'Assignment' | 'Course' | 'Account'
+  use_for_grading?: boolean
+  purpose?: 'grading' | 'bookmark'
 }
 
 export interface CanvasRubricCriterion {
