@@ -212,7 +212,9 @@ Host verification (Claude Desktop, ChatGPT, Codex fallback) is performed manuall
 
 ## Deployment Modes
 
-### stdio (Default)
+Every process runs exactly one **auth profile**: `local_static_token` (stdio, the default), `remote_static_token` (`serve`, the default), or `oauth_brokered` (`serve --auth-profile oauth_brokered`). Run `npx canvas-lms-mcp doctor` to see which profile your configuration resolves to and what it is missing, without printing any secret.
+
+### stdio (Default) — `local_static_token`
 
 For local AI clients like Claude Desktop, Cursor, and VS Code. The server communicates over stdin/stdout.
 
@@ -220,9 +222,11 @@ For local AI clients like Claude Desktop, Cursor, and VS Code. The server commun
 npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
 ```
 
-### HTTP
+stdio has no network edge, so hosts cannot show a login state for it: Codex lists a stdio server as `Auth Unsupported` and `codex mcp login` refuses it. That is by design (the MCP authorization spec applies to HTTP transports only). Use the OAuth profile below when you need a native **Authenticate** experience.
 
-For web-based clients or hosted services. Starts an HTTP server with Streamable HTTP transport.
+### HTTP (static token, self-managed) — `remote_static_token`
+
+For a developer's own HTTP experiments, or an application that already holds Canvas tokens. Starts an HTTP server with Streamable HTTP transport; each request carries a Canvas token in `X-Canvas-Token`, or the server's configured token is used.
 
 ```bash
 npx canvas-lms-mcp serve \
@@ -235,6 +239,22 @@ npx canvas-lms-mcp serve \
 Endpoints:
 - `POST /mcp` -- MCP protocol endpoint
 - `GET /health` -- Health check (returns `{"status":"ok"}`)
+
+This profile is **self-managed only**: anyone who can reach the port can present any token, and Canvas's API policy forbids asking other users for personal tokens. Do not expose it to other people; use the OAuth profile instead.
+
+### HTTP (OAuth, host-visible login) — `oauth_brokered`
+
+For Codex, ChatGPT, Claude, and any other host that implements the MCP authorization specification. The server is an OAuth 2.1 authorization + resource server for MCP clients and connects each user to your Canvas institution through a Canvas Developer Key. Hosts show **Not logged in** → **Authenticate**; `codex mcp login canvas-lms` completes the login in the browser. No `CANVAS_API_TOKEN` is needed, and `X-Canvas-Token` is refused.
+
+```bash
+export CANVAS_BASE_URL=https://school.instructure.com
+export CANVAS_MCP_ISSUER=http://127.0.0.1:3001          # public URL of this server; https when hosted
+export CANVAS_OAUTH_CLIENT_ID=…                          # Canvas Developer Key
+export CANVAS_OAUTH_CLIENT_SECRET=…
+npx canvas-lms-mcp serve --auth-profile oauth_brokered
+```
+
+Full setup (Canvas admin prerequisites, Codex `config.toml`, hosted deployment, verification matrix): [docs/oauth-profile.md](docs/oauth-profile.md).
 
 ### Docker
 
@@ -289,7 +309,11 @@ const courses = await canvas.courses.list()
 | `--base-url` | `CANVAS_BASE_URL` | (required) | Canvas instance URL |
 | `serve` | -- | stdio mode | Switch to HTTP mode |
 | `--port` | -- | `3001` | HTTP server port |
-| `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
+| `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin; requests carrying any other `Origin` header are refused |
+| `--auth-profile` | `CANVAS_AUTH_PROFILE` | `local_static_token` (stdio) / `remote_static_token` (`serve`) | Auth profile: `local_static_token`, `remote_static_token`, or `oauth_brokered` (see [docs/oauth-profile.md](docs/oauth-profile.md)) |
+| `--host` | `CANVAS_HTTP_HOST` | all interfaces; `127.0.0.1` in `oauth_brokered` | Bind address for HTTP mode |
+| `--issuer` | `CANVAS_MCP_ISSUER` | (required in `oauth_brokered`) | Public URL of this server; OAuth issuer and resource prefix |
+| `doctor` | -- | -- | Print an identity-safe setup report (also `auth status`); exit 1 when something is missing |
 | `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
 | `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the seven irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 
@@ -297,9 +321,20 @@ const courses = await canvas.courses.list()
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CANVAS_API_TOKEN` | Yes | Canvas personal access token |
+| `CANVAS_API_TOKEN` | Yes, except in `oauth_brokered` | Canvas personal access token |
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
+| `CANVAS_AUTH_PROFILE` | No | `local_static_token`, `remote_static_token`, or `oauth_brokered` (see [docs/oauth-profile.md](docs/oauth-profile.md)) |
+| `CANVAS_HTTP_HOST` | No | Bind address for HTTP mode (default: all interfaces; `127.0.0.1` in `oauth_brokered`) |
+| `CANVAS_MCP_ISSUER` | `oauth_brokered` | Public URL of this server, `https` unless loopback |
+| `CANVAS_OAUTH_CLIENT_ID` | `oauth_brokered` | Canvas Developer Key ID |
+| `CANVAS_OAUTH_CLIENT_SECRET` | `oauth_brokered` | Canvas Developer Key secret |
+| `CANVAS_OAUTH_SCOPES` | No | Space-separated Canvas API scopes for a Developer Key with *Enforce Scopes* |
+| `CANVAS_MCP_OAUTH_CLIENTS` | No | JSON array of pre-registered MCP clients |
+| `CANVAS_MCP_OAUTH_DCR` | No | `true` (default) / `false`: dynamic client registration |
+| `CANVAS_MCP_OAUTH_CIMD_ALLOWED_HOSTS` | No | Trusted Client ID Metadata Document hosts (default `chatgpt.com`; `*` any; `none` off) |
+| `CANVAS_MCP_OAUTH_STORE` | No | Path of the encrypted OAuth grant store (default: in-memory) |
+| `CANVAS_MCP_OAUTH_STORE_KEY` | With store | Secret that encrypts the grant store |
 | `CANVAS_ROLE` | No | Filter the tool list by role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
 | `CANVAS_ENABLE_ASSIGNMENT_SUBMISSION` | No | Set to `true` to register the opt-in [assignment submission tools](#student-assignment-submission-opt-in) |
 | `CANVAS_PSEUDONYMIZE_STUDENTS` | No | Set to `true` to enable [FERPA mode](#ferpa-mode-student-pseudonymization) |

@@ -11,6 +11,16 @@ describe('parseArgs', () => {
     delete process.env.CANVAS_ALLOWED_ORIGIN
     delete process.env.CANVAS_ROLE
     delete process.env.CANVAS_DESTRUCTIVE_TOOLS
+    for (const key of Object.keys(process.env)) {
+      if (
+        key.startsWith('CANVAS_AUTH_') ||
+        key.startsWith('CANVAS_MCP_') ||
+        key.startsWith('CANVAS_OAUTH_') ||
+        key === 'CANVAS_HTTP_HOST'
+      ) {
+        delete process.env[key]
+      }
+    }
   })
 
   afterEach(() => {
@@ -27,6 +37,7 @@ describe('parseArgs', () => {
       mode: 'stdio',
       port: 3001,
       allowedOrigin: 'http://localhost:3000',
+      authProfile: 'local_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
     })
@@ -122,7 +133,7 @@ describe('parseArgs', () => {
     )
 
     expect(errorSpy).toHaveBeenCalledWith(
-      'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN',
+      'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN. Run `canvas-lms-mcp doctor` to check your setup.',
     )
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
@@ -136,7 +147,7 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--token', 'my-token'])).toThrow('process.exit called')
 
     expect(errorSpy).toHaveBeenCalledWith(
-      'Error: Canvas base URL required. Use --base-url or set CANVAS_BASE_URL',
+      'Error: Canvas base URL required. Use --base-url or set CANVAS_BASE_URL. Run `canvas-lms-mcp doctor` to check your setup.',
     )
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
@@ -150,7 +161,7 @@ describe('parseArgs', () => {
     expect(() => parseArgs([])).toThrow('process.exit called')
 
     expect(errorSpy).toHaveBeenCalledWith(
-      'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN',
+      'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN. Run `canvas-lms-mcp doctor` to check your setup.',
     )
   })
 
@@ -171,6 +182,7 @@ describe('parseArgs', () => {
       mode: 'http',
       port: 9000,
       allowedOrigin: 'http://localhost:3000',
+      authProfile: 'remote_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
     })
@@ -417,6 +429,156 @@ describe('parseArgs', () => {
     it('names `confirm` as reserved-but-unimplemented, not as a typo', () => {
       const message = expectFatal([...base, '--destructive-tools=confirm'])
       expect(message).toMatch(/not implemented/i)
+    })
+  })
+  describe('--auth-profile / CANVAS_AUTH_PROFILE (#302 §3, §5)', () => {
+    const OAUTH_ENV = {
+      CANVAS_BASE_URL: 'https://school.instructure.com',
+      CANVAS_MCP_ISSUER: 'http://127.0.0.1:3001',
+      CANVAS_OAUTH_CLIENT_ID: '10000000000001',
+      CANVAS_OAUTH_CLIENT_SECRET: 'dev-key-secret',
+    }
+
+    function expectFatal(args: string[]): string {
+      vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      errorSpy.mockClear()
+      expect(() => parseArgs(args)).toThrow('process.exit called')
+      return String(errorSpy.mock.calls.at(-1)?.[0] ?? '')
+    }
+
+    it('defaults to local_static_token on stdio and remote_static_token on serve, with no oauth config', () => {
+      const base = ['--token', 't', '--base-url', 'https://canvas.example.com']
+      expect(parseArgs(base).authProfile).toBe('local_static_token')
+      const http = parseArgs([...base, 'serve'])
+      expect(http.authProfile).toBe('remote_static_token')
+      expect(http.oauth).toBeUndefined()
+      expect(http.host).toBeUndefined()
+    })
+
+    it('oauth_brokered starts without CANVAS_API_TOKEN and carries the OAuth config (acceptance)', () => {
+      Object.assign(process.env, OAUTH_ENV)
+      const config = parseArgs(['serve', '--auth-profile', 'oauth_brokered'])
+      expect(config.authProfile).toBe('oauth_brokered')
+      expect(config.token).toBe('')
+      expect(config.baseUrl).toBe('https://school.instructure.com')
+      expect(config.host).toBe('127.0.0.1')
+      expect(config.oauth).toMatchObject({
+        issuer: 'http://127.0.0.1:3001',
+        resource: 'http://127.0.0.1:3001/mcp',
+        canvas: { clientId: '10000000000001' },
+      })
+    })
+
+    it('reads the profile from CANVAS_AUTH_PROFILE and accepts the --auth-profile=value form', () => {
+      Object.assign(process.env, OAUTH_ENV, { CANVAS_AUTH_PROFILE: 'oauth_brokered' })
+      expect(parseArgs(['serve']).authProfile).toBe('oauth_brokered')
+      expect(
+        parseArgs(['serve', '--auth-profile=remote_static_token', '--token', 't']).authProfile,
+      ).toBe('remote_static_token')
+    })
+
+    it('ignores a leftover PAT in the OAuth profile with a warning instead of refusing to start', () => {
+      Object.assign(process.env, OAUTH_ENV, { CANVAS_API_TOKEN: 'leftover' })
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const config = parseArgs(['serve', '--auth-profile', 'oauth_brokered'])
+      expect(config.token).toBe('')
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('ignored in the oauth_brokered profile'),
+      )
+    })
+
+    it('exits on an unknown profile, on a profile/transport mismatch, and on a bare flag', () => {
+      expect(expectFatal(['serve', '--auth-profile', 'oauth'])).toContain(
+        "Unknown --auth-profile value 'oauth'",
+      )
+      expect(expectFatal(['--auth-profile', 'oauth_brokered'])).toContain(
+        'requires the HTTP transport',
+      )
+      expect(
+        expectFatal([
+          'serve',
+          '--token',
+          't',
+          '--base-url',
+          'https://c.example',
+          '--auth-profile',
+          'local_static_token',
+        ]),
+      ).toContain("cannot be used with 'serve'")
+      expect(expectFatal(['serve', '--auth-profile'])).toContain('--auth-profile requires a value')
+    })
+
+    it('the flag is the only source parsed, so an invalid ambient CANVAS_AUTH_PROFILE cannot break a valid override', () => {
+      process.env.CANVAS_AUTH_PROFILE = 'garbage'
+      const config = parseArgs([
+        'serve',
+        '--auth-profile',
+        'remote_static_token',
+        '--token',
+        't',
+        '--base-url',
+        'https://c.example',
+      ])
+      expect(config.authProfile).toBe('remote_static_token')
+    })
+
+    it('names the missing OAuth input and points at doctor, without echoing secrets', () => {
+      Object.assign(process.env, OAUTH_ENV)
+      delete process.env.CANVAS_MCP_ISSUER
+      const message = expectFatal(['serve', '--auth-profile', 'oauth_brokered'])
+      expect(message).toContain('CANVAS_MCP_ISSUER (or --issuer) is required')
+      expect(message).toContain('canvas-lms-mcp doctor')
+      expect(message).not.toContain('dev-key-secret')
+    })
+
+    it('--issuer and --base-url override the environment in the OAuth profile', () => {
+      Object.assign(process.env, OAUTH_ENV)
+      const config = parseArgs([
+        'serve',
+        '--auth-profile',
+        'oauth_brokered',
+        '--issuer',
+        'https://canvas-mcp.example.edu/',
+        '--base-url',
+        'https://other.instructure.com',
+      ])
+      expect(config.oauth?.issuer).toBe('https://canvas-mcp.example.edu')
+      expect(config.baseUrl).toBe('https://other.instructure.com')
+    })
+
+    describe('--host / CANVAS_HTTP_HOST', () => {
+      it('is undefined (all interfaces, unchanged) for the static HTTP profile unless set', () => {
+        const base = ['serve', '--token', 't', '--base-url', 'https://c.example']
+        expect(parseArgs(base).host).toBeUndefined()
+        expect(parseArgs([...base, '--host', '0.0.0.0']).host).toBe('0.0.0.0')
+        process.env.CANVAS_HTTP_HOST = '10.0.0.5'
+        expect(parseArgs(base).host).toBe('10.0.0.5')
+      })
+
+      it('defaults to loopback for the OAuth profile and refuses to expose a loopback issuer', () => {
+        Object.assign(process.env, OAUTH_ENV)
+        expect(parseArgs(['serve', '--auth-profile', 'oauth_brokered']).host).toBe('127.0.0.1')
+        const message = expectFatal([
+          'serve',
+          '--auth-profile',
+          'oauth_brokered',
+          '--host',
+          '0.0.0.0',
+        ])
+        expect(message).toContain('must bind a loopback host too')
+      })
+
+      it('lets an https issuer bind all interfaces (hosted behind TLS termination)', () => {
+        Object.assign(process.env, OAUTH_ENV, {
+          CANVAS_MCP_ISSUER: 'https://canvas-mcp.example.edu',
+        })
+        expect(
+          parseArgs(['serve', '--auth-profile', 'oauth_brokered', '--host', '0.0.0.0']).host,
+        ).toBe('0.0.0.0')
+      })
     })
   })
 })

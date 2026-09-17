@@ -29,9 +29,11 @@ Canvas LMS MCP server — no UI, pure TypeScript. Three layers:
 ```
 src/canvas/       Standalone Canvas REST API client (pure fetch, no MCP dependency)
 src/tools/        MCP tool definitions — each domain returns ToolDefinition[]
+src/auth/         Auth profiles; src/auth/oauth/ is the OAuth 2.1 authorization/resource server + Canvas Developer Key client
 src/server.ts     Factory: createCanvasMCPServer(config) wires canvas + tools into McpServer
 src/stdio.ts      stdio transport entry — Claude Desktop, Cursor, VS Code
-src/http.ts       HTTP transport entry — ChatGPT, hosted service (per-request auth)
+src/http.ts       HTTP transport entry — remote_static_token (X-Canvas-Token) or oauth_brokered (MCP OAuth)
+src/doctor.ts     `canvas-lms-mcp doctor` — identity-safe setup diagnostics
 ```
 
 ### Canvas Client Pattern
@@ -89,12 +91,13 @@ Every tool must declare MCP annotations:
 | MCP server factory       | `src/server.ts`               |
 | stdio transport          | `src/stdio.ts`                |
 | HTTP transport           | `src/http.ts`                 |
+| Auth profiles / OAuth    | `src/auth/`                   |
 | CLI argument parser      | `src/cli.ts`                  |
 | Tests                    | `tests/`                      |
 
 ### Required Environment Variables
 
-- `CANVAS_API_TOKEN` — Canvas personal access token (or passed via `--token` CLI flag)
+- `CANVAS_API_TOKEN` — Canvas personal access token (or passed via `--token` CLI flag). Not used by the `oauth_brokered` HTTP profile, which takes `CANVAS_MCP_ISSUER`, `CANVAS_OAUTH_CLIENT_ID`, `CANVAS_OAUTH_CLIENT_SECRET` instead (see `docs/oauth-profile.md`)
 - `CANVAS_BASE_URL` — Canvas instance base URL, origin only with no `/api/v1` suffix (the client embeds `/api/v1` per endpoint), e.g., `https://school.instructure.com` (or passed via `--base-url` CLI flag)
 
 ### How to Add a New Tool

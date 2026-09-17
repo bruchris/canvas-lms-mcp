@@ -46,7 +46,12 @@ The AI client spawns `canvas-lms-mcp` as a subprocess. The MCP protocol messages
 
 ## Pattern 2: HTTP Transport (Multi-Tenant Service)
 
-Run the server as an HTTP service. Each request carries its own Canvas credentials via headers, enabling multi-user deployments.
+Run the server as an HTTP service. This section describes the `remote_static_token`
+profile (the `serve` default): each request carries its own Canvas token in a header.
+It is meant for self-managed deployments where your application already holds Canvas
+tokens. For hosts that log in with OAuth (Codex, ChatGPT, Claude), use the
+`oauth_brokered` profile described in [oauth-profile.md](oauth-profile.md); it needs no
+Canvas token from the client and refuses `X-Canvas-Token`.
 
 ### How It Works
 
@@ -83,7 +88,6 @@ const response = await fetch('http://localhost:3001/mcp', {
   headers: {
     'Content-Type': 'application/json',
     'X-Canvas-Token': userToken,
-    'X-Canvas-Base-URL': 'https://school.instructure.com',
   },
   body: JSON.stringify({
     jsonrpc: '2.0',
@@ -101,16 +105,20 @@ const response = await fetch('http://localhost:3001/mcp', {
 
 The HTTP handler supports two credential modes:
 
-1. **Per-request headers**: `X-Canvas-Token` and `X-Canvas-Base-URL` override defaults
+1. **Per-request header**: `X-Canvas-Token` overrides the default token
 2. **Default config**: Falls back to `--token` and `--base-url` CLI args or env vars
+
+The Canvas base URL is always server configuration; no request header can change it.
 
 If neither is provided, the server returns `400 Missing Canvas credentials`.
 
 ### Security
 
 - **CORS**: Configured via `--allowed-origin` (default: `http://localhost:3000`). Set to your application's domain in production.
-- **SSRF protection**: The server validates `X-Canvas-Base-URL` -- rejects private IPs (127.x, 10.x, 172.16-31.x, 192.168.x, 169.254.x, localhost) and requires HTTPS in production (`NODE_ENV !== development`).
+- **Origin check**: Requests carrying an `Origin` header other than `--allowed-origin` are refused with `403`.
+- **SSRF protection**: The Canvas base URL comes only from `--base-url` / `CANVAS_BASE_URL`; there is no request header for it.
 - **No session state**: Each request is stateless. No tokens are stored server-side.
+- **Self-managed only**: anyone who can reach the port can present any token. Do not expose this profile to other users; that is what the OAuth profile is for.
 
 ### Health Check
 
