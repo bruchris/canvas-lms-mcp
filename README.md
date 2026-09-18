@@ -89,6 +89,8 @@ npx skills add bruchris/canvas-lms-mcp
 
 Skills are markdown workflow files (no extra dependencies). They work with the MCP server you already have installed. See the [`skills/` directory](./skills/) for the full list.
 
+The same 16 workflows are also served over MCP as [prompts](https://modelcontextprotocol.io/docs/concepts/prompts), so a host without a skill-file loader — Claude Desktop, ChatGPT, or an application embedding this server in-process — can list them with `prompts/list` and fetch one with `prompts/get`. Each prompt advertises optional `course_id`-style arguments a host can prefill, and marks the workflows that reach write tools. Prompts are inert templates the user chooses: selecting one grants the model no tool authority it did not already have.
+
 ## Example Prompts
 
 Once configured, try these prompts with your AI client:

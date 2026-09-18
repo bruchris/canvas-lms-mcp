@@ -71,4 +71,22 @@ describe('skill-count consistency', () => {
       ).toBe(SKILL_COUNT)
     })
   })
+
+  describe('MCP prompt surface', () => {
+    it('registers one prompt per skill directory', async () => {
+      const { buildPromptDefinitions } = await import('../../src/prompts/catalog')
+      expect(
+        buildPromptDefinitions().length,
+        `skills/ has ${SKILL_COUNT} directories with a SKILL.md but the generated prompt catalog has a different count — run \`pnpm generate:prompts\``,
+      ).toBe(SKILL_COUNT)
+    })
+
+    it('ships skills/ to npm consumers', () => {
+      const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8'))
+      expect(
+        pkg.files,
+        'package.json#files must include "skills/" so an npm consumer can read the markdown even on a server version that predates the prompt surface',
+      ).toContain('skills/')
+    })
+  })
 })
