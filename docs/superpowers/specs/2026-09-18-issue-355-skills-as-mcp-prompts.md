@@ -459,6 +459,26 @@ New file `tests/prompts/skills.test.ts` unless noted.
 
 17. The number of registered prompts (unset role) equals the skill-directory count, so adding a
     skill without regenerating fails CI.
+18. `package.json#files` still ships `skills/`.
+
+**Added during implementation** — two gaps this plan did not originally cover
+
+19. **The SDK limitation is proven, not asserted** —
+    `tests/prompts/sdk-registerprompt-characterisation.test.ts` builds a prompt through
+    `registerPrompt` and shows `prompts/get` failing when `arguments` is omitted. §1.1 is the
+    justification for the whole handler-ownership decision, so it earns a test rather than a
+    comment. When a future SDK fixes this, that test turns red and points at the simplification.
+20. **The HTTP transport is exercised for real** — `tests/prompts/http-transport.test.ts`. The
+    existing `tests/http.test.ts` mocks `createCanvasMCPServer`, so nothing there was a protocol
+    round trip, and HTTP is precisely where the construction order matters: it builds a fresh
+    `McpServer` per POST, `registerCapabilities` throws once a transport is attached, and
+    `setRequestHandler` refuses an undeclared method. The test drives a real server with a real
+    client, including a `getPrompt` that lands on a different instance than the `listPrompts`
+    before it.
+
+Verified end to end against the built artifact over real stdio as well: capability declaration,
+16 prompts, advertised arguments, `_meta`, a `getPrompt` with no `arguments` key, the context
+block, the unknown-argument rejection, and role counts of 2 / 13 / 14 / 16.
 
 ---
 
