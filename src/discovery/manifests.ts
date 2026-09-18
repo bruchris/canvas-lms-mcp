@@ -2,6 +2,7 @@ import type { CanvasClient } from '../canvas'
 import { toolDomainCatalog, type ToolDomainRegistration } from '../tools/catalog'
 import type { ToolAnnotations, ToolAudience, ToolDefinition } from '../tools/types'
 import { resolveTitle } from '../tools/titles'
+import { createRegistryProbeClient } from '../tools/registry-probe'
 import { workflowCatalog, type WorkflowCatalogEntry } from './catalog'
 
 export interface ToolManifestEntry {
@@ -48,16 +49,7 @@ export interface ManifestBuildOptions {
 }
 
 function createManifestCanvasProxy(): CanvasClient {
-  return new Proxy(
-    {},
-    {
-      get(_target, property) {
-        throw new Error(
-          `Manifest generation accessed Canvas client during tool registration via "${String(property)}".`,
-        )
-      },
-    },
-  ) as CanvasClient
+  return createRegistryProbeClient('Manifest generation')
 }
 
 function getRegisteredToolContexts(

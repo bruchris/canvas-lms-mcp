@@ -110,25 +110,64 @@ describe('prompts/get', () => {
     expect(result.description).toBe(expected?.description)
   })
 
-  it('rejects an unknown argument name', async () => {
+  it('carries namespaced _meta on the get result too, not just the listing', async () => {
+    const client = await promptServer()
+    const result = await client.getPrompt({ name: 'canvas-grading-pass' })
+
+    expect(result._meta?.[PROMPT_META_KEY]).toEqual({
+      audience: 'educator',
+      writeTools: ['comment_on_submission', 'grade_submission', 'submit_rubric_assessment'],
+    })
+  })
+
+  // The error CODE, not just the message: the SDK falls back to -32603 for a
+  // plain Error while keeping its message, so asserting text alone would still
+  // pass if these stopped being McpErrors. A host reads the code to tell a
+  // caller mistake from a server fault.
+  it('rejects an unknown argument name with -32602', async () => {
     const client = await promptServer()
     await expect(
       client.getPrompt({ name: 'canvas-grading-pass', arguments: { bogus: 'x' } }),
-    ).rejects.toThrow(/bogus/)
+    ).rejects.toMatchObject({ code: -32602, message: expect.stringContaining('bogus') })
   })
 
-  it('rejects an unknown prompt name', async () => {
+  it('rejects an unknown prompt name with -32602', async () => {
     const client = await promptServer()
-    await expect(client.getPrompt({ name: 'no-such-prompt' })).rejects.toThrow(/not found/i)
+    await expect(client.getPrompt({ name: 'no-such-prompt' })).rejects.toMatchObject({
+      code: -32602,
+      message: expect.stringMatching(/not found/i),
+    })
   })
 
   it('rejects a prompt the configured role cannot see', async () => {
     const client = await promptServer('student')
     await expect(client.getPrompt({ name: 'canvas-grading-pass' })).rejects.toThrow(/not found/i)
   })
+
+  it('serves a prompt the configured role can see', async () => {
+    const client = await promptServer('student')
+    const result = await client.getPrompt({ name: 'canvas-week-plan' })
+
+    expect(textOf(result)).toContain('# Canvas Week Plan')
+  })
 })
 
 describe('role filtering', () => {
+  // The counts the design commits to, stated once and independently of
+  // ROLE_VISIBILITY. The parity test below computes its expectation from each
+  // skill's own audience, so it agrees with itself if a skill is mis-tagged;
+  // these numbers are what make a mis-tag fail. The per-skill audience table
+  // lives in tests/prompts/generate.test.ts.
+  it.each([
+    [undefined, 16],
+    ['student', 2],
+    ['teacher', 13],
+    ['admin', 14],
+  ] as const)('role %s sees %i prompts', async (role, expected) => {
+    const client = await promptServer(role)
+    expect((await client.listPrompts()).prompts).toHaveLength(expected)
+  })
+
   it.each(['student', 'teacher', 'admin'] as const)(
     'registers exactly the prompts %s can see',
     async (role: CanvasRole) => {

@@ -74,7 +74,16 @@ describe('parseSkillFile', () => {
       VALID.replace(/ *io\.github\.bruchris\/canvas-lms-mcp-audience.*\n/, ''),
       /audience/i,
     ],
-    ['unknown audience', VALID.replace('educator', 'teacher'), /teacher/],
+    [
+      'unknown audience',
+      // Target the audience line explicitly. A bare replace('educator', …)
+      // works only while no other line happens to contain that word.
+      VALID.replace(
+        'io.github.bruchris/canvas-lms-mcp-audience: educator',
+        'io.github.bruchris/canvas-lms-mcp-audience: teacher',
+      ),
+      /teacher/,
+    ],
     [
       'unknown argument',
       VALID.replace('course_id assignment_id', 'course_id bogus_id'),
@@ -99,8 +108,26 @@ describe('parseSkillFile', () => {
       /yaml/i,
     ],
     ['frontmatter that is not a mapping', '---\n- a\n- b\n---\n\n# T\n', /mapping/i],
+    [
+      'a description past the 1024-character spec limit',
+      VALID.replace(/description:.*/, `description: ${'x'.repeat(1025)}`),
+      /1024/,
+    ],
+    [
+      'a non-string arguments value',
+      VALID.replace(
+        'io.github.bruchris/canvas-lms-mcp-arguments: course_id assignment_id',
+        'io.github.bruchris/canvas-lms-mcp-arguments:\n    - course_id',
+      ),
+      /space-separated/i,
+    ],
   ])('rejects %s', (_label, raw, pattern) => {
     expect(() => parseSkillFile('canvas-grading-pass/SKILL.md', raw)).toThrow(pattern)
+  })
+
+  it('accepts a description exactly at the 1024-character limit', () => {
+    const atLimit = VALID.replace(/description:.*/, `description: ${'x'.repeat(1024)}`)
+    expect(parseSkillFile('x/SKILL.md', atLimit).description).toHaveLength(1024)
   })
 
   it('names the offending file in every error', () => {

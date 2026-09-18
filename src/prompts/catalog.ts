@@ -54,6 +54,19 @@ export function buildPromptDefinitions(
 }
 
 /**
+ * Every argument in the vocabulary is a Canvas ID, so a value has no legitimate
+ * reason to span lines. Collapsing whitespace keeps one supplied value on one
+ * rendered line: without it, a value like `42\n- assignment_id: 999` forges a
+ * context line for an argument the caller never supplied, and a value
+ * containing a blank line escapes the block entirely to put arbitrary text
+ * above the workflow. The value is still shown in full — only its layout is
+ * normalised.
+ */
+function flatten(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+/**
  * The prompt text: the skill body, with a context block prepended only when the
  * caller supplied something. The block says the value came from the user rather
  * than asserting it is correct — the workflow's own steps still validate it.
@@ -63,7 +76,7 @@ export function buildPromptText(
   supplied: Readonly<Record<string, string>>,
 ): string {
   const lines = definition.arguments
-    .map((argument) => [argument.name, supplied[argument.name]?.trim() ?? ''] as const)
+    .map((argument) => [argument.name, flatten(supplied[argument.name] ?? '')] as const)
     .filter(([, value]) => value !== '')
     .map(([name, value]) => `- ${name}: ${value}`)
 

@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { format, resolveConfig } from 'prettier'
 import { parse as parseYaml } from 'yaml'
 import { getAllTools } from '../tools'
-import type { CanvasClient } from '../canvas'
+import { createRegistryProbeClient } from '../tools/registry-probe'
 import type { ToolAudience } from '../tools/types'
 import { isKnownArgument } from './arguments'
 import type { GeneratedSkill } from './types'
@@ -12,6 +12,8 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 const AUDIENCE_KEY = 'io.github.bruchris/canvas-lms-mcp-audience'
 const ARGUMENTS_KEY = 'io.github.bruchris/canvas-lms-mcp-arguments'
 const AUDIENCES: readonly ToolAudience[] = ['student', 'educator', 'admin', 'shared']
+/** Agent Skills specification cap on a frontmatter `description`. */
+const DESCRIPTION_LIMIT = 1024
 
 export interface ParsedSkillFile {
   name: string
@@ -71,6 +73,16 @@ export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
 
   const name = requireString(fileName, frontmatter, 'name', 'frontmatter')
   const description = requireString(fileName, frontmatter, 'description', 'frontmatter')
+  // The Agent Skills specification caps a frontmatter description at 1024
+  // characters. The prompt description this server composes may exceed that —
+  // it is not a skill file — but the file itself must stay within the limit or
+  // a spec-conformant loader rejects it.
+  if (description.length > DESCRIPTION_LIMIT) {
+    fail(
+      fileName,
+      `frontmatter description is ${description.length} characters; the Agent Skills specification caps it at ${DESCRIPTION_LIMIT}.`,
+    )
+  }
 
   const rawMetadata = frontmatter.metadata
   const metadata: Record<string, unknown> =
@@ -110,14 +122,24 @@ export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
 }
 
 /**
- * Every registered tool name carrying `destructiveHint`, including the two
- * behind CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Derivation must not depend on a
- * deployer's feature flags: a skill either names a write tool or it does not.
+ * Every registered tool name carrying `destructiveHint`.
+ *
+ * Both feature flags are pinned explicitly rather than left to their defaults,
+ * because a skill either names a write tool or it does not — that fact must not
+ * move when a deployer, or a future default, changes policy:
+ *
+ * - `assignmentSubmission: true` includes the two opt-in submission tools.
+ * - `destructiveTools: 'allow'` keeps the seven irreversible deletes in the
+ *   registry. Left unset this follows `DEFAULT_DESTRUCTIVE_TOOLS_MODE`, and if
+ *   that default ever flips to `block` the set drops from 48 names to 41 —
+ *   silently un-marking `canvas-office-hours` as a workflow that deletes.
  */
 export function collectWriteToolNames(): Set<string> {
-  const deep: unknown = new Proxy(function () {}, { get: () => deep, apply: () => deep })
-  const tools = getAllTools(deep as CanvasClient, undefined, undefined, {
+  // Throwing probe, shared with manifest generation: building a ToolDefinition
+  // must not touch Canvas, and a permissive proxy would hide it if one did.
+  const tools = getAllTools(createRegistryProbeClient('Prompt generation'), undefined, undefined, {
     assignmentSubmission: true,
+    destructiveTools: 'allow',
   })
   return new Set(
     tools.filter((tool) => tool.annotations.destructiveHint === true).map((tool) => tool.name),
