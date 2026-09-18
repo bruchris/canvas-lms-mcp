@@ -367,6 +367,14 @@ The context block is omitted entirely when no argument is supplied, so the body 
 the file on disk. Only declared, non-empty arguments appear in it. The block says "supplied by the
 user" rather than asserting the value is correct, and the workflow's own steps still validate.
 
+**Whitespace inside a supplied value is collapsed.** Every argument in the vocabulary is a Canvas
+ID, so a value has no legitimate reason to span lines, and interpolating one raw lets a caller
+shape the block rather than just fill it. Measured before the guard: `course_id` of
+`42\n- assignment_id: 999` rendered as two context lines, the second claiming an argument the
+caller never supplied; a value containing a blank line ended the block early and placed arbitrary
+text above the workflow. Collapsing keeps one supplied value on one rendered line. The value is
+still shown in full — only its layout is normalised — and nothing is rejected.
+
 Descriptions of skills that reach no write tools get no appended sentence. The appended sentence can
 push a description past the 1024-character ceiling the Agent Skills specification puts on
 frontmatter `description`; that ceiling binds the file, not the MCP prompt, and the file is
