@@ -46,9 +46,9 @@ no newer release to wait for.
 
 ---
 
-## 1. Three findings that shape the design
+## 1. Four findings that shape the design
 
-The issue's four proposals are all adopted. Three measurements change *how*.
+The issue's four proposals are all adopted. Four measurements change *how*.
 
 ### 1.1 A declared `argsSchema` makes a spec-legal `prompts/get` call fail
 
@@ -148,6 +148,37 @@ for a host:
 The `_meta` key matches `package.json#mcpName`, so it is namespaced to this server and cannot
 collide with another server's metadata in an aggregating host.
 
+### 1.4 One skill's frontmatter is not valid YAML
+
+`skills/canvas-admin-roster/SKILL.md` has an unquoted `description:` containing `": "`:
+
+```yaml
+description: Admin skill for walking the Canvas account hierarchy: list accounts and sub-accounts, …
+```
+
+A real YAML parser reads that as a nested mapping and rejects the document. Measured across all
+16 files with `yaml` 2.8.3: **15 parse, 1 fails** with `Nested mappings are not allowed in compact
+mappings at line 2, column 14`. The same defect is reported independently, against `js-yaml` and
+PyYAML as well, by the in-flight BRU-2549 design (§10).
+
+This has two consequences, and the second is the important one.
+
+**The file must be fixed.** The value is wrapped in single quotes — it contains no apostrophe, so
+nothing needs escaping and not one character of the text changes. This is a real bug independent of
+this work: any Agent Skills consumer that parses frontmatter properly cannot read that skill today.
+
+**Generation must use a real YAML parser, not a hand-rolled one.** The first draft of this design
+split each frontmatter line on its first colon. That parser would have read the broken file
+*successfully* — and in doing so would have hidden, behind a green build, a defect that every other
+consumer in the ecosystem trips over. A generator whose notion of valid differs from the
+ecosystem's is worse than no generator, because it converts an interoperability bug into a silent
+one.
+
+So `yaml` is added as a **devDependency** and used by the generator. It is build-time only: nothing
+under `src/prompts/` that the server imports at runtime touches it, so the published package gains
+no dependency. A parse failure fails generation, naming the file, which makes a future malformed
+frontmatter a CI failure rather than a silently dropped skill.
+
 ---
 
 ## 2. Architecture
@@ -171,7 +202,8 @@ src/prompts/skills.generated.ts  committed, typed, bundler-safe
 
 Three candidates were considered.
 
-**A generated TypeScript module (chosen).** A script parses `skills/*/SKILL.md` into a committed
+**A generated TypeScript module (chosen).** A script parses `skills/*/SKILL.md` — frontmatter via
+the `yaml` package (§1.4), body verbatim — into a committed
 `src/prompts/skills.generated.ts`, exactly as `docs/generated/*.json` is generated from the tool
 registry and `src/ui/*.html.ts` holds inlined widget HTML today. It works under tsup, under `tsc`
 declaration emit, under vitest, and inside a downstream bundler, in both ESM and CJS output. A test
@@ -395,6 +427,7 @@ New file `tests/prompts/skills.test.ts` unless noted.
    matches its directory name.
 3. Frontmatter parsing: `name`, `description`, and both metadata keys are extracted; body excludes
    frontmatter; the frontmatter description stays within 1024 characters.
+3a. Every one of the 16 files parses as YAML — the §1.4 regression gate, which fails today.
 4. An unknown argument name in frontmatter fails generation with a message naming the skill and the
    argument.
 5. A missing audience fails generation with a message naming the skill.
@@ -431,23 +464,25 @@ New file `tests/prompts/skills.test.ts` unless noted.
 
 ## 8. Implementation checklist
 
-1. Add the two `metadata` keys to all 16 `SKILL.md` files (§3.1). Content otherwise untouched.
-2. `src/prompts/arguments.ts` — the closed argument vocabulary (§3.2).
-3. `scripts/generate-prompts.ts` — parse, validate, derive write tools, emit
+1. Fix the invalid frontmatter in `skills/canvas-admin-roster/SKILL.md` by single-quoting its
+   description (§1.4), and add `yaml` as a devDependency.
+2. Add the two `metadata` keys to all 16 `SKILL.md` files (§3.1). Content otherwise untouched.
+3. `src/prompts/arguments.ts` — the closed argument vocabulary (§3.2).
+4. `scripts/generate-prompts.ts` — parse, validate, derive write tools, emit
    `src/prompts/skills.generated.ts`. Wire `pnpm generate:prompts`.
-4. `src/prompts/skills.generated.ts` — generated and committed.
-5. `src/prompts/catalog.ts` — build prompt definitions: title, description with the appended write
+5. `src/prompts/skills.generated.ts` — generated and committed.
+6. `src/prompts/catalog.ts` — build prompt definitions: title, description with the appended write
    sentence, argument descriptors, `_meta`, and the message builder.
-6. `src/prompts/index.ts` — `registerAllPrompts(server, role)`: filter by role, and when the result
+7. `src/prompts/index.ts` — `registerAllPrompts(server, role)`: filter by role, and when the result
    is non-empty register the capability and both handlers (§1.1, §5).
-7. `src/server.ts` — call `registerAllPrompts` alongside `registerAllTools` and
+8. `src/server.ts` — call `registerAllPrompts` alongside `registerAllTools` and
    `registerAllResources`.
-8. `package.json#files` — add `skills/` (§6).
-9. Tests per §7.
-10. Docs: README Agent Skills section (prompts are now served over MCP), `docs/agent-discovery.md`
+9. `package.json#files` — add `skills/` (§6).
+10. Tests per §7.
+11. Docs: README Agent Skills section (prompts are now served over MCP), `docs/agent-discovery.md`
     (prompt surface + `pnpm generate:prompts`), and a new step in `.claude/CLAUDE.md`'s "How to add
     a new tool" sibling section covering how to add a skill.
-11. Full local validation: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
+12. Full local validation: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
 
 ---
 
@@ -464,3 +499,27 @@ New file `tests/prompts/skills.test.ts` unless noted.
 - **`prompts/list` pagination.** 16 entries, names and descriptions only.
 - **Elicitation or any model-initiated prompt invocation.** A prompt is user-chosen by design; that
   property is what makes this change add no tool authority.
+
+---
+
+## 10. Relationship to the MCP Skills Extension design (BRU-2549)
+
+A separate in-flight design, `docs/superpowers/specs/2026-09-15-bru-2549-mcp-skills-extension.md`
+on branch `docs/bru-2549-skills-extension-design`, proposes serving the same 16 skills over
+SEP-2640, the standards-track Skills Extension. It is design-only and unmerged. The two are
+complementary, not competing, and this document does not depend on it:
+
+- **Different primitives, different reach.** Prompts are supported by every MCP host today. That
+  design's own measurement finds no mainstream client supports the Skills Extension — Claude
+  Desktop, Claude web, Cursor, VS Code and Goose all lack it — and recommends shipping it opt-in
+  and default-off for that reason. Prompts are what makes the workflows reachable *now*, which is
+  what issue #355 asks for.
+- **They agree on the mechanics that matter.** Both conclude the skill content must be embedded at
+  build time because `package.json#files` does not ship `skills/`, and both treat `skills/` as the
+  source of truth. Both flag the same `canvas-admin-roster` YAML defect.
+- **The generated catalog is reusable.** `GENERATED_SKILLS` carries name, description, body and
+  per-file provenance, which is most of what a `skills/list` entry needs. A later SEP-2640
+  implementation should extend that module rather than add a second generator, and will need to add
+  the raw-byte digests and sizes that the extension requires and prompts do not.
+
+Whoever reviews both should decide the sequencing. Nothing here forecloses either option.

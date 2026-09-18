@@ -17,6 +17,7 @@
 - TypeScript strict, with `noUncheckedIndexedAccess`, `noUnusedLocals`, `noUnusedParameters`. Indexing an array or record yields `T | undefined`; handle it.
 - Conventional commits: `feat`, `fix`, `chore`, `docs`, `test`, `ci`.
 - Tests never hit a real Canvas instance.
+- Frontmatter is parsed with the `yaml` package, never by hand. A hand-rolled parser reads the one malformed file successfully and hides a real interoperability bug. `yaml` is a **devDependency**: build-time only, never imported by anything the server loads at runtime.
 - `_meta` namespace key, used verbatim everywhere: `io.github.bruchris/canvas-lms-mcp` (matches `package.json#mcpName`).
 - Frontmatter metadata keys, used verbatim: `io.github.bruchris/canvas-lms-mcp-audience` and `io.github.bruchris/canvas-lms-mcp-arguments`.
 - Do not merge the PR. Push the branch and open it; the CTO merges.
@@ -38,7 +39,112 @@
 | `src/tools/roles.ts` | Modified: extract `isAudienceVisibleForRole` so prompts and tools share one visibility table. |
 | `src/server.ts` | Modified: call `registerAllPrompts`. |
 | `skills/*/SKILL.md` | Modified: 16 files gain a `metadata:` block. Bodies untouched. |
-| `package.json` | Modified: `files` gains `skills/`; new `generate:prompts` script. |
+| `package.json` | Modified: `files` gains `skills/`; new `generate:prompts` script; `yaml` devDependency. |
+| `skills/canvas-admin-roster/SKILL.md` | Fixed first: its description is single-quoted so the frontmatter is valid YAML. |
+
+---
+
+## Task 0: Make every skill's frontmatter valid YAML
+
+`skills/canvas-admin-roster/SKILL.md` has an unquoted description containing `": "`, so a real YAML
+parser reads it as a nested mapping and rejects the file. Measured: 15 of 16 parse, that one fails.
+Everything downstream reads frontmatter, so this is fixed first and on its own.
+
+**Files:**
+
+- Modify: `skills/canvas-admin-roster/SKILL.md` (frontmatter line 3 only)
+- Modify: `package.json` (add the `yaml` devDependency)
+- Test: `tests/prompts/frontmatter-yaml.test.ts`
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: the guarantee every later task relies on — `yaml.parse` succeeds on all 16 files.
+
+- [ ] **Step 1: Add the yaml devDependency**
+
+Run: `pnpm add -D yaml`
+Expected: `package.json#devDependencies` gains `yaml`, and the lockfile updates.
+
+- [ ] **Step 2: Write the failing test**
+
+Create `tests/prompts/frontmatter-yaml.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { parse } from 'yaml'
+
+const SKILLS_DIR = resolve(__dirname, '../../skills')
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/
+
+const skillDirs = readdirSync(SKILLS_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .filter((entry) => existsSync(join(SKILLS_DIR, entry.name, 'SKILL.md')))
+  .map((entry) => entry.name)
+
+function frontmatterOf(name: string): Record<string, unknown> {
+  const raw = readFileSync(join(SKILLS_DIR, name, 'SKILL.md'), 'utf8')
+  const match = raw.match(FRONTMATTER)
+  if (!match) throw new Error(`${name}/SKILL.md has no YAML frontmatter block`)
+  // A hand-rolled "split on the first colon" parser accepts a description
+  // containing ": " that every real YAML parser rejects. This gate is what
+  // keeps our notion of valid from diverging from the ecosystem's.
+  return parse(match[1]!) as Record<string, unknown>
+}
+
+describe('SKILL.md frontmatter is valid YAML', () => {
+  it('finds skill directories to check', () => {
+    expect(skillDirs.length).toBeGreaterThan(0)
+  })
+
+  it.each(skillDirs)('%s parses, with a string name and description', (name) => {
+    const parsed = frontmatterOf(name)
+    expect(typeof parsed.name, name).toBe('string')
+    expect(typeof parsed.description, name).toBe('string')
+  })
+
+  it.each(skillDirs)('%s frontmatter name matches its directory', (name) => {
+    expect(frontmatterOf(name).name).toBe(name)
+  })
+
+  it.each(skillDirs)('%s description stays within the 1024-character spec limit', (name) => {
+    expect(String(frontmatterOf(name).description).length).toBeLessThanOrEqual(1024)
+  })
+})
+```
+
+- [ ] **Step 3: Run it to make sure it fails**
+
+Run: `pnpm vitest run tests/prompts/frontmatter-yaml.test.ts`
+Expected: FAIL on `canvas-admin-roster` with `Nested mappings are not allowed in compact mappings`.
+Every other skill passes. If more than one fails, stop and report — the plan assumes exactly one.
+
+- [ ] **Step 4: Fix the frontmatter**
+
+In `skills/canvas-admin-roster/SKILL.md`, wrap the description value in single quotes. The text
+contains no apostrophe, so nothing is escaped and not one character of the description changes —
+only the two quote marks are added. Line 3 becomes:
+
+```yaml
+description: 'Admin skill for walking the Canvas account hierarchy: list accounts and sub-accounts, see courses and users under each, look up which canned reports are available, and enroll or remove users from a specific course — one action at a time. Trigger phrases include "admin roster", "list accounts", "sub accounts", "account users", "users in this account", "enroll a user", "remove an enrollment", "account reports", or "what accounts can I see".'
+```
+
+- [ ] **Step 5: Run the test and make sure it passes**
+
+Run: `pnpm vitest run tests/prompts/frontmatter-yaml.test.ts`
+Expected: PASS for all 16.
+
+Then confirm the description round-trips with only the quoting changed: parse the file and print
+the value's length, its first 60 characters and its last 30. Expected: it starts
+`Admin skill for walking the Canvas account hierarchy: list acc` and ends
+`what accounts can I see".` — the quotes are YAML syntax, not content.
+
+- [ ] **Step 6: Commit**
+
+Stage the skill file, `package.json`, the lockfile and the new test, then commit with:
+`fix(skills): quote canvas-admin-roster description so its frontmatter is valid YAML`
 
 ---
 
@@ -125,6 +231,19 @@ describe('parseSkillFile', () => {
     expect(parseSkillFile('x/SKILL.md', licensed).name).toBe('canvas-grading-pass')
   })
 
+  it('accepts a quoted description containing a colon', () => {
+    // The canvas-admin-roster shape, fixed in Task 0. A hand-rolled parser that
+    // split on the first colon would accept this unquoted too; a real YAML
+    // parser does not, and this asserts we use the real one.
+    const quoted = VALID.replace(
+      /description:.*/,
+      "description: 'Admin skill for walking the hierarchy: list accounts.'",
+    )
+    expect(parseSkillFile('x/SKILL.md', quoted).description).toBe(
+      'Admin skill for walking the hierarchy: list accounts.',
+    )
+  })
+
   it.each([
     ['missing audience', VALID.replace(/ *io\.github\.bruchris\/canvas-lms-mcp-audience.*\n/, ''), /audience/i],
     ['unknown audience', VALID.replace('educator', 'teacher'), /teacher/],
@@ -134,7 +253,8 @@ describe('parseSkillFile', () => {
     ['unterminated frontmatter', '---\nname: x\n', /frontmatter/i],
     ['missing description', VALID.replace(/description:.*\n/, ''), /description/i],
     ['missing body heading', VALID.replace('# Canvas Grading Pass', 'Canvas Grading Pass'), /heading/i],
-    ['block scalar description', VALID.replace(/description:.*/, 'description: |'), /block scalar/i],
+    ['unquoted colon in description', VALID.replace(/description:.*/, 'description: Walks it: like this'), /yaml/i],
+    ['frontmatter that is not a mapping', '---\n- a\n- b\n---\n\n# T\n', /mapping/i],
   ])('rejects %s', (_label, raw, pattern) => {
     expect(() => parseSkillFile('canvas-grading-pass/SKILL.md', raw)).toThrow(pattern)
   })
@@ -257,11 +377,11 @@ export function describeArgument(name: string): string {
 Create `src/prompts/generate.ts`:
 
 ```ts
+import { parse as parseYaml } from 'yaml'
 import type { ToolAudience } from '../tools/types'
 import { isKnownArgument } from './arguments'
 
-const DELIMITER = '---'
-const METADATA_KEY = 'metadata'
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 const AUDIENCE_KEY = 'io.github.bruchris/canvas-lms-mcp-audience'
 const ARGUMENTS_KEY = 'io.github.bruchris/canvas-lms-mcp-arguments'
 const AUDIENCES: readonly ToolAudience[] = ['student', 'educator', 'admin', 'shared']
@@ -279,79 +399,68 @@ function fail(fileName: string, message: string): never {
   throw new Error(`${fileName}: ${message}`)
 }
 
-function stripQuotes(value: string): string {
-  const first = value[0]
-  if ((first === '"' || first === "'") && value.length > 1 && value.endsWith(first)) {
-    return value.slice(1, -1)
+function requireString(
+  fileName: string,
+  source: Record<string, unknown>,
+  key: string,
+  where: string,
+): string {
+  const value = source[key]
+  if (typeof value !== 'string' || value.trim() === '') {
+    fail(fileName, `${where} is missing a non-empty string "${key}".`)
   }
   return value
 }
 
 /**
- * Parses the narrow slice of YAML these files actually use: single-line scalars
- * at the top level, plus a one-level `metadata:` map. Anything richer than that
- * — a block scalar, a nested sequence — throws rather than being guessed at, so
- * an unsupported construct is a build failure, never a silently dropped value.
+ * Parses one SKILL.md with a real YAML parser.
+ *
+ * Using the `yaml` package rather than splitting lines on their first colon is
+ * deliberate. A hand-rolled parser accepts an unquoted description containing
+ * ": " — exactly the defect canvas-admin-roster carried — while every other
+ * Agent Skills consumer rejects the file. Sharing the ecosystem's parser is what
+ * keeps a broken skill loud instead of silently ours-only.
  *
  * Unknown keys are ignored rather than rejected: the Agent Skills spec defines
  * `license`, `compatibility` and `allowed-tools`, and explicitly invites
  * third-party keys under `metadata`.
  */
 export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
-  const lines = raw.split(/\r?\n/)
-  if (lines[0]?.trim() !== DELIMITER) {
-    fail(fileName, 'missing YAML frontmatter — the file must start with "---".')
-  }
-  const closing = lines.findIndex((line, index) => index > 0 && line.trim() === DELIMITER)
-  if (closing === -1) {
-    fail(fileName, 'unterminated YAML frontmatter — no closing "---".')
+  const match = raw.match(FRONTMATTER)
+  if (!match) {
+    fail(fileName, 'missing or unterminated YAML frontmatter — expected a leading "---" block.')
   }
 
-  const top = new Map<string, string>()
-  const metadata = new Map<string, string>()
-  let inMetadata = false
+  let parsed: unknown
+  try {
+    parsed = parseYaml(match[1]!)
+  } catch (error) {
+    fail(fileName, `invalid YAML frontmatter: ${(error as Error).message.split('\n')[0]}`)
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    fail(fileName, 'YAML frontmatter must be a mapping of keys to values.')
+  }
+  const frontmatter = parsed as Record<string, unknown>
 
-  for (const line of lines.slice(1, closing)) {
-    if (line.trim() === '') continue
-    const match = line.trim().match(/^([^:]+):\s*(.*)$/)
-    if (!match) {
-      fail(fileName, `frontmatter line is not "key: value": ${line.trim()}`)
-    }
-    const key = match[1]!.trim()
-    const value = stripQuotes(match[2]!.trim())
-    const indented = /^\s/.test(line)
+  const name = requireString(fileName, frontmatter, 'name', 'frontmatter')
+  const description = requireString(fileName, frontmatter, 'description', 'frontmatter')
 
-    if (indented) {
-      if (!inMetadata) fail(fileName, `indented frontmatter key "${key}" outside a metadata block.`)
-      metadata.set(key, value)
-      continue
-    }
+  const rawMetadata = frontmatter.metadata
+  const metadata: Record<string, unknown> =
+    typeof rawMetadata === 'object' && rawMetadata !== null && !Array.isArray(rawMetadata)
+      ? (rawMetadata as Record<string, unknown>)
+      : {}
 
-    inMetadata = key === METADATA_KEY
-    if (inMetadata) {
-      if (value !== '') fail(fileName, 'metadata must be a nested map, not an inline value.')
-      continue
-    }
-    if (value === '|' || value === '>' || value === '') {
-      fail(fileName, `block scalar or empty value for "${key}" is not supported.`)
-    }
-    top.set(key, value)
+  const audience = requireString(fileName, metadata, AUDIENCE_KEY, 'frontmatter metadata')
+  if (!AUDIENCES.includes(audience as ToolAudience)) {
+    fail(fileName, `unknown audience "${audience}" — expected one of ${AUDIENCES.join(', ')}.`)
   }
 
-  const name = top.get('name')
-  if (name === undefined) fail(fileName, 'frontmatter is missing "name".')
-  const description = top.get('description')
-  if (description === undefined) fail(fileName, 'frontmatter is missing "description".')
-
-  const rawAudience = metadata.get(AUDIENCE_KEY)
-  if (rawAudience === undefined) {
-    fail(fileName, `frontmatter metadata is missing "${AUDIENCE_KEY}".`)
+  const rawArguments = metadata[ARGUMENTS_KEY]
+  if (rawArguments !== undefined && typeof rawArguments !== 'string') {
+    fail(fileName, `"${ARGUMENTS_KEY}" must be a space-separated string.`)
   }
-  if (!AUDIENCES.includes(rawAudience as ToolAudience)) {
-    fail(fileName, `unknown audience "${rawAudience}" — expected one of ${AUDIENCES.join(', ')}.`)
-  }
-
-  const argumentNames = (metadata.get(ARGUMENTS_KEY) ?? '').split(/\s+/).filter(Boolean)
+  const argumentNames = (rawArguments ?? '').split(/\s+/).filter(Boolean)
   for (const argument of argumentNames) {
     if (!isKnownArgument(argument)) {
       fail(fileName, `unknown prompt argument "${argument}" — add it to ARGUMENT_VOCABULARY first.`)
@@ -361,13 +470,13 @@ export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
     fail(fileName, `duplicate prompt argument in "${argumentNames.join(' ')}".`)
   }
 
-  const body = lines.slice(closing + 1).join('\n').replace(/^\n+/, '').trimEnd()
+  const body = raw.slice(match[0].length).replace(/^\s*\n/, '').trimEnd()
   const title = body.match(/^# (.+)$/m)?.[1]?.trim()
   if (title === undefined || title === '') {
     fail(fileName, 'body has no level-1 heading ("# Title") to use as the prompt title.')
   }
 
-  return { name, title, description, audience: rawAudience as ToolAudience, argumentNames, body }
+  return { name, title, description, audience: audience as ToolAudience, argumentNames, body }
 }
 ```
 
