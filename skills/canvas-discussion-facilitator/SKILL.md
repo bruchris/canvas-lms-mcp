@@ -1,6 +1,9 @@
 ---
 name: canvas-discussion-facilitator
 description: Educator skill for browsing, reading, replying to, and creating Canvas discussion topics. Surfaces active threads, unread entries, and announcement activity — then lets you post replies or create new topics without leaving your agent session. Trigger phrases include "discussion board", "course discussions", "reply to discussion", "create a discussion", "what's in the discussion forum", "check announcements", or "post to discussion".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Discussion Facilitator

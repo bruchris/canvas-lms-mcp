@@ -1,6 +1,9 @@
 ---
 name: canvas-course-pulse
 description: Educator skill for tracking week-over-week course health trends in Canvas. Surfaces assignment performance trends, login activity, engagement gaps, and struggling students across a longer time horizon than a daily check. Trigger phrases include "course pulse", "course health", "course trends", "week-over-week performance", "how is the course going", "engagement trends", "who isn't logging in", or "course activity over time".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Course Pulse

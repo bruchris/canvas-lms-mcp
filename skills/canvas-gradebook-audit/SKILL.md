@@ -1,6 +1,9 @@
 ---
 name: canvas-gradebook-audit
 description: Audit gradebook changes and grade edit history in Canvas. Surfaces who changed which grades, when, and by how much — across a date range or for a specific student. Unique to canvas-lms-mcp (no competitor exposes gradebook history). Trigger phrases include "grade audit", "who changed this grade", "gradebook history", "grade edits", "check for grade changes", or "grade integrity".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id assignment_id student_id
 ---
 
 # Canvas Gradebook Audit

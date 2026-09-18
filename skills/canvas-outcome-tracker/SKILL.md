@@ -1,6 +1,9 @@
 ---
 name: canvas-outcome-tracker
 description: Track student mastery of learning outcomes in Canvas. Shows outcome rollups by student, mastery distribution across the class, and which outcomes have the lowest proficiency rates. Built for accreditation reviews, program assessment, and advising. Trigger phrases include "outcome tracker", "learning outcomes", "mastery data", "accreditation report", "outcome mastery", or "who hasn't mastered".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id student_id
 ---
 
 # Canvas Outcome Tracker

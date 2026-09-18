@@ -1,6 +1,9 @@
 ---
 name: canvas-admin-roster
 description: 'Admin skill for walking the Canvas account hierarchy: list accounts and sub-accounts, see courses and users under each, look up which canned reports are available, and enroll or remove users from a specific course — one action at a time. Trigger phrases include "admin roster", "list accounts", "sub accounts", "account users", "users in this account", "enroll a user", "remove an enrollment", "account reports", or "what accounts can I see".'
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: admin
+  io.github.bruchris/canvas-lms-mcp-arguments: account_id course_id
 ---
 
 # Canvas Admin Roster

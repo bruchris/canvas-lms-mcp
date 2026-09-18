@@ -1,6 +1,9 @@
 ---
 name: canvas-grading-pass
 description: Educator grading workflow for Canvas. Walks through ungraded submissions one at a time, applying rubric assessments and score comments with explicit confirmation before each write. Trigger phrases include "grade submissions", "start grading", "grading pass", "mark submissions", "grade this assignment", or "rubric grading".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id assignment_id
 ---
 
 # Canvas Grading Pass
