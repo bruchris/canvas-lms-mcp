@@ -35,9 +35,23 @@ export function tagAudience(
   }
 }
 
+/**
+ * Whether an audience tag is visible to the given role.
+ *
+ * Split out from {@link isVisibleForRole} so the prompt surface
+ * (`src/prompts/catalog.ts`) filters against this same table. A skill and the
+ * tools it drives must never disagree about which role can see them.
+ */
+export function isAudienceVisibleForRole(
+  audience: ToolAudience | undefined,
+  role: CanvasRole,
+): boolean {
+  return ROLE_VISIBILITY[role].has(audience ?? 'shared')
+}
+
 /** Whether a tool is visible to the given role. */
 export function isVisibleForRole(tool: ToolDefinition, role: CanvasRole): boolean {
-  return ROLE_VISIBILITY[role].has(tool.audience ?? 'shared')
+  return isAudienceVisibleForRole(tool.audience, role)
 }
 
 export interface RoleParseResult {

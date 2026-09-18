@@ -1,6 +1,8 @@
 ---
 name: canvas-week-plan
 description: Student weekly planner for Canvas. Pulls upcoming assignments, due dates, current grades, pending submissions, and peer review obligations into a single prioritised plan for the week ahead. Trigger phrases include "plan my week", "what's due this week", "weekly Canvas plan", "week ahead", or "upcoming assignments".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: student
 ---
 
 # Canvas Week Plan

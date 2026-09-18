@@ -7,6 +7,7 @@ import { registerAllTools } from './tools'
 import type { CanvasRole, ToolFeatureFlags } from './tools/types'
 import { resolveDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import { registerAllResources } from './resources'
+import { registerAllPrompts } from './prompts'
 
 // Public pseudonym surface. `createSharedPseudonymizer` is exported as a value
 // because it is the supported safe construction for a shared deployment; the
@@ -161,6 +162,10 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
   }
   registerAllTools(server, canvas, pseudonymizer, config.role, features)
   registerAllResources(server, canvas)
+  // The 16 Agent Skills, served as MCP prompts so a host without a skill-file
+  // loader can still discover the Canvas workflows. Inert templates the user
+  // chooses: this adds no tool authority the caller did not already have.
+  registerAllPrompts(server, config.role)
 
   return { server, canvas, pseudonymizer }
 }

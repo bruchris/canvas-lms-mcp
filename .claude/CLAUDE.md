@@ -110,3 +110,15 @@ Every tool must declare MCP annotations:
 8. **If the tool declares an `output` contract, add a fixture.** Structured output (`ToolDefinition.output`) is opt-in per tool. Build the contract with `objectOutput` / `listOutput` / `ackOutput` from `src/tools/output/contract.ts`, and add the tool to `OUTPUT_FIXTURES` in `tests/tools/fixtures/output-fixtures.ts`. CI (`tests/tools/output-contract.test.ts`) fails until you do. Two rules decide the schema:
    - **Loose where Canvas authors the shape, strict where we do.** A value that comes straight from Canvas — including the top-level object of a single-entity tool — uses `z.looseObject`, so a newly added Canvas field does not break every strict client. Envelopes and acknowledgements this server builds itself use `z.strictObject`.
    - **No constraints on Canvas-sourced values.** No `format`, `pattern`, `min`, `max` or enum, and `z.string()` rather than `z.iso.datetime()` for dates (its emitted pattern requires a `Z` suffix and rejects the offset timestamps some Canvas instances send). Use `.nullish()` for anything not guaranteed present *and* non-null, and never a bare `z.unknown()` — in output mode Zod marks it required.
+
+## How to Add a New Skill
+
+Skills under `skills/` are both markdown workflow files (installed via `npx skills add`) and MCP prompts served by this server. One file feeds both.
+
+1. Create `skills/<name>/SKILL.md` with frontmatter `name` (matching the directory) and `description` (carrying the trigger phrases), then a body whose first heading is `# Title`. The title becomes the prompt title.
+2. **Keep the frontmatter valid YAML.** A description containing `": "` must be quoted — `canvas-admin-roster` was unreadable to every real YAML parser for months because it was not. CI (`tests/prompts/frontmatter-yaml.test.ts`) parses all 16 files and fails on any that does not.
+3. Declare the audience and any arguments in frontmatter `metadata`, using the two namespaced keys `io.github.bruchris/canvas-lms-mcp-audience` (`student` | `educator` | `admin` | `shared`) and `io.github.bruchris/canvas-lms-mcp-arguments` (space-separated). Argument names must exist in `ARGUMENT_VOCABULARY` in `src/prompts/arguments.ts`; generation fails on anything else.
+4. Run `pnpm generate:prompts` and commit `src/prompts/skills.generated.ts`. CI (`tests/prompts/generate.test.ts`) fails if it is stale.
+5. Update the skill counts that CI checks in `tests/docs/skill-count-consistency.test.ts`: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md`, and `docs/index.html`.
+
+Write tools are **derived** from the body, never declared — a body may safely name a tool that does not exist ("there is no `list_discussion_entries` tool"), because identifiers that do not resolve are ignored.

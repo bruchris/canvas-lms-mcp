@@ -1,6 +1,9 @@
 ---
 name: canvas-accessibility-sweep
 description: Educator and learning-designer skill for a pre-launch accessibility and broken-link sweep of a Canvas course. Walks the structural accessibility audit and the link audit over a course's pages, assignments, syllabus, announcements, and (optionally) quizzes, then produces a prioritised remediation list you can work through in the Canvas editor. Trigger phrases include "accessibility sweep", "accessibility audit", "check course accessibility", "a11y check", "WCAG scan", "alt text audit", "broken links", "check my course for broken links", "pre-launch course check", or "course QC for accessibility".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Accessibility Sweep

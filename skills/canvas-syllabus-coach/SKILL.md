@@ -1,6 +1,9 @@
 ---
 name: canvas-syllabus-coach
 description: Learning designer skill for reviewing and improving Canvas course syllabi and front pages. Reads the syllabus and key pages, proposes clarity and completeness improvements, then optionally applies the edits with your confirmation. Trigger phrases include "syllabus review", "improve the syllabus", "syllabus coach", "course front page", "update course description", "review course pages", or "polish the syllabus".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Syllabus Coach

@@ -1,6 +1,9 @@
 ---
 name: canvas-at-risk-students
 description: Identify at-risk Canvas students and send targeted outreach. Surfaces students with missing assignments, low grades, or declining submission patterns — then lets you message them directly. Trigger phrases include "at-risk students", "struggling students", "who's falling behind", "students to check in with", or "missing submissions".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas At-Risk Students

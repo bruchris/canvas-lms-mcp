@@ -1,6 +1,8 @@
 ---
 name: canvas-morning-check
 description: Educator morning briefing for Canvas. Surfaces ungraded submissions, participation gaps, upcoming deadlines, and flagged students across all active courses — in under a minute. Trigger phrases include "morning Canvas check", "what needs my attention today", "grading queue", "educator briefing", "what's pending", or "Canvas daily summary".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
 ---
 
 # Canvas Morning Check
