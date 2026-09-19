@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.29.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.4...canvas-lms-mcp-v1.29.5) (2026-09-19)
+
+
+### Bug Fixes
+
+* **quizzes:** keep question-bank responses in get_quiz_question_responses ([#360](https://github.com/bruchris/canvas-lms-mcp/issues/360)) ([0e3739a](https://github.com/bruchris/canvas-lms-mcp/commit/0e3739aa29f20d8c84f86655e12fa69eb8713133))
+
+
+### Documentation
+
+* **spec:** MCP Skills Extension (SEP-2640) design (BRU-2549) ([#353](https://github.com/bruchris/canvas-lms-mcp/issues/353)) ([6b2e0c0](https://github.com/bruchris/canvas-lms-mcp/commit/6b2e0c0d33741121cd9737c81924134ebb391c40))
+* **spec:** rubric assessment gradebook effects — explicit intent, preflight, verified postconditions (BRU-2550) ([#354](https://github.com/bruchris/canvas-lms-mcp/issues/354)) ([1f6dca3](https://github.com/bruchris/canvas-lms-mcp/commit/1f6dca39e2bcc0be040e30d849a6b322d1fde914))
+
 ## [1.29.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.3...canvas-lms-mcp-v1.29.4) (2026-09-19)
 
 
