@@ -34,6 +34,26 @@ export class QuizzesModule {
     )
   }
 
+  /**
+   * The questions one quiz-submission attempt was actually served, via
+   * `GET /courses/:id/quizzes/:id/questions?quiz_submission_id=&quiz_submission_attempt=`.
+   * Unlike `listQuestions` (the quiz's active questions only), this includes the
+   * `generated` QuizQuestion rows Canvas creates for bank draws, with the text,
+   * type and points_possible that attempt saw. Canvas needs BOTH parameters: with
+   * either missing it silently returns the active list instead.
+   */
+  async listSubmissionQuestions(
+    courseId: number,
+    quizId: number,
+    quizSubmissionId: number,
+    attempt: number,
+  ): Promise<CanvasQuizQuestion[]> {
+    return this.client.paginate<CanvasQuizQuestion>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
+      { quiz_submission_id: quizSubmissionId, quiz_submission_attempt: attempt },
+    )
+  }
+
   async getSubmissionAnswers(quizSubmissionId: number): Promise<CanvasQuizSubmissionQuestion[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmissionQuestion>(
       `/api/v1/quiz_submissions/${quizSubmissionId}/questions`,
