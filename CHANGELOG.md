@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.3...canvas-lms-mcp-v1.29.4) (2026-09-19)
+
+
+### Bug Fixes
+
+* **skills:** quote canvas-admin-roster description, add YAML frontmatter guard ([#357](https://github.com/bruchris/canvas-lms-mcp/issues/357)) ([5aee006](https://github.com/bruchris/canvas-lms-mcp/commit/5aee0061b7b1c4ad9b4baf5c6c99eb48c16d3622))
+
 ## [1.29.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.2...canvas-lms-mcp-v1.29.3) (2026-09-11)
 
 
