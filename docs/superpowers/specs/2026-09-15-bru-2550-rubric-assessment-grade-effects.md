@@ -3,6 +3,7 @@
 - **Task**: BRU-2550 (parent: BRU-2547 CTO Product Research, finding 2 of Product Research 2026-09-14)
 - **Date**: 2026-09-15
 - **Status**: Design only. No runtime source change is included in this PR.
+- **Revision**: 2026-09-19. Folds in the QA findings F1–F5 (BRU-2592) and the CTO decisions Q1–Q6 (BRU-2593); §10 now records the decisions.
 - **Base**: `origin/main` @ `db2c5e2` (v1.29.3), 165 tools (117 read / 48 write)
 - **Canvas source**: `instructure/canvas-lms` `master` @ `1c9f0bb8013e` (the public mirror's HEAD when this was written; that commit is dated 2026-04-30)
 - **Implementation plan**: [`docs/superpowers/plans/2026-09-15-bru-2550-rubric-assessment-grade-effects.md`](../plans/2026-09-15-bru-2550-rubric-assessment-grade-effects.md)
@@ -39,7 +40,7 @@ No real Canvas instance was used.
 | Existing design for rubric grade effects | `grep -rli "use_for_grading\|use_rubric_for_grading" docs/superpowers/` | **0 files** (before this PR): no prior design mentions the flag at all |
 | History of the write path | `git log --format='%h %ad %s' --date=short -- src/canvas/rubrics.ts src/tools/rubrics.ts` | `e5ad732` (#280, titles only), `e53946e` (#106, `create_rubric`), `eb76b3f` (#5, initial). `submitAssessment` is unchanged since `eb76b3f` |
 | Issues reporting a rubric write failure | `gh issue list --state all --search rubric` | 4 results, all unrelated (#230, #186, #75, #78) |
-| Open PRs on the same files | `gh pr view 327 --json files` | **#327** (external, `chiptoe-svg`, open since 2026-08-28, `MERGEABLE`): adds `include[]` to `get_rubric` to expose association IDs. It overlaps all 6 files the implementation touches; there is no functional dependency (§3.1, Q4) |
+| Open PRs on the same files | `gh pr view 327 --json files,state,headRefOid,mergeStateStatus,statusCheckRollup` | **#327** (external, `chiptoe-svg`, open since 2026-08-28): adds `include[]` to `get_rubric` to expose association IDs. It overlaps all 6 files the implementation touches; there is no functional dependency (§3.1, Q4). Re-checked 2026-09-19: still `OPEN` at `e3f50ebd36cf7b74545d0dc18882eb3dcbd33827`, `BEHIND` `main`, no checks. Its only CI run is `action_required`, waiting for a maintainer to approve a first-time-contributor workflow |
 
 ---
 
@@ -61,9 +62,11 @@ Canvas's handling of that body **[P]** (probe A1, A2):
 - `RubricAssessmentsController#update` calls `resolve_user_id`, which reads `params[:rubric_assessment][:user_id]`. That is `nil`, so `raise ActiveRecord::RecordNotFound if user_id.blank?` fires, and `api_error_json` renders 404 `The specified resource does not exist.` **[S]**.
 - Even past that guard, `RubricAssociation#assess` would find no `criterion_<id>` keys. The result is `replace_ratings: false`, zero stored criteria and score `nil`. It would also raise on the missing `assessment_type` **[S]**.
 
-Three documentation surfaces describe parameters that do not exist:
+Five documentation surfaces describe parameters or fields that do not exist:
 
-- `skills/canvas-grading-pass/SKILL.md` §4c (`rubric_id`, `rubric_association_id`, `graded_anonymously`);
+- `skills/canvas-grading-pass/SKILL.md` §2 (line 26): "check `rubric_id` in the assignment object from `get_assignment`". Canvas's assignment serializer emits no `rubric_id`. It emits `rubric` and `rubric_settings.id`, which is the *rubric's* ID, and `use_rubric_for_grading` (pinned `lib/api/v1/assignment.rb:330–362`) **[S]**;
+- `skills/canvas-course-qc/SKILL.md` §5 (line 74): "If `rubric_id` is null on an assignment … flag it as a missing rubric". It reads the same absent field, so it cannot distinguish an attached rubric from a missing one;
+- the grading-pass skill's §4c (`rubric_id`, `rubric_association_id`, `graded_anonymously`);
 - the same skill's §4a (`get_rubric_assessment` "with course ID, rubric ID, and submission ID");
 - `docs/workflows/educator-assignment-review.md`, which says the write "overwrites prior rubric values for the targeted criteria". In fact the write replaces **all** criteria (§2.4).
 
@@ -247,7 +250,7 @@ The tool reads `GET assignment?include[]=checkpoints` and `GET submission?includ
 | 5 | `UNKNOWN_CRITERIA` | an ID is not in the rubric | Canvas would drop it silently ([P] G2) |
 | 6 | `MISSING_CRITERIA` | a rubric criterion is absent | Canvas would delete it ([P] E) |
 | 7 | `OUTCOME_CLAMP` | an outcome-aligned criterion (`outcome_id`) has points above its maximum | Canvas may silently cap it ([S] `assessment_points`) |
-| 8 | `USE_FOR_GRADING_ON` | `assessment_only` and `use_rubric_for_grading` is true | Canvas would overwrite the score ([P] J row 1) |
+| 8 | `USE_FOR_GRADING_ON` | `assessment_only` and `use_rubric_for_grading` is true | Canvas would overwrite the score ([P] J row 1). **Not on a checkpoint parent**: there Canvas does not grade today ([P] J rows 4–6) and #10 refuses `apply_rubric_score` as well. So when `has_sub_assignments` is true, #8 fires with its own checkpoint wording (§3.6, 8b), which claims no score effect and recommends no retry |
 | 9 | `USE_FOR_GRADING_OFF` | `apply_rubric_score` and `use_rubric_for_grading` is not true | Canvas would not change the score ([P] J rows 13–24) |
 | 10 | `CHECKPOINTS` | `apply_rubric_score` and `has_sub_assignments` | Canvas skips grading checkpoint parents ([P] J rows 4–6) |
 | 11 | `EXCUSED` | `apply_rubric_score` and the submission is `excused` | applying a score un-excuses ([S]) |
@@ -258,9 +261,16 @@ The resulting permission matrix is short enough for an agent to hold:
 | | rubric used for grading | rubric **not** used for grading |
 | --- | --- | --- |
 | `apply_rubric_score` | allowed (unless checkpoints, excused or no points) | refused (#9) |
-| `assessment_only` | refused (#8) | allowed |
+| `assessment_only` | refused (#8; checkpoint wording 8b on a checkpoint parent) | allowed |
 
 `assessment_only` is refused on a checkpoints parent with grading enabled. Canvas would not grade it *today*, but the source comment says `use_for_grading` "will be respected, when support for rubrics on checkpoints has been fleshed-out". The simple rule (#8) survives that Canvas change; a checkpoint exception would not.
+
+On such a parent **both** effects are refused: `assessment_only` by #8 and `apply_rubric_score` by #10. The two messages must therefore not contradict each other. The generic #8 text says Canvas "would replace the student's score" and recommends `apply_rubric_score`. Both statements are wrong on a checkpoint parent, because Canvas does not replace the score today and `apply_rubric_score` is refused there too. So the checkpoint case has its own text (8b in §3.6). It says only that Canvas does not currently apply rubric scores to checkpointed assignments, that this may change, that both effects are therefore refused, and that the checkpoints are graded in Canvas.
+
+**Deliberate non-gates and known limits (v1 positions).**
+
+- **Anonymous grading: no refusal gate.** Nothing in the Submissions `update` path rejects or alters an assignment for being anonymously graded; only the separate `update_anonymous` endpoint is keyed by anonymous ID, and this tool does not use it **[S]**. One observed side effect is kept and not gated. When `apply_rubric_score` makes Canvas write the grade, `update_artifact` passes `graded_anonymously: @graded_anonymously_set` (`rubric_assessment.rb:223`). That value is `nil` on this path, because the Submissions controller never passes `graded_anonymously` to `assess`, and `save_grade_to_submission` assigns the key whenever it is present (`abstract_assignment.rb:2533`). Together they **reset the submission's `graded_anonymously` flag** **[S]**. The score is unaffected, and the tool neither reads nor reports the flag.
+- **`OUTCOME_CLAMP` (#7) is a known fail-closed limitation.** It refuses an outcome-aligned criterion whose points exceed its maximum, including in courses that enable `outcome_extra_credit`, where Canvas would accept those points. That flag is not readable through the API we use (§2.5), and the refusal message offers no override. v1 accepts this. Allowing extra credit later is additive: it needs a readable signal and a new input, and it loosens the refusal without changing any other row.
 
 **Permissions are not preflighted.** No API read decides them conclusively (§2.5), and the write endpoint enforces them before writing. A dedicated permission read would add a request that could still be wrong.
 
@@ -294,7 +304,18 @@ Rules:
    - Otherwise the outcome is `score_untouched`.
 4. **`concurrent_change_detected`** is `!sameScore(entered(afterWrite), entered(readBack))`. It is reported and never changes the outcome.
 
-A success result can therefore only claim a gradebook change when Canvas's own post-write submission shows the score equal to the rubric total **and** different from the value read before the write.
+A success result can therefore only claim a gradebook change when Canvas's own post-write submission shows the *entered* score equal to the rubric total **and** different from the value read before the write.
+
+**Late submissions: Canvas gates on `score`, the tool compares `entered_score`.** Canvas's own gate is the early return in `update_artifact`, `artifact.score == score` (`rubric_assessment.rb:210`). It compares the *final* score, which is after the late deduction, with the rubric total. `entered_score` is `score + (points_deducted || 0)` (`submission.rb:1904`). The tool compares `entered(…)` because that is the value `grade_student` sets, and it cannot mirror Canvas's gate. On a late submission the two therefore disagree in two cases **[S]**, pinned by K13 and K14 in the plan:
+
+| Case | Submission before | Rubric total | What Canvas does **[S]** | What the tool reports |
+| --- | --- | --- | --- | --- |
+| A | entered 10, deducted 1, score 9 | 9 | `9 == 9` returns early. The entered score stays 10 | `entered(afterWrite)` 10 ≠ 9 → `GRADEBOOK_NOT_UPDATED`. This is the fail-safe direction, and the message reports entered 10, final 9 and total 9 |
+| B | entered 9, deducted 1, score 8 | 9 | `8 ≠ 9` re-grades with 9. The submission comes back as entered 9, deducted 1, score 8 | `entered` 9 = 9 and unchanged → `score_already_matched` |
+
+From the observable submission alone the tool cannot tell whether Canvas re-graded in case B, because the result is identical either way. In case A it can only see that the entered score is not the rubric total. **So the messages state observed values only. They never say whether Canvas re-graded, and they never say what Canvas "did not apply".** When `score_after` differs from `entered_score_after`, they add the final score.
+
+Two alternatives were rejected. Matching on `afterWrite.score` alone reports `GRADEBOOK_NOT_UPDATED` after a correct re-grade of any late student (case B: 8 ≠ 9). Accepting *either* value as a match would report success in case A, although the entered score is still 10.
 
 ### 3.6 Result and error surfaces
 
@@ -327,9 +348,10 @@ The result carries no user identity, so no pseudonymization wrapping is needed. 
 
 **`message` templates:**
 
-- `score_changed`: `Rubric assessment saved. Canvas changed the gradebook score from {before|no score} to {after} (the rubric total).`
-- `score_already_matched`: `Rubric assessment saved. The gradebook score was already {after}, equal to the rubric total, so Canvas did not re-grade.`
-- `score_untouched`: `Rubric assessment saved. The gradebook score was not changed ({after|no score}).`
+- `score_changed`: `Rubric assessment saved. The entered gradebook score changed from {before|no score} to {after}, the rubric total.`
+- `score_already_matched`: `Rubric assessment saved. The entered gradebook score was already {after}, equal to the rubric total, and it is unchanged.`
+- `score_untouched`: `Rubric assessment saved. The entered gradebook score was not changed ({after|no score}).`
+- Suffix when `score_after` and `entered_score_after` are both non-null and differ (a late-policy deduction is in effect), on all three outcomes: ` The student's final score is {score_after} after a late-policy deduction.`
 - Suffix when `posted_at_after` is null: ` Canvas has not posted this grade to the student (posted_at is empty).`
 - Suffix when a concurrent change is detected: ` The score read back afterwards was {readBack}, so another change landed right after this write.`
 
@@ -344,7 +366,8 @@ Refusals (nothing was sent to Canvas):
 - `NOT WRITTEN: {ids} are not criteria of this assignment's rubric, and Canvas would silently drop them. Valid criterion ids: {ids}.`
 - `NOT WRITTEN: every rubric criterion must be included, because Canvas replaces the whole assessment and deletes criteria that are left out. Missing: {ids}. Use points: null to leave a criterion unscored.`
 - `NOT WRITTEN: criterion {id} is aligned to a learning outcome and worth at most {max} points; Canvas caps it at {max} unless the course enables outcome extra credit.`
-- `NOT WRITTEN: this assignment's rubric is used for grading, so Canvas would replace the student's score with the rubric total. If that is intended, use grade_effect "apply_rubric_score". To save the rubric without changing the score, a teacher must first turn off "Use this rubric for assignment grading" in Canvas.`
+- **#8, generic** (`has_sub_assignments` is not true): `NOT WRITTEN: this assignment's rubric is used for grading, so Canvas would replace the student's score with the rubric total. If that is intended, use grade_effect "apply_rubric_score". To save the rubric without changing the score, a teacher must first turn off "Use this rubric for assignment grading" in Canvas.`
+- **#8b, checkpoint parent** (`has_sub_assignments` is true; same code `USE_FOR_GRADING_ON`): `NOT WRITTEN: this is a checkpointed assignment and its rubric is set to be used for grading. Canvas does not currently apply rubric scores to checkpointed assignments, but may in future, so this tool refuses both grade effects here. Grade the checkpoints in Canvas.` It must not claim that Canvas replaces the score today, and it must not mention `apply_rubric_score`, which #10 refuses on the same assignment.
 - `NOT WRITTEN: this assignment's rubric is not used for grading, so Canvas would save the assessment but leave the score unchanged. Use grade_effect "assessment_only", then set the score with grade_submission if the user wants it changed.`
 - `NOT WRITTEN: this is a checkpointed assignment. Canvas does not apply rubric scores to checkpointed assignments, so the score would not change. Grade the checkpoints in Canvas.`
 - `NOT WRITTEN: this student is excused on this assignment, and applying a rubric score would remove the excusal. Confirm with the user and un-excuse the student in Canvas first if that is intended.`
@@ -359,8 +382,8 @@ Write-time failures:
 
 Postcondition failures:
 
-- `GRADEBOOK NOT UPDATED: the rubric assessment was saved, but Canvas did not apply the rubric total. The student's score is {after | empty}; the rubric total is {R | empty}. Do not tell the user the grade changed.`
-- `UNEXPECTED GRADEBOOK CHANGE: the rubric assessment was saved and Canvas changed the student's score from {before} to {after} (excused {b} → {a}), although grade_effect was "assessment_only". This tool did not undo it. Tell the user before doing anything else.`
+- `GRADEBOOK NOT UPDATED: the rubric assessment was saved, but the gradebook does not show the rubric total. The entered score after the write is {entered_after | empty}{ (final score {score_after} after a late-policy deduction)}; the rubric total is {R | empty}. Do not tell the user the grade changed to the rubric total.` The parenthesised clause appears only when `score_after` and `entered_score_after` differ. The message reports what was observed. It does not say what Canvas did.
+- `UNEXPECTED GRADEBOOK CHANGE: the rubric assessment was saved and Canvas changed the student's entered score from {before} to {after} (excused {b} → {a}), although grade_effect was "assessment_only". This tool did not undo it. Tell the user before doing anything else.`
 
 The tool **never** issues a corrective grade write. Undoing a grade is a separate user decision.
 
@@ -447,17 +470,17 @@ The lead says that including `submission[posted_grade]` "sidesteps all four gate
 
 | Surface | Impact |
 | --- | --- |
-| MCP input schema | Breaking in shape: `association_id` and `data` are removed; `assignment_id`, `user_id`, `grade_effect` and `criteria` are required. **No working caller exists** (§1.1). Legacy args fail input validation before any Canvas request (plan H13). A client with a cached tool list sends the old shape and gets a required-field error until it refreshes. |
+| MCP input schema | Breaking in shape: `association_id` and `data` are removed; `assignment_id`, `user_id`, `grade_effect` and `criteria` are required. **No working caller exists** (§1.1). Legacy args fail input validation before any Canvas request (plan H13). A client with a cached tool list sends the old shape and gets a required-field error until it refreshes. **The eventual PR body and changelog context must disclose this shape change explicitly (Q1).** The release-please "Bug Fixes" line will be the only notice most users see. |
 | Tool name, annotations, audience, role filtering | Unchanged (`destructiveHint`, `idempotentHint`, `openWorldHint`; educator) |
 | Tool count and manifests | Unchanged at 165 / 117 / 48. The `submit_rubric_assessment` description is regenerated. |
-| `canvas-lms-mcp/canvas` library export | `RubricsModule.submitAssessment` is kept, byte-identical, and marked `@deprecated` (Q2); `assessSubmission` is added. Optional fields are added to `CanvasAssignment`; `'checkpoints'` is added to `AssignmentGetInclude`. All additive. |
+| `canvas-lms-mcp/canvas` library export | `RubricsModule.submitAssessment` is kept **byte-identical except for the `@deprecated` JSDoc marker**, and removed only at a future major release (Q2); `assessSubmission` is added. Optional fields are added to `CanvasAssignment`; `'checkpoints'` is added to `AssignmentGetInclude`. All additive. |
 | Structured output | New `output` contract plus fixture (CLAUDE.md step 8) |
 | Pseudonymization | Not a PII tool; there is no identity in the result |
 | Provenance fencing | Already applies generically: destructive tools reject marker-bearing inputs |
 | `CANVAS_DESTRUCTIVE_TOOLS` | Unaffected; that policy covers only the seven delete tools |
 | Docs and skill | `docs/educator-guide.md`, `docs/workflows/educator-assignment-review.md`, `skills/canvas-grading-pass/SKILL.md` (plan Step 6) |
-| Release | Recommended `fix(rubrics): …`, which is a patch (Q1) |
-| PR #327 | Textual overlap in all six of its files and no functional dependency. If it merges first, its `get_rubric` wording ("association IDs needed for rubric assessment writes") must be corrected in the same implementation PR. |
+| Release | `fix(rubrics): …`, which is a patch (Q1, decided) |
+| PR #327 | Textual overlap in all six of its files and no functional dependency. If it merges first, its `get_rubric` wording ("association IDs needed for rubric assessment writes") must be corrected in the same implementation PR. Preferred order is #327 first, then rebase; the safety fix does not wait indefinitely for it (Q4). |
 
 ## 7. Test strategy (full list in the plan)
 
@@ -482,17 +505,16 @@ A single `git revert` of the implementation merge restores the previous tool, cl
 | E | Offer rubric + `posted_grade` in one call | §5 |
 | F | Keep the rubric-associations endpoint and add #327's lookup | Solves only the ID problem; B1, the silent grading-right path and the no-error cases remain |
 
-## 10. Open questions for CTO
+## 10. Decisions (CTO, 2026-09-19)
 
-- **Q1 — Release type.** `fix(rubrics):` (patch) is recommended: the old contract never succeeded against Canvas, so no integration can break. `fix(rubrics)!:` would bump to 2.0.0 for a tool nobody could use.
-- **Q2 — `RubricsModule.submitAssessment`.** It is public library API (`./canvas` export) and sends a request Canvas rejects. The options are:
-  - deprecate and keep it byte-identical (recommended for this PR);
-  - make it throw with a pointer to `assessSubmission`;
-  - remove it in the next major release.
-- **Q3 — Group-graded assignments.** They are refused in v1 (recommended). Supporting them needs a fan-out postcondition across N submissions and its own design.
-- **Q4 — Sequencing with external PR #327.** It overlaps six files and has no functional dependency. Merge #327 first and rebase, or merge the fix first and ask the contributor to rebase? The contributor's stated motivation (association IDs "needed for rubric assessment writes") disappears under this design. `include[]` on `get_rubric` is still independently useful.
-- **Q5 — Repo-wide 401 wording.** `formatError` maps every 401 to "token is invalid or expired", but Canvas uses 401 for authorization failures on every write tool (§1.3-h). This design special-cases only the rubric write. A small follow-up could apply the same rule to all write tools: a 401 after a successful read with the same token means a permission problem.
-- **Q6 — `assessment_only` on checkpoint parents with grading enabled.** It is refused (recommended) so the rule survives Canvas finishing checkpoint rubric support (§3.3). The alternative is to allow it today, relying on the current skip.
+All six questions raised in the first revision are decided. The plan encodes each one.
+
+- **Q1 — Release type: `fix(rubrics):` (patch).** The old contract never succeeded against Canvas, so no integration can break, and `fix(rubrics)!:` would force 2.0.0 for a tool nobody could use. The required input-shape change (`association_id` and `data` removed; `assignment_id`, `user_id`, `grade_effect` and `criteria` required) must be disclosed clearly in the eventual PR body and changelog context (§6).
+- **Q2 — `RubricsModule.submitAssessment`: keep it byte-identical except for an `@deprecated` marker.** It is public library API (`./canvas` export). It is removed only at a future major release. It is not made to throw.
+- **Q3 — Group-graded assignments: refused in v1 (#3).** Later support is additive: it needs a fan-out postcondition across N submissions and its own design.
+- **Q4 — Sequencing with external PR #327.** #327 is still `OPEN` at `e3f50eb…`, `BEHIND`, and has no checks, because its first-time-contributor workflow still needs maintainer approval (§0.1). The preferred order is #327 first, then rebase the implementation onto it. **The safety fix must not wait indefinitely for #327.** If #327 cannot be unblocked in time, the fix ships first and the contributor is asked to drop "needed for rubric assessment writes" when they rebase. Neither PR is altered by this design.
+- **Q5 — Repo-wide 401 wording: out of scope.** `formatError` maps every 401 to "token is invalid or expired", but Canvas uses 401 for authorization failures on every write tool (§1.3-h). This design special-cases only the rubric write. Applying the rule to all write tools (a 401 after a successful read with the same token means a permission problem) changes user-visible text on every write tool and needs its own tests. **A separate follow-up ticket is required.**
+- **Q6 — `assessment_only` on checkpoint parents with grading enabled: refused (#8)**, so the rule survives Canvas finishing checkpoint rubric support (§3.3). The refusal uses the non-contradictory checkpoint wording 8b (§3.6), because the generic #8 text would state false Canvas behaviour there and point to an effect that #10 also refuses.
 
 ---
 
@@ -541,8 +563,16 @@ J  update_artifact, 24 combinations → grade_student called in exactly 2:
 
 ## Appendix B — Reproducing
 
-1. Run the wire capture. Place a throwaway Vitest file under `tests/scratch-probe/`. It calls `createCanvasMCPServer({ baseUrl, token })`, stubs `fetch` with `vi.stubGlobal` to return Canvas's 404 body, and invokes `server._registeredTools['submit_rubric_assessment'].handler(args, {})`. It writes `{calls, result}` to `wire.json`.
-2. Download the five Canvas files at the pinned SHA into `cv/`:
+Nothing here contacts a real Canvas instance. Step 1 replaces `fetch` entirely. Step 2 reads public source from GitHub.
+
+1. **Wire capture.** Run the committed script [`2026-09-15-bru-2550-assets/capture-wire.ts`](2026-09-15-bru-2550-assets/capture-wire.ts) from the repository root, on a tree where the tool still takes the legacy input (`origin/main` @ `db2c5e2`, or this docs-only branch):
+
+   ```bash
+   WORK=<output dir outside the repo> pnpm exec tsx docs/superpowers/specs/2026-09-15-bru-2550-assets/capture-wire.ts
+   ```
+
+   The script builds the real server with a **dummy token** (a literal, never read from the environment), replaces `fetch` with a stub that answers Canvas's 404 body and aborts on any host other than `canvas.example.com`, calls the real `submit_rubric_assessment` handler, and writes `{calls, result}` to `$WORK/wire.json`. It drops the `Authorization` header from the record, so `wire.json` holds no credential. After the implementation PR merges, the legacy args are rejected by input validation, no request is sent, and the script exits non-zero: check out `db2c5e2` to reproduce.
+2. Download the five Canvas files at the pinned SHA into `$WORK/cv/`:
    - `rubric_association.rb`
    - `rubric_assessments_controller.rb`
    - `submissions_api_controller.rb`
@@ -550,5 +580,11 @@ J  update_artifact, 24 combinations → grade_student called in exactly 2:
    - `model_rubric_assessment.rb` (from `app/models/rubric_assessment.rb`)
 
    Use `gh api "repos/instructure/canvas-lms/contents/<path>?ref=1c9f0bb8013ed69c4f2efe11fd483025469b7e6c" -H "Accept: application/vnd.github.raw"`.
-3. With any Ruby ≥ 3.2 and `actionpack` available, run `WORK=<dir containing cv/ and wire.json> ruby canvas-source-probe.rb`. With Docker: `docker run --rm -v "$PWD:/work" ruby:3.3-slim bash -c 'gem install actionpack --no-document && ruby /work/canvas-source-probe.rb'`.
-4. The output should match Appendix A, and the script writes it to `ruby-probe.json`.
+3. **Run the probe only inside a disposable container.** `canvas-source-probe.rb` `eval`s Ruby that it has just extracted from the files fetched in step 2, so never run it directly on a developer machine or a CI runner. Copy `canvas-source-probe.rb` into `$WORK/`, then:
+
+   ```bash
+   docker run --rm -v "$WORK:/work" ruby:3.3-slim bash -c 'gem install actionpack -v 8.1.3.1 --no-document && ruby /work/canvas-source-probe.rb'
+   ```
+
+   `actionpack` is pinned to **8.1.3.1**, the version Appendix A records. Any Ruby ≥ 3.2 works inside the container. Without Docker, use an equally disposable VM.
+4. The output should match Appendix A, and the script writes it to `$WORK/ruby-probe.json`.

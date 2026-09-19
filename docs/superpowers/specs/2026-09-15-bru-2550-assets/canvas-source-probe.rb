@@ -3,6 +3,12 @@
 # request bodies parsed by the real Rails/Rack parameter parsers. It does NOT run
 # Canvas: the DB and model layer are stubbed. What it proves is how Canvas's code
 # interprets a given wire body, not what a hosted instance runs.
+#
+# WARNING: this script `eval`s Ruby that it extracts from files downloaded from the
+# network (see the class_eval calls below). Run it ONLY inside a disposable container
+# with actionpack pinned to 8.1.3.1; never directly on a developer machine or a CI
+# runner. Reproduction steps: spec Appendix B. Its input wire.json comes from
+# capture-wire.ts (dummy token, no Authorization header, no real Canvas instance).
 require "action_controller"
 require "action_dispatch"
 require "json"
