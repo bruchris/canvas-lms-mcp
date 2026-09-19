@@ -382,7 +382,7 @@ Write-time failures:
 
 Postcondition failures:
 
-- `GRADEBOOK NOT UPDATED: the rubric assessment was saved, but the gradebook does not show the rubric total. The entered score after the write is {entered_after | empty}{ (final score {score_after} after a late-policy deduction)}; the rubric total is {R | empty}. Do not tell the user the grade changed to the rubric total.` The parenthesised clause appears only when `score_after` and `entered_score_after` differ. The message reports what was observed. It does not say what Canvas did.
+- `GRADEBOOK NOT UPDATED: the rubric assessment was saved, but the entered gradebook score is not the rubric total. The entered score after the write is {entered_after | empty}{ (final score {score_after} after a late-policy deduction)}; the rubric total is {R | empty}. Do not tell the user the grade changed to the rubric total.` The parenthesised clause appears only when `score_after` and `entered_score_after` differ. The message reports what was observed. It does not say what Canvas did.
 - `UNEXPECTED GRADEBOOK CHANGE: the rubric assessment was saved and Canvas changed the student's entered score from {before} to {after} (excused {b} → {a}), although grade_effect was "assessment_only". This tool did not undo it. Tell the user before doing anything else.`
 
 The tool **never** issues a corrective grade write. Undoing a grade is a separate user decision.
