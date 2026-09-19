@@ -27,7 +27,7 @@ interface QuestionGroupOut {
   question_id: number
   question_text: string
   question_type: string
-  position: number
+  position: number | null
   points_possible: number
   needs_manual_grading: boolean
   responses: ResponseRow[]
@@ -40,6 +40,8 @@ interface Result {
   questions: QuestionGroupOut[]
   submissions_scanned: number
   submissions_failed: number[]
+  unmatched_response_count: number
+  unmatched_question_ids: number[]
 }
 
 // ── Fixtures — built to match src/canvas/types.ts, not copied from the existing
@@ -120,6 +122,8 @@ interface MockOpts {
   submissions?: CanvasQuizSubmission[]
   answersBySubmission?: Record<number, CanvasQuizSubmissionQuestion[]>
   answersImpl?: (subId: number) => Promise<CanvasQuizSubmissionQuestion[]>
+  // Questions Canvas returns for one submission attempt (listSubmissionQuestions).
+  attemptQuestionsImpl?: (subId: number, attempt: number) => Promise<CanvasQuizQuestion[]>
   students?: CanvasUser[]
 }
 
@@ -136,6 +140,12 @@ function buildMockCanvas(opts: MockOpts = {}): CanvasClient {
         .fn()
         .mockResolvedValue(opts.submissions ?? [subComplete, subPendingReview]),
       getSubmissionAnswers,
+      listSubmissionQuestions: vi
+        .fn()
+        .mockImplementation(
+          (_courseId: number, _quizId: number, subId: number, attempt: number) =>
+            opts.attemptQuestionsImpl?.(subId, attempt) ?? Promise.resolve([]),
+        ),
     },
     users: {
       listStudents: vi.fn().mockResolvedValue(opts.students ?? [alice, bob]),
@@ -186,6 +196,10 @@ describe('quizQuestionResponseTools', () => {
       expect(result.question_count).toBe(2)
       expect(result.submissions_scanned).toBe(2)
       expect(result.submissions_failed).toEqual([])
+      expect(result.unmatched_response_count).toBe(0)
+      expect(result.unmatched_question_ids).toEqual([])
+      // Every answer matched an active question, so no per-attempt lookup is made.
+      expect(canvas.quizzes.listSubmissionQuestions).not.toHaveBeenCalled()
 
       // Sorted by position: Q1 (essay, pos 1) then Q2 (mc, pos 2).
       expect(result.questions.map((q) => q.question_id)).toEqual([10, 20])
@@ -406,11 +420,193 @@ describe('quizQuestionResponseTools', () => {
     })
   })
 
+  describe('question-bank (generated) questions', () => {
+    // A quiz with one fixed essay (id 10) plus a question group linked to a bank.
+    // Canvas materialises each bank draw as a `generated` QuizQuestion row, which
+    // GET .../quizzes/:id/questions (active questions only) never returns, while
+    // GET /quiz_submissions/:id/questions answers under the generated id.
+    // Source: instructure/canvas-lms@1c9f0bb, see src/tools/quiz-question-responses.ts.
+    const carol: CanvasUser = { id: 7, name: 'Carol Chen' }
+    const subCarol: CanvasQuizSubmission = { ...subComplete, id: 102, user_id: 7, attempt: 1 }
+
+    function bankQuestion(id: number, type: string, position: number): CanvasQuizQuestion {
+      // As served per attempt: position is that attempt's order and
+      // points_possible is the group's question_points.
+      return {
+        id,
+        quiz_id: 1,
+        position,
+        question_text: `Bank question ${id}`,
+        question_type: type,
+        points_possible: 3,
+      }
+    }
+    const bankEssay = bankQuestion(7001, 'essay_question', 2)
+    const bankMc = bankQuestion(7002, 'multiple_choice_question', 2)
+    const fixedInAttempt: CanvasQuizQuestion = { ...q1Essay, position: 1 }
+
+    // First-seen order (7002 before 7001) deliberately differs from id order.
+    const bankAnswers: Record<number, CanvasQuizSubmissionQuestion[]> = {
+      100: [
+        { id: 10, quiz_id: 1, answer: 'Alice essay', correct: null, flagged: false },
+        { id: 7002, quiz_id: 1, answer: '3', correct: true, flagged: false },
+      ],
+      101: [
+        { id: 10, quiz_id: 1, answer: 'Bob essay', correct: null, flagged: false },
+        { id: 7001, quiz_id: 1, answer: 'Bob bank essay', correct: null, flagged: true },
+      ],
+      102: [
+        { id: 10, quiz_id: 1, answer: 'Carol essay', correct: null, flagged: false },
+        { id: 7002, quiz_id: 1, answer: '4', correct: false, flagged: false },
+      ],
+    }
+    const attemptQuestions: Record<number, CanvasQuizQuestion[]> = {
+      100: [fixedInAttempt, bankMc],
+      101: [fixedInAttempt, bankEssay],
+      102: [fixedInAttempt, bankMc],
+    }
+
+    function bankCanvas(overrides: Partial<MockOpts> = {}): CanvasClient {
+      return buildMockCanvas({
+        questions: [q1Essay],
+        submissions: [subComplete, subPendingReview, subCarol],
+        answersBySubmission: bankAnswers,
+        attemptQuestionsImpl: (subId) => Promise.resolve(attemptQuestions[subId] ?? []),
+        students: [alice, bob, carol],
+        ...overrides,
+      })
+    }
+
+    it('retains responses to questions absent from listQuestions', async () => {
+      const canvas = bankCanvas()
+      const result = (await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      expect(result.question_count).toBe(3)
+      // Fixed questions by position first, then attempt-resolved questions by id.
+      expect(result.questions.map((q) => q.question_id)).toEqual([10, 7001, 7002])
+      expect(result.unmatched_response_count).toBe(0)
+      expect(result.unmatched_question_ids).toEqual([])
+
+      const essay = result.questions.find((q) => q.question_id === 7001)!
+      expect(essay).toEqual({
+        question_id: 7001,
+        question_text: 'Bank question 7001',
+        question_type: 'essay_question',
+        // Bank draws are shuffled per attempt, so there is no quiz-level position.
+        position: null,
+        points_possible: 3,
+        needs_manual_grading: true,
+        responses: [
+          {
+            user_id: 6,
+            user_name: 'Bob Brown',
+            quiz_submission_id: 101,
+            attempt: 2,
+            answer: 'Bob bank essay',
+            correct: null,
+            flagged: true,
+          },
+        ],
+      })
+
+      const mc = result.questions.find((q) => q.question_id === 7002)!
+      expect(mc.needs_manual_grading).toBe(false)
+      expect(mc.responses.map((r) => [r.quiz_submission_id, r.user_name, r.answer])).toEqual([
+        [100, 'Alice Anderson', '3'],
+        [102, 'Carol Chen', '4'],
+      ])
+
+      // The fixed question keeps its listQuestions metadata and all three responses.
+      const fixed = result.questions.find((q) => q.question_id === 10)!
+      expect(fixed.position).toBe(1)
+      expect(fixed.responses.map((r) => r.quiz_submission_id)).toEqual([100, 101, 102])
+    })
+
+    it('looks up only the attempts needed to cover the unmatched ids', async () => {
+      const canvas = bankCanvas()
+      await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })
+
+      // 102 drew the same generated row as 100, so it needs no lookup of its own.
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledTimes(2)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 100, 1)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 101, 2)
+    })
+
+    it('selects a bank-drawn question by question_id', async () => {
+      const canvas = bankCanvas()
+      const result = (await getTool(canvas).handler({
+        course_id: 1,
+        quiz_id: 1,
+        question_id: 7002,
+      })) as Result
+
+      expect(result.question_count).toBe(1)
+      expect(result.questions.map((q) => q.question_id)).toEqual([7002])
+      expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toEqual([100, 102])
+      expect(result.unmatched_response_count).toBe(0)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledTimes(1)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 100, 1)
+    })
+
+    it('makes no attempt lookup when question_id names a fixed question', async () => {
+      const canvas = bankCanvas()
+      const result = (await getTool(canvas).handler({
+        course_id: 1,
+        quiz_id: 1,
+        question_id: 10,
+      })) as Result
+
+      expect(result.questions.map((q) => q.question_id)).toEqual([10])
+      expect(result.questions[0].responses).toHaveLength(3)
+      // Answers to other questions are out of scope, not unmatched.
+      expect(result.unmatched_response_count).toBe(0)
+      expect(result.unmatched_question_ids).toEqual([])
+      expect(canvas.quizzes.listSubmissionQuestions).not.toHaveBeenCalled()
+    })
+
+    it('reports responses whose question lookup failed instead of dropping them', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const canvas = bankCanvas({
+        attemptQuestionsImpl: (subId) =>
+          subId === 100
+            ? Promise.reject(new Error('boom'))
+            : Promise.resolve(attemptQuestions[subId] ?? []),
+      })
+      const result = (await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })) as Result
+
+      // 7002 (answered in 100 and 102) could not be resolved; 7001 still was.
+      expect(result.questions.map((q) => q.question_id)).toEqual([10, 7001])
+      expect(result.question_count).toBe(2)
+      expect(result.unmatched_question_ids).toEqual([7002])
+      expect(result.unmatched_response_count).toBe(2)
+      expect(result.submissions_scanned).toBe(3)
+      expect(result.submissions_failed).toEqual([])
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('reports rather than throws when a selected bank question cannot be resolved', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const canvas = bankCanvas({ attemptQuestionsImpl: () => Promise.reject(new Error('boom')) })
+      const result = (await getTool(canvas).handler({
+        course_id: 1,
+        quiz_id: 1,
+        question_id: 7002,
+      })) as Result
+
+      expect(result.question_count).toBe(0)
+      expect(result.questions).toEqual([])
+      expect(result.unmatched_question_ids).toEqual([7002])
+      expect(result.unmatched_response_count).toBe(2)
+      errorSpy.mockRestore()
+    })
+  })
+
   describe('join-key robustness', () => {
-    // The pivot's single load-bearing assumption is CanvasQuizSubmissionQuestion.id
-    // === CanvasQuizQuestion.id. This pins the documented guard: an answer whose id
-    // matches no question is dropped silently rather than crashing. See spec §3.
-    it('silently ignores an answer whose id matches no question', async () => {
+    // The pivot's load-bearing assumption is CanvasQuizSubmissionQuestion.id ===
+    // CanvasQuizQuestion.id. If an answer's id resolves to no question even after
+    // the attempt lookup, the result must say so rather than look complete.
+    it('surfaces an answer whose id matches no question', async () => {
       const canvas = buildMockCanvas({
         submissions: [subComplete],
         answersBySubmission: {
@@ -419,16 +615,17 @@ describe('quizQuestionResponseTools', () => {
             { id: 10, quiz_id: 1, answer: 'real essay answer', correct: null, flagged: false },
           ],
         },
+        // The attempt lookup succeeds but does not know id 999 either.
+        attemptQuestionsImpl: () => Promise.resolve([q1Essay]),
       })
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
 
       const essay = result.questions.find((q) => q.question_id === 10)!
       expect(essay.responses.map((r) => r.answer)).toEqual(['real essay answer'])
-      // The orphan id 999 never surfaces as its own group or a stray response.
       expect(result.questions.some((q) => q.question_id === 999)).toBe(false)
-      const mc = result.questions.find((q) => q.question_id === 20)!
-      expect(mc.responses).toEqual([])
+      expect(result.unmatched_question_ids).toEqual([999])
+      expect(result.unmatched_response_count).toBe(1)
     })
   })
 
