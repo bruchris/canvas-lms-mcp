@@ -5,6 +5,7 @@
 - **Status:** Proposed — design only. No source change, dependency bump, or public compatibility promise is made by this document.
 - **Base:** `origin/main` @ `db2c5e2` (canvas-lms-mcp 1.29.3), `@modelcontextprotocol/sdk` 1.30.0
 - **Amended:** 2026-09-18 (BRU-2587) to reconcile with issue #355, which proposes serving the same skills as MCP prompts. Changed: §0 item 5, §3.2, §4.4 (new), §5.1, §6.1, §6.10, §6.11, §6.13 (new), §8, §9, §10 and the appendices. Everything else is as written on 2026-09-15.
+- **Corrected:** 2026-09-19 (BRU-2605), after QA review of this PR. Changed: §0 item 4, §3.2(b), §4.4b, §4.4d, §6.1, §6.13.1–§6.13.3, §6.13.5, §8 and §10. It fixes three figures, one field definition and one wording error, and it names which PR owns the `-audience` prerequisite. No recommendation changed, and open questions 2 and 8 are still open.
 
 ## 0. Recommendation
 
@@ -13,7 +14,7 @@
 1. **SDK v2 is not needed.** I built a prototype on the real built server factory. On SDK 1.30.0 it passes the official SEP-2640 server conformance scenarios: enumeration **30/30**, manifest **5/5** with one warning that the design below removes. The extension declaration reaches the wire over InMemory, stdio and stateless Streamable HTTP (§4). No released SDK in either line has a skills helper. The TypeScript one is an unmerged PR against the v2 branch (§7).
 2. **Fix what is broken today first (Phase 0).** `skills/canvas-admin-roster/SKILL.md` has had invalid YAML frontmatter since #102 (2026-05-01). Three independent parsers reject it (§3.2). This matters beyond MCP: any Agent Skills consumer that parses frontmatter with a real YAML parser cannot read that skill. Under SEP-2640 it is worse, because hosts **MUST** reject the skill. ChatGPT's importer rejects *every* skill if any one fails. *Update 2026-09-18:* this fix was split out as BRU-2586. PR #357 is open and not merged (§8).
 3. **Ship the extension opt-in, not default-on (Phase 1).** None of the mainstream clients support it: Claude Desktop, Claude web, Cursor, VS Code and Goose all show no Skills support. The only production consumer, ChatGPT, imports skills once at plugin-submission time and caps an import at **five** skills; we ship sixteen (§5). Default-on would add 16 entries to every existing user's `resources/list` for no client-side benefit yet.
-4. **Shape the catalog per deployment afterwards (Phase 2).** This means a role- and registry-aware listing plus an allowlist, so a ChatGPT submission can serve ≤5 skills.
+4. **Shape the catalog per deployment afterwards (Phase 2).** This means a role-aware listing (§6.13.3) plus an allowlist, so a ChatGPT submission can serve ≤5 skills.
 5. **Share one catalog with the prompt surface that #355 proposes instead of ruling it out (§6.13, added 2026-09-18).** Both surfaces share:
    - one generator;
    - one YAML parser (`yaml`);
@@ -101,6 +102,8 @@ Backward compatibility (SEP *Backward Compatibility*): "a client that predates t
 The other 15 parse cleanly with all three parsers, and on those 15 a naive `key: value` split agrees with the real parser. The defect was introduced in `88ed233` (#102, 2026-05-01). I have not tested which Agent Skills *hosts* choke on it today, so I make no claim about Claude Code or `skills.sh` behaviour. Under SEP-2640, however, the outcome is determined: hosts "MUST parse its YAML frontmatter and compare it field-by-field … Any discrepancy MUST be treated as a verification failure". An unparseable block cannot compare equal. BRU-2586 fixes the file by single-quoting the scalar (PR #357, open on 2026-09-18).
 
 **(b) Every skill contains non-ASCII.** All 16 contain characters such as `—`, so `text.length !== Buffer.byteLength(text)` for **16/16**. An implementation that computes `size` from the JS string would publish a wrong size for every skill. Hosts treat a size mismatch as a digest mismatch (SEP *Resources*).
+
+The same gap breaks any position stored for the text. In 10 of the 16 skills the frontmatter itself contains non-ASCII, so the byte offset of the body differs from its JS string index (measured at `db2c5e2`). In `canvas-course-qc` the body starts at string index 449 and byte offset 453, and `text.slice(453)` begins `anvas Course QC`. A stored body position must therefore be a UTF-16 string index (`bodyStart`, §6.1), never a byte offset.
 
 ## 4. Measurements
 
@@ -201,12 +204,12 @@ The divergence is **latent, not live**. Once BRU-2586 lands, both parsers read t
 
 | Catalog | Host-side replica (§4.1): digest + size / frontmatter | Official conformance, `7169291`, `--spec-version 2025-11-25 --force` |
 | --- | --- | --- |
-| fixed + metadata; `frontmatter` = `yaml.parse` of the file, verbatim | 16/16 / **16/16** | enumeration: 29 SUCCESS, 2 SKIPPED (the cache attributes), **0 FAILURE**. This includes `sep-2640-entry-frontmatter-identical` and `sep-2640-metadata-reserved-prefix`. Manifest: **5/5**, 0 WARNING. |
+| fixed + metadata; `frontmatter` = `yaml.parse` of the file, verbatim | 16/16 / **16/16** | enumeration: **30** SUCCESS, 2 SKIPPED (the cache attributes), **0 FAILURE**. This includes `sep-2640-entry-frontmatter-identical` and `sep-2640-metadata-reserved-prefix`. Manifest: **6/6**, 0 WARNING, with the resource `name` set to `frontmatter.name` as §6.5 designs it. (The §4.2 prototype registered `skill:<dir>` and got 5/5 plus 1 WARNING.) |
 | Control: same files; `frontmatter` = #355's projected fields (`name`, `description`), without `metadata` | 16/16 / **0/16**; the `metadata` key differs on every entry | enumeration: **FAILURE `sep-2640-entry-frontmatter-identical`** |
 | Control: `canvas-admin-roster` unfixed; frontmatter from the line-split parser | 16/16 / 15/16; the file is unparseable | served alone: enumeration **FAILURE `sep-2640-skillmd-frontmatter`**, manifest **FAILURE `sep-2640-final-segment-equals-name`** |
 | Control: the 7 edits above; frontmatter from the line-split parser | 4 FAIL on `description`, 1 unparseable file, 2 generator errors | not run |
 
-Conformance reads back only the first entry (§4.2). Under +metadata that entry is `canvas-accessibility-sweep`, and it carries both metadata keys. So the identical-frontmatter check really compared a block with `metadata` in it, and the second row shows the check fires when `metadata` is missing. §4.2 records the 09-15 enumeration run as 30 successes. Today's run at the same conformance SHA emits 31 checks: 29 successes and 2 skipped. I did not keep the 09-15 log, so I cannot attribute the one-check difference.
+Conformance reads back only the first entry (§4.2). Under +metadata that entry is `canvas-accessibility-sweep`, and it carries both metadata keys. So the identical-frontmatter check really compared a block with `metadata` in it, and the second row shows the check fires when `metadata` is missing. The enumeration count is the same 30 that §4.2 records for the unmodified catalog.
 
 **(c) Both surfaces on one server**
 
@@ -229,7 +232,7 @@ If two generated modules each embedded the text, the skill text would ship twice
 | Surface | Source | Clients with support |
 | --- | --- | --- |
 | MCP prompts | `docs/clients.mdx` at `0dfb7b6`. This community-maintained, self-reported list was the last version before the page was deleted on 2026-05-27. | **43 of 114**, including Claude Desktop, Claude.ai, Claude Code, Cursor, VS Code GitHub Copilot, Goose, Continue, Zed, Gemini CLI and fast-agent. It does **not** include ChatGPT, Windsurf or Cline. |
-| SEP-2640 Skills | `docs/extensions/client-matrix.mdx` at `af68e21` (2026-09-08) | **0** with full support; 3 Partial (ChatGPT, fast-agent, MCP Inspector) out of 14 rows |
+| SEP-2640 Skills | `docs/extensions/client-matrix.mdx` at `af68e21` (2026-09-08) | **0** with full support. Of the 13 client rows, 3 are Partial (ChatGPT, fast-agent, MCP Inspector) and 10 are blank. Claude Code is not a matrix row (§5). |
 
 Only fast-agent appears in both lists, so the two surfaces reach almost entirely different hosts:
 - **Prompts** reach the desktop and IDE hosts that users run today.
@@ -293,7 +296,7 @@ Sources: `docs/extensions/client-matrix.mdx` (Skills column); SEP *Reference Imp
 - `scripts/generate-skills-catalog.ts` (new; wired as `pnpm generate:skills`) walks `skills/<dir>/**`. It walks **every file** under each skill, not just `SKILL.md`, so a future `references/` file lands in `resources` automatically: SEP completeness is a MUST. It emits `src/skills/catalog.generated.ts`, which holds for each skill the `name`, `uri` and verbatim `frontmatter`, and for each file its `uri`, `mimeType`, `text`, `digest` and `size`.
 - **It is the only generator over `skills/` for every surface (amended 2026-09-18, §6.13).** Besides the fields above, it emits:
   - each skill's `referencedTools`: backticked identifiers matched against the complete tool registry;
-  - the byte offset of the `SKILL.md` body.
+  - `bodyStart`: the UTF-16 string index in `text` of the first character after the closing `---` line of the frontmatter, so that `text.slice(bodyStart)` is the body. It indexes the JS string, **not** the file's bytes. For 10 of the 16 skills the two differ (§3.2b), and `text.slice(byteOffset)` would start mid-body.
 
   The prompt surface proposed in #355 reads these fields and does not generate its own module.
 - **The generator fails** unless all of the following hold, every one of them a SEP MUST or SHOULD (§2) or part of the §6.13.2 contract:
@@ -429,8 +432,8 @@ Issue #355 asks for the same 16 skills to be registered as MCP prompts. A draft 
 | Generator | `scripts/generate-skills-catalog.ts` | `scripts/generate-prompts.ts` + `src/prompts/generate.ts` | **One**: `scripts/generate-skills-catalog.ts` → `src/skills/catalog.generated.ts`. The prompt module imports it and generates nothing of its own. |
 | Parser | `yaml` | a line-split parser for "the narrow slice of YAML these files actually use" | **One**: `yaml` `parse` at its defaults (`strict`, `uniqueKeys`). BRU-2586's guard makes the same call, and conformance hosts use the same library. It stays a devDependency. |
 | What the catalog stores | the file text plus the verbatim frontmatter object | projected fields: `name`, `title`, `description`, `audience`, `argumentNames`, `writeTools`, `body` | **Both.** The catalog holds the text and the whole parsed frontmatter object, plus the derived fields. Projections are computed *from* the frontmatter, never stored *instead of* it. Projecting drops `metadata`, and then verification fails for all 16 skills (§4.4b). |
-| Prompt body | none | the markdown after the closing `---` | A slice of the stored text, found by an offset, so the body adds no bytes (§4.4c). |
-| Per-skill metadata | none; the §6.11 allowlist permitted `metadata` if it was added deliberately | two namespaced `metadata` keys | **Adopt #355's two keys** under the contract in §6.13.2. |
+| Prompt body | none | the markdown after the closing `---` | `text.slice(bodyStart)`, where `bodyStart` is a UTF-16 string index (§6.1), so the body adds no bytes (§4.4c). |
+| Per-skill metadata | none; the §6.11 allowlist permitted `metadata` if it was added deliberately | two namespaced `metadata` keys | **Adopt #355's two keys** under the contract in §6.13.2. No skill carries either key today, so a PR must add them: §6.13.5 names which. |
 | Tool references | `requiredTools` (Phase 2) | `writeTools` | **One derivation**, `referencedTools`: backticked identifiers matched against the complete 165-tool registry. `writeTools` is the `destructiveHint` subset. Unresolvable identifiers are ignored, as #355 §1.2 requires. The two derivations already agree (§4.4e). |
 | Visibility | every named tool registered | declared audience via `ROLE_VISIBILITY` | **One rule for both surfaces** (§6.13.3). |
 | Wire | `skills/*` plus `skill://` resources, opt-in | `prompts/*`, on by default | Stays per surface. Whether and when prompts ship is open question 8. |
@@ -469,6 +472,8 @@ Measured in §4.4b: with #355's keys exactly as its plan writes them, all 16 ski
 
 Adding the keys changes each skill's bytes once, so each digest changes once. §6.8 already expects that for a real content change, and the keys are not version stamps.
 
+**Nothing adds these keys yet.** No skill carries either key today: §3.1 records exactly `name` and `description` in all 16, and that is still true on `main` after #357. Only the prompt surface (#355) proposes them. The declared-audience rule in §6.13.3 therefore depends on a key that no phase in this document adds, because Phases 0–2 as first written edit none of the 16 skill files. §6.13.5 assigns the work: the first PR that reads a declared audience adds `-audience` to the 16 files, which is the one-time digest change described above.
+
 Two open questions decide whether `-audience` must appear on every skill, as #355 drafts it, or only once something reads it: question 2 (the visibility rule) and question 8 (prompts). The contract holds either way.
 
 #### 6.13.3 One visibility rule
@@ -476,7 +481,8 @@ Two open questions decide whether `-audience` must appear on every skill, as #35
 With two rules over one catalog, the two surfaces of the same server would list different skills. §4.4e measures the gap: the rules agree in 10 of 16 configurations. In the other 6 they differ only on `canvas-office-hours` under `block`.
 
 **Recommendation** (open question 2 keeps the choice):
-- The **declared** audience decides visibility at runtime on both surfaces. It goes through `ROLE_VISIBILITY`, the same predicate tools use.
+- The **declared** audience decides visibility at runtime on both surfaces. It goes through `ROLE_VISIBILITY`, the table tools use, from one predicate in `src/skills/visibility.ts` (not under `src/prompts/`).
+- **Prerequisite:** this needs `-audience` on the skills (§6.13.2) and that predicate. Neither exists on `main`. §6.13.5 names the PR that adds each, for every outcome of open question 8.
 - The derived tool list becomes a **CI consistency check**, not a runtime filter. The check: with `destructiveTools: allow` and every opt-in flag on, each skill visible to a role must have all of its `referencedTools` registered for that role. It holds today in all 8 `allow` configurations.
 - A skill tagged with the wrong audience therefore fails CI instead of silently changing the listing.
 - Under `block`, `canvas-office-hours` stays listed. Its `delete_appointment_group` step fails with tool-not-found, which §6.11 item 6 already accepts as harmless.
@@ -498,6 +504,20 @@ The real cost that remains is review and wire surface, not content: a second set
 #### 6.13.5 Sequencing
 
 Whichever surface is scheduled first lands the shared generator, the catalog and the §6.13.2 contract. The other surface only consumes them. If the prompt surface goes first, those rows move out of Phase 1 into its PR, and Phase 1 shrinks to the extension itself.
+
+The declared-audience rule (§6.13.3) needs two more things that the generator does not provide: the `-audience` key on the 16 skill files, and the shared predicate. Neither exists today. Phase 1 does not need them, because it serves every skill without filtering. The rule for who adds them is this: **the first PR that reads a declared audience adds the key, the predicate and the consistency check, and every later PR consumes them.** That is not always the PR that lands the generator. For each outcome of open question 8:
+
+| Outcome of open question 8 | Generator, catalog, contract (§6.13.2) | `-audience` on the 16 skill files (one-time digest change, §6.13.2) | Shared predicate, `src/skills/visibility.ts` | Consistency check (§6.13.3), in `tests/skills/catalog.test.ts` |
+| --- | --- | --- | --- | --- |
+| Prompts ship before Phase 1 | prompt PR | prompt PR | prompt PR | prompt PR |
+| Extension first; prompts ship later | Phase 1 | Phase 2 | Phase 2 | Phase 2 |
+| Prompts never ship | Phase 1 | Phase 2 | Phase 2 | Phase 2 |
+
+- **Second row, timing:** if the prompt PR lands before Phase 2, it is the first reader and takes the last three columns, as in the first row. Phase 2 then consumes them.
+- **Location:** the predicate lives under `src/skills/`, so the extension can import it without depending on the prompt surface. This matters most in the third row, where no prompt surface exists.
+- **Digest timing:** in the second and third rows the digest change lands after Phase 1 may already have shipped, so a host that stored an approval re-prompts once (§6.8). Phase 1 is opt-in and experimental, and no client has full support today (§4.4d).
+- **Open question 2 can remove the prerequisite.** Under the derived rule ("every named tool registered") nothing reads `-audience`. No PR adds it and there is no consistency check to own. The predicate reads the `referencedTools` that Phase 1 already puts in the catalog, and it belongs to the first PR that filters: Phase 2, or the prompt PR if it lands first. Under "no filtering", none of the three exists.
+- This table assigns work. It does not choose an outcome of open question 8, and it does not choose between the rules of open question 2.
 
 In #355's draft plan, this replaces Tasks 1–2 (its parser and generator) with a consumer of `src/skills/catalog.generated.ts`. Tasks 3–5 are unaffected. That plan is not this document's to edit. The note on PR #353 and the cross-reference on #355 point here.
 
@@ -547,7 +567,7 @@ Tests (all in CI; `pnpm test` runs before `pnpm build`, so no test may depend on
 
 | File | Asserts |
 | --- | --- |
-| `tests/skills/catalog.test.ts` | Committed catalog equals regeneration from `skills/` (freshness); per entry: URI pattern, final segment == `frontmatter.name`, `digest` == sha256(file bytes), `size` == byte length, pinned with a non-ASCII fixture so `text.length` would fail; `frontmatter` deep-equals `yaml.parse`, **including `metadata`**; completeness against a temp fixture skill containing a `references/` file; limits. Contract (§6.13.2): each item has a fixture that must fail, including the comment placements and a quoted apostrophe that must decode to `'`. Consistency check (§6.13.3): with `allow` and every flag on, each skill visible to a role has all of its `referencedTools` registered for that role. |
+| `tests/skills/catalog.test.ts` | Committed catalog equals regeneration from `skills/` (freshness); per entry: URI pattern, final segment == `frontmatter.name`, `digest` == sha256(file bytes), `size` == byte length, pinned with a non-ASCII fixture so `text.length` would fail; **body position:** `text.slice(bodyStart)` equals the body, taken independently of the generator (for example by a regex on the closing `---` line), on every real skill and on a fixture whose frontmatter contains a multi-byte character such as `—`, so that a byte offset would fail it (10 of the 16 real skills differ, §3.2b); `frontmatter` deep-equals `yaml.parse`, **including `metadata`**, on a fixture skill that carries it (the real files carry none until the PR named in §6.13.5 adds `-audience`); completeness against a temp fixture skill containing a `references/` file; limits. Contract (§6.13.2): each item has a fixture that must fail, including the comment placements and a quoted apostrophe that must decode to `'`. **Not in this PR:** the §6.13.3 consistency check reads the declared audience, which no skill carries yet. It moves to the PR that adds `-audience` (§6.13.5 table): Phase 2, unless the prompt PR goes first. |
 | `tests/skills/extension-wire.test.ts` | Raw JSON-RPC over `InMemoryTransport`, like §4.1. **Control first**: disabled → no `extensions`, `skills/list` `-32601`, `resources/list` unchanged. Enabled → declaration; list shape; `get` known/unknown/malformed/non-`SKILL.md` → `-32602`; cursor → `-32602`; host-side replica of digest + size + frontmatter verification for every URI; `resources/list` names == frontmatter names; `resources/directory/read` → `-32601`. **Permission invariant**: `tools/list` identical on/off for every `role × destructiveTools`. |
 | `tests/stdio.test.ts`, `tests/http.test.ts` | Extend the existing harnesses: the flag reaches the factory; `initialize` carries the declaration; over HTTP, two independent POSTs (two server instances) return identical `skills/list` |
 
@@ -562,15 +582,17 @@ Manual pre-merge evidence, recorded in the PR and not a CI gate:
 
 | File | Change |
 | --- | --- |
-| generator + catalog | Nothing new: `referencedTools` is already in the catalog from Phase 1 (§6.13.1) |
-| `src/skills/extension.ts` | Serve by the one visibility rule (§6.13.3, open question 2). It is the same function the prompt surface uses, evaluated per instance and therefore per HTTP request and role. |
+| generator + catalog | Nothing new: `referencedTools` is already in the catalog from Phase 1 (§6.13.1), and the contract already allows `-audience` (§6.13.2 item 5) |
+| `skills/*/SKILL.md` (16 files) | Add the `-audience` key (§6.13.2 item 5), with the values from #355's table. **Phase 2 owns this only if no earlier PR added it:** it does in the "Extension first" and "Prompts never ship" rows of the §6.13.5 table, and the prompt PR does if it lands before Phase 2. One-time digest change. Not needed if open question 2 picks the derived rule. |
+| `src/skills/visibility.ts` (new; same ownership condition) | The one predicate: is the skill's `-audience` in `ROLE_VISIBILITY[role]`, with an unset role seeing every skill. Under the derived rule it instead reads `referencedTools`. It is not under `src/prompts/`. |
+| `src/skills/extension.ts` | Serve by the one visibility rule (§6.13.3, open question 2) by calling that predicate, evaluated per instance and therefore per HTTP request and role. If prompts ship, the prompt surface calls the same function. The function exists only once the PR named in §6.13.5 has added it, so this file never depends on the prompt surface. |
 | `src/cli.ts`, `src/server.ts` | `CANVAS_SKILLS=<comma-separated names>` allowlist; unknown name → startup error; empty → error |
-| tests | Visibility matrix from §4.4e as a table-driven test. If prompts have shipped, assert that both surfaces list the same set in every configuration. An allowlist of 5 → `skills/list` returns 5. |
+| tests | Visibility matrix from §4.4e as a table-driven test. If prompts have shipped, assert that both surfaces list the same set in every configuration. An allowlist of 5 → `skills/list` returns 5. The §6.13.3 consistency check, if this PR adds `-audience` (§6.13.5 table). |
 | docs | "Publishing skills to a ChatGPT plugin": ≤5 via `CANVAS_SKILLS`, then run Scan Tools |
 
 ### Prompt surface (#355): phase not decided (added 2026-09-18)
 
-This surface consumes the Phase 1 catalog (§6.13). Its design, handlers and tests belong to #355. Its order relative to Phases 1–2, and whether it is on by default, are open question 8. If it is scheduled before Phase 1, it carries the shared generator and the contract (§6.13.5).
+This surface consumes the Phase 1 catalog (§6.13). Its design, handlers and tests belong to #355. Its order relative to Phases 1–2, and whether it is on by default, are open question 8. If it is scheduled before Phase 1, it carries the shared generator and the contract. If it is scheduled before Phase 2, it is also the first reader of a declared audience, so it carries `-audience` on the 16 skill files, the shared predicate and the consistency check (§6.13.5).
 
 ### Phase 3: folded into the SDK v2 migration. No new trigger
 
@@ -616,7 +638,7 @@ This surface consumes the Phase 1 catalog (§6.13). Its design, handlers and tes
 
 1. **Default:** opt-in (recommended) or default-on for stdio?
 2. **One listing rule under filters, shared by both surfaces** (amended 2026-09-18; §6.13.3, measured in §4.4e). The rules agree in 10 of 16 configurations and differ only on `canvas-office-hours` under `block`. Options:
-   - the declared audience at runtime, with the derived tool list as a CI check. This is recommended, and `office-hours` stays listed under `block`.
+   - the declared audience at runtime, with the derived tool list as a CI check. This is recommended, and `office-hours` stays listed under `block`. It needs the `-audience` key and a shared predicate that no PR adds yet; §6.13.5 names the owner for each outcome of question 8.
    - "every named tool registered" at runtime. This was the 09-15 recommendation, and it hides `office-hours` under `block`.
    - no filtering.
    - "any named tool registered".
@@ -628,7 +650,7 @@ This surface consumes the Phase 1 catalog (§6.13). Its design, handlers and tes
 8. **Do MCP prompts (#355) ship, and in which phase?** (Added 2026-09-18.) This is a product call. The facts that bear on it:
    - **Reach:** 43 of 114 listed clients support prompts. The extension has 0 clients with full support and 3 with partial support (§4.4d).
    - **Cost after §6.13:** the handlers and their tests only. There is no new copy of the content and no second generator.
-   - **Interaction with this design:** the order relative to Phase 1 decides who lands the generator (§6.13.5). Turning prompts on by default would add 16 prompts to every existing user's picker. That is the objection that made the extension opt-in (§0 item 3), and it applies to prompts as well.
+   - **Interaction with this design:** the order relative to Phase 1 decides who lands the generator, and the order relative to Phase 2 decides who adds `-audience`, the shared predicate and the consistency check (§6.13.5 table). Turning prompts on by default would add 16 prompts to every existing user's picker. That is the objection that made the extension opt-in (§0 item 3), and it applies to prompts as well.
 
    This design takes no position on the answer. It only requires that prompts, if they ship, consume the §6.13 catalog.
 
