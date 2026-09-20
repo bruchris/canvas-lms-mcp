@@ -221,6 +221,9 @@ describe('HTTP transport hardening', () => {
       oauthStore: store,
       fetch: canvas.fetch as unknown as typeof fetch,
     }) as Handler
+    // The catch logs, and an operator needs that line — so assert it rather
+    // than let it sit in the CI output as noise.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const live = await listen(handler)
     try {
       const response = await raw(live.port, getRequest('/mcp'))
@@ -228,8 +231,13 @@ describe('HTTP transport hardening', () => {
       expect(response).toContain('server_error')
       await settle()
       expect(rejections).toEqual([])
+      expect(logged).toHaveBeenCalledWith(
+        'Unhandled error handling HTTP request:',
+        expect.objectContaining({ message: 'store is unwritable' }),
+      )
       expect(await raw(live.port, getRequest('/health'))).toContain('HTTP/1.1 200')
     } finally {
+      logged.mockRestore()
       await live.close()
     }
   })
