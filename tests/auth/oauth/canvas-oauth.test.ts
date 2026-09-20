@@ -276,6 +276,137 @@ describe('CanvasOAuthClient (#302 §9)', () => {
     })
   })
 
+  // N4 (#356). The Canvas `error` code reaches an operator's console inside the
+  // "rejected this server's own OAuth request" line. It is upstream text — a
+  // compromised or misbehaving Canvas, or a proxy in front of it, controls it —
+  // and a raw newline or ANSI escape in a log line forges further lines or
+  // repaints the terminal. Only a well-formed code (`/^[a-z_]{1,64}$/`) is
+  // printed; anything else becomes a fixed marker. Classification is untouched.
+  describe('operator log hygiene (N4, #356)', () => {
+    const MARKER = '<unrecognized>'
+
+    /** A C0 control (newline, ESC, NUL, …) or DEL: what a forged or repainted log line is made of. */
+    function hasControlCharacter(text: string): boolean {
+      return [...text].some((char) => {
+        const code = char.charCodeAt(0)
+        return code < 0x20 || code === 0x7f
+      })
+    }
+
+    /** One failing token request with `error: <code>`; what was logged and thrown. */
+    async function rejectWith(code: unknown, status = 401) {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        const error = await makeClient(
+          vi.fn().mockResolvedValue(
+            jsonResponse(
+              {
+                error: code,
+                error_description: 'DESCRIPTION-LEAK client_secret=dev-key-secret',
+                access_token: 'ACCESS-LEAK',
+                refresh_token: 'REFRESH-LEAK',
+              },
+              status,
+            ),
+          ),
+        )
+          .refresh('still-good')
+          .catch((e) => e)
+        const lines = logged.mock.calls.map((call) => call.map(String).join(' '))
+        return { error, lines }
+      } finally {
+        logged.mockRestore()
+      }
+    }
+
+    it.each(['invalid_client', 'invalid_request', 'unsupported_grant_type', 'a'.repeat(64)])(
+      'prints a well-formed error code verbatim: %s',
+      async (code) => {
+        const { error, lines } = await rejectWith(code)
+        expect(lines).toHaveLength(1)
+        expect(lines[0]).toContain(`(error=${code}, HTTP 401)`)
+        expect(error).toMatchObject({ kind: 'unavailable', status: 401 })
+      },
+    )
+
+    it.each([
+      ['a newline that forges a second log line', 'invalid_client\nFATAL: forged line'],
+      ['a trailing newline', 'invalid_client\n'],
+      ['a carriage return', 'invalid_client\rFATAL: forged line'],
+      ['an ANSI colour escape', '\u001b[31minvalid_client\u001b[0m'],
+      ['an ANSI clear-screen escape', 'invalid_client\u001b[2J'],
+      ['a NUL byte', 'invalid_client\u0000'],
+    ])('replaces a code carrying %s with the marker', async (_label, code) => {
+      const { error, lines } = await rejectWith(code)
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain(`(error=${MARKER}, HTTP 401)`)
+      expect(hasControlCharacter(lines[0])).toBe(false)
+      expect(lines[0]).not.toContain('forged')
+      expect(lines[0]).not.toContain('invalid_client')
+      expect(error).toMatchObject({ kind: 'unavailable', status: 401 })
+    })
+
+    it.each([
+      ['just over the 64-character limit', 'a'.repeat(65)],
+      ['10 000 characters', 'a'.repeat(10_000)],
+    ])('replaces a code that is %s with the marker, so the line stays short', async (_l, code) => {
+      const { lines } = await rejectWith(code)
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain(`(error=${MARKER}, HTTP 401)`)
+      expect(lines[0]).not.toContain('aaaa')
+      expect(lines[0].length).toBeLessThan(600)
+    })
+
+    it.each([
+      ['upper case', 'Invalid_Client'],
+      ['a hyphen', 'invalid-client'],
+      ['a digit', 'invalid_client2'],
+      ['a space', 'invalid client'],
+      ['a non-ASCII letter', 'invalid_cliént'],
+    ])('replaces a code with %s with the marker', async (_label, code) => {
+      const { lines } = await rejectWith(code)
+      expect(lines[0]).toContain(`(error=${MARKER}, HTTP 401)`)
+    })
+
+    it('keeps the taxonomy: a malformed code is still not a dead grant', async () => {
+      // `invalid_grant` with anything appended is not Canvas's `invalid_grant`,
+      // so it must not be able to revoke a user's grant. It behaves exactly as
+      // any other unrecognised code did before the marker: a server-config fault.
+      for (const code of ['invalid_grant\n', 'INVALID_GRANT', 'invalid_grant ', 'a'.repeat(65)]) {
+        const { error } = await rejectWith(code, 400)
+        expect(error).toBeInstanceOf(CanvasOAuthError)
+        expect(error).toMatchObject({ kind: 'unavailable', status: 400 })
+      }
+      // The well-formed dead-grant code is unchanged, and logs nothing.
+      const dead = await rejectWith('invalid_grant', 400)
+      expect(dead.error).toMatchObject({ kind: 'invalid_grant', status: 400 })
+      expect(dead.lines).toEqual([])
+    })
+
+    it.each([
+      ['an empty string', ''],
+      ['a number', 42],
+      ['null', null],
+      ['an object', { code: 'invalid_client' }],
+    ])('still treats %s as no readable code, so a 400 stays a dead grant', async (_l, code) => {
+      const { error, lines } = await rejectWith(code, 400)
+      expect(error).toMatchObject({ kind: 'invalid_grant', status: 400 })
+      expect(lines).toEqual([])
+    })
+
+    it('never logs descriptions, tokens, secrets or other upstream free text', async () => {
+      for (const code of ['invalid_client', 'bad\nvalue', 'a'.repeat(200)]) {
+        const { error, lines } = await rejectWith(code)
+        const everything = [...lines, error.message].join('\n')
+        for (const leak of ['DESCRIPTION-LEAK', 'ACCESS-LEAK', 'REFRESH-LEAK', 'dev-key-secret']) {
+          expect(everything).not.toContain(leak)
+        }
+        // The line names the config knobs, never their values.
+        expect(lines[0]).toContain('CANVAS_OAUTH_CLIENT_ID/CANVAS_OAUTH_CLIENT_SECRET')
+      }
+    })
+  })
+
   describe('revoke', () => {
     // QA S6 (#356): a hung Canvas otherwise holds the per-grant refresh dedup
     // in the resource server, so every request on that grant waits with it.

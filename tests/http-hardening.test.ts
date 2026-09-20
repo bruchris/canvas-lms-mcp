@@ -307,6 +307,125 @@ describe('HTTP transport hardening', () => {
     }
   })
 
+  // N3 (#356). The two tests above cover a *failing* store. This is the other
+  // half of the contract in `buildOAuthRuntime`: against a healthy store the
+  // pre-registered clients are written exactly once — not once per discovery
+  // request. Two shapes, because they break independently: requests that
+  // arrive after startup seeding finished must reuse the memoized success, and
+  // requests that arrive while it is still running must share the one
+  // in-flight attempt.
+  describe('seeding a healthy store', () => {
+    const DISCOVERY = [
+      '/.well-known/oauth-authorization-server',
+      '/.well-known/oauth-protected-resource/mcp',
+    ]
+
+    /** Records every `putClient`, and parks each one until `release()` when `held`. */
+    function recordingStore(held: boolean) {
+      const store = new MemoryOAuthStore()
+      const write = store.putClient.bind(store)
+      const written: string[] = []
+      let release: () => void = () => {}
+      const gate = held
+        ? new Promise<void>((resolve) => {
+            release = resolve
+          })
+        : undefined
+      store.putClient = async (client) => {
+        written.push(client.clientId)
+        await gate
+        return write(client)
+      }
+      return { store, written, release: () => release() }
+    }
+
+    /** The handler, plus how many requests have reached it. */
+    function seededHandler(store: MemoryOAuthStore) {
+      let arrivals = 0
+      const inner = createHttpHandler({
+        authProfile: 'oauth_brokered',
+        oauth: loadOAuthProfileConfig({
+          ...BASE_ENV,
+          CANVAS_MCP_OAUTH_CLIENTS: JSON.stringify([
+            { client_id: 'mcpcl_seed', redirect_uris: ['http://127.0.0.1/cb'] },
+          ]),
+        }),
+        oauthStore: store,
+        fetch: mockCanvas().fetch as unknown as typeof fetch,
+      }) as Handler
+      const handler: Handler = (req, res) => {
+        arrivals += 1
+        return inner(req, res)
+      }
+      return { handler, arrived: () => arrivals }
+    }
+
+    async function until(condition: () => boolean): Promise<void> {
+      const deadline = Date.now() + 2000
+      while (!condition()) {
+        if (Date.now() > deadline) throw new Error('condition not met within 2s')
+        await new Promise((resolve) => setTimeout(resolve, 5))
+      }
+    }
+
+    it('seeds once across sequential discovery requests', async () => {
+      const { store, written } = recordingStore(false)
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { handler } = seededHandler(store)
+      const live = await listen(handler)
+      try {
+        // Startup seeding has finished before the first request arrives.
+        await settle()
+        expect(written).toEqual(['mcpcl_seed'])
+
+        for (const target of [...DISCOVERY, ...DISCOVERY]) {
+          expect(await raw(live.port, getRequest(target))).toContain('HTTP/1.1 200')
+        }
+        // Four discovery requests later, still the one write from startup.
+        expect(written).toEqual(['mcpcl_seed'])
+        expect(logged).not.toHaveBeenCalledWith(
+          expect.stringContaining('Failed to seed'),
+          expect.anything(),
+        )
+      } finally {
+        logged.mockRestore()
+        await live.close()
+      }
+    })
+
+    it('shares one in-flight seeding attempt between concurrent discovery requests', async () => {
+      const { store, written, release } = recordingStore(true)
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { handler, arrived } = seededHandler(store)
+      const live = await listen(handler)
+      try {
+        // Startup seeding is now parked inside `putClient`. Fire the whole
+        // burst before letting it finish, so every request waits on `ready()`.
+        const burst = Array.from({ length: 6 }, (_, i) =>
+          raw(live.port, getRequest(DISCOVERY[i % DISCOVERY.length])),
+        )
+        await until(() => arrived() === burst.length)
+        await settle()
+        expect(written).toEqual(['mcpcl_seed'])
+
+        release()
+        for (const response of await Promise.all(burst)) {
+          expect(response).toContain('HTTP/1.1 200')
+        }
+        expect(written).toEqual(['mcpcl_seed'])
+        expect(logged).not.toHaveBeenCalledWith(
+          expect.stringContaining('Failed to seed'),
+          expect.anything(),
+        )
+      } finally {
+        // A failed assertion must not leave a request parked on the gate.
+        release()
+        logged.mockRestore()
+        await live.close()
+      }
+    })
+  })
+
   it('survives an aborted body on every unauthenticated OAuth endpoint that reads one', async () => {
     const live = await listen(oauthProfileHandler())
     try {

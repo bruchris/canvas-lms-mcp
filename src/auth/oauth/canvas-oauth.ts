@@ -245,16 +245,31 @@ export class CanvasOAuthClient {
 }
 
 /**
+ * What an `error` code that is not a well-formed OAuth code is logged as
+ * (N4, #356). Contains characters the pattern below rejects, so it can never
+ * be mistaken for a code Canvas actually sent.
+ */
+const UNRECOGNIZED_ERROR_CODE = '<unrecognized>'
+
+/** RFC 6749 codes are short lower-case snake_case tokens; Canvas's are too. */
+const WELL_FORMED_ERROR_CODE = /^[a-z_]{1,64}$/
+
+/**
  * Canvas's OAuth `error` code from a failed token response, or `undefined`
  * when the body is not the JSON shape Canvas sends. Only the code is read —
- * `error_description` never leaves this function.
+ * `error_description` never leaves this function, and neither does a code that
+ * is not a well-formed token: it is upstream text headed for an operator's
+ * console, where a newline or ANSI escape would forge or repaint log lines, so
+ * it comes back as {@link UNRECOGNIZED_ERROR_CODE}. That is still "some code
+ * that is not `invalid_grant`", so the caller's classification is unchanged.
  */
 async function readErrorCode(response: Response): Promise<string | undefined> {
   try {
     const body: unknown = await response.json()
     if (typeof body !== 'object' || body === null) return undefined
     const code = (body as { error?: unknown }).error
-    return typeof code === 'string' && code !== '' ? code : undefined
+    if (typeof code !== 'string' || code === '') return undefined
+    return WELL_FORMED_ERROR_CODE.test(code) ? code : UNRECOGNIZED_ERROR_CODE
   } catch {
     return undefined
   }
