@@ -333,9 +333,9 @@ describe('CanvasOAuthClient (#302 §9)', () => {
       ['a newline that forges a second log line', 'invalid_client\nFATAL: forged line'],
       ['a trailing newline', 'invalid_client\n'],
       ['a carriage return', 'invalid_client\rFATAL: forged line'],
-      ['an ANSI colour escape', '[31minvalid_client[0m'],
-      ['an ANSI clear-screen escape', 'invalid_client[2J'],
-      ['a NUL byte', 'invalid_client '],
+      ['an ANSI colour escape', '\u001b[31minvalid_client\u001b[0m'],
+      ['an ANSI clear-screen escape', 'invalid_client\u001b[2J'],
+      ['a NUL byte', 'invalid_client\u0000'],
     ])('replaces a code carrying %s with the marker', async (_label, code) => {
       const { error, lines } = await rejectWith(code)
       expect(lines).toHaveLength(1)
