@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.30.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.5...canvas-lms-mcp-v1.30.0) (2026-09-20)
+
+
+### Features
+
+* **auth:** add oauth_brokered MCP OAuth profile with host-visible login ([#302](https://github.com/bruchris/canvas-lms-mcp/issues/302)) ([#356](https://github.com/bruchris/canvas-lms-mcp/issues/356)) ([ad1bec7](https://github.com/bruchris/canvas-lms-mcp/commit/ad1bec7de87160e9fee12a2b5cefb5c42f6d78a6))
+
+
+### Bug Fixes
+
+* **auth:** sanitize Canvas OAuth error code before logging (PR [#356](https://github.com/bruchris/canvas-lms-mcp/issues/356) follow-ups N3-N5) ([#365](https://github.com/bruchris/canvas-lms-mcp/issues/365)) ([edcf50e](https://github.com/bruchris/canvas-lms-mcp/commit/edcf50eab83d205a04c0e6ce716a8041ca44f834))
+
 ## [1.29.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.4...canvas-lms-mcp-v1.29.5) (2026-09-19)
 
 
