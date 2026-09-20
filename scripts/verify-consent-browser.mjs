@@ -21,7 +21,7 @@
 
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -135,15 +135,15 @@ class Cdp {
   }
 }
 
-async function launchChrome() {
+/** Start the real browser on `profile`. Replaceable so a test can stand in for it. */
+function spawnRealChrome(profile) {
   const binary = CHROME_CANDIDATES.find((path) => existsSync(path))
   if (!binary) {
     throw new Error(
       `No Chrome found. Set CHROME_PATH. Looked at:\n  ${CHROME_CANDIDATES.join('\n  ')}`,
     )
   }
-  const profile = mkdtempSync(join(tmpdir(), 'canvas-mcp-consent-'))
-  const child = spawn(
+  return spawn(
     binary,
     [
       '--headless=new',
@@ -157,25 +157,82 @@ async function launchChrome() {
     ],
     { stdio: 'ignore' },
   )
-  const portFile = join(profile, 'DevToolsActivePort')
-  const port = await waitFor('DevToolsActivePort', () => {
-    if (!existsSync(portFile)) return undefined
-    const first = readFileSync(portFile, 'utf8').split('\n')[0]?.trim()
-    return first ? Number(first) : undefined
-  })
-  if (!port) throw new Error('Chrome never published a DevTools port')
-  const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()
-  return {
-    wsUrl: version.webSocketDebuggerUrl,
-    userAgent: version['User-Agent'],
-    stop() {
-      child.kill()
-      try {
-        rmSync(profile, { recursive: true, force: true })
-      } catch {
-        /* Chrome may still hold a handle on Windows */
-      }
-    },
+}
+
+function describeChild(child) {
+  const what = child.spawnfile ?? 'Chrome'
+  if (child.exitCode !== null) return `${what} exited with code ${child.exitCode}`
+  if (child.signalCode !== null) return `${what} was killed by ${child.signalCode}`
+  return `${what} was still running`
+}
+
+/** Tear down a browser that never became usable. Best effort; never throws. */
+async function discardChrome(child, profile) {
+  if (child && child.exitCode === null && child.signalCode === null) {
+    const exited = new Promise((resolve) => child.once('exit', resolve))
+    // `kill()` is false when there was nothing to signal, and no `exit` follows.
+    if (child.kill()) await Promise.race([exited, sleep(5_000)])
+  }
+  try {
+    // A dying Chrome's helper processes can hold the profile open for a moment
+    // on Windows, so retry the delete instead of leaving it behind.
+    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  } catch {
+    /* the startup error being reported matters more than a leftover temp dir */
+  }
+}
+
+// The caller only learns about the browser and its profile once this returns
+// (`start()` in `run`), so nothing after the profile exists may fail without
+// cleaning up after itself (N5, #356): the child and the profile would be
+// stranded with nobody holding a handle to either.
+export async function launchChrome({
+  spawnChrome = spawnRealChrome,
+  timeoutMs = DEADLINE_MS,
+} = {}) {
+  const profile = mkdtempSync(join(tmpdir(), 'canvas-mcp-consent-'))
+  let child
+  try {
+    child = spawnChrome(profile)
+    // Without a listener a failed spawn (EACCES, ENOENT) is an uncaught
+    // exception that ends the process before anything here can clean up.
+    let spawnError
+    child.once('error', (error) => {
+      spawnError = error
+    })
+    const portFile = join(profile, 'DevToolsActivePort')
+    const port = await waitFor(
+      'DevToolsActivePort',
+      () => {
+        if (spawnError) throw spawnError
+        if (!existsSync(portFile)) return undefined
+        const first = readFileSync(portFile, 'utf8').split('\n')[0]?.trim()
+        return first ? Number(first) : undefined
+      },
+      timeoutMs,
+    )
+    if (!port) {
+      throw new Error(
+        `Chrome never published a DevTools port: no DevToolsActivePort file appeared ` +
+          `within ${timeoutMs}ms (${describeChild(child)}).`,
+      )
+    }
+    const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()
+    return {
+      wsUrl: version.webSocketDebuggerUrl,
+      userAgent: version['User-Agent'],
+      stop() {
+        child.kill()
+        try {
+          rmSync(profile, { recursive: true, force: true })
+        } catch {
+          /* Chrome may still hold a handle on Windows */
+        }
+      },
+    }
+  } catch (error) {
+    await discardChrome(child, profile)
+    throw error
   }
 }
 
@@ -451,10 +508,17 @@ async function run() {
   if (failed.length > 0) process.exitCode = 1
 }
 
-run().catch((error) => {
-  console.error(error)
-  // `exit`, not `exitCode`: a half-built run can leave a handle open (a stub
-  // server mid-close, a socket to a Chrome that is still dying) and the
-  // process would otherwise sit there instead of reporting the failure.
-  process.exit(1)
-})
+// Only a direct `node scripts/verify-consent-browser.mjs` runs the checks; a
+// test imports `launchChrome` from here and must not start a browser.
+if (
+  process.argv[1] &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+) {
+  run().catch((error) => {
+    console.error(error)
+    // `exit`, not `exitCode`: a half-built run can leave a handle open (a stub
+    // server mid-close, a socket to a Chrome that is still dying) and the
+    // process would otherwise sit there instead of reporting the failure.
+    process.exit(1)
+  })
+}
