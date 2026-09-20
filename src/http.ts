@@ -55,7 +55,11 @@ const DEFAULT_ALLOWED_ORIGIN = 'http://localhost:3000'
 interface OAuthRuntime {
   authorizationServer: AuthorizationServer
   resourceServer: ResourceServer
-  ready: Promise<void>
+  /**
+   * Resolves once the pre-registered clients are in the store. Deliberately a
+   * function and not a stored promise: see `buildOAuthRuntime`.
+   */
+  ready: () => Promise<void>
 }
 
 function buildOAuthRuntime(
@@ -79,11 +83,32 @@ function buildOAuthRuntime(
     canvas,
     revokeGrant: (grantId) => authorizationServer.revokeGrant(grantId),
   })
-  const ready = clients.seedPreregistered()
-  // The handler awaits `ready` on every request and surfaces the failure
-  // there. Attaching a handler now keeps a startup failure from counting as
-  // an unhandled rejection before the first request arrives.
-  ready.catch(() => {})
+  // Seeding is memoized only while it is succeeding or in flight (QA R5,
+  // #356). A single failed `putClient` — a store that went read-only, a full
+  // disk — used to be cached as one rejected promise that the handler
+  // re-threw on every request for the life of the process, while `/health`
+  // kept answering 200, so a health-checked supervisor never restarted it.
+  // Dropping the rejection makes the next request retry, so a transient fault
+  // heals itself; concurrent requests still share one in-flight attempt, so a
+  // persistently broken store logs once per round trip, not once per request.
+  let seeding: Promise<void> | undefined
+  const ready = (): Promise<void> => {
+    if (seeding) return seeding
+    const attempt = clients.seedPreregistered().catch((error: unknown) => {
+      if (seeding === attempt) seeding = undefined
+      console.error('Failed to seed pre-registered OAuth clients:', error)
+      throw error
+    })
+    // The handler awaits this and surfaces the failure as a 500. Attaching a
+    // second handler here keeps the startup attempt below from counting as an
+    // unhandled rejection before the first request arrives.
+    attempt.catch(() => {})
+    seeding = attempt
+    return attempt
+  }
+  // Start at construction so the failure is logged at startup rather than
+  // waiting for a request that may never come.
+  void ready()
   return { authorizationServer, resourceServer, ready }
 }
 
@@ -184,7 +209,7 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
     }
 
     if (oauth) {
-      await oauth.ready
+      await oauth.ready()
       if (await oauth.authorizationServer.handle(req, res, rawPath, path, query)) return
     }
 

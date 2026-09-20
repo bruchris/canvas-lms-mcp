@@ -210,6 +210,10 @@ describe('HTTP transport hardening', () => {
     const store = new MemoryOAuthStore()
     store.putClient = () => Promise.reject(new Error('store is unwritable'))
     const canvas = mockCanvas()
+    // The catch logs, and an operator needs that line — so assert it rather
+    // than let it sit in the CI output as noise. Installed before the handler
+    // is built, because seeding also fails (and logs) at startup.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const handler = createHttpHandler({
       authProfile: 'oauth_brokered',
       oauth: loadOAuthProfileConfig({
@@ -221,9 +225,6 @@ describe('HTTP transport hardening', () => {
       oauthStore: store,
       fetch: canvas.fetch as unknown as typeof fetch,
     }) as Handler
-    // The catch logs, and an operator needs that line — so assert it rather
-    // than let it sit in the CI output as noise.
-    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const live = await listen(handler)
     try {
       const response = await raw(live.port, getRequest('/mcp'))
@@ -236,6 +237,70 @@ describe('HTTP transport hardening', () => {
         expect.objectContaining({ message: 'store is unwritable' }),
       )
       expect(await raw(live.port, getRequest('/health'))).toContain('HTTP/1.1 200')
+    } finally {
+      logged.mockRestore()
+      await live.close()
+    }
+  })
+
+  // R5 (#356). The net above turns a seeding failure into a 500 instead of a
+  // crash, but `ready` used to be one memoized promise: a single failed
+  // `putClient` at startup made *every* OAuth and /mcp request 500 for the
+  // life of the process, with nothing logged and `/health` still answering
+  // 200 — so a health-checked supervisor had no reason to restart it. A
+  // transient fault must be neither permanent nor silent.
+  it('logs a seeding failure at startup and retries it instead of latching 500s', async () => {
+    const store = new MemoryOAuthStore()
+    const write = store.putClient.bind(store)
+    let broken = true
+    let attempts = 0
+    store.putClient = (client) => {
+      attempts += 1
+      return broken ? Promise.reject(new Error('store is unwritable')) : write(client)
+    }
+    const canvas = mockCanvas()
+    // Installed before the handler is built: the startup attempt runs there.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const handler = createHttpHandler({
+      authProfile: 'oauth_brokered',
+      oauth: loadOAuthProfileConfig({
+        ...BASE_ENV,
+        CANVAS_MCP_OAUTH_CLIENTS: JSON.stringify([
+          { client_id: 'mcpcl_seed', redirect_uris: ['http://127.0.0.1/cb'] },
+        ]),
+      }),
+      oauthStore: store,
+      fetch: canvas.fetch as unknown as typeof fetch,
+    }) as Handler
+
+    const live = await listen(handler)
+    try {
+      // Not silent: seeding runs and fails before any request arrives.
+      await settle()
+      expect(logged).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to seed pre-registered OAuth clients'),
+        expect.objectContaining({ message: 'store is unwritable' }),
+      )
+      const afterStartup = attempts
+      expect(afterStartup).toBeGreaterThan(0)
+
+      const metadata = getRequest('/.well-known/oauth-authorization-server')
+      expect(await raw(live.port, metadata)).toContain('HTTP/1.1 500')
+      // The request retried seeding rather than replaying a memoized
+      // rejection. This is the assertion the fix is about.
+      expect(attempts).toBeGreaterThan(afterStartup)
+      // The hazard that made it invisible: /health never touches `ready`.
+      expect(await raw(live.port, getRequest('/health'))).toContain('HTTP/1.1 200')
+
+      // Not permanent: clearing the fault heals the same process.
+      broken = false
+      const recovered = await raw(live.port, metadata)
+      expect(recovered).toContain('HTTP/1.1 200')
+      expect(recovered).toContain('"issuer"')
+      expect(await store.getClient('mcpcl_seed')).toBeDefined()
+
+      await settle()
+      expect(rejections).toEqual([])
     } finally {
       logged.mockRestore()
       await live.close()

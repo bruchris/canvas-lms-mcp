@@ -12,7 +12,7 @@
 import { version } from '../../../package.json'
 
 const USER_AGENT = `canvas-lms-mcp/${version}`
-/** Fallback when Canvas omits `expires_in`; matches the documented lifetime. */
+
 /**
  * Wall-clock bound on the Canvas token and revoke calls (QA S6, #356). A
  * hung Canvas otherwise holds the per-grant refresh dedup in the resource
@@ -21,6 +21,7 @@ const USER_AGENT = `canvas-lms-mcp/${version}`
  */
 const CANVAS_FETCH_TIMEOUT_MS = 10_000
 
+/** Fallback when Canvas omits `expires_in`; matches the documented lifetime. */
 const DEFAULT_EXPIRES_IN_SECONDS = 3600
 
 export type CanvasOAuthErrorKind =
@@ -190,10 +191,39 @@ export class CanvasOAuthClient {
     if (!response.ok) {
       // Only what Canvas actually uses for a dead grant counts as one, because
       // the caller answers `invalid_grant` by revoking the grant and revoking
-      // at Canvas (QA S2, #356). A 403 from a WAF, a 429 during a rate-limit
-      // episode or a 408 would otherwise log every active user out.
-      // The Canvas error body is deliberately not surfaced anywhere.
-      if (response.status === 400 || response.status === 401) {
+      // at Canvas (QA S2/W2, #356). A 403 from a WAF, a 429 during a
+      // rate-limit episode or a 408 would otherwise log every active user out.
+      //
+      // Canvas's taxonomy is `lib/canvas/oauth/request_error.rb` (master
+      // `1c9f0bb8013e`, read 2026-09-20). `invalid_client_id` and
+      // `invalid_client_secret` map to `{error: "invalid_client"}` with
+      // `http_status: 401`; every `invalid_grant` variant takes the default
+      // 400. So a rotated or mistyped `CANVAS_OAUTH_CLIENT_SECRET` answers
+      // 401 for *every* user, and treating that as a dead grant would revoke
+      // them all. Classify on the `error` code instead. Only the code is
+      // read; `error_description` is deliberately not surfaced anywhere.
+      const code = await readErrorCode(response)
+      if (code !== undefined && code !== 'invalid_grant') {
+        // `invalid_client` (bad Developer Key) and `invalid_request`
+        // (redirect_uri does not match the key) are both server
+        // misconfigurations shared by every user, and neither is visible to
+        // the end user, whose request just fails — so say so on the console.
+        console.error(
+          `Canvas rejected this server's own OAuth request (error=${code}, HTTP ${response.status}). ` +
+            'This is a Developer Key configuration problem affecting every user, not a dead grant: ' +
+            "check CANVAS_OAUTH_CLIENT_ID/CANVAS_OAUTH_CLIENT_SECRET and that the key's redirect URI is " +
+            `${this.config.redirectUri}.`,
+        )
+        throw new CanvasOAuthError(
+          'unavailable',
+          `Canvas rejected this server's OAuth configuration (HTTP ${response.status})`,
+          response.status,
+        )
+      }
+      // No readable `error` code: a WAF or proxy answered, not Canvas. Keep
+      // 400 as a dead grant so the re-authorization path still works, but
+      // never 401 — Canvas does not use it for a grant at all.
+      if (code === 'invalid_grant' || response.status === 400) {
         throw new CanvasOAuthError(
           'invalid_grant',
           `Canvas rejected the ${params.grant_type} request (HTTP ${response.status})`,
@@ -211,6 +241,22 @@ export class CanvasOAuthClient {
     } catch {
       throw new CanvasOAuthError('malformed', 'Canvas token response was not JSON')
     }
+  }
+}
+
+/**
+ * Canvas's OAuth `error` code from a failed token response, or `undefined`
+ * when the body is not the JSON shape Canvas sends. Only the code is read —
+ * `error_description` never leaves this function.
+ */
+async function readErrorCode(response: Response): Promise<string | undefined> {
+  try {
+    const body: unknown = await response.json()
+    if (typeof body !== 'object' || body === null) return undefined
+    const code = (body as { error?: unknown }).error
+    return typeof code === 'string' && code !== '' ? code : undefined
+  } catch {
+    return undefined
   }
 }
 

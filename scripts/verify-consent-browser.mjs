@@ -280,61 +280,76 @@ function record(name, ok, detail) {
 }
 
 async function run() {
-  const far = await startFarSide()
-  const callback = await startClientCallback()
-  const controls = await startControls(far.origin)
-  const chrome = await launchChrome()
-
-  const port = 5100 + Math.floor(Math.random() * 300)
-  const issuer = `http://127.0.0.1:${port}`
-  const server = await startMcpServer({
-    CANVAS_AUTH_PROFILE: 'oauth_brokered',
-    CANVAS_BASE_URL: far.origin,
-    CANVAS_MCP_ISSUER: issuer,
-    CANVAS_OAUTH_CLIENT_ID: '10000000000001',
-    CANVAS_OAUTH_CLIENT_SECRET: 'stub-developer-key-secret',
-    CANVAS_MCP_OAUTH_DCR: 'false',
-    CANVAS_MCP_OAUTH_CLIENTS: JSON.stringify([
-      {
-        client_id: 'mcpcl_browserprobe',
-        client_name: 'Consent probe',
-        redirect_uris: [callback.redirectUri],
-      },
-    ]),
-    CANVAS_API_TOKEN: '',
-  }, ['--port', String(port)])
-
-  const cdp = await Cdp.attachToNewTab(chrome.wsUrl)
-  const consoleLines = []
-  cdp.on((message) => {
-    if (message.method === 'Log.entryAdded') consoleLines.push(message.params.entry.text)
-  })
-
-  const authorizeUrl = () => {
-    const { challenge } = pkce()
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: 'mcpcl_browserprobe',
-      redirect_uri: callback.redirectUri,
-      code_challenge: challenge,
-      code_challenge_method: 'S256',
-      state: `probe-${randomBytes(4).toString('hex')}`,
-      resource: `${issuer}/mcp`,
-    })
-    return `${issuer}/oauth/authorize?${params}`
-  }
-
-  const submit = async (value) => {
-    await cdp.navigate(authorizeUrl())
-    const found = await waitFor('consent form', async () => {
-      const has = await cdp.evaluate(`!!document.querySelector('button[value="${value}"]')`)
-      return has === true
-    })
-    if (!found) throw new Error('consent page never rendered a form')
-    await cdp.evaluate(`document.querySelector('button[value="${value}"]').click()`)
+  // Setup lives inside the `try` and every resource registers its teardown the
+  // moment it exists (QA N2, #356). Started before it, a setup failure — a
+  // forgotten `pnpm build`, a port clash — left Chrome and three stub servers
+  // running, so the script hung instead of reporting the error.
+  const teardown = []
+  const start = async (make, stop) => {
+    const resource = await make()
+    teardown.unshift(() => stop(resource))
+    return resource
   }
 
   try {
+    const far = await start(startFarSide, (r) => r.close())
+    const callback = await start(startClientCallback, (r) => r.close())
+    const controls = await start(() => startControls(far.origin), (r) => r.close())
+    const chrome = await start(launchChrome, (r) => r.stop())
+
+    const port = 5100 + Math.floor(Math.random() * 300)
+    const issuer = `http://127.0.0.1:${port}`
+    const server = await start(
+      () =>
+        startMcpServer({
+          CANVAS_AUTH_PROFILE: 'oauth_brokered',
+          CANVAS_BASE_URL: far.origin,
+          CANVAS_MCP_ISSUER: issuer,
+          CANVAS_OAUTH_CLIENT_ID: '10000000000001',
+          CANVAS_OAUTH_CLIENT_SECRET: 'stub-developer-key-secret',
+          CANVAS_MCP_OAUTH_DCR: 'false',
+          CANVAS_MCP_OAUTH_CLIENTS: JSON.stringify([
+            {
+              client_id: 'mcpcl_browserprobe',
+              client_name: 'Consent probe',
+              redirect_uris: [callback.redirectUri],
+            },
+          ]),
+          CANVAS_API_TOKEN: '',
+        }, ['--port', String(port)]),
+      (r) => r.stop(),
+    )
+
+    const cdp = await start(() => Cdp.attachToNewTab(chrome.wsUrl), (r) => r.close())
+    const consoleLines = []
+    cdp.on((message) => {
+      if (message.method === 'Log.entryAdded') consoleLines.push(message.params.entry.text)
+    })
+
+    const authorizeUrl = () => {
+      const { challenge } = pkce()
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: 'mcpcl_browserprobe',
+        redirect_uri: callback.redirectUri,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: `probe-${randomBytes(4).toString('hex')}`,
+        resource: `${issuer}/mcp`,
+      })
+      return `${issuer}/oauth/authorize?${params}`
+    }
+
+    const submit = async (value) => {
+      await cdp.navigate(authorizeUrl())
+      const found = await waitFor('consent form', async () => {
+        const has = await cdp.evaluate(`!!document.querySelector('button[value="${value}"]')`)
+        return has === true
+      })
+      if (!found) throw new Error('consent page never rendered a form')
+      await cdp.evaluate(`document.querySelector('button[value="${value}"]').click()`)
+    }
+
     // --- controls: prove Chrome is enforcing both rules in this browser -----
     const control = async (query) => {
       await cdp.navigate(`${controls.origin}/page?${query}`)
@@ -421,12 +436,14 @@ async function run() {
     console.log(`\nChrome: ${chrome.userAgent}`)
     console.log(`Node:   ${process.version}`)
   } finally {
-    cdp.close()
-    chrome.stop()
-    server.stop()
-    far.close()
-    callback.close()
-    controls.close()
+    // Newest first, and one failure must not skip the rest.
+    for (const stop of teardown) {
+      try {
+        stop()
+      } catch (error) {
+        console.error('teardown failed:', error)
+      }
+    }
   }
 
   const failed = results.filter((r) => !r.ok)
@@ -436,5 +453,8 @@ async function run() {
 
 run().catch((error) => {
   console.error(error)
-  process.exitCode = 1
+  // `exit`, not `exitCode`: a half-built run can leave a handle open (a stub
+  // server mid-close, a socket to a Chrome that is still dying) and the
+  // process would otherwise sit there instead of reporting the failure.
+  process.exit(1)
 })

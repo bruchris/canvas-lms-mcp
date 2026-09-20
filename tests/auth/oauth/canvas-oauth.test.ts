@@ -42,6 +42,19 @@ describe('CanvasOAuthClient (#302 §9)', () => {
   })
 
   describe('exchangeCode', () => {
+    // QA S6/W1 (#356): the token call needs the same wall-clock bound as
+    // `revoke`, or a hung Canvas holds the per-grant refresh dedup in the
+    // resource server and every request on that grant waits with it.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ access_token: 'a', refresh_token: 'r', user: { id: 1 } }))
+      await makeClient(fetchMock).exchangeCode('c')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
     it('posts a form-encoded authorization_code grant with the Developer Key and maps the response', async () => {
       const fetchMock = vi.fn().mockResolvedValue(
         jsonResponse({
@@ -113,7 +126,7 @@ describe('CanvasOAuthClient (#302 §9)', () => {
       await expect(client.exchangeCode('c')).rejects.toThrow(message)
     })
 
-    it('classifies 4xx as invalid_grant without surfacing the Canvas error body', async () => {
+    it('classifies a 4xx invalid_grant without surfacing the Canvas error body', async () => {
       const client = makeClient(
         vi
           .fn()
@@ -144,6 +157,16 @@ describe('CanvasOAuthClient (#302 §9)', () => {
   })
 
   describe('refresh', () => {
+    // QA S6/W1 (#356). Refresh is the call that runs under the per-grant dedup
+    // lock, so an unbounded one here is the worst of the three.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ access_token: 'a' }))
+      await makeClient(fetchMock).refresh('canvas-refresh')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
     it('posts a refresh_token grant and keeps the old refresh token when Canvas does not rotate', async () => {
       const fetchMock = vi
         .fn()
@@ -170,9 +193,86 @@ describe('CanvasOAuthClient (#302 §9)', () => {
     it('reports a revoked refresh token as invalid_grant', async () => {
       await expect(
         makeClient(
-          vi.fn().mockResolvedValue(jsonResponse({ error: 'invalid_grant' }, 401)),
+          vi.fn().mockResolvedValue(jsonResponse({ error: 'invalid_grant' }, 400)),
         ).refresh('x'),
-      ).rejects.toMatchObject({ kind: 'invalid_grant', status: 401 })
+      ).rejects.toMatchObject({ kind: 'invalid_grant', status: 400 })
+    })
+  })
+
+  // Canvas's OAuth error taxonomy, read from `lib/canvas/oauth/request_error.rb`
+  // at master `1c9f0bb8013e` on 2026-09-20: `invalid_client_id` and
+  // `invalid_client_secret` both map to `{error: "invalid_client"}` with
+  // `http_status: 401`, while every `invalid_grant` variant takes the default
+  // 400. Classifying 401 as a dead grant (QA W2, #356) meant one rotated or
+  // mistyped `CANVAS_OAUTH_CLIENT_SECRET` revoked every user's grant on their
+  // next refresh. The grant is dead only when Canvas says `invalid_grant`.
+  describe('error classification (QA W2, #356)', () => {
+    it('treats a 401 invalid_client as unavailable and tells the operator which config is wrong', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        const error = await makeClient(
+          vi
+            .fn()
+            .mockResolvedValue(
+              jsonResponse({ error: 'invalid_client', error_description: 'invalid client' }, 401),
+            ),
+        )
+          .refresh('still-good')
+          .catch((e) => e)
+        expect(error).toBeInstanceOf(CanvasOAuthError)
+        expect(error.kind).toBe('unavailable')
+        expect(error.status).toBe(401)
+        expect(error.message).not.toContain('invalid client')
+        expect(logged).toHaveBeenCalledWith(
+          expect.stringContaining('CANVAS_OAUTH_CLIENT_ID/CANVAS_OAUTH_CLIENT_SECRET'),
+        )
+      } finally {
+        logged.mockRestore()
+      }
+    })
+
+    it('treats a 400 invalid_request (redirect_uri does not match the Developer Key) as unavailable', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        await expect(
+          makeClient(
+            vi.fn().mockResolvedValue(
+              jsonResponse(
+                {
+                  error: 'invalid_request',
+                  error_description: 'redirect_uri does not match client settings',
+                },
+                400,
+              ),
+            ),
+          ).exchangeCode('c'),
+        ).rejects.toMatchObject({ kind: 'unavailable', status: 400 })
+        expect(logged).toHaveBeenCalled()
+      } finally {
+        logged.mockRestore()
+      }
+    })
+
+    it('still calls an unreadable 400 a dead grant, so the re-authorization path survives a WAF', async () => {
+      await expect(
+        makeClient(
+          vi.fn().mockResolvedValue(new Response('<html>Blocked</html>', { status: 400 })),
+        ).refresh('x'),
+      ).rejects.toMatchObject({ kind: 'invalid_grant', status: 400 })
+    })
+
+    it('never calls an unreadable 401 a dead grant — Canvas only uses 401 for invalid_client', async () => {
+      await expect(
+        makeClient(vi.fn().mockResolvedValue(new Response(null, { status: 401 }))).refresh('x'),
+      ).rejects.toMatchObject({ kind: 'unavailable', status: 401 })
+    })
+
+    it('leaves a 403 from a WAF and a 429 rate limit as unavailable', async () => {
+      for (const status of [403, 429]) {
+        await expect(
+          makeClient(vi.fn().mockResolvedValue(new Response(null, { status }))).refresh('x'),
+        ).rejects.toMatchObject({ kind: 'unavailable', status })
+      }
     })
   })
 
