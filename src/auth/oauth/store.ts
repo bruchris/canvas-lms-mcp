@@ -258,6 +258,10 @@ export class MemoryOAuthStore implements OAuthStore {
   }
 
   async updateGrant(grant: Grant): Promise<void> {
+    // Update only, never create (QA S7, #356). A Canvas refresh that finishes
+    // after `revokeGrant` would otherwise write the grant — and the Canvas
+    // refresh token in it — straight back into the store.
+    if (!this.grants.has(grant.id)) return
     this.grants.set(grant.id, grant)
   }
 

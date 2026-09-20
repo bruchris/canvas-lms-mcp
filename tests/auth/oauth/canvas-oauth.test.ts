@@ -177,6 +177,16 @@ describe('CanvasOAuthClient (#302 §9)', () => {
   })
 
   describe('revoke', () => {
+    // QA S6 (#356): a hung Canvas otherwise holds the per-grant refresh dedup
+    // in the resource server, so every request on that grant waits with it.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+      await makeClient(fetchMock).revoke('canvas-access')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
     it('sends DELETE /login/oauth2/token with the Canvas access token as bearer', async () => {
       const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
       await makeClient(fetchMock).revoke('canvas-access')

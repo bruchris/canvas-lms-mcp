@@ -133,6 +133,16 @@ lists what is missing without printing any value.
 - Set `--allowed-origin` to the origin of any browser-based client you expect. Requests
   carrying any other `Origin` header are refused with `403`.
 - Register the Developer Key's redirect URI as `https://<issuer host>/oauth/canvas/callback`.
+- **Prefer `CANVAS_MCP_OAUTH_DCR=false` plus `CANVAS_MCP_OAUTH_CLIENTS` on a deployment your
+  users reach from the public internet.** With dynamic registration on, anyone who can reach
+  the issuer can register a client with a name of their choosing, and the consent page shows
+  that name next to the redirect host — the usual shape of a consent-phishing page. Leaving
+  DCR on is reasonable for a single-user local run and for a deployment behind SSO or a
+  private network.
+- `CANVAS_MCP_OAUTH_CIMD_ALLOWED_HOSTS=*` trusts any `https` host's client metadata
+  document. There is no private-address guard on that fetch, so `*` also turns the issuer
+  into a limited SSRF probe (the response is never echoed, but reachability is observable).
+  Name the hosts you expect instead.
 
 ```bash
 docker run -d --name canvas-mcp \
@@ -233,7 +243,13 @@ the operator in `CANVAS_OAUTH_SCOPES` and never chosen by a client. `CANVAS_ROLE
 | Canvas access token     | 1 hour (Canvas)                         | Refreshed server-side 60 s before expiry; concurrent requests share one refresh. |
 | Canvas refresh token    | until revoked (Canvas does not rotate)  | Revoked via `DELETE /login/oauth2/token` when the MCP grant is revoked. |
 
-Logout paths: `codex mcp logout` (the host drops its tokens; the server's copy expires),
+Grants themselves are **not** reaped on a schedule: `purgeExpired` clears expired tokens,
+codes, pending authorizations and cached CIMD clients, and leaves the grant — and the Canvas
+refresh token inside it — in place. A grant is removed only when `/oauth/revoke` is called,
+when Canvas refuses a refresh with 400/401, or when an authorization code is replayed.
+
+Logout paths: `codex mcp logout` (the host drops its tokens; **the server's copy of the grant
+stays** until one of the paths above runs — see the note above),
 `POST /oauth/revoke` with either token (immediate, and revokes at Canvas), or the user
 removing the integration in Canvas (**Account → Settings → Approved Integrations**), after
 which the next refresh fails and the server answers `401 invalid_token` so the host asks
@@ -267,6 +283,19 @@ Run these against a local deployment (`http://127.0.0.1:3001`) or a hosted one. 
 automated suite (`tests/http-oauth.test.ts`, `tests/auth/**`) proves the wire sequence
 with a mocked Canvas; this matrix proves what a host actually shows.
 
+Rows **5a** and **6a** are the browser's own behaviour on the consent page, and they are
+automated — the suite cannot see them, because every test posts the consent form itself with
+an `Origin` header no browser sends for that page:
+
+```bash
+pnpm build && node scripts/verify-consent-browser.mjs   # CHROME_PATH=… to pick a browser
+```
+
+It starts a stub Canvas, a stub client callback and the built server, drives real headless
+Chrome over the DevTools protocol, and includes controls that reproduce the broken headers —
+if the controls do not fail, the run proves nothing and says so. Run it on a new browser
+major, and after any change to the response headers in `src/auth/oauth/http-util.ts`.
+
 | #  | Step                                                                        | Expected                                                                                          | Codex | ChatGPT | Claude |
 | -- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- | ------- | ------ |
 | 1  | Start the server with no `CANVAS_API_TOKEN`                                 | Starts; log shows `Auth profile: oauth_brokered`                                                  | ☐     | ☐       | ☐      |
@@ -274,7 +303,9 @@ with a mocked Canvas; this matrix proves what a host actually shows.
 | 3  | `curl <issuer>/.well-known/oauth-protected-resource/mcp`                    | JSON with `authorization_servers: ["<issuer>"]`                                                   | ☐     | ☐       | ☐      |
 | 4  | Add the server to the host, before any login                                | Host lists it as enabled and **Not logged in** (Codex: `codex mcp list`)                          | ☐     | ☐       | ☐      |
 | 5  | `codex mcp login canvas-lms` (or the host's Authenticate action)            | Browser opens on this server's consent page naming the client and redirect                        | ☐     | ☐       | ☐      |
+| 5a | `node scripts/verify-consent-browser.mjs`                                    | 8/8, incl. 4 controls; Allow reaches Canvas, Cancel reaches `error=access_denied`                 | ☐     | n/a     | n/a    |
 | 6  | Continue                                                                    | Canvas sign-in, then Canvas's approval page for the Developer Key                                 | ☐     | ☐       | ☐      |
+| 6a | Continue, in a browser that is **not** Chrome (Firefox, Safari)             | Same: the form posts and the browser lands on Canvas. Record the browser and version              | ☐     | ☐       | ☐      |
 | 7  | Approve                                                                     | Browser lands on the host's callback; host shows logged in                                        | ☐     | ☐       | ☐      |
 | 8  | Ask the host to list courses                                                | Tools listed per role/scope; a Canvas call succeeds                                               | ☐     | ☐       | ☐      |
 | 9  | Wait > 1 hour, call again                                                   | Still works (MCP refresh + Canvas refresh happen without user interaction)                        | ☐     | ☐       | ☐      |
@@ -296,5 +327,6 @@ Record the host version next to each column when you run it.
 | Login ends with `error=access_denied`                                | The user declined on the consent page or in Canvas, or Canvas rejected the code (key OFF, wrong secret).       |
 | `This login was started in a different browser session`             | The Canvas callback arrived without the consent cookie: a different browser, or a blocked cookie. Start again. |
 | Everything works until the process restarts                          | In-memory store. Set `CANVAS_MCP_OAUTH_STORE` + `CANVAS_MCP_OAUTH_STORE_KEY`.                                  |
-| `403 forbidden … Origin not allowed`                                 | A browser client on an origin other than `--allowed-origin`. Set it to that origin.                            |
+| `403 forbidden … Origin not allowed`                                 | A browser client on an origin other than `--allowed-origin`. Set it to that origin. If it happens on the consent form itself, a proxy is rewriting or stripping `Referrer-Policy`/`Origin` — run `node scripts/verify-consent-browser.mjs` against the deployment's own headers. |
+| `--auth-profile requires a value`                                    | The flag was passed with an empty value (an unsubstituted template variable). Give it a profile name, or drop the flag entirely. |
 | Codex shows `Auth Unsupported`                                       | The entry is a stdio (`command = …`) server. Only `url = …` servers can show a login state.                    |

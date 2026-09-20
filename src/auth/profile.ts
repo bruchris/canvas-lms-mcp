@@ -90,6 +90,17 @@ export interface ResolveAuthProfileInput {
  * uses). The result is checked against the transport.
  */
 export function resolveAuthProfile(input: ResolveAuthProfileInput): AuthProfile {
+  // A flag that is present but carries no value is fatal (QA S1, #356).
+  // `--auth-profile=` is an unsubstituted template variable or a typo, and
+  // falling through would land on the *more permissive* static profile with
+  // whatever CANVAS_API_TOKEN happened to be in the environment. An empty
+  // environment variable keeps meaning "unset": that is how a compose file
+  // spells "I am not setting this".
+  if (input.flag !== undefined && input.flag.trim() === '') {
+    throw new Error(
+      `--auth-profile requires a value. Expected one of: ${AUTH_PROFILES.join(', ')}.`,
+    )
+  }
   const fromFlag = parseAuthProfile(input.flag, '--auth-profile')
   const profile =
     fromFlag ?? parseAuthProfile(input.env, 'CANVAS_AUTH_PROFILE') ?? defaultAuthProfile(input.mode)

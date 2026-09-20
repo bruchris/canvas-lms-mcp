@@ -216,6 +216,29 @@ describe('ResourceServer (#302 §8)', () => {
     expect(await h.store.getToken(hashToken(tokens.accessToken))).toBeUndefined()
   })
 
+  // QA S2 (#356). Every non-5xx Canvas failure used to map to invalid_grant,
+  // and the caller answers invalid_grant by revoking the grant at Canvas. One
+  // rate-limit or WAF episode during refresh logged out every active user.
+  it.each([403, 408, 429])(
+    'keeps the grant when Canvas answers %i during a refresh',
+    async (status) => {
+      const now = 1_800_000_000_000
+      const h = await harness({ now: () => now })
+      const { rs, revokeGrant } = resourceServer(h, () => now)
+      const { tokens } = await loggedInTokens(h)
+      await expireCanvasToken(h, tokens.grantId, now)
+      h.canvas.nextTokenResponse = { status, body: { error: 'nope' } }
+      expect(await rs.authenticate(auth(tokens.accessToken))).toMatchObject({
+        ok: false,
+        status: 503,
+        error: 'temporarily_unavailable',
+      })
+      expect(revokeGrant).not.toHaveBeenCalled()
+      expect(await h.store.getGrant(tokens.grantId)).toBeDefined()
+      expect(h.canvas.revoked).toEqual([])
+    },
+  )
+
   it('answers 503 and keeps the grant when Canvas is merely unreachable', async () => {
     const now = 1_800_000_000_000
     const h = await harness({ now: () => now })

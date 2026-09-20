@@ -79,7 +79,12 @@ function buildOAuthRuntime(
     canvas,
     revokeGrant: (grantId) => authorizationServer.revokeGrant(grantId),
   })
-  return { authorizationServer, resourceServer, ready: clients.seedPreregistered() }
+  const ready = clients.seedPreregistered()
+  // The handler awaits `ready` on every request and surfaces the failure
+  // there. Attaching a handler now keeps a startup failure from counting as
+  // an unhandled rejection before the first request arrives.
+  ready.catch(() => {})
+  return { authorizationServer, resourceServer, ready }
 }
 
 export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
@@ -134,7 +139,7 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
     )
   }
 
-  return async (
+  const handle = async (
     req: import('node:http').IncomingMessage,
     res: import('node:http').ServerResponse,
   ) => {
@@ -159,7 +164,17 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
       return
     }
 
-    const { path, rawPath, query } = routePath(req.url, issuerPath)
+    const routed = routePath(req.url, issuerPath)
+    if (!routed) {
+      // The node HTTP parser accepts request targets the URL parser does not
+      // (`GET //a:b`). Unauthenticated, so this must never be fatal.
+      sendJson(res, 400, {
+        error: 'invalid_request',
+        error_description: 'Malformed request target',
+      })
+      return
+    }
+    const { path, rawPath, query } = routed
 
     // Health check endpoint
     if (path === '/health') {
@@ -285,6 +300,31 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
             id: null,
           }),
         )
+      }
+    }
+  }
+
+  // Nothing above may end the process. Every path in `handle` is reachable
+  // by an unauthenticated client, and `createServer` ignores the promise a
+  // rejecting handler returns, so an escaping error became an unhandled
+  // rejection and node exited (QA R3, #356). The individual fixes keep the
+  // known cases from throwing at all; this makes the class non-fatal.
+  return async (
+    req: import('node:http').IncomingMessage,
+    res: import('node:http').ServerResponse,
+  ) => {
+    try {
+      await handle(req, res)
+    } catch (error) {
+      console.error('Unhandled error handling HTTP request:', error)
+      try {
+        if (!res.headersSent) {
+          sendJson(res, 500, { error: 'server_error', error_description: 'Internal server error' })
+        } else if (!res.writableEnded) {
+          res.end()
+        }
+      } catch {
+        // The socket is already gone: usually the client aborted.
       }
     }
   }

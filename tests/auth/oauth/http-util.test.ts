@@ -21,6 +21,18 @@ function req(body: string, headers: Record<string, string> = {}): IncomingMessag
   return stream
 }
 
+/** A request stream that delivers part of a body and then fails, like an aborted socket. */
+function abortingReq(prefix: string, error: Error): IncomingMessage {
+  const stream = new Readable({
+    read() {
+      this.push(Buffer.from(prefix, 'utf8'))
+      this.destroy(error)
+    },
+  }) as unknown as IncomingMessage
+  ;(stream as unknown as { headers: Record<string, string> }).headers = {}
+  return stream
+}
+
 describe('OAuth http helpers', () => {
   it('readBody enforces the size cap', async () => {
     await expect(readBody(req('x'.repeat(10)), 5)).rejects.toBeInstanceOf(BodyError)
@@ -99,11 +111,36 @@ describe('OAuth http helpers', () => {
 
   it('routePath strips the issuer path prefix when present and keeps the query', () => {
     expect(routePath('/mcp?x=1', '')).toMatchObject({ path: '/mcp' })
-    expect(routePath('/canvas/mcp', '/canvas').path).toBe('/mcp')
-    expect(routePath('/mcp', '/canvas').path).toBe('/mcp')
-    expect(routePath('/canvas', '/canvas').path).toBe('/')
-    expect(routePath('/canvasx/mcp', '/canvas').path).toBe('/canvasx/mcp')
-    expect(routePath('/oauth/authorize?client_id=a', '').query.get('client_id')).toBe('a')
-    expect(routePath(undefined, '').path).toBe('/')
+    expect(routePath('/canvas/mcp', '/canvas')?.path).toBe('/mcp')
+    expect(routePath('/mcp', '/canvas')?.path).toBe('/mcp')
+    expect(routePath('/canvas', '/canvas')?.path).toBe('/')
+    expect(routePath('/canvasx/mcp', '/canvas')?.path).toBe('/canvasx/mcp')
+    expect(routePath('/oauth/authorize?client_id=a', '')?.query.get('client_id')).toBe('a')
+    expect(routePath(undefined, '')?.path).toBe('/')
+  })
+
+  // QA R3a (PR #356). `GET //a:b HTTP/1.1` and `GET // HTTP/1.1` are accepted
+  // by the node HTTP parser and rejected by the URL parser, so `new URL` threw
+  // inside the request handler and killed the `serve` process — in the default
+  // `remote_static_token` profile too, which is a regression against `main`.
+  it('routePath returns undefined for a request target that is not a URL', () => {
+    expect(routePath('//a:b', '')).toBeUndefined()
+    expect(routePath('//', '')).toBeUndefined()
+    expect(routePath('//a:b', '/canvas')).toBeUndefined()
+  })
+
+  // QA R3b (PR #356). A client that announces a body and drops the connection
+  // made `for await (const chunk of req)` throw `ECONNRESET`; nothing on the
+  // path caught it and the process exited.
+  it('readBody turns a dropped connection into a 400 BodyError', async () => {
+    const aborted = () => Object.assign(new Error('aborted'), { code: 'ECONNRESET' })
+    await expect(readBody(abortingReq('grant_type=refresh', aborted()))).rejects.toBeInstanceOf(
+      BodyError,
+    )
+    await expect(readBody(abortingReq('grant_type=refresh', aborted()))).rejects.toMatchObject({
+      status: 400,
+    })
+    // The size cap is still its own BodyError, not remapped to 400.
+    await expect(readBody(req('x'.repeat(10)), 5)).rejects.toMatchObject({ status: 413 })
   })
 })

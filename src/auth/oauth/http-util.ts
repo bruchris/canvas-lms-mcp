@@ -31,11 +31,20 @@ export function contentType(req: IncomingMessage): string {
 export async function readBody(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<string> {
   const chunks: Buffer[] = []
   let total = 0
-  for await (const chunk of req) {
-    const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : (chunk as Buffer)
-    total += buf.length
-    if (total > limit) throw new BodyError('Request body too large', 413)
-    chunks.push(buf)
+  try {
+    for await (const chunk of req) {
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : (chunk as Buffer)
+      total += buf.length
+      if (total > limit) throw new BodyError('Request body too large', 413)
+      chunks.push(buf)
+    }
+  } catch (error) {
+    // A client that announces a body and drops the connection makes the
+    // request stream emit ECONNRESET here. That is the caller's fault, not
+    // ours, so it becomes a 4xx like any other malformed request — before
+    // this it escaped every catch on the path and ended the process.
+    if (error instanceof BodyError) throw error
+    throw new BodyError('Request body could not be read', 400)
   }
   return Buffer.concat(chunks).toString('utf8')
 }
@@ -78,6 +87,31 @@ export function sendJson(
   res.end(JSON.stringify(body))
 }
 
+/**
+ * CSP for the two HTML pages this server serves (consent and error).
+ *
+ * Deliberately no `form-action`: both outcomes of the consent POST are a 302
+ * to an origin chosen at runtime — Canvas on allow, the client's own redirect
+ * URI on deny — and Chrome enforces `form-action` against every hop of that
+ * navigation, so `'self'` aborted the login. `form-action` has no
+ * `default-src` fallback in CSP 3, so leaving it out is what permits the
+ * redirect; nothing else in the policy is relaxed.
+ */
+export const HTML_CONTENT_SECURITY_POLICY =
+  "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'"
+
+/**
+ * Referrer policy for those same pages.
+ *
+ * Not `no-referrer`: per Fetch, a non-CORS POST under that policy carries
+ * `Origin: null`, which the transport's own origin allowlist then refuses —
+ * so the consent form could not be submitted from any browser. `same-origin`
+ * keeps the privacy intent (no `Referer` on the hop to Canvas or to the
+ * client's redirect URI) while still sending a real `Origin` on the form
+ * post back to the issuer.
+ */
+export const HTML_REFERRER_POLICY = 'same-origin'
+
 export function sendHtml(
   res: ServerResponse,
   status: number,
@@ -87,11 +121,10 @@ export function sendHtml(
   res.writeHead(status, {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'no-store',
-    'Content-Security-Policy':
-      "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    'Content-Security-Policy': HTML_CONTENT_SECURITY_POLICY,
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'no-referrer',
+    'Referrer-Policy': HTML_REFERRER_POLICY,
     ...headers,
   })
   res.end(html)
@@ -175,16 +208,32 @@ export function parseBasicAuth(
   }
 }
 
+/** A request target this server was able to parse. */
+export interface RoutedPath {
+  /** Path with the issuer path prefix removed, for routing. */
+  path: string
+  /** Path exactly as received, for the well-known endpoints. */
+  rawPath: string
+  query: URLSearchParams
+}
+
 /**
  * Parse `req.url` against the issuer. The path is returned with the issuer's
  * own path prefix removed when the request carries it, so routing is the same
  * whether a reverse proxy strips the prefix or passes it through.
+ *
+ * Returns `undefined` when the request target is not a URL at all. The node
+ * HTTP parser is happy with targets `new URL` rejects (`//a:b`, `//`), and
+ * this runs before any authentication, so throwing here ended the process for
+ * anyone who could open a socket. The caller answers 400.
  */
-export function routePath(
-  rawUrl: string | undefined,
-  issuerPath: string,
-): { path: string; rawPath: string; query: URLSearchParams } {
-  const url = new URL(rawUrl ?? '/', 'http://placeholder.invalid')
+export function routePath(rawUrl: string | undefined, issuerPath: string): RoutedPath | undefined {
+  let url: URL
+  try {
+    url = new URL(rawUrl ?? '/', 'http://placeholder.invalid')
+  } catch {
+    return undefined
+  }
   const rawPath = url.pathname
   let path = rawPath
   if (issuerPath !== '' && (path === issuerPath || path.startsWith(`${issuerPath}/`))) {

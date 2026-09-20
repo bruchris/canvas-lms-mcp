@@ -14,7 +14,7 @@
 // copied set of Canvas refresh tokens.
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
-import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import {
   MemoryOAuthStore,
@@ -153,7 +153,14 @@ export class FileOAuthStore implements OAuthStore {
     this.dirty = true
     if (this.writing) return this.chain
     this.writing = true
-    this.chain = this.chain.then(() => this.writeLoop())
+    // Run on both settlements. A rejected `chain` would otherwise make every
+    // later `.then(...)` skip `writeLoop` and leave `writing` true forever, so
+    // one transient fault (an AV lock, a brief ENOSPC, EBUSY on Windows) broke
+    // every mutating call until restart. Callers already waiting on the failed
+    // write hold the old promise and still see its error; only what comes
+    // after is allowed to recover.
+    const run = () => this.writeLoop()
+    this.chain = this.chain.then(run, run)
     return this.chain
   }
 
@@ -175,11 +182,18 @@ export class FileOAuthStore implements OAuthStore {
     const tmp = `${this.path}.tmp-${randomBytes(6).toString('hex')}`
     await writeFile(tmp, payload, { encoding: 'utf8', mode: 0o600 })
     try {
-      await chmod(tmp, 0o600)
-    } catch {
-      // Best-effort on platforms without POSIX modes.
+      try {
+        await chmod(tmp, 0o600)
+      } catch {
+        // Best-effort on platforms without POSIX modes.
+      }
+      await rename(tmp, this.path)
+    } catch (error) {
+      // The rename never happened, so this temp file holds a full encrypted
+      // copy of the store. Left behind it accumulates one file per failure.
+      await rm(tmp, { force: true }).catch(() => {})
+      throw error
     }
-    await rename(tmp, this.path)
   }
 
   private async mutate<T>(op: () => Promise<T>): Promise<T> {

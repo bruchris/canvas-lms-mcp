@@ -71,6 +71,25 @@ describe('auth profile boundary (#302 §3)', () => {
   })
 
   describe('resolveAuthProfile', () => {
+    // QA S1 (#356). `--auth-profile=` used to resolve to remote_static_token,
+    // which is the permissive profile and picks up a leftover CANVAS_API_TOKEN.
+    it('refuses a present-but-empty --auth-profile instead of falling back', () => {
+      expect(() => resolveAuthProfile({ mode: 'http', flag: '' })).toThrow(
+        /--auth-profile requires a value/,
+      )
+      expect(() => resolveAuthProfile({ mode: 'http', flag: '   ' })).toThrow(
+        /--auth-profile requires a value/,
+      )
+      // Even when the environment names a profile: the flag is the winning
+      // source, so an empty one must not silently hand over to the env.
+      expect(() => resolveAuthProfile({ mode: 'http', flag: '', env: 'oauth_brokered' })).toThrow(
+        /--auth-profile requires a value/,
+      )
+      // An empty environment variable still means "unset".
+      expect(resolveAuthProfile({ mode: 'http', env: '' })).toBe('remote_static_token')
+      expect(resolveAuthProfile({ mode: 'stdio', env: '  ' })).toBe('local_static_token')
+    })
+
     it('flag beats env beats transport default', () => {
       expect(resolveAuthProfile({ mode: 'http' })).toBe('remote_static_token')
       expect(resolveAuthProfile({ mode: 'http', env: 'oauth_brokered' })).toBe('oauth_brokered')

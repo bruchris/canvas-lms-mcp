@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   FileOAuthStore,
@@ -229,6 +229,22 @@ describe('MemoryOAuthStore dynamic-client cap (§7.3)', () => {
   })
 })
 
+// QA S7 (#356). A Canvas refresh that finishes after `revokeGrant` used to
+// write the grant — and the Canvas refresh token in it — back into the store.
+it('updateGrant updates but never creates, so a revoked grant cannot come back', async () => {
+  const store = new MemoryOAuthStore()
+  await store.updateGrant(grant('never-seen'))
+  expect(await store.getGrant('never-seen')).toBeUndefined()
+
+  await store.putGrant(grant('g1'))
+  await store.updateGrant({ ...grant('g1'), canvasUserId: '99' })
+  expect(await store.getGrant('g1')).toMatchObject({ canvasUserId: '99' })
+
+  await store.deleteGrant('g1')
+  await store.updateGrant({ ...grant('g1'), canvasUserId: '99' })
+  expect(await store.getGrant('g1')).toBeUndefined()
+})
+
 describe('FileOAuthStore', () => {
   let dir: string
   let path: string
@@ -298,5 +314,68 @@ describe('FileOAuthStore', () => {
     await store.flush()
     const reopened = await FileOAuthStore.open(path, KEY)
     for (let i = 0; i < 25; i++) expect(await reopened.getGrant(`g${i}`)).toBeDefined()
+  })
+
+  // QA R4 (PR #356). `persist()` chained every write onto `this.chain`; once a
+  // write rejected, `this.chain` stayed rejected, so every later `.then(...)`
+  // skipped `writeLoop` entirely and `writing` was never reset. One transient
+  // I/O error wedged every mutating call until the process restarted.
+  it('keeps writing after a failed write, and leaves no orphaned temp file', async () => {
+    const store = await FileOAuthStore.open(path, KEY)
+    await store.putGrant(grant('before'))
+    await store.flush()
+    expect(await readFile(path, 'utf8')).toContain('"kdf"')
+
+    // Fault injection with no mocking: put a non-empty directory where the
+    // store file goes, so the atomic `rename(tmp, path)` fails the way a real
+    // transient fault would (EPERM under an AV lock, EBUSY on Windows, EISDIR).
+    await rm(path)
+    await mkdir(path)
+    await writeFile(join(path, 'occupied'), 'x')
+
+    // The caller waiting on the failed write still sees the error.
+    await expect(store.putGrant(grant('during'))).rejects.toThrow()
+
+    // Clear the fault.
+    await rm(path, { recursive: true, force: true })
+
+    // The next mutation must reach disk. Before the fix it rejected with the
+    // original error and `writeOnce` was never called again.
+    await store.putGrant(grant('after'))
+    await store.flush()
+
+    const reopened = await FileOAuthStore.open(path, KEY)
+    expect(await reopened.getGrant('before')).toBeDefined()
+    // `mutate()` applies the in-memory change before persisting, so the grant
+    // whose write failed is part of the next successful snapshot.
+    expect(await reopened.getGrant('during')).toBeDefined()
+    expect(await reopened.getGrant('after')).toBeDefined()
+
+    const leftovers = (await readdir(dirname(path))).filter((name) => name.includes('.tmp-'))
+    expect(leftovers).toEqual([])
+  })
+
+  it('surfaces a write failure to every caller coalesced into it, then recovers', async () => {
+    const store = await FileOAuthStore.open(path, KEY)
+    await rm(dirname(path), { recursive: true, force: true })
+    await mkdir(dirname(path), { recursive: true })
+    await mkdir(path)
+    await writeFile(join(path, 'occupied'), 'x')
+
+    const results = await Promise.allSettled([
+      store.putGrant(grant('a')),
+      store.putGrant(grant('b')),
+      store.putGrant(grant('c')),
+    ])
+    expect(results.every((r) => r.status === 'rejected')).toBe(true)
+    await expect(store.flush()).rejects.toThrow()
+
+    await rm(path, { recursive: true, force: true })
+    await store.putToken(token('t1', 'a'))
+    await store.flush()
+
+    const reopened = await FileOAuthStore.open(path, KEY)
+    for (const id of ['a', 'b', 'c']) expect(await reopened.getGrant(id)).toBeDefined()
+    expect(await reopened.getToken('t1')).toBeDefined()
   })
 })

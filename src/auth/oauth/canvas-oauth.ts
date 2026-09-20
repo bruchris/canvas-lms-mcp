@@ -13,6 +13,14 @@ import { version } from '../../../package.json'
 
 const USER_AGENT = `canvas-lms-mcp/${version}`
 /** Fallback when Canvas omits `expires_in`; matches the documented lifetime. */
+/**
+ * Wall-clock bound on the Canvas token and revoke calls (QA S6, #356). A
+ * hung Canvas otherwise holds the per-grant refresh dedup in the resource
+ * server, so every request on that grant waits with it. Matches the CIMD
+ * fetch, which was already bounded.
+ */
+const CANVAS_FETCH_TIMEOUT_MS = 10_000
+
 const DEFAULT_EXPIRES_IN_SECONDS = 3600
 
 export type CanvasOAuthErrorKind =
@@ -128,6 +136,7 @@ export class CanvasOAuthClient {
       response = await this.fetchImpl(`${this.config.baseUrl}/login/oauth2/token`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(CANVAS_FETCH_TIMEOUT_MS),
       })
     } catch {
       throw new CanvasOAuthError('unavailable', 'Canvas could not be reached to revoke the token')
@@ -166,6 +175,7 @@ export class CanvasOAuthClient {
           'User-Agent': USER_AGENT,
         },
         body: form.toString(),
+        signal: AbortSignal.timeout(CANVAS_FETCH_TIMEOUT_MS),
       })
     } catch {
       throw new CanvasOAuthError('unavailable', 'Canvas could not be reached')
@@ -178,11 +188,21 @@ export class CanvasOAuthClient {
       )
     }
     if (!response.ok) {
-      // 400/401/403: the code or refresh token is not (or no longer) valid.
+      // Only what Canvas actually uses for a dead grant counts as one, because
+      // the caller answers `invalid_grant` by revoking the grant and revoking
+      // at Canvas (QA S2, #356). A 403 from a WAF, a 429 during a rate-limit
+      // episode or a 408 would otherwise log every active user out.
       // The Canvas error body is deliberately not surfaced anywhere.
+      if (response.status === 400 || response.status === 401) {
+        throw new CanvasOAuthError(
+          'invalid_grant',
+          `Canvas rejected the ${params.grant_type} request (HTTP ${response.status})`,
+          response.status,
+        )
+      }
       throw new CanvasOAuthError(
-        'invalid_grant',
-        `Canvas rejected the ${params.grant_type} request (HTTP ${response.status})`,
+        'unavailable',
+        `Canvas token endpoint returned HTTP ${response.status}`,
         response.status,
       )
     }

@@ -148,7 +148,7 @@ Order of checks, each with the response the MCP spec requires:
 5. Grant missing or revoked ⇒ **401** `error="invalid_token"`.
 6. Missing `canvas:read` ⇒ **403** `error="insufficient_scope"`.
 7. Non-`POST` ⇒ 405 (unchanged stateless behaviour).
-8. Canvas access token expiring within 60 s ⇒ refresh via `POST /login/oauth2/token` (`grant_type=refresh_token`), deduplicated per grant so concurrent requests share one refresh. Canvas answers 4xx ⇒ the Canvas authorization is gone: the grant is revoked, its tokens deleted, and the client gets **401** `invalid_token` — the "revoked at Canvas" path. Any other failure ⇒ **503** `temporarily_unavailable`, grant untouched.
+8. Canvas access token expiring within 60 s ⇒ refresh via `POST /login/oauth2/token` (`grant_type=refresh_token`), deduplicated per grant so concurrent requests share one refresh. ~~Canvas answers 4xx ⇒~~ **Corrected 2026-09-20 (QA S2 on PR #356):** Canvas answers **400 or 401** ⇒ the Canvas authorization is gone: the grant is revoked, its tokens deleted, and the client gets **401** `invalid_token` — the "revoked at Canvas" path. The original "any 4xx" rule made a 403 from a WAF, a 408, or a 429 during a rate-limit episode revoke every active user's grant — and revoke it *at Canvas*, so re-login was the only recovery. Every other failure, 4xx or 5xx, ⇒ **503** `temporarily_unavailable`, grant untouched.
 9. Build a fresh `McpServer` with the **Canvas** access token, the configured base URL, the shared pseudonymizer, the configured role (with the existing `X-Canvas-Role` UX override), and `readOnly` when `canvas:write` is absent; hand the request to `StreamableHTTPServerTransport`.
 
 The MCP token never reaches step 9. The Canvas token never leaves it.
