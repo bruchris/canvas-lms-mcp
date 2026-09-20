@@ -4,7 +4,7 @@ import { CanvasClient } from './canvas'
 import { Pseudonymizer } from './pseudonym/pseudonymizer'
 import { isEnvTruthy } from './env'
 import { registerAllTools } from './tools'
-import type { CanvasRole, ToolFeatureFlags } from './tools/types'
+import type { CanvasRole, ToolFeatureFlags, WriteToolsMode } from './tools/types'
 import { resolveDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import { registerAllResources } from './resources'
 
@@ -79,6 +79,13 @@ export interface CanvasMCPServerConfig {
    * rejected with its own message.
    */
   destructiveTools?: DestructiveToolsMode
+  /**
+   * Write-tool policy (issue #302 §7.4). `block` registers only tools with
+   * `readOnlyHint: true`. The OAuth HTTP profile sets it for tokens that lack
+   * the `canvas:write` scope; embedders may use it for a read-only deployment.
+   * Unset = `allow`, today's behaviour.
+   */
+  writeTools?: WriteToolsMode
 }
 
 export interface CanvasMCPServer {
@@ -158,6 +165,7 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
       config.destructiveTools,
       process.env.CANVAS_DESTRUCTIVE_TOOLS,
     ),
+    ...(config.writeTools ? { writeTools: config.writeTools } : {}),
   }
   registerAllTools(server, canvas, pseudonymizer, config.role, features)
   registerAllResources(server, canvas)

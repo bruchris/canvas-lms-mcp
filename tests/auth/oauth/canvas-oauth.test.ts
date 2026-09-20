@@ -1,0 +1,314 @@
+import { describe, expect, it, vi } from 'vitest'
+import { CanvasOAuthClient, CanvasOAuthError } from '../../../src/auth/oauth/canvas-oauth'
+
+const NOW = 1_800_000_000_000
+
+function makeClient(fetchImpl: typeof fetch, scopes?: string) {
+  return new CanvasOAuthClient({
+    baseUrl: 'https://school.instructure.com/',
+    clientId: '10000000000001',
+    clientSecret: 'dev-key-secret',
+    redirectUri: 'http://127.0.0.1:3001/oauth/canvas/callback',
+    fetch: fetchImpl,
+    now: () => NOW,
+    ...(scopes ? { scopes } : {}),
+  })
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+describe('CanvasOAuthClient (#302 §9)', () => {
+  describe('authorizationUrl', () => {
+    it('targets /login/oauth2/auth with the documented parameters and no scope by default', () => {
+      const url = new URL(makeClient(vi.fn()).authorizationUrl('pending-123'))
+      expect(url.origin + url.pathname).toBe('https://school.instructure.com/login/oauth2/auth')
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        client_id: '10000000000001',
+        response_type: 'code',
+        redirect_uri: 'http://127.0.0.1:3001/oauth/canvas/callback',
+        state: 'pending-123',
+      })
+    })
+
+    it('adds scope only when configured', () => {
+      const url = new URL(makeClient(vi.fn(), 'url:GET|/api/v1/courses').authorizationUrl('s'))
+      expect(url.searchParams.get('scope')).toBe('url:GET|/api/v1/courses')
+    })
+  })
+
+  describe('exchangeCode', () => {
+    // QA S6/W1 (#356): the token call needs the same wall-clock bound as
+    // `revoke`, or a hung Canvas holds the per-grant refresh dedup in the
+    // resource server and every request on that grant waits with it.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ access_token: 'a', refresh_token: 'r', user: { id: 1 } }))
+      await makeClient(fetchMock).exchangeCode('c')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
+    it('posts a form-encoded authorization_code grant with the Developer Key and maps the response', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse({
+          access_token: 'canvas-access',
+          token_type: 'Bearer',
+          user: { id: 42, name: 'Pat Example' },
+          refresh_token: 'canvas-refresh',
+          expires_in: 3600,
+          canvas_region: 'eu-west-1',
+        }),
+      )
+      const result = await makeClient(fetchMock).exchangeCode('the-code')
+
+      expect(result).toEqual({
+        accessToken: 'canvas-access',
+        refreshToken: 'canvas-refresh',
+        expiresAt: NOW + 3_600_000,
+        canvasUserId: '42',
+      })
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe('https://school.instructure.com/login/oauth2/token')
+      expect(init.method).toBe('POST')
+      expect((init.headers as Record<string, string>)['Content-Type']).toBe(
+        'application/x-www-form-urlencoded',
+      )
+      expect(Object.fromEntries(new URLSearchParams(init.body as string))).toEqual({
+        grant_type: 'authorization_code',
+        client_id: '10000000000001',
+        client_secret: 'dev-key-secret',
+        redirect_uri: 'http://127.0.0.1:3001/oauth/canvas/callback',
+        code: 'the-code',
+      })
+    })
+
+    it('discards the user name — only the id is kept (§9)', async () => {
+      const result = await makeClient(
+        vi
+          .fn()
+          .mockResolvedValue(
+            jsonResponse({ access_token: 'a', refresh_token: 'r', user: { id: '7', name: 'X' } }),
+          ),
+      ).exchangeCode('c')
+      expect(result).not.toHaveProperty('name')
+      expect(result.canvasUserId).toBe('7')
+    })
+
+    it('falls back to a one-hour lifetime when expires_in is missing or nonsense', async () => {
+      const result = await makeClient(
+        vi.fn().mockResolvedValue(
+          jsonResponse({
+            access_token: 'a',
+            refresh_token: 'r',
+            user: { id: 1 },
+            expires_in: 'soon',
+          }),
+        ),
+      ).exchangeCode('c')
+      expect(result.expiresAt).toBe(NOW + 3_600_000)
+    })
+
+    it.each([
+      [{ refresh_token: 'r', user: { id: 1 } }, /no access_token/],
+      [{ access_token: 'a', user: { id: 1 } }, /no refresh_token/],
+      [{ access_token: 'a', refresh_token: 'r' }, /no user\.id/],
+    ])('rejects a malformed token response %j', async (body, message) => {
+      // A fresh Response per call: a body can only be read once.
+      const client = makeClient(vi.fn().mockImplementation(async () => jsonResponse(body)))
+      await expect(client.exchangeCode('c')).rejects.toMatchObject({ kind: 'malformed' })
+      await expect(client.exchangeCode('c')).rejects.toThrow(message)
+    })
+
+    it('classifies a 4xx invalid_grant without surfacing the Canvas error body', async () => {
+      const client = makeClient(
+        vi
+          .fn()
+          .mockResolvedValue(
+            jsonResponse({ error: 'invalid_grant', error_description: 'leaky detail' }, 400),
+          ),
+      )
+      const error = await client.exchangeCode('c').catch((e) => e)
+      expect(error).toBeInstanceOf(CanvasOAuthError)
+      expect(error.kind).toBe('invalid_grant')
+      expect(error.status).toBe(400)
+      expect(error.message).not.toContain('leaky detail')
+    })
+
+    it('classifies 5xx and network failures as unavailable', async () => {
+      await expect(
+        makeClient(vi.fn().mockResolvedValue(jsonResponse({}, 503))).exchangeCode('c'),
+      ).rejects.toMatchObject({ kind: 'unavailable', status: 503 })
+      await expect(
+        makeClient(vi.fn().mockRejectedValue(new Error('ECONNREFUSED'))).exchangeCode('c'),
+      ).rejects.toMatchObject({ kind: 'unavailable' })
+    })
+
+    it('classifies a non-JSON 200 as malformed', async () => {
+      const client = makeClient(vi.fn().mockResolvedValue(new Response('<html>', { status: 200 })))
+      await expect(client.exchangeCode('c')).rejects.toMatchObject({ kind: 'malformed' })
+    })
+  })
+
+  describe('refresh', () => {
+    // QA S6/W1 (#356). Refresh is the call that runs under the per-grant dedup
+    // lock, so an unbounded one here is the worst of the three.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ access_token: 'a' }))
+      await makeClient(fetchMock).refresh('canvas-refresh')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
+    it('posts a refresh_token grant and keeps the old refresh token when Canvas does not rotate', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ access_token: 'new-access', expires_in: 3600, user: { id: 42 } }),
+        )
+      const result = await makeClient(fetchMock).refresh('canvas-refresh')
+      expect(result).toEqual({ accessToken: 'new-access', expiresAt: NOW + 3_600_000 })
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(Object.fromEntries(new URLSearchParams(init.body as string))).toMatchObject({
+        grant_type: 'refresh_token',
+        refresh_token: 'canvas-refresh',
+        redirect_uri: 'http://127.0.0.1:3001/oauth/canvas/callback',
+      })
+    })
+
+    it('passes a rotated refresh token through if Canvas ever sends one', async () => {
+      const result = await makeClient(
+        vi.fn().mockResolvedValue(jsonResponse({ access_token: 'a', refresh_token: 'rotated' })),
+      ).refresh('old')
+      expect(result.refreshToken).toBe('rotated')
+    })
+
+    it('reports a revoked refresh token as invalid_grant', async () => {
+      await expect(
+        makeClient(
+          vi.fn().mockResolvedValue(jsonResponse({ error: 'invalid_grant' }, 400)),
+        ).refresh('x'),
+      ).rejects.toMatchObject({ kind: 'invalid_grant', status: 400 })
+    })
+  })
+
+  // Canvas's OAuth error taxonomy, read from `lib/canvas/oauth/request_error.rb`
+  // at master `1c9f0bb8013e` on 2026-09-20: `invalid_client_id` and
+  // `invalid_client_secret` both map to `{error: "invalid_client"}` with
+  // `http_status: 401`, while every `invalid_grant` variant takes the default
+  // 400. Classifying 401 as a dead grant (QA W2, #356) meant one rotated or
+  // mistyped `CANVAS_OAUTH_CLIENT_SECRET` revoked every user's grant on their
+  // next refresh. The grant is dead only when Canvas says `invalid_grant`.
+  describe('error classification (QA W2, #356)', () => {
+    it('treats a 401 invalid_client as unavailable and tells the operator which config is wrong', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        const error = await makeClient(
+          vi
+            .fn()
+            .mockResolvedValue(
+              jsonResponse({ error: 'invalid_client', error_description: 'invalid client' }, 401),
+            ),
+        )
+          .refresh('still-good')
+          .catch((e) => e)
+        expect(error).toBeInstanceOf(CanvasOAuthError)
+        expect(error.kind).toBe('unavailable')
+        expect(error.status).toBe(401)
+        expect(error.message).not.toContain('invalid client')
+        expect(logged).toHaveBeenCalledWith(
+          expect.stringContaining('CANVAS_OAUTH_CLIENT_ID/CANVAS_OAUTH_CLIENT_SECRET'),
+        )
+      } finally {
+        logged.mockRestore()
+      }
+    })
+
+    it('treats a 400 invalid_request (redirect_uri does not match the Developer Key) as unavailable', async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        await expect(
+          makeClient(
+            vi.fn().mockResolvedValue(
+              jsonResponse(
+                {
+                  error: 'invalid_request',
+                  error_description: 'redirect_uri does not match client settings',
+                },
+                400,
+              ),
+            ),
+          ).exchangeCode('c'),
+        ).rejects.toMatchObject({ kind: 'unavailable', status: 400 })
+        expect(logged).toHaveBeenCalled()
+      } finally {
+        logged.mockRestore()
+      }
+    })
+
+    it('still calls an unreadable 400 a dead grant, so the re-authorization path survives a WAF', async () => {
+      await expect(
+        makeClient(
+          vi.fn().mockResolvedValue(new Response('<html>Blocked</html>', { status: 400 })),
+        ).refresh('x'),
+      ).rejects.toMatchObject({ kind: 'invalid_grant', status: 400 })
+    })
+
+    it('never calls an unreadable 401 a dead grant — Canvas only uses 401 for invalid_client', async () => {
+      await expect(
+        makeClient(vi.fn().mockResolvedValue(new Response(null, { status: 401 }))).refresh('x'),
+      ).rejects.toMatchObject({ kind: 'unavailable', status: 401 })
+    })
+
+    it('leaves a 403 from a WAF and a 429 rate limit as unavailable', async () => {
+      for (const status of [403, 429]) {
+        await expect(
+          makeClient(vi.fn().mockResolvedValue(new Response(null, { status }))).refresh('x'),
+        ).rejects.toMatchObject({ kind: 'unavailable', status })
+      }
+    })
+  })
+
+  describe('revoke', () => {
+    // QA S6 (#356): a hung Canvas otherwise holds the per-grant refresh dedup
+    // in the resource server, so every request on that grant waits with it.
+    it('bounds the call with an AbortSignal', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+      await makeClient(fetchMock).revoke('canvas-access')
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(init.signal).toBeInstanceOf(AbortSignal)
+      expect(init.signal!.aborted).toBe(false)
+    })
+
+    it('sends DELETE /login/oauth2/token with the Canvas access token as bearer', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+      await makeClient(fetchMock).revoke('canvas-access')
+      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe('https://school.instructure.com/login/oauth2/token')
+      expect(init.method).toBe('DELETE')
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer canvas-access')
+    })
+
+    it('treats 401 (already revoked) as success', async () => {
+      await expect(
+        makeClient(vi.fn().mockResolvedValue(new Response(null, { status: 401 }))).revoke('x'),
+      ).resolves.toBeUndefined()
+    })
+
+    it('throws on other failures so the caller can log them', async () => {
+      await expect(
+        makeClient(vi.fn().mockResolvedValue(new Response(null, { status: 500 }))).revoke('x'),
+      ).rejects.toMatchObject({ kind: 'unavailable' })
+      await expect(
+        makeClient(vi.fn().mockRejectedValue(new Error('down'))).revoke('x'),
+      ).rejects.toMatchObject({ kind: 'unavailable' })
+    })
+  })
+})
