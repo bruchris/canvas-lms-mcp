@@ -29,6 +29,39 @@ describe('QuizzesModule', () => {
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/1')
   })
 
+  it('deletes a quiz and returns the deleted quiz body', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 1,
+      title: 'Midterm',
+      quiz_type: 'assignment',
+      points_possible: 100,
+      question_count: 20,
+      due_at: null,
+      published: false,
+      version_number: 3,
+    })
+    const result = await quizzes.delete(100, 1)
+    expect(result).toMatchObject({ id: 1, title: 'Midterm' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/1', {
+      method: 'DELETE',
+    })
+  })
+
+  it('deletes a quiz question without throwing on 204', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(undefined)
+    await expect(quizzes.deleteQuestion(100, 1, 55)).resolves.toBeUndefined()
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/1/questions/55', {
+      method: 'DELETE',
+    })
+  })
+
+  it('surfaces a Canvas error from delete', async () => {
+    vi.spyOn(client, 'request').mockRejectedValueOnce(
+      new CanvasApiError(404, 'The specified resource does not exist.'),
+    )
+    await expect(quizzes.delete(100, 999)).rejects.toBeInstanceOf(CanvasApiError)
+  })
+
   it('lists quiz submissions using envelope pagination', async () => {
     vi.spyOn(client, 'paginateEnvelope').mockResolvedValueOnce([
       {

@@ -14,10 +14,10 @@ import type { CanvasRole, ToolFeatureFlags } from '../../src/tools/types'
  * BRU-2390 §7 / §8.1 / §8.13).
  *
  * `block` is the only control in the BRU-2390 design that offers a *hard*
- * guarantee: the seven irreversible delete tools are never registered, so no
+ * guarantee: the nine irreversible delete tools are never registered, so no
  * amount of model confusion or prompt injection can reach them. These tests
  * therefore assert names rather than counts — a count assertion is satisfied by
- * removing the wrong seven tools.
+ * removing the wrong nine tools.
  */
 
 const TEST_TOKEN = 'test-token'
@@ -91,7 +91,7 @@ function namesFor(config: FactoryConfig, mode: 'allow' | 'block' | undefined): s
 /**
  * Measured against `origin/main` @ d8a0afd: `delete_discussion` and
  * `delete_file` both override their domain's `shared` default with
- * `audience: 'educator'`, so the student role sees none of the seven and
+ * `audience: 'educator'`, so the student role sees none of the nine and
  * `block` is a no-op there. Pinning that here means a future audience change
  * that exposes a delete tool to students shows up as a failure in *this* file,
  * next to the policy it affects.
@@ -105,6 +105,8 @@ const EXPECTED_REMOVED_BY_ROLE: Record<string, string[]> = {
     'delete_new_quiz',
     'delete_new_quiz_item',
     'delete_page',
+    'delete_quiz',
+    'delete_quiz_question',
   ],
   student: [],
   teacher: [
@@ -115,6 +117,8 @@ const EXPECTED_REMOVED_BY_ROLE: Record<string, string[]> = {
     'delete_new_quiz',
     'delete_new_quiz_item',
     'delete_page',
+    'delete_quiz',
+    'delete_quiz_question',
   ],
   admin: [
     'delete_appointment_group',
@@ -124,6 +128,8 @@ const EXPECTED_REMOVED_BY_ROLE: Record<string, string[]> = {
     'delete_new_quiz',
     'delete_new_quiz_item',
     'delete_page',
+    'delete_quiz',
+    'delete_quiz_question',
   ],
 }
 

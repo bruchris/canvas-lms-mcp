@@ -159,7 +159,7 @@ const transport = new StdioServerTransport()
 await server.connect(transport)
 ```
 
-The `server` is a standard `McpServer` instance with all 165 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
+The `server` is a standard `McpServer` instance with all 167 tools and 2 resources registered. The `canvas` is the underlying `CanvasClient` instance if you need direct API access.
 
 **JSON Schema dialect.** Tool schemas are advertised as JSON Schema 2020-12 rather than the draft-07 `@modelcontextprotocol/sdk` v1 emits by default, so clients whose validator supports 2020-12 only accept them ([#341](https://github.com/bruchris/canvas-lms-mcp/issues/341)). The rewrite is installed during tool registration rather than in a transport, so it applies to the `server` this factory returns whatever transport you connect it to — including your own.
 

@@ -66,7 +66,7 @@ Posts a reply to a discussion topic. Supports HTML formatting.
 
 ## Write Operations Reference
 
-The server includes 48 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
+The server includes 50 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
 
 ### Grading & Feedback
 
@@ -101,6 +101,13 @@ The server includes 48 write tools. All require appropriate Canvas permissions. 
 | Operation | Tool | What It Does | Reversible? |
 |-----------|------|--------------|-------------|
 | Create a rubric | `create_rubric` | Creates a rubric with criteria and rating levels; can link to an assignment immediately | No -- no `delete_rubric`/`update_rubric` tool in this server; remove or unlink via Canvas UI |
+
+### Classic Quizzes
+
+| Operation | Tool | What It Does | Reversible? |
+|-----------|------|--------------|-------------|
+| Delete a Classic quiz | `delete_quiz` | Deletes a Classic quiz with its questions and every student submission; Canvas also removes its module item | No -- permanent |
+| Delete a Classic quiz question | `delete_quiz_question` | Deletes one question from a Classic quiz | No -- permanent; re-author via Canvas UI |
 
 ### New Quizzes
 
