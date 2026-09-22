@@ -21,6 +21,24 @@ export class QuizzesModule {
     return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`)
   }
 
+  /**
+   * Delete a Classic quiz. Canvas answers with the deleted quiz's body (with
+   * its `version_number` bumped) rather than a 204, and it removes the module
+   * item that pointed at the quiz on its own.
+   */
+  async delete(courseId: number, quizId: number): Promise<CanvasQuiz> {
+    return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async deleteQuestion(courseId: number, quizId: number, questionId: number): Promise<void> {
+    await this.client.request<void>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`,
+      { method: 'DELETE' },
+    )
+  }
+
   async listSubmissions(courseId: number, quizId: number): Promise<CanvasQuizSubmission[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmission>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions`,

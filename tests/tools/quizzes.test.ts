@@ -79,12 +79,14 @@ describe('quizTools', () => {
         getSubmissionAnswers: vi.fn().mockResolvedValue([mockSubQuestion]),
         scoreQuestion: vi.fn().mockResolvedValue(undefined),
         getSubmissionEvents: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue(mockQuiz),
+        deleteQuestion: vi.fn().mockResolvedValue(undefined),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 7 tool definitions', () => {
-    expect(quizTools(buildMockCanvas())).toHaveLength(7)
+  it('returns an array with 9 tool definitions', () => {
+    expect(quizTools(buildMockCanvas())).toHaveLength(9)
   })
 
   it('exports tools with correct names', () => {
@@ -97,7 +99,47 @@ describe('quizTools', () => {
       'get_quiz_submission_answers',
       'score_quiz_question',
       'get_quiz_submission_events',
+      'delete_quiz',
+      'delete_quiz_question',
     ])
+  })
+
+  describe('delete_quiz', () => {
+    it('has destructive + idempotent annotations', () => {
+      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'delete_quiz')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('delegates to canvas.quizzes.delete and returns the deleted quiz', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'delete_quiz')!
+      const result = await tool.handler({ course_id: 1, quiz_id: 1 })
+      expect(canvas.quizzes.delete).toHaveBeenCalledWith(1, 1)
+      expect(result).toEqual(mockQuiz)
+    })
+  })
+
+  describe('delete_quiz_question', () => {
+    it('has destructive + idempotent annotations', () => {
+      const tool = quizTools(buildMockCanvas()).find((t) => t.name === 'delete_quiz_question')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('delegates to canvas.quizzes.deleteQuestion and returns a deletion receipt', async () => {
+      const canvas = buildMockCanvas()
+      const tool = quizTools(canvas).find((t) => t.name === 'delete_quiz_question')!
+      const result = await tool.handler({ course_id: 1, quiz_id: 1, question_id: 55 })
+      expect(canvas.quizzes.deleteQuestion).toHaveBeenCalledWith(1, 1, 55)
+      expect(result).toEqual({ deleted: true, question_id: 55 })
+    })
   })
 
   describe('get_quiz', () => {
