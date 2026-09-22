@@ -100,6 +100,8 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       createItem: async () => ({}),
+      updateItem: async () => ({}),
+      deleteItem: async () => ({}),
     },
     pages: {
       list: async () => [],
@@ -298,6 +300,8 @@ describe('getAllTools', () => {
     expect(names).toContain('create_module')
     expect(names).toContain('update_module')
     expect(names).toContain('create_module_item')
+    expect(names).toContain('update_module_item')
+    expect(names).toContain('delete_module_item')
     // Pages (5)
     expect(names).toContain('list_pages')
     expect(names).toContain('get_page')
@@ -415,14 +419,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(163)
+    expect(tools).toHaveLength(165)
   })
 
-  it('returns 165 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 167 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(165)
+    expect(tools).toHaveLength(167)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
@@ -454,6 +458,8 @@ describe('getAllTools', () => {
       'create_module',
       'update_module',
       'create_module_item',
+      'update_module_item',
+      'delete_module_item',
       'create_page',
       'update_page',
       'delete_page',
@@ -519,6 +525,8 @@ describe('getAllTools', () => {
       'create_module',
       'update_module',
       'create_module_item',
+      'update_module_item',
+      'delete_module_item',
       'create_page',
       'update_page',
       'delete_page',

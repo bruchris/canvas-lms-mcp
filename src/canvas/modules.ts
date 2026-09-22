@@ -1,6 +1,29 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasModule, CanvasModuleItem, CanvasCourseStructure } from './types'
 
+export interface CreateModuleItemParams {
+  title: string
+  type: string
+  content_id?: number
+  /** Page slug — Page items are addressed by URL slug, not by `content_id`. */
+  page_url?: string
+  external_url?: string
+  position?: number
+  indent?: number
+  new_tab?: boolean
+}
+
+export interface UpdateModuleItemParams {
+  title?: string
+  external_url?: string
+  position?: number
+  indent?: number
+  new_tab?: boolean
+  published?: boolean
+  /** Move the item to a different module. */
+  module_id?: number
+}
+
 export class ModulesModule {
   constructor(private client: CanvasHttpClient) {}
 
@@ -62,13 +85,7 @@ export class ModulesModule {
   async createItem(
     courseId: number,
     moduleId: number,
-    params: {
-      title: string
-      type: string
-      content_id?: number
-      external_url?: string
-      position?: number
-    },
+    params: CreateModuleItemParams,
   ): Promise<CanvasModuleItem> {
     return this.client.request<CanvasModuleItem>(
       `/api/v1/courses/${courseId}/modules/${moduleId}/items`,
@@ -76,6 +93,29 @@ export class ModulesModule {
         method: 'POST',
         body: JSON.stringify({ module_item: params }),
       },
+    )
+  }
+
+  async updateItem(
+    courseId: number,
+    moduleId: number,
+    itemId: number,
+    params: UpdateModuleItemParams,
+  ): Promise<CanvasModuleItem> {
+    return this.client.request<CanvasModuleItem>(
+      `/api/v1/courses/${courseId}/modules/${moduleId}/items/${itemId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ module_item: params }),
+      },
+    )
+  }
+
+  /** Canvas answers a module-item DELETE with the deleted item's body. */
+  async deleteItem(courseId: number, moduleId: number, itemId: number): Promise<CanvasModuleItem> {
+    return this.client.request<CanvasModuleItem>(
+      `/api/v1/courses/${courseId}/modules/${moduleId}/items/${itemId}`,
+      { method: 'DELETE' },
     )
   }
 

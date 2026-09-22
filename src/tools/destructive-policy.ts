@@ -54,16 +54,27 @@ export const GATED_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
  * Delete tools deliberately left ungated, with the reason recorded here rather
  * than in a commit message.
  *
- * `delete_peer_review` is the only delete in the set whose effect this server
- * can itself undo — `create_peer_review` recreates the row and no authored
- * content is destroyed — and gating it would cost a round-trip on peer-review
- * reshuffling, which is inherently many-call work (design §3).
+ * `delete_peer_review` is a delete whose effect this server can itself undo —
+ * `create_peer_review` recreates the row and no authored content is destroyed —
+ * and gating it would cost a round-trip on peer-review reshuffling, which is
+ * inherently many-call work (design §3).
+ *
+ * `delete_module_item` is excluded on the same reasoning. A module item is a
+ * pointer: for Assignment, Page, Quiz, File and Discussion items the DELETE
+ * only unlinks the item and the underlying content survives, and for
+ * ExternalUrl, ExternalTool and SubHeader items the whole item is a title plus
+ * a URL that `create_module_item` recreates in one call. No student-authored
+ * content is reachable through it, and course rollover (repointing or dropping
+ * stale links) is inherently many-call work.
  *
  * The coverage guard in `tests/tools/destructive-gate.test.ts` fails if a
  * future `delete_*` tool lands in neither this set nor
- * `GATED_DESTRUCTIVE_TOOLS`, so tool #9 cannot arrive silently ungated.
+ * `GATED_DESTRUCTIVE_TOOLS`, so a new delete cannot arrive silently ungated.
  */
-export const UNGATED_DELETE_TOOLS: ReadonlySet<string> = new Set(['delete_peer_review'])
+export const UNGATED_DELETE_TOOLS: ReadonlySet<string> = new Set([
+  'delete_peer_review',
+  'delete_module_item',
+])
 
 /**
  * Modes the design names but this phase does not implement. Accepting one of

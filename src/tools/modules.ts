@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { UpdateModuleItemParams } from '../canvas/modules'
 import type { ToolDefinition } from './types'
 
 export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
@@ -208,9 +209,11 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
         content_id: z
           .number()
           .optional()
-          .describe(
-            'Canvas ID of the content (required for File, Page, Discussion, Assignment, Quiz)',
-          ),
+          .describe('Canvas ID of the content (required for File, Discussion, Assignment, Quiz)'),
+        page_url: z
+          .string()
+          .optional()
+          .describe('Page URL slug (required for Page items, which are addressed by slug, not ID)'),
         external_url: z.string().optional().describe('URL for ExternalUrl or ExternalTool items'),
         position: z.number().optional().describe('Position within the module'),
       },
@@ -225,9 +228,72 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
           title: params.title as string,
           type: params.type as string,
           content_id: params.content_id as number | undefined,
+          page_url: params.page_url as string | undefined,
           external_url: params.external_url as string | undefined,
           position: params.position as number | undefined,
         })
+      },
+    },
+    {
+      name: 'update_module_item',
+      title: 'Update Module Item',
+      description:
+        'Edit an existing module item in place: rename it, repoint an ExternalUrl/ExternalTool item, reposition or re-indent it, publish/unpublish it, or move it to another module. ExternalUrl items exist only as module items, so a stale link carried in by a course copy can only be fixed here.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        module_id: z.number().describe('The Canvas module ID the item currently belongs to'),
+        item_id: z.number().describe('The Canvas module item ID'),
+        title: z.string().optional().describe('New title for the module item'),
+        external_url: z
+          .string()
+          .optional()
+          .describe('New URL for an ExternalUrl or ExternalTool item'),
+        position: z.number().optional().describe('New 1-based position within the module'),
+        indent: z.number().optional().describe('New indent level (0 = flush left)'),
+        new_tab: z.boolean().optional().describe('Whether an external item opens in a new tab'),
+        published: z.boolean().optional().describe('Whether the item is published'),
+        target_module_id: z
+          .number()
+          .optional()
+          .describe('Move the item to this module ID (omit to leave it where it is)'),
+      },
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const { course_id, module_id, item_id, target_module_id, ...rest } = params as {
+          course_id: number
+          module_id: number
+          item_id: number
+          target_module_id?: number
+        } & Omit<UpdateModuleItemParams, 'module_id'>
+        const patch: UpdateModuleItemParams = { ...rest }
+        if (target_module_id !== undefined) patch.module_id = target_module_id
+        return canvas.modules.updateItem(course_id, module_id, item_id, patch)
+      },
+    },
+    {
+      name: 'delete_module_item',
+      title: 'Delete Module Item',
+      description:
+        'Remove an item from a module. For ExternalUrl, ExternalTool and SubHeader items the item is the content, so this deletes it outright; for Assignment, Page, Quiz, File and Discussion items it only unlinks the item and the underlying content survives. Re-add with create_module_item.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        module_id: z.number().describe('The Canvas module ID'),
+        item_id: z.number().describe('The Canvas module item ID to remove'),
+      },
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const module_id = params.module_id as number
+        const item_id = params.item_id as number
+        return canvas.modules.deleteItem(course_id, module_id, item_id)
       },
     },
   ]
