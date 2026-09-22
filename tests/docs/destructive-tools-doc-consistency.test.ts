@@ -27,7 +27,7 @@ describe('README destructive-tools documentation', () => {
   it('documents every gated tool by name', () => {
     const section = destructiveSection()
     // Anti-vacuity: an empty registry would satisfy the loop below trivially.
-    expect(GATED_DESTRUCTIVE_TOOLS.size).toBe(7)
+    expect(GATED_DESTRUCTIVE_TOOLS.size).toBe(8)
 
     const undocumented = [...GATED_DESTRUCTIVE_TOOLS].filter(
       (name) => !section.includes(`\`${name}\``),

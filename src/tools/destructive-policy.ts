@@ -4,7 +4,7 @@
 // (`docs/superpowers/specs/2026-08-31-bru-2390-destructive-confirmation.md`).
 //
 // This is the only control in that design that offers a *hard* guarantee. Under
-// `block` the seven irreversible delete tools are never registered, so the MCP
+// `block` the eight irreversible delete tools are never registered, so the MCP
 // dispatch table refuses the call before any handler exists to run. Everything
 // else the design proposes — preview/confirm tokens, elicitation — is a nudge a
 // confused or prompt-injected model can satisfy on its own within a single turn
@@ -26,7 +26,7 @@ export type DestructiveToolsMode = 'allow' | 'block'
 export const DEFAULT_DESTRUCTIVE_TOOLS_MODE: DestructiveToolsMode = 'allow'
 
 /**
- * The seven irreversible deletes gated by `block` (design §3).
+ * The eight irreversible deletes gated by `block` (design §3, extended by `delete_rubric`).
  *
  * The boundary is *irreversible destruction of existing state*, not the
  * `destructiveHint` annotation (48 tools carry it) and not the `delete_` name
@@ -44,6 +44,9 @@ export const GATED_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
   'delete_discussion',
   // Page body and revision history; keyed by URL slug, not a numeric ID.
   'delete_page',
+  // The rubric plus every assignment association on it; rubric assessments
+  // already recorded against it lose their criteria.
+  'delete_rubric',
   // Global file ID with no course scoping in the call.
   'delete_file',
   // Cancels every reservation and emails every signed-up student.
