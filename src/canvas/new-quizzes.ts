@@ -68,10 +68,15 @@ export interface NewQuizItemUpdatePayload {
 export class NewQuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
+  /**
+   * The New Quizzes API expects quiz fields nested under a `quiz` key
+   * (`quiz[title]`, `quiz[published]`, …), the same shape the Classic quizzes
+   * endpoint uses. A flat body is rejected with `400 quiz is missing`.
+   */
   async create(courseId: number, payload: NewQuizPayload): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(`/api/quiz/v1/courses/${courseId}/quizzes`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ quiz: payload }),
     })
   }
 
@@ -82,7 +87,7 @@ export class NewQuizzesModule {
   ): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}`,
-      { method: 'PATCH', body: JSON.stringify(patch) },
+      { method: 'PATCH', body: JSON.stringify({ quiz: patch }) },
     )
   }
 
