@@ -371,6 +371,19 @@ export interface CanvasRubricRating {
   points: number
 }
 
+/** A rubric ↔ assignment link, as returned by `POST /courses/:id/rubric_associations`. */
+export interface CanvasRubricAssociation {
+  id: number
+  rubric_id: number
+  association_id: number
+  association_type: string
+  use_for_grading: boolean
+  purpose: string
+  hide_score_total?: boolean
+  hide_points?: boolean
+  hide_outcome_results?: boolean
+}
+
 export interface CanvasRubricAssessment {
   id: number
   rubric_id: number

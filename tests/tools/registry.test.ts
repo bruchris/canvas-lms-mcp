@@ -37,6 +37,8 @@ function buildFullMockCanvas(): CanvasClient {
       getAssessment: async () => ({}),
       submitAssessment: async () => ({}),
       create: async () => ({}),
+      associate: async () => ({}),
+      delete: async () => ({}),
     },
     quizzes: {
       list: async () => [],
@@ -247,6 +249,8 @@ describe('getAllTools', () => {
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
     expect(names).toContain('create_rubric')
+    expect(names).toContain('attach_rubric')
+    expect(names).toContain('delete_rubric')
     // Quizzes (7)
     expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
@@ -415,14 +419,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(163)
+    expect(tools).toHaveLength(165)
   })
 
-  it('returns 165 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 167 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(165)
+    expect(tools).toHaveLength(167)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
@@ -443,6 +447,8 @@ describe('getAllTools', () => {
       'comment_on_submission',
       'submit_rubric_assessment',
       'create_rubric',
+      'attach_rubric',
+      'delete_rubric',
       'score_quiz_question',
       'post_discussion_entry',
       'create_discussion',
@@ -508,6 +514,8 @@ describe('getAllTools', () => {
       'comment_on_submission',
       'submit_rubric_assessment',
       'create_rubric',
+      'attach_rubric',
+      'delete_rubric',
       'score_quiz_question',
       'post_discussion_entry',
       'create_discussion',

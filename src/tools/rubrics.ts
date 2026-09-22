@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type {
   RubricAssociationInput,
+  RubricAttachOptions,
   RubricCriterionInput,
   RubricCreateInput,
 } from '../canvas/rubrics'
@@ -146,6 +147,64 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
         }
         const association = params.association as RubricAssociationInput | undefined
         return canvas.rubrics.create(course_id, rubric, association)
+      },
+    },
+    {
+      name: 'attach_rubric',
+      title: 'Attach Rubric',
+      description:
+        'Attach an existing course rubric to an assignment, so one rubric can be shared across many assignments instead of creating a duplicate per assignment with create_rubric. Returns the new rubric association.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        rubric_id: z.number().describe('The ID of the existing rubric to attach'),
+        assignment_id: z.number().describe('The Canvas assignment ID to attach the rubric to'),
+        use_for_grading: z
+          .boolean()
+          .optional()
+          .describe('Whether the rubric drives the assignment grade'),
+        hide_score_total: z
+          .boolean()
+          .optional()
+          .describe('Whether to hide the rubric score total from students'),
+        purpose: z
+          .string()
+          .optional()
+          .describe('Association purpose, e.g. "grading" (the default) or "bookmark"'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const rubric_id = params.rubric_id as number
+        const assignment_id = params.assignment_id as number
+        const options: RubricAttachOptions = {
+          use_for_grading: params.use_for_grading as boolean | undefined,
+          hide_score_total: params.hide_score_total as boolean | undefined,
+          purpose: params.purpose as string | undefined,
+        }
+        return canvas.rubrics.associate(course_id, rubric_id, assignment_id, options)
+      },
+    },
+    {
+      name: 'delete_rubric',
+      title: 'Delete Rubric',
+      description:
+        'Permanently delete a rubric from a course, removing it from every assignment it is attached to. Returns the deleted rubric.',
+      inputSchema: {
+        course_id: z.number().describe('The Canvas course ID'),
+        rubric_id: z.number().describe('The Canvas rubric ID to delete'),
+      },
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as number
+        const rubric_id = params.rubric_id as number
+        return canvas.rubrics.delete(course_id, rubric_id)
       },
     },
   ]
