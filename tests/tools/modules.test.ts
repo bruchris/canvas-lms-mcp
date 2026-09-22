@@ -42,12 +42,14 @@ describe('moduleTools', () => {
         create: vi.fn().mockResolvedValue(mockModule),
         update: vi.fn().mockResolvedValue(mockModule),
         createItem: vi.fn().mockResolvedValue(mockItem),
+        updateItem: vi.fn().mockResolvedValue(mockItem),
+        deleteItem: vi.fn().mockResolvedValue(mockItem),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 8 tool definitions', () => {
-    expect(moduleTools(buildMockCanvas())).toHaveLength(8)
+  it('returns an array with 10 tool definitions', () => {
+    expect(moduleTools(buildMockCanvas())).toHaveLength(10)
   })
 
   it('exports tools with correct names', () => {
@@ -61,6 +63,8 @@ describe('moduleTools', () => {
       'create_module',
       'update_module',
       'create_module_item',
+      'update_module_item',
+      'delete_module_item',
     ])
   })
 
@@ -249,9 +253,90 @@ describe('moduleTools', () => {
         title: 'HW1',
         type: 'Assignment',
         content_id: 42,
+        page_url: undefined,
         external_url: undefined,
         position: undefined,
       })
+    })
+
+    it('passes page_url through for Page items', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'create_module_item')!
+      await tool.handler({
+        course_id: 1,
+        module_id: 1,
+        title: 'Syllabus',
+        type: 'Page',
+        page_url: 'syllabus',
+      })
+      expect(canvas.modules.createItem).toHaveBeenCalledWith(1, 1, {
+        title: 'Syllabus',
+        type: 'Page',
+        content_id: undefined,
+        page_url: 'syllabus',
+        external_url: undefined,
+        position: undefined,
+      })
+    })
+  })
+
+  describe('update_module_item', () => {
+    it('has destructive + idempotent annotations', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'update_module_item')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('delegates to canvas.modules.updateItem with only the provided fields', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
+      await tool.handler({
+        course_id: 1,
+        module_id: 1,
+        item_id: 5,
+        external_url: 'https://example.com/new',
+        published: true,
+      })
+      expect(canvas.modules.updateItem).toHaveBeenCalledWith(1, 1, 5, {
+        external_url: 'https://example.com/new',
+        published: true,
+      })
+    })
+
+    it('maps target_module_id onto the Canvas module_id field', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
+      await tool.handler({ course_id: 1, module_id: 1, item_id: 5, target_module_id: 2 })
+      expect(canvas.modules.updateItem).toHaveBeenCalledWith(1, 1, 5, { module_id: 2 })
+    })
+
+    it('returns the updated item', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
+      const result = await tool.handler({ course_id: 1, module_id: 1, item_id: 5, title: 'x' })
+      expect(result).toEqual(mockItem)
+    })
+  })
+
+  describe('delete_module_item', () => {
+    it('has destructive + idempotent annotations', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'delete_module_item')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('delegates to canvas.modules.deleteItem and returns the deleted item', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'delete_module_item')!
+      const result = await tool.handler({ course_id: 1, module_id: 1, item_id: 5 })
+      expect(canvas.modules.deleteItem).toHaveBeenCalledWith(1, 1, 5)
+      expect(result).toEqual(mockItem)
     })
   })
 })

@@ -24,8 +24,8 @@ import { JSON_SCHEMA_DIALECT_2020_12 } from '../../src/schema-dialect'
  * real `tools/list` wire output (not the Zod objects) so any future tool that
  * reintroduces `z.tuple()` fails CI instead of shipping silently.
  *
- * Two server configs are walked: the default (163 tools) and
- * `enableAssignmentSubmission: true` (165 tools). The opt-in gate is the only
+ * Two server configs are walked: the default (165 tools) and
+ * `enableAssignmentSubmission: true` (167 tools). The opt-in gate is the only
  * server config that adds tools beyond the default set — role filtering only
  * ever subsets it — so walking these two covers every tool the server can
  * ever return. See BRU-2359.
@@ -222,7 +222,7 @@ describe('tool JSON Schema shape (client-facing wire output)', () => {
   })
 
   describe('opt-in tools (enableAssignmentSubmission)', () => {
-    it('registers the same tool count as the registry, including the gated domain (a walk over just the default 163 would never see these)', () => {
+    it('registers the same tool count as the registry, including the gated domain (a walk over just the default 165 would never see these)', () => {
       const canvas = new CanvasClient({ token: TEST_TOKEN, baseUrl: TEST_BASE_URL })
       const pseudonymizer = new Pseudonymizer({ baseUrl: TEST_BASE_URL })
       const registered = getAllTools(canvas, pseudonymizer, undefined, {

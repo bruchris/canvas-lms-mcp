@@ -141,9 +141,11 @@ describe('destructive-tools policy gate (catalog level)', () => {
 
     expect(removed).toEqual(EXPECTED_REMOVED_BY_ROLE[config.role ?? 'all'])
     expect(added).toEqual([])
-    // The exclusion is the whole point of §3's argument — assert it survives
-    // wherever it is visible at all.
-    expect(blocked.includes('delete_peer_review')).toBe(allowed.includes('delete_peer_review'))
+    // The exclusions are the whole point of §3's argument — assert they survive
+    // wherever they are visible at all.
+    for (const name of UNGATED_DELETE_TOOLS) {
+      expect(blocked.includes(name)).toBe(allowed.includes(name))
+    }
   })
 
   it.each(factoryConfigs())('$label: allow and unset produce an identical tool list', (config) => {
@@ -214,6 +216,7 @@ describe('destructive-tools policy gate (MCP wire level)', () => {
 
     expect(names.filter((n) => GATED_DESTRUCTIVE_TOOLS.has(n))).toEqual([])
     expect(names).toContain('delete_peer_review')
+    expect(names).toContain('delete_module_item')
     expect(names).toContain('list_courses')
     await client.close()
   })

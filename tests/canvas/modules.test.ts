@@ -100,6 +100,90 @@ describe('ModulesModule', () => {
     })
   })
 
+  it('creates a Page module item by page_url', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 6,
+      module_id: 1,
+      title: 'Syllabus',
+      position: 2,
+      type: 'Page',
+      page_url: 'syllabus',
+    })
+    const result = await modules.createItem(100, 1, {
+      title: 'Syllabus',
+      type: 'Page',
+      page_url: 'syllabus',
+    })
+    expect(result).toMatchObject({ id: 6, type: 'Page', page_url: 'syllabus' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items', {
+      method: 'POST',
+      body: JSON.stringify({
+        module_item: { title: 'Syllabus', type: 'Page', page_url: 'syllabus' },
+      }),
+    })
+  })
+
+  it('updates a module item', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 5,
+      module_id: 1,
+      title: 'Discord',
+      position: 1,
+      type: 'ExternalUrl',
+      external_url: 'https://discord.gg/new-invite',
+      published: true,
+    })
+    const result = await modules.updateItem(100, 1, 5, {
+      external_url: 'https://discord.gg/new-invite',
+      published: true,
+    })
+    expect(result).toMatchObject({ id: 5, external_url: 'https://discord.gg/new-invite' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items/5', {
+      method: 'PUT',
+      body: JSON.stringify({
+        module_item: { external_url: 'https://discord.gg/new-invite', published: true },
+      }),
+    })
+  })
+
+  it('moves a module item to another module via module_id', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 5,
+      module_id: 2,
+      title: 'HW1',
+      position: 1,
+      type: 'Assignment',
+    })
+    const result = await modules.updateItem(100, 1, 5, { module_id: 2 })
+    expect(result.module_id).toBe(2)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items/5', {
+      method: 'PUT',
+      body: JSON.stringify({ module_item: { module_id: 2 } }),
+    })
+  })
+
+  it('deletes a module item and returns the deleted item body', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 5,
+      module_id: 1,
+      title: 'Old link',
+      position: 1,
+      type: 'ExternalUrl',
+    })
+    const result = await modules.deleteItem(100, 1, 5)
+    expect(result).toMatchObject({ id: 5, type: 'ExternalUrl' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/1/items/5', {
+      method: 'DELETE',
+    })
+  })
+
+  it('surfaces a Canvas error from deleteItem', async () => {
+    vi.spyOn(client, 'request').mockRejectedValueOnce(
+      new CanvasApiError(404, 'The specified resource does not exist.'),
+    )
+    await expect(modules.deleteItem(100, 1, 999)).rejects.toBeInstanceOf(CanvasApiError)
+  })
+
   it('getCourseStructure returns module tree with summary', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
       {
