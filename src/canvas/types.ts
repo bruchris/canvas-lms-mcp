@@ -961,6 +961,9 @@ export interface CreateAssignmentParams {
   due_at?: string
   submission_types?: string[]
   assignment_group_id?: number
+  published?: boolean
+  omit_from_final_grade?: boolean
+  grade_group_students_individually?: boolean
 }
 
 export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
