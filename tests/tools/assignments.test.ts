@@ -301,6 +301,26 @@ describe('assignmentTools', () => {
     })
   })
 
+  describe('create_assignment publish and grade fields', () => {
+    it('passes published, omit_from_final_grade and grade_group_students_individually through', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
+      await tool.handler({
+        course_id: 1,
+        name: 'Group project',
+        published: false,
+        omit_from_final_grade: true,
+        grade_group_students_individually: true,
+      })
+      expect(canvas.assignments.create).toHaveBeenCalledWith(1, {
+        name: 'Group project',
+        published: false,
+        omit_from_final_grade: true,
+        grade_group_students_individually: true,
+      })
+    })
+  })
+
   describe('update_assignment', () => {
     it('has destructiveHint, idempotentHint, and openWorldHint annotations', () => {
       const canvas = buildMockCanvas()
@@ -327,6 +347,30 @@ describe('assignmentTools', () => {
         name: 'Updated',
         points_possible: 75,
       })
+    })
+
+    it('passes published, omit_from_final_grade and grade_group_students_individually through', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
+      await tool.handler({
+        course_id: 1,
+        assignment_id: 101,
+        published: true,
+        omit_from_final_grade: true,
+        grade_group_students_individually: false,
+      })
+      expect(canvas.assignments.update).toHaveBeenCalledWith(1, 101, {
+        published: true,
+        omit_from_final_grade: true,
+        grade_group_students_individually: false,
+      })
+    })
+
+    it('exposes the publish and grade fields in the input schema', () => {
+      const tool = assignmentTools(buildMockCanvas()).find((t) => t.name === 'update_assignment')!
+      expect(tool.inputSchema).toHaveProperty('published')
+      expect(tool.inputSchema).toHaveProperty('omit_from_final_grade')
+      expect(tool.inputSchema).toHaveProperty('grade_group_students_individually')
     })
 
     it('returns the updated assignment', async () => {
