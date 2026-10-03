@@ -80,19 +80,15 @@ canvas-lms-mcp/
 ├── .claude/
 │   ├── CLAUDE.md
 │   ├── settings.json
-│   ├── agents/
-│   │   ├── team-lead.md
-│   │   ├── architect.md
-│   │   ├── fullstack-dev.md
-│   │   ├── qa-engineer.md
-│   │   └── devops-engineer.md
-│   └── skills/                    # Dev team skills (mirrored in .agents/skills/)
-│       ├── canvas-lms-api/        # Canvas REST API reference
-│       └── mcp-sdk-patterns/      # MCP SDK usage patterns
-├── .agents/
-│   └── skills/                    # Canonical skill source
-│       ├── canvas-lms-api/
-│       └── mcp-sdk-patterns/
+│   └── agents/
+│       ├── team-lead.md
+│       ├── architect.md
+│       ├── fullstack-dev.md
+│       ├── qa-engineer.md
+│       └── devops-engineer.md
+├── .claude-plugin/
+│   ├── plugin.json                # Claude Code plugin manifest (MCP server + skills/)
+│   └── marketplace.json           # Single-plugin marketplace for /plugin marketplace add
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                 # Lint, typecheck, test, build
@@ -102,6 +98,7 @@ canvas-lms-mcp/
 │   ├── student-guide.md           # Getting started for students
 │   ├── educator-guide.md          # Getting started for educators
 │   └── integration-guide.md       # Integration patterns for applications
+├── skills/                        # Shipped Agent Skills, one directory per skill
 ├── .mcp.json
 ├── AGENTS.md                      # AI agent guide for the repo
 ├── Dockerfile
@@ -888,16 +885,19 @@ A single-file guide at the repo root for external AI agents consuming the codeba
 
 This mirrors what `vishalsachdev/canvas-mcp` does — agents that clone or access the repo get immediate context.
 
-### Dev Team Skills
+### Agent Skills
 
-Skills installed in `.claude/skills/` and `.agents/skills/` to help the dev team work efficiently:
+The skills this repo actually ships live in the top-level `skills/` tree — one directory per skill, each with a `SKILL.md` — and reach Claude Code through the plugin manifests in `.claude-plugin/`:
 
-| Skill | Purpose |
-|-------|---------|
-| `canvas-lms-api` | Canvas REST API reference — copied from Fjordbyte repo as a blueprint |
-| `mcp-sdk-patterns` | `@modelcontextprotocol/sdk` usage patterns — server creation, tool registration, transport setup, resource definitions |
+| Surface | What it is |
+|---------|------------|
+| `skills/` | Educator and student Canvas workflow skills (grading passes, week planning, course QC, at-risk sweeps, accessibility sweeps, …). An end-user product surface, not dev tooling. |
+| `.claude-plugin/plugin.json` | Claude Code plugin manifest — bundles this MCP server together with the `skills/` tree, and declares the `userConfig` fields (token, base URL, FERPA flags) |
+| `.claude-plugin/marketplace.json` | Single-plugin marketplace, so `/plugin marketplace add bruchris/canvas-lms-mcp` resolves |
 
-These ensure agents spawned by the team-lead or architect immediately know Canvas API conventions and MCP SDK patterns without needing to search documentation.
+The skill count is derived, never hand-maintained: `tests/docs/skill-count-consistency.test.ts` counts the directories under `skills/` that contain a `SKILL.md` and fails CI if `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md` or `docs/index.html` disagrees. **Do not write a skill count into this spec.**
+
+> **Never built (BRU-2681).** This section originally planned two _dev-team_ skills — `canvas-lms-api` (a Canvas REST API reference copied from the Fjordbyte repo as a blueprint) and `mcp-sdk-patterns` (`@modelcontextprotocol/sdk` usage patterns) — installed in `.claude/skills/` and mirrored from a canonical `.agents/skills/`. Neither directory was ever committed: `git log --diff-filter=D -- .claude/skills .agents` is empty, so they were planned and never built rather than built and removed. The dev team has worked from `.claude/CLAUDE.md`, `AGENTS.md` and `.claude/agents/` instead. The plan is recorded here; the two directories are gone from the layout block above, because that block is a claim about what the repo contains and is now gated end-to-end by `tests/docs/oauth-profile-doc-consistency.test.ts`.
 
 ### CLAUDE.md
 
@@ -1026,7 +1026,7 @@ The repo (`bruchris/canvas-lms-mcp`) will be initialized with a complete foundat
 
 - Spec files and design documentation
 - `.claude/` with agent team definitions, CLAUDE.md, settings.json
-- `.agents/skills/` with dev team skills
+- ~~`.agents/skills/` with dev team skills~~ — planned on 2026-04-12 and never built; see [Agent Skills](#agent-skills) (BRU-2681)
 - `.github/workflows/` with CI, release-please (incl. npm publish), and scheduled `audit.yml`
 - `AGENTS.md`, `LICENSE` (MIT), base `README.md`
 - `package.json`, TypeScript config, ESLint, Prettier, Vitest

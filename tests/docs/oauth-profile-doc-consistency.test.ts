@@ -96,23 +96,37 @@ describe('OAuth profile documentation', () => {
       expect(designSpec).toContain('oauth-profile.md')
     })
 
-    // Scoped to src/ deliberately. That is the architecture surface this spec
-    // exists to describe, and it is what BRU-2673's acceptance criteria name.
-    // The block's non-src/ entries are NOT yet gated because two of them
-    // (`.claude/skills/`, `.agents/`) describe dev-team skills that were
-    // planned and never built — a separate drift with its own call to make,
-    // tracked rather than quietly rewritten here.
-    it('lists no src/ file or directory that is absent from the repo', () => {
-      const paths = layoutBlockPaths(designSpec).filter((p) => p.startsWith('canvas-lms-mcp/src/'))
+    // BRU-2681: widened from src/-only to the whole block. The two non-src/
+    // entries this gate used to exempt (`.claude/skills/`, `.agents/`)
+    // described dev-team skills that were planned on 2026-04-12 and never
+    // built; they are gone from the block, and `skills/` + `.claude-plugin/`
+    // -- which do exist and are load-bearing, since the plugin manifest is
+    // what gates the shipped skill count -- are now in it. Nothing in the
+    // block is exempt any more.
+    it('lists no file or directory that is absent from the repo', () => {
+      const paths = layoutBlockPaths(designSpec)
       // Anti-vacuity: a parser that silently stopped resolving, or a filter
       // that matched nothing, would satisfy the existence check with an
       // empty list.
-      expect(paths.length).toBeGreaterThan(40)
-      for (const known of ['canvas-lms-mcp/src/server.ts', 'canvas-lms-mcp/src/auth/oauth']) {
+      expect(paths.length).toBeGreaterThan(60)
+      // The non-src/ half is the part this widening added, so it gets its own
+      // floor: a parser that only ever reached src/ would pass everything
+      // above unchanged.
+      const nonSrc = paths.filter((p) => !p.startsWith('canvas-lms-mcp/src/'))
+      expect(nonSrc.length).toBeGreaterThan(30)
+      for (const known of [
+        'canvas-lms-mcp/src/server.ts',
+        'canvas-lms-mcp/src/auth/oauth',
+        'canvas-lms-mcp/skills',
+        'canvas-lms-mcp/.claude-plugin/plugin.json',
+        'canvas-lms-mcp/README.md',
+      ]) {
         expect(paths, `parser did not reach ${known}`).toContain(known)
       }
+      // The trailing slash is optional so that the root line of the block
+      // (`canvas-lms-mcp/`) resolves to the repo root itself.
       const missing = paths.filter(
-        (p) => !existsSync(resolve(ROOT, p.replace(/^canvas-lms-mcp\//, ''))),
+        (p) => !existsSync(resolve(ROOT, p.replace(/^canvas-lms-mcp\/?/, ''))),
       )
       expect(missing).toEqual([])
     })
