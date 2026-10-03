@@ -113,20 +113,25 @@ export class NewQuizzesModule {
     )
   }
 
+  /**
+   * The New Quizzes Items API expects item fields nested under an `item` key
+   * (`item[entry_type]`, `item[points_possible]`, `item[entry][...]`). Flat
+   * fields would not be bound to the `item` parameter.
+   */
   async createItem(
     courseId: number,
     assignmentId: number,
     input: NewQuizItemCreatePayload,
   ): Promise<CanvasNewQuizItem> {
-    const wireBody: Record<string, unknown> = {
+    const wireItem: Record<string, unknown> = {
       entry_type: 'Item',
       points_possible: input.points_possible,
       entry: this.toWireItem(input.item),
     }
-    if (input.position !== undefined) wireBody.position = input.position
+    if (input.position !== undefined) wireItem.position = input.position
     return this.client.request<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items`,
-      { method: 'POST', body: JSON.stringify(wireBody) },
+      { method: 'POST', body: JSON.stringify({ item: wireItem }) },
     )
   }
 
@@ -136,13 +141,13 @@ export class NewQuizzesModule {
     itemId: string,
     patch: NewQuizItemUpdatePayload,
   ): Promise<CanvasNewQuizItem> {
-    const wireBody: Record<string, unknown> = {}
-    if (patch.position !== undefined) wireBody.position = patch.position
-    if (patch.points_possible !== undefined) wireBody.points_possible = patch.points_possible
-    if (patch.item !== undefined) wireBody.entry = this.toWireItem(patch.item)
+    const wireItem: Record<string, unknown> = {}
+    if (patch.position !== undefined) wireItem.position = patch.position
+    if (patch.points_possible !== undefined) wireItem.points_possible = patch.points_possible
+    if (patch.item !== undefined) wireItem.entry = this.toWireItem(patch.item)
     return this.client.request<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items/${itemId}`,
-      { method: 'PATCH', body: JSON.stringify(wireBody) },
+      { method: 'PATCH', body: JSON.stringify({ item: wireItem }) },
     )
   }
 
