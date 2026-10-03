@@ -1025,7 +1025,7 @@ The repo (`bruchris/canvas-lms-mcp`) will be initialized with a complete foundat
 - Spec files and design documentation
 - `.claude/` with agent team definitions, CLAUDE.md, settings.json
 - `.agents/skills/` with dev team skills
-- `.github/workflows/` with CI, release-please, npm-publish
+- `.github/workflows/` with CI, release-please (incl. npm publish), and scheduled `audit.yml`
 - `AGENTS.md`, `LICENSE` (MIT), base `README.md`
 - `package.json`, TypeScript config, ESLint, Prettier, Vitest
 - `Dockerfile`, `docker-compose.yml`
@@ -1045,7 +1045,7 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 - FERPA anonymization
 - Role-based tool filtering (Canvas enforces permissions)
 - Skills.sh skill definitions (v1.1)
-- OAuth 2.0 flow (v1.2)
+- OAuth 2.0 flow (shipped in 1.30.0 as the `oauth_brokered` profile)
 
 ### Deliberate constraints
 - Destructive write operations are opt-out, not opt-in: 48 write tools ship, including seven `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register those seven at all — "a real boundary, not a UX filter" (see [Destructive tool policy](../../../README.md#destructive-tool-policy))
@@ -1058,7 +1058,7 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 |---------|-------|
 | **v1.0** | Core MCP tools (~41), resources, stdio + HTTP transports, personal token auth, npm package with library export, CI/CD with release-please |
 | **v1.1** | Skills.sh skill definitions (grading workflows: rubric grading, essay grading, batch grading, pass/fail, quiz scoring) |
-| **v1.2** | OAuth 2.0 authentication support |
+| **1.30.0** (shipped) | OAuth 2.0 authentication support (`oauth_brokered` profile) |
 | **v2.0** | Plugin architecture (enable/disable tool domains via config), hosted service mode |
 
 ## Competitive Landscape
@@ -1082,4 +1082,4 @@ This project differentiates by:
 | Spec | Topic |
 |------|-------|
 | [2026-05-13-new-quizzes-tools.md](./2026-05-13-new-quizzes-tools.md) | New Quizzes (LTI) domain design — 8 tools for creating and managing New Quizzes and quiz items |
-8. **OAuth support** (v1.2) — for LTI/OAuth app integration
+8. **OAuth support** (shipped in 1.30.0) — for LTI/OAuth app integration
