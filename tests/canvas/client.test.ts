@@ -269,9 +269,38 @@ describe('CanvasHttpClient', () => {
         }),
       )
 
-      const result = await limitedClient.paginate<{ id: number }>('/api/v1/courses')
-      expect(result).toEqual([{ id: 1 }])
+      await expect(limitedClient.paginate<{ id: number }>('/api/v1/courses')).rejects.toThrow(
+        /incomplete.*configured limit of 1 pages/,
+      )
       expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('succeeds when the final allowed page has no next link (exact at cap)', async () => {
+      const cappedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 2,
+      })
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([{ id: 1 }]), {
+            status: 200,
+            headers: {
+              Link: '<https://canvas.example.com/api/v1/courses?page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([{ id: 2 }]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+      const result = await cappedClient.paginate<{ id: number }>('/api/v1/courses')
+      expect(result).toEqual([{ id: 1 }, { id: 2 }])
+      expect(fetch).toHaveBeenCalledTimes(2)
     })
 
     it('throws CanvasApiError on paginated request failure', async () => {
@@ -332,6 +361,53 @@ describe('CanvasHttpClient', () => {
         )
 
       const result = await client.paginateEnvelope<{ id: number }>('/api/v1/items', 'items')
+      expect(result).toEqual([{ id: 1 }, { id: 2 }])
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('rejects instead of returning a partial list when the page cap is reached', async () => {
+      const limitedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 1,
+      })
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [{ id: 1 }] }), {
+          status: 200,
+          headers: {
+            Link: '<https://canvas.example.com/api/v1/items?page=2>; rel="next"',
+          },
+        }),
+      )
+
+      await expect(
+        limitedClient.paginateEnvelope<{ id: number }>('/api/v1/items', 'items'),
+      ).rejects.toThrow(/incomplete.*configured limit of 1 pages/)
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('succeeds when the final allowed envelope page has no next link (exact at cap)', async () => {
+      const cappedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 2,
+      })
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ items: [{ id: 1 }] }), {
+            status: 200,
+            headers: {
+              Link: '<https://canvas.example.com/api/v1/items?page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ items: [{ id: 2 }] }), { status: 200 }),
+        )
+
+      const result = await cappedClient.paginateEnvelope<{ id: number }>('/api/v1/items', 'items')
       expect(result).toEqual([{ id: 1 }, { id: 2 }])
       expect(fetch).toHaveBeenCalledTimes(2)
     })
