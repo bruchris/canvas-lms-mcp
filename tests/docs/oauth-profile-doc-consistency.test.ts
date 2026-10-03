@@ -107,12 +107,12 @@ describe('OAuth profile documentation', () => {
       const paths = layoutBlockPaths(designSpec)
       // Anti-vacuity: a parser that silently stopped resolving, or a filter
       // that matched nothing, would satisfy the existence check with an
-      // empty list.
-      expect(paths.length).toBeGreaterThan(60)
-      // The non-src/ half is the part this widening added, so it gets its own
-      // floor: a parser that only ever reached src/ would pass everything
-      // above unchanged.
+      // empty list. The two halves get separate floors so that a re-narrowing
+      // of either one fails on its own assertion: >40 under src/ is the floor
+      // BRU-2673 shipped, and >30 outside it is what this widening added.
+      const src = paths.filter((p) => p.startsWith('canvas-lms-mcp/src/'))
       const nonSrc = paths.filter((p) => !p.startsWith('canvas-lms-mcp/src/'))
+      expect(src.length).toBeGreaterThan(40)
       expect(nonSrc.length).toBeGreaterThan(30)
       for (const known of [
         'canvas-lms-mcp/src/server.ts',
