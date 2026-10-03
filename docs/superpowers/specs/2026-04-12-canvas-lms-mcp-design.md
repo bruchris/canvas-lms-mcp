@@ -1063,7 +1063,8 @@ as the un-annotated part of each line. Two caveats on reading it as a historical
   and `list_account_courses` in 0.5.0; `list_account_notifications` in 1.23.0
 - File uploads to Canvas (read-only file access) — **shipped in 0.5.0** as `upload_file` and
   `delete_file`
-- Code execution sandbox — **still excluded**, and the only entry in this list that is
+- Code execution sandbox — **still excluded**, and the only one of the eleven entries in this
+  list that is not shipped
 - Accessibility auditing — **shipped in 1.23.0** as `audit_course_accessibility`
 - FERPA anonymization — **shipped in 1.17.0** as the `Pseudonymizer` (`src/pseudonym/`,
   `CANVAS_PSEUDONYMIZE_STUDENTS`)
