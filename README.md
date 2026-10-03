@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-165 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+167 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -45,7 +45,7 @@ Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#ag
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 165 | 80+ | 54 |
+| Tools | 167 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -104,7 +104,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (165)
+### All Registered Tools (167)
 
 | Category | Tools |
 |----------|-------|
@@ -131,7 +131,7 @@ Once configured, try these prompts with your AI client:
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `list_course_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
-| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item`, `update_module_item`, `delete_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
@@ -150,7 +150,7 @@ Once configured, try these prompts with your AI client:
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — stdio only, registered when `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` |
 
-117 tools are read-only and 48 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 166th tool overall (118th read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
+117 tools are read-only and 50 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 168th tool overall (118th read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -375,8 +375,10 @@ canvas-lms-mcp --destructive-tools=block --base-url https://school.instructure.c
 | `delete_file` | A file, addressed by a **global** ID with no course scoping in the call |
 | `delete_appointment_group` | Every reservation -- and it **emails every signed-up student** |
 
-**Not blocked:** `delete_peer_review`. It is the only delete this server can itself
-undo (`create_peer_review` recreates the row) and it destroys no authored content.
+**Not blocked:** `delete_peer_review` and `delete_module_item`. Both are deletes this
+server can itself undo (`create_peer_review` / `create_module_item` recreate the row) and
+neither destroys authored content -- a module item is a pointer, and removing it leaves the
+underlying assignment, page, quiz, file or discussion in place.
 
 Notes:
 
@@ -539,10 +541,10 @@ Three roles, plus the default of "unset = every tool":
 
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
-| _(unset)_ | all (~165) | default; backwards-compatible |
+| _(unset)_ | all (~167) | default; backwards-compatible |
 | `student` | ~58 | a student's own courses, grades, submissions, and read-only course content |
-| `teacher` | ~145 | grading, roster, content authoring, analytics |
-| `admin` | ~157 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
+| `teacher` | ~147 | grading, roster, content authoring, analytics |
+| `admin` | ~159 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 
 Notes:
 

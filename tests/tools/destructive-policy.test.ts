@@ -134,9 +134,11 @@ describe('destructive tool registry', () => {
     ])
   })
 
-  it('documents delete_peer_review as the deliberate exclusion', () => {
-    expect([...UNGATED_DELETE_TOOLS]).toEqual(['delete_peer_review'])
-    expect(GATED_DESTRUCTIVE_TOOLS.has('delete_peer_review')).toBe(false)
+  it('documents delete_peer_review and delete_module_item as the deliberate exclusions', () => {
+    expect([...UNGATED_DELETE_TOOLS].sort()).toEqual(['delete_module_item', 'delete_peer_review'])
+    for (const name of UNGATED_DELETE_TOOLS) {
+      expect(GATED_DESTRUCTIVE_TOOLS.has(name)).toBe(false)
+    }
   })
 })
 

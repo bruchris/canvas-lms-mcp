@@ -52,24 +52,35 @@ describe('NewQuizzesModule', () => {
 
   // --- Quiz CRUD ---
 
-  it('creates a quiz', async () => {
+  it('creates a quiz with the fields nested under `quiz`', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeQuiz())
     const result = await mod.create(COURSE_ID, { title: 'My New Quiz' })
     expect(result).toMatchObject({ id: 1, title: 'My New Quiz' })
-    expect(client.request).toHaveBeenCalledWith(
-      `/api/quiz/v1/courses/${COURSE_ID}/quizzes`,
-      expect.objectContaining({ method: 'POST' }),
-    )
+    expect(client.request).toHaveBeenCalledWith(`/api/quiz/v1/courses/${COURSE_ID}/quizzes`, {
+      method: 'POST',
+      body: JSON.stringify({ quiz: { title: 'My New Quiz' } }),
+    })
   })
 
-  it('updates a quiz', async () => {
+  it('updates a quiz with the patch nested under `quiz`', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({ ...makeQuiz(), published: true })
     const result = await mod.update(COURSE_ID, ASSIGNMENT_ID, { published: true })
     expect(result.published).toBe(true)
     expect(client.request).toHaveBeenCalledWith(
       `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}`,
-      expect.objectContaining({ method: 'PATCH' }),
+      { method: 'PATCH', body: JSON.stringify({ quiz: { published: true } }) },
     )
+  })
+
+  it('never sends quiz fields at the top level of the body', async () => {
+    // Regression: a flat body is rejected by Canvas with `400 quiz is missing`.
+    vi.spyOn(client, 'request').mockResolvedValue(makeQuiz())
+    await mod.create(COURSE_ID, { title: 'Flat?', published: false })
+    await mod.update(COURSE_ID, ASSIGNMENT_ID, { title: 'Flat?' })
+    for (const call of vi.mocked(client.request).mock.calls) {
+      const body = JSON.parse(call[1]?.body as string) as Record<string, unknown>
+      expect(Object.keys(body)).toEqual(['quiz'])
+    }
   })
 
   it('deletes a quiz without throwing on 204', async () => {

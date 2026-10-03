@@ -59,14 +59,14 @@ describe('manifest/runtime audience parity gate', () => {
   const manifest = buildToolManifest()
   const byRole = visibleNamesByRole()
 
-  it('compares all 165 tools (anti-vacuity guard)', () => {
-    expect(manifest.tools.length).toBe(165)
+  it('compares all 167 tools (anti-vacuity guard)', () => {
+    expect(manifest.tools.length).toBe(167)
 
     // Union of everything registered under any role must equal the manifest's
-    // 165 tools too — otherwise this gate would be silently comparing against
+    // 167 tools too — otherwise this gate would be silently comparing against
     // an empty or truncated runtime side.
     const unionOfRoles = new Set([...byRole.student, ...byRole.teacher, ...byRole.admin])
-    expect(unionOfRoles.size).toBe(165)
+    expect(unionOfRoles.size).toBe(167)
   })
 
   it('every tool visibility pattern maps to exactly one known audience (anti-vacuity guard)', () => {
