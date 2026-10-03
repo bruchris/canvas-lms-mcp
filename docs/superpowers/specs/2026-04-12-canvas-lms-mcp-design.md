@@ -68,13 +68,12 @@ canvas-lms-mcp/
 │   │   ├── syllabus.ts
 │   │   ├── assignment-description.ts
 │   │   └── index.ts
-│   ├── auth/                      # Authentication strategies
-│   │   ├── token.ts               # Personal access token (v1.0)
-│   │   └── oauth.ts               # OAuth 2.0 (v1.2)
+│   ├── auth/                      # Auth profile resolution (profile.ts) + `doctor` diagnostics (doctor.ts)
+│   │   └── oauth/                 # oauth_brokered: OAuth 2.1 authorization + resource server, grant/token store, Canvas Developer Key client
 │   ├── server.ts                  # MCP server factory
 │   ├── cli.ts                     # CLI argument parsing
 │   ├── stdio.ts                   # Entry: stdio transport
-│   └── http.ts                    # Entry: HTTP/SSE transport
+│   └── http.ts                    # Entry: HTTP transport
 ├── tests/
 │   ├── canvas/                    # Canvas client unit tests
 │   └── tools/                     # MCP tool handler tests
@@ -97,8 +96,8 @@ canvas-lms-mcp/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                 # Lint, typecheck, test, build
-│       ├── release-please.yml     # Automated releases via release-please
-│       └── npm-publish.yml        # Publish to npm on release
+│       ├── release-please.yml     # Releases: release-please, npm publish, .mcpb bundle, MCP Registry
+│       └── audit.yml              # Scheduled dependency + advisory audit
 ├── docs/
 │   ├── student-guide.md           # Getting started for students
 │   ├── educator-guide.md          # Getting started for educators
@@ -111,7 +110,7 @@ canvas-lms-mcp/
 ├── tsconfig.json
 ├── tsup.config.ts
 ├── vitest.config.ts
-├── .eslintrc.json
+├── eslint.config.mjs
 ├── .prettierrc
 ├── LICENSE
 ├── CHANGELOG.md
@@ -149,7 +148,7 @@ Claude Desktop config example:
 }
 ```
 
-### Mode 2: HTTP/SSE (remote server)
+### Mode 2: HTTP (remote server)
 
 For ChatGPT custom GPTs, shared team instances, and future hosted service.
 
@@ -158,10 +157,11 @@ canvas-lms-mcp serve --port 3001
 ```
 
 - Entry point: `src/http.ts`
-- Uses `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk` (primary)
-- Falls back to `SSEServerTransport` for older MCP clients that don't support streamable HTTP
-- Per-request auth via headers: `X-Canvas-Token`, `X-Canvas-Base-URL`
-- Tokens are never stored server-side — passed through per request
+- Uses `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk`
+- Two auth profiles are available on this transport — `remote_static_token` (default) and `oauth_brokered`; see [Authentication](#authentication) for the full table
+- Under `remote_static_token`, the Canvas token arrives per request in the `X-Canvas-Token` header. The base URL is **not** a request header: it is server-configured via `--base-url` / `CANVAS_BASE_URL`
+- Under `oauth_brokered`, the client authenticates with an MCP OAuth 2.1 bearer token and this server brokers the Canvas credential behind it
+- Token storage differs by profile — see [Token storage](#token-storage)
 - CORS configuration for allowed origins
 
 ### Mode 3: Library import (npm)
@@ -188,7 +188,7 @@ For non-technical users (students, educators) who cannot self-host.
 
 - A publicly hosted instance where users just add a URL and their Canvas credentials
 - Same HTTP transport as Mode 2, but managed and maintained
-- Per-request auth via headers — tokens never stored
+- Per-request auth via headers under `remote_static_token` (tokens never stored), or brokered MCP OAuth under `oauth_brokered` (see [Authentication](#authentication))
 - Not in scope for v1.0 but the HTTP transport architecture supports it without changes
 - Hosting domain TBD (e.g., `mcp.canvas-lms.dev` or similar)
 
@@ -707,21 +707,28 @@ URI-addressable content that AI agents can read without calling tools:
 
 ## Authentication
 
-### v1.0: Personal Access Token
+Every process resolves to exactly **one auth profile** at startup. The profile is a deployment fact chosen by the operator — never by a client — and it decides where the Canvas credential comes from and what, if anything, authenticates the inbound MCP connection. The profile names below are the live values of `AUTH_PROFILES` in `src/auth/profile.ts`.
 
-Users provide their Canvas personal access token and institution base URL:
+| Profile | Transport | Canvas credential | Inbound MCP auth |
+| --- | --- | --- | --- |
+| `local_static_token` | stdio | `--token` / `CANVAS_API_TOKEN` | none — the client owns the process |
+| `remote_static_token` | HTTP | `X-Canvas-Token` header, per request | none — the header *is* the credential |
+| `oauth_brokered` | HTTP | brokered by this server via a Canvas Developer Key | MCP OAuth 2.1 bearer token |
 
-- **CLI**: `--token` and `--base-url` args, or `CANVAS_API_TOKEN` / `CANVAS_BASE_URL` env vars
-- **HTTP**: `X-Canvas-Token` and `X-Canvas-Base-URL` request headers (per-request, never stored)
-- **Library**: passed directly via `createCanvasMCPServer({ token, baseUrl })`
+`local_static_token` and `remote_static_token` shipped in v1.0. `oauth_brokered` shipped in **1.30.0** (PR #356, issue #302) — not "v1.2" as earlier drafts of this spec projected.
 
-### v1.2: OAuth 2.0
+Library consumers bypass profile resolution entirely: `createCanvasMCPServer({ token, baseUrl })` takes a Canvas token the host app already holds, from whatever flow it uses (OAuth, LTI, personal token).
 
-Full OAuth 2.0 authorization code flow for integration with apps like Fjordbyte Canvas Integration:
+> **Note:** This section is a map, not the specification. The profile model, its decision table and the operator-facing setup live in [Canvas authentication modes](./2026-04-22-canvas-authentication-modes.md) and the [OAuth profile design](./2026-09-17-issue-302-mcp-oauth-profile.md); the deployment guide is [`docs/oauth-profile.md`](../../oauth-profile.md). Prefer those three when they disagree with this summary.
 
-- Token refresh with expiry buffer
-- Stored tokens managed by host application
-- Passed to MCP server factory at construction time
+### Token storage
+
+Storage differs by profile, and the difference is a security property worth stating precisely:
+
+- **Static-token profiles store nothing.** The Canvas token arrives per request (or per process) and is never written to disk.
+- **`oauth_brokered` necessarily stores tokens server-side.** Brokering a Canvas Developer Key means holding the Canvas access and refresh tokens behind each grant so they can be refreshed without re-prompting the user. `OAuthStore` (`src/auth/oauth/store.ts`) is the seam; `FileOAuthStore` (`src/auth/oauth/file-store.ts`) is the default on-disk implementation, which encrypts the snapshot with AES-256-GCM and writes it atomically. An embedder can replace the seam with a database.
+
+Earlier revisions of this spec asserted "tokens are never stored server-side" without qualification. That is true of the two static-token profiles and false of `oauth_brokered`.
 
 ### Role-Based Tool Filtering
 
@@ -775,12 +782,12 @@ Automated release management via [release-please](https://github.com/googleapis/
 
 **release-please.yml** — runs on push to `main`:
 - Runs release-please to create/update release PR
-- On release created: triggers npm-publish
+- On release created, three downstream jobs run in the same workflow:
+  - `npm-publish` — builds and publishes to npm as `canvas-lms-mcp` via npm Trusted Publishing (OIDC)
+  - `mcpb-bundle` — packs and uploads the `.mcpb` bundle to the GitHub release
+  - `registry-publish` — syncs `server.json` and publishes to the MCP Registry
 
-**npm-publish.yml** — runs when release-please creates a release:
-- Builds the package
-- Publishes to npm as `canvas-lms-mcp`
-- Uses npm Trusted Publishing (OIDC) for authentication
+**audit.yml** — scheduled dependency and advisory audit.
 
 ## Agent Team
 
