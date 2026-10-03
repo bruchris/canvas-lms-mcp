@@ -1038,7 +1038,7 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 
 ### v1.0 exclusions (as planned 2026-04-12)
 
-**9 of the 11 entries below have since shipped.** Each one now says where, following the
+**10 of the 11 entries below have since shipped.** Each one now says where, following the
 precedent the OAuth entry already set in this list; the 2026-04-12 decision itself is preserved
 as the un-annotated part of each line. Two caveats on reading it as a historical record:
 
