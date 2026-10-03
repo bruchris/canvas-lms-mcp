@@ -1036,22 +1036,48 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 
 ## Explicitly Out of Scope
 
-### v1.0 exclusions
-- Course/assignment/quiz/module creation or deletion
-- Enrollment management (add/drop students)
-- Course settings modification
-- Account admin tools
-- File uploads to Canvas (read-only file access)
-- Code execution sandbox
-- Accessibility auditing
-- FERPA anonymization
-- Role-based tool filtering (Canvas enforces permissions)
-- Skills.sh skill definitions (v1.1)
-- OAuth 2.0 flow (shipped in 1.30.0 as the `oauth_brokered` profile)
+### v1.0 exclusions (as planned 2026-04-12)
+
+**9 of the 11 entries below have since shipped.** Each one now says where, following the
+precedent the OAuth entry already set in this list; the 2026-04-12 decision itself is preserved
+as the un-annotated part of each line. Two caveats on reading it as a historical record:
+
+- **No `1.0.0` was ever released.** The tag sequence runs `0.6.0` → `1.1.0`, both on
+  2026-04-17 (`git tag -l 'canvas-lms-mcp-v1.0*'` is empty), so "v1.0" names a planning
+  milestone and not a shipped version. Five entries — creation/deletion, enrollment management,
+  course settings, account admin tools and file uploads — shipped in **0.5.0**, i.e. *before*
+  the jump to `1.x`. They were never excluded from a shipped `1.x` server, so this list
+  cannot be read as a true record of what the first release left out.
+- There is deliberately **no CI gate** on these annotations. Three entries are prose concepts
+  with no key in `docs/generated/tool-manifest.json`, so a gate would need a hand-maintained
+  prose-to-tool mapping — the wrong-oracle shape BRU-2530 removed. Tool *counts* elsewhere in
+  this document are gated; these annotations are a one-time prose pass (BRU-2695).
+
+- Course/assignment/quiz/module creation or deletion — **shipped**: `create_course`,
+  `create_assignment`, `create_module`, `delete_assignment`, `delete_page` and
+  `delete_discussion` in 0.5.0; `create_new_quiz` in 1.15.0
+- Enrollment management (add/drop students) — **shipped in 0.5.0** as `enroll_user` and
+  `remove_enrollment`
+- Course settings modification — **shipped in 0.5.0** as `update_course`
+- Account admin tools — **shipped**: `list_accounts`, `get_account`, `list_account_users`
+  and `list_account_courses` in 0.5.0; `list_account_notifications` in 1.23.0
+- File uploads to Canvas (read-only file access) — **shipped in 0.5.0** as `upload_file` and
+  `delete_file`
+- Code execution sandbox — **still excluded**, and the only entry in this list that is
+- Accessibility auditing — **shipped in 1.23.0** as `audit_course_accessibility`
+- FERPA anonymization — **shipped in 1.17.0** as the `Pseudonymizer` (`src/pseudonym/`,
+  `CANVAS_PSEUDONYMIZE_STUDENTS`)
+- Role-based tool filtering (Canvas enforces permissions) — **shipped in 1.4.0** as the
+  `ToolAudience` tag resolved by `getPrimaryAudience()`. The parenthetical rationale no
+  longer holds either — see "Canvas is not the sole permission authority" under
+  [Deliberate constraints](#deliberate-constraints) below
+- Skills.sh skill definitions (v1.1) — **shipped in 1.9.0** (PR #90) as the top-level
+  `skills/` tree, not in 1.1; see [Agent Skills](#agent-skills)
+- OAuth 2.0 flow — **shipped in 1.30.0** as the `oauth_brokered` profile
 
 ### Deliberate constraints
-- Destructive write operations are opt-out, not opt-in: 48 write tools ship, including seven `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register those seven at all — "a real boundary, not a UX filter" (see [Destructive tool policy](../../../README.md#destructive-tool-policy))
-- No account-level admin tools
+- Destructive write operations are opt-out, not opt-in: 50 write tools ship, including 9 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 7 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
+- ~~No account-level admin tools~~ — **false since 0.5.0**: `list_accounts`, `get_account`, `list_account_users`, `list_account_courses` and `list_account_notifications` all ship. Unlike the exclusions above, this list is written in the present tense, so the line is struck rather than annotated (BRU-2695)
 - Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 
 ## Versioning Roadmap
@@ -1059,9 +1085,14 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 | Version | Scope |
 |---------|-------|
 | **v1.0** | Core MCP tools (~41), resources, stdio + HTTP transports, personal token auth, npm package with library export, CI/CD with release-please |
-| **v1.1** | Skills.sh skill definitions (grading workflows: rubric grading, essay grading, batch grading, pass/fail, quiz scoring) |
+| **v1.1** | Skills.sh skill definitions (grading workflows: rubric grading, essay grading, batch grading, pass/fail, quiz scoring) — **shipped in 1.9.0** (PR #90), not 1.1 |
 | **1.30.0** (shipped) | OAuth 2.0 authentication support (`oauth_brokered` profile) |
 | **v2.0** | Plugin architecture (enable/disable tool domains via config), hosted service mode |
+
+This table is the roadmap as drawn on 2026-04-12. No `1.0.0` was ever released — the tags go
+`0.6.0` → `1.1.0`, both on 2026-04-17 — so the **v1.0** row describes the initial scope
+target rather than a shipped version. For what exists today, read
+`docs/generated/tool-manifest.json`, which is generated from the registry.
 
 ## Competitive Landscape
 
@@ -1077,7 +1108,7 @@ This project differentiates by:
 4. **Clean modular architecture** — Canvas client fully independent of MCP, reusable
 5. **Three integration patterns** — dev-time MCP, shared client library, runtime MCP for agentic features
 6. **Grading-focused writes** — safer default than full CRUD
-7. **Skills.sh integration** (v1.1) — pre-built grading workflows
+7. **Skills.sh integration** (shipped in 1.9.0) — pre-built grading workflows
 
 ## Subsequent Specs
 
