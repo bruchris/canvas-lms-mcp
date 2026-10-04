@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.0...canvas-lms-mcp-v1.31.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **new-quizzes:** nest item create/update body under `item` ([#377](https://github.com/bruchris/canvas-lms-mcp/issues/377)) ([acd68be](https://github.com/bruchris/canvas-lms-mcp/commit/acd68be4993b667baa663895216fb69ebbd685ae))
+
 ## [1.31.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.30.0...canvas-lms-mcp-v1.31.0) (2026-10-03)
 
 
