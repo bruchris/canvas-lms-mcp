@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 165,
+  "toolCount": 167,
   "tools": [
     {
       "name": "health_check",
@@ -1088,6 +1088,36 @@
       "description": "Add an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, SubHeader) to a module.",
       "annotations": {
         "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "update_module_item",
+      "title": "Update Module Item",
+      "domain": "modules",
+      "description": "Edit an existing module item in place: rename it, repoint an ExternalUrl/ExternalTool item, reposition or re-indent it, publish/unpublish it, or move it to another module. ExternalUrl items exist only as module items, so a stale link carried in by a course copy can only be fixed here.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_module_item",
+      "title": "Delete Module Item",
+      "domain": "modules",
+      "description": "Remove an item from a module. For ExternalUrl, ExternalTool and SubHeader items the item is the content, so this deletes it outright; for Assignment, Page, Quiz, File and Discussion items it only unlinks the item and the underlying content survives. Re-add with create_module_item.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
         "openWorldHint": true
       },
       "access": "write",

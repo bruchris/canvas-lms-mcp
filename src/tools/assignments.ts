@@ -264,6 +264,20 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .number()
           .optional()
           .describe('ID of the assignment group to place this assignment in'),
+        published: z
+          .boolean()
+          .optional()
+          .describe('Whether the assignment is published and visible to students'),
+        omit_from_final_grade: z
+          .boolean()
+          .optional()
+          .describe('Whether to leave this assignment out of the final grade calculation'),
+        grade_group_students_individually: z
+          .boolean()
+          .optional()
+          .describe(
+            'For group assignments, whether each member is graded separately (false = one shared group grade)',
+          ),
       },
       annotations: {
         destructiveHint: true,
@@ -278,6 +292,9 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           due_at?: string
           submission_types?: string[]
           assignment_group_id?: number
+          published?: boolean
+          omit_from_final_grade?: boolean
+          grade_group_students_individually?: boolean
         }
         return canvas.assignments.create(course_id, rest)
       },
@@ -298,6 +315,20 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .describe('New due date in ISO 8601 format (e.g. 2026-05-01T23:59:00Z)'),
         submission_types: z.array(z.string()).optional().describe('New allowed submission types'),
         assignment_group_id: z.number().optional().describe('New assignment group ID'),
+        published: z
+          .boolean()
+          .optional()
+          .describe('Whether the assignment is published and visible to students'),
+        omit_from_final_grade: z
+          .boolean()
+          .optional()
+          .describe('Whether to leave this assignment out of the final grade calculation'),
+        grade_group_students_individually: z
+          .boolean()
+          .optional()
+          .describe(
+            'For group assignments, whether each member is graded separately (false = one shared group grade)',
+          ),
       },
       annotations: {
         destructiveHint: true,
@@ -314,6 +345,9 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           due_at?: string
           submission_types?: string[]
           assignment_group_id?: number
+          published?: boolean
+          omit_from_final_grade?: boolean
+          grade_group_students_individually?: boolean
         }
         return canvas.assignments.update(course_id, assignment_id, rest)
       },
