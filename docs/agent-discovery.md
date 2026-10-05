@@ -51,9 +51,40 @@ and published both in the prompt description and under
 `_meta["io.github.bruchris/canvas-lms-mcp"]`. A body may safely name a tool that does not exist
 ("there is no `list_discussion_entries` tool"); identifiers that do not resolve are ignored.
 
-Prompts follow the same role filter as tools, reading the same `ROLE_VISIBILITY` table: `student`
-sees 2, `teacher` 13, `admin` 14, and an unset role sees all 16. When a filter would leave none,
-the `prompts` capability is not declared at all.
+Prompts follow the same role filter as tools, reading the same `ROLE_VISIBILITY` table and the same
+visibility predicate, applied to each skill's own declared audience: `student` sees 2, `teacher` 13,
+`admin` 14, and an unset role sees all 16. When a filter would leave none, the `prompts` capability
+is not declared at all. The filter does not inspect the tools a workflow's body names, so a visible
+workflow may still reach a tool the same role filter hides — `_meta` publishes the derived write
+tools so a host can narrow further if it wants to.
+
+### Adding your own prompts
+
+The Canvas prompts are registered through `McpServer.registerPrompt`, so an in-process embedder can
+add its own afterwards and both surfaces coexist:
+
+```ts
+const { server } = createCanvasMCPServer({ token, baseUrl })
+
+server.registerPrompt(
+  'my-workflow',
+  { title: 'My Workflow', description: 'Something this deployment needs.' },
+  () => ({ messages: [{ role: 'user', content: { type: 'text', text: '…' } }] }),
+)
+```
+
+`prompts/list` then carries both, and `prompts/get` serves whichever was asked for. Two consequences
+worth knowing:
+
+- **Call `createCanvasMCPServer` first.** `registerAllPrompts` has to be the call that initialises
+  the SDK's prompt handlers, so registering a prompt on a server *before* it throws, with a message
+  saying so. Registering afterwards works whether or not a transport is already connected.
+- **Canvas prompt names are reserved.** Reusing one is rejected by the SDK's registry rather than
+  silently serving two prompts under one name.
+
+Because the surface can change after construction, the server advertises
+`prompts.listChanged: true`; the SDK emits `notifications/prompts/list_changed` when you add or
+remove one.
 
 Regenerate after changing any `SKILL.md`:
 
