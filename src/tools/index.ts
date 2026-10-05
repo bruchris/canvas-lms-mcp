@@ -49,10 +49,17 @@ export function getAllTools(
         .map(tagAudience(registration.defaultPrimaryAudience)),
     )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
-  const all = applyDestructiveToolsPolicy(
+  const policed = applyDestructiveToolsPolicy(
     [...domainTools, ...conditional].map(tagTitle()),
     features?.destructiveTools ?? DEFAULT_DESTRUCTIVE_TOOLS_MODE,
   )
+  // Write-tool policy (issue #302 §7.4): applied at the same choke point as the
+  // destructive policy, so an OAuth token without `canvas:write` cannot reach a
+  // write tool through any consumer of the tool set.
+  const all =
+    features?.writeTools === 'block'
+      ? policed.filter((tool) => tool.annotations.readOnlyHint === true)
+      : policed
   if (!role) return all
   return all.filter((tool) => isVisibleForRole(tool, role))
 }

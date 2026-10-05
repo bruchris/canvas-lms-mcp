@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { GATED_DESTRUCTIVE_TOOLS } from '../../src/tools/destructive-policy'
 
 const ROOT = resolve(__dirname, '../..')
 const manifest = JSON.parse(
@@ -324,6 +325,50 @@ describe('doc tool-count consistency', () => {
       ).toBe(WRITE)
     })
 
+    // BRU-2695: the "Deliberate constraints" bullet read "48 write tools ship,
+    // including seven `delete_*` tools" while the CI-gated **Totals:** line in
+    // this same file said 50 write — one document disagreeing with itself,
+    // because only the Totals line was gated. All three numbers are derived
+    // (manifest write count, manifest `delete_*` count, GATED_DESTRUCTIVE_TOOLS
+    // size), so this needs no hand-maintained mapping. One `it` per number, so a
+    // single wrong number attributes to a single failing test.
+    it('Deliberate constraints write-tool count matches the manifest', () => {
+      const m = designSpec.match(/(\d+) write tools ship/)
+      expect(m, 'design spec "N write tools ship" sentence not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `design spec "Deliberate constraints" says ${m![1]} write tools ship but the ` +
+          `manifest has ${WRITE} — update the bullet in the design spec`,
+      ).toBe(WRITE)
+    })
+
+    it('Deliberate constraints `delete_*` count matches the manifest', () => {
+      const deleteTools = WRITE_TOOLS.filter((t) => t.name.startsWith('delete_')).length
+      const m = designSpec.match(/including (\d+) `delete_\*` tools/)
+      expect(m, 'design spec "including N `delete_*` tools" sentence not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `design spec says ${m![1]} \`delete_*\` tools but the manifest has ${deleteTools} ` +
+          `— update the bullet in the design spec`,
+      ).toBe(deleteTools)
+    })
+
+    it('Deliberate constraints gated-delete count matches the destructive policy', () => {
+      // A safety claim: a reader decides whether `block` covers their risk from
+      // this number, so it is gated against the policy itself rather than
+      // against another document.
+      const m = designSpec.match(/refuse to register (\d+) of those deletes/)
+      expect(
+        m,
+        'design spec "refuse to register N of those deletes" sentence not found',
+      ).toBeTruthy()
+      expect(
+        Number(m![1]),
+        `design spec says ${m![1]} deletes are gated but GATED_DESTRUCTIVE_TOOLS has ` +
+          `${GATED_DESTRUCTIVE_TOOLS.size} — this is a safety claim; update the design spec`,
+      ).toBe(GATED_DESTRUCTIVE_TOOLS.size)
+    })
+
     it('runtime dependency claim matches package.json dependencies', () => {
       const m = designSpec.match(/Runtime dependencies: ([^.]+)\./)
       expect(m, 'design spec "Runtime dependencies: ..." sentence not found').toBeTruthy()
@@ -348,15 +393,48 @@ describe('design spec tool inventory enumeration', () => {
   // when new domains ship (BRU-1882, BRU-1900, BRU-1990). Assert that EVERY tool
   // in the generated manifest is actually enumerated in the spec, so a missing
   // table row fails the build instead of waiting for the next manual scan.
-  // Tool names are written in backticks in every inventory row (`tool_name`),
-  // so match that exact form — this stays precise even when one name is a prefix
-  // of another (e.g. `list_appointment_groups` vs `list_appointment_group_users`).
+  //
+  // BRU-2695: this asserted `designSpec.includes('`name`')` — i.e. anywhere in
+  // the file. That was never vacuous (no tool name appeared in prose), but the
+  // "v1.0 exclusions" pass now names shipped tools in prose, and under the old
+  // form each of those tools' inventory rows could be deleted with CI green
+  // purely because the name occurs somewhere else. Every one of the manifest's
+  // tools is the FIRST cell of its inventory row, so match that structural form
+  // instead; a prose mention cannot satisfy it. This also stays precise when one
+  // name is a prefix of another (`list_appointment_groups` vs
+  // `list_appointment_group_users`).
+  const inventoryFirstCells = new Set(
+    designSpec
+      .split('\n')
+      .filter((line) => line.trimStart().startsWith('|'))
+      .map((line) => line.trim().replace(/^\|/, '').split('|')[0].trim()),
+  )
+
+  it('anti-vacuity: the spec still has per-domain inventory rows to check against', () => {
+    // `it.each([])` registers zero tests and reports green, so the per-tool
+    // assertions below are only meaningful while the manifest is populated.
+    expect(
+      tools.length,
+      `only ${tools.length} tools in docs/generated/tool-manifest.json — the per-tool ` +
+        `assertions below would register zero cases and pass vacuously`,
+    ).toBeGreaterThan(150)
+
+    const toolShaped = [...inventoryFirstCells].filter((cell) => /^`[a-z][a-z0-9_]*`$/.test(cell))
+    expect(
+      toolShaped.length,
+      `only ${toolShaped.length} tool-shaped first cells found in the design spec — the ` +
+        `inventory tables or their layout changed, so the per-tool assertions below would ` +
+        `be checking an empty or truncated set`,
+    ).toBeGreaterThan(150)
+  })
+
   it.each(tools.map((t) => t.name))('design spec per-domain inventory lists `%s`', (name) => {
     expect(
-      designSpec.includes(`\`${name}\``),
+      inventoryFirstCells.has(`\`${name}\``),
       `tool "${name}" is in docs/generated/tool-manifest.json but has no per-domain inventory row in ` +
         `docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md — add a "\`${name}\` | read/write | ..." ` +
-        `row to the matching domain table (do NOT edit the CI-gated Totals line)`,
+        `row to the matching domain table (do NOT edit the CI-gated Totals line). A mention of ` +
+        `\`${name}\` in prose does not satisfy this: the name must be the first cell of a table row`,
     ).toBe(true)
   })
 })

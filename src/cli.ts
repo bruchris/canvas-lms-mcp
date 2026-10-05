@@ -2,13 +2,34 @@ import { isEnvTruthy } from './env'
 import { parseRole } from './tools/roles'
 import { parseDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
+import { profileRequiresStaticToken, resolveAuthProfile, type AuthProfile } from './auth/profile'
+import {
+  OAuthConfigError,
+  loadOAuthProfileConfig,
+  resolveBindHost,
+  type OAuthProfileConfig,
+} from './auth/oauth/config'
 
 export interface CliConfig {
+  /** Canvas personal access token. Empty in the `oauth_brokered` profile. */
   token: string
   baseUrl: string
   mode: 'stdio' | 'http'
   port: number
+  /**
+   * Bind address for the HTTP transport. `undefined` means every interface,
+   * which is what `remote_static_token` has always done (Docker relies on it).
+   * `oauth_brokered` always resolves a concrete host, loopback by default.
+   */
+  host?: string
   allowedOrigin: string
+  /**
+   * Auth profile (issue #302 §3). Resolved from `--auth-profile` /
+   * `CANVAS_AUTH_PROFILE`, defaulting per transport, and checked against it.
+   */
+  authProfile: AuthProfile
+  /** Present exactly when `authProfile === 'oauth_brokered'`. */
+  oauth?: OAuthProfileConfig
   /** Canvas role for tool filtering; undefined = register all tools. */
   role?: CanvasRole
   /** Opt-in: register assignment submission tools when true. */
@@ -23,6 +44,7 @@ export interface CliConfig {
 }
 
 const DESTRUCTIVE_FLAG = '--destructive-tools'
+const DOCTOR_HINT = 'Run `canvas-lms-mcp doctor` to check your setup.'
 
 /** Print a startup error and exit. Never returns. */
 function fatal(message: string): never {
@@ -47,6 +69,25 @@ function parseDestructiveToolsModeOrExit(
   }
 }
 
+/**
+ * Read the value of a `--flag value` / `--flag=value` pair. Returns `undefined`
+ * when `arg` is not this flag; exits when the flag is present without a value.
+ */
+function takeFlagValue(
+  flag: string,
+  arg: string | undefined,
+  args: string[],
+  index: { i: number },
+): string | undefined {
+  if (arg === flag) {
+    const value = args[++index.i]
+    if (value === undefined) fatal(`${flag} requires a value.`)
+    return value
+  }
+  if (arg?.startsWith(`${flag}=`)) return arg.slice(flag.length + 1)
+  return undefined
+}
+
 export function parseArgs(args: string[]): CliConfig {
   const envRole = parseRole(process.env.CANVAS_ROLE)
   if (envRole.invalid) {
@@ -55,12 +96,12 @@ export function parseArgs(args: string[]): CliConfig {
     )
   }
 
-  // `destructiveTools` is deliberately absent from this object *and* from its
-  // type: it is resolved after the loop, once we know whether the command line
-  // supplied a flag. Omitting the key makes the compiler demand it at the
-  // `return` below, so the resolution cannot be dropped, and leaves no
-  // placeholder here that could survive and fail *open* into `allow`.
-  const config: Omit<CliConfig, 'destructiveTools'> = {
+  // `destructiveTools` and `authProfile` are deliberately absent from this
+  // object *and* from its type: both are resolved after the loop, once we know
+  // whether the command line supplied a flag. Omitting the keys makes the
+  // compiler demand them at the `return` below, so the resolution cannot be
+  // dropped, and leaves no placeholder here that could survive and fail *open*.
+  const config: Omit<CliConfig, 'destructiveTools' | 'authProfile'> = {
     token: process.env.CANVAS_API_TOKEN ?? '',
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
     mode: 'stdio',
@@ -72,9 +113,13 @@ export function parseArgs(args: string[]): CliConfig {
 
   /** Set only when `--destructive-tools` appears in argv; `undefined` = no flag. */
   let destructiveToolsFromFlag: DestructiveToolsMode | undefined
+  let authProfileFlag: string | undefined
+  let hostFlag: string | undefined
+  let issuerFlag: string | undefined
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
+  const index = { i: 0 }
+  for (index.i = 0; index.i < args.length; index.i++) {
+    const arg = args[index.i]
 
     // `--destructive-tools=<mode>` (the documented form) and
     // `--destructive-tools <mode>` (the form every other flag in this parser
@@ -82,7 +127,8 @@ export function parseArgs(args: string[]): CliConfig {
     // *open* into `allow` — the one outcome a deployer typing this flag never
     // wants. A missing value is a startup error for the same reason.
     if (arg === DESTRUCTIVE_FLAG || arg?.startsWith(`${DESTRUCTIVE_FLAG}=`)) {
-      const raw = arg === DESTRUCTIVE_FLAG ? args[++i] : arg.slice(DESTRUCTIVE_FLAG.length + 1)
+      const raw =
+        arg === DESTRUCTIVE_FLAG ? args[++index.i] : arg.slice(DESTRUCTIVE_FLAG.length + 1)
       if (raw === undefined) {
         fatal(`${DESTRUCTIVE_FLAG} requires a value. Use ${DESTRUCTIVE_FLAG}=allow or =block.`)
       }
@@ -94,26 +140,44 @@ export function parseArgs(args: string[]): CliConfig {
       continue
     }
 
+    // The three profile-related flags: same "silently ignored fails open"
+    // reasoning, so a missing value is fatal rather than defaulted.
+    const profileValue = takeFlagValue('--auth-profile', arg, args, index)
+    if (profileValue !== undefined) {
+      authProfileFlag = profileValue
+      continue
+    }
+    const hostValue = takeFlagValue('--host', arg, args, index)
+    if (hostValue !== undefined) {
+      hostFlag = hostValue
+      continue
+    }
+    const issuerValue = takeFlagValue('--issuer', arg, args, index)
+    if (issuerValue !== undefined) {
+      issuerFlag = issuerValue
+      continue
+    }
+
     switch (arg) {
       case '--token':
-        config.token = args[++i] ?? ''
+        config.token = args[++index.i] ?? ''
         break
       case '--base-url':
-        config.baseUrl = args[++i] ?? ''
+        config.baseUrl = args[++index.i] ?? ''
         break
       case 'serve':
         config.mode = 'http'
         break
       case '--port': {
-        const parsed = Number(args[++i])
+        const parsed = Number(args[++index.i])
         config.port = Number.isNaN(parsed) ? 3001 : parsed
         break
       }
       case '--allowed-origin':
-        config.allowedOrigin = args[++i] ?? 'http://localhost:3000'
+        config.allowedOrigin = args[++index.i] ?? 'http://localhost:3000'
         break
       case '--role': {
-        const raw = args[++i]
+        const raw = args[++index.i]
         const parsed = parseRole(raw)
         if (parsed.invalid) {
           console.warn(`Unknown --role value '${raw}'; ignoring and registering all tools.`)
@@ -141,14 +205,63 @@ export function parseArgs(args: string[]): CliConfig {
       'CANVAS_DESTRUCTIVE_TOOLS',
     )
 
-  if (!config.token) {
-    console.error('Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN')
-    process.exit(1)
-  }
-  if (!config.baseUrl) {
-    console.error('Error: Canvas base URL required. Use --base-url or set CANVAS_BASE_URL')
-    process.exit(1)
+  // Same rule for the profile: the flag wins and is the only source parsed;
+  // an unknown value on the winning source is fatal, never a fallback.
+  let authProfile: AuthProfile
+  try {
+    authProfile = resolveAuthProfile({
+      flag: authProfileFlag,
+      env: process.env.CANVAS_AUTH_PROFILE,
+      mode: config.mode,
+    })
+  } catch (error) {
+    return fatal(error instanceof Error ? error.message : String(error))
   }
 
-  return { ...config, destructiveTools }
+  const hostRaw = hostFlag ?? process.env.CANVAS_HTTP_HOST
+
+  if (!profileRequiresStaticToken(authProfile)) {
+    // oauth_brokered: the Canvas credential comes from the OAuth flow, never
+    // from the environment. A leftover PAT is worth a warning, not a refusal.
+    if (config.token !== '') {
+      console.warn(
+        'CANVAS_API_TOKEN / --token is ignored in the oauth_brokered profile; Canvas credentials come from the OAuth flow.',
+      )
+      config.token = ''
+    }
+    let oauth: OAuthProfileConfig
+    let host: string
+    try {
+      oauth = loadOAuthProfileConfig(process.env, {
+        issuer: issuerFlag,
+        baseUrl: config.baseUrl === '' ? undefined : config.baseUrl,
+      })
+      host = resolveBindHost(oauth, hostRaw)
+    } catch (error) {
+      if (error instanceof OAuthConfigError) return fatal(`${error.message}. ${DOCTOR_HINT}`)
+      throw error
+    }
+    return {
+      ...config,
+      baseUrl: oauth.canvas.baseUrl,
+      host,
+      authProfile,
+      oauth,
+      destructiveTools,
+    }
+  }
+
+  if (!config.token) {
+    fatal(`Canvas API token required. Use --token or set CANVAS_API_TOKEN. ${DOCTOR_HINT}`)
+  }
+  if (!config.baseUrl) {
+    fatal(`Canvas base URL required. Use --base-url or set CANVAS_BASE_URL. ${DOCTOR_HINT}`)
+  }
+
+  return {
+    ...config,
+    ...(hostRaw !== undefined && hostRaw.trim() !== '' ? { host: hostRaw.trim() } : {}),
+    authProfile,
+    destructiveTools,
+  }
 }

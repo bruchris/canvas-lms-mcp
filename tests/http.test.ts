@@ -430,4 +430,42 @@ describe('createHttpHandler', () => {
       closeSpy.mockRestore()
     })
   })
+  describe('Origin validation (#302 §7, both HTTP profiles)', () => {
+    it('refuses a request whose Origin is not the configured allowed origin', async () => {
+      const res = createMockRes()
+      await handler(
+        createMockReq({ url: '/health', headers: { origin: 'https://evil.example' } }),
+        res,
+      )
+      expect(res._status).toBe(403)
+      expect(JSON.parse(res._body)).toEqual({
+        error: 'forbidden',
+        error_description: 'Origin not allowed',
+      })
+      const mcp = createMockRes()
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { origin: 'https://evil.example' } }),
+        mcp,
+      )
+      expect(mcp._status).toBe(403)
+    })
+
+    it('accepts the configured origin and requests with no Origin at all', async () => {
+      const ok = createMockRes()
+      await handler(
+        createMockReq({ url: '/health', headers: { origin: 'https://myapp.example.com' } }),
+        ok,
+      )
+      expect(ok._status).toBe(200)
+      const none = createMockRes()
+      await handler(createMockReq({ url: '/health' }), none)
+      expect(none._status).toBe(200)
+    })
+
+    it('still advertises Authorization for browser-based OAuth clients', async () => {
+      const res = createMockRes()
+      await handler(createMockReq({ method: 'OPTIONS', url: '/mcp' }), res)
+      expect(res._headers['access-control-allow-headers']).toContain('Authorization')
+    })
+  })
 })

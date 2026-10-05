@@ -1,7 +1,73 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import { CanvasApiError } from '../canvas/client'
 import type { CanvasDiscussionTopic } from '../canvas/types'
 import type { ToolDefinition } from './types'
+
+/**
+ * Canvas deliberately hides anonymous discussion topics from its topic-scoped REST
+ * actions. `DiscussionTopicsApiController#is_not_anonymous` renders
+ * `{ errors: [{ message: 'The specified resource does not exist.' }] }` with HTTP 404
+ * whenever `DiscussionTopic#anonymous?`, and that predicate is `!anonymous_state.nil?`
+ * — so it fires for `partial_anonymity` as well as `full_anonymity`. The guard runs on
+ * `show`, `view`, `entries`, `replies` and `entry_list`; of those, only `show` is
+ * reachable from this server (`get_discussion`). `add_entry` is deliberately not
+ * guarded, so `post_discussion_entry` keeps working on an anonymous topic.
+ *
+ * The index action does list these topics and serializes `anonymous_state`
+ * (`ALLOWED_TOPIC_FIELDS` in `lib/api/v1/discussion_topics.rb`), which is what makes a
+ * single fallback list request a reliable discriminator between "anonymous, so Canvas
+ * will never serve the detail endpoint" and "genuinely absent".
+ */
+const ANONYMITY_DESCRIPTIONS: Record<string, string> = {
+  full_anonymity: 'fully anonymous',
+  partial_anonymity: 'partially anonymous',
+}
+
+/**
+ * `anonymous_state` is not part of the published `CanvasDiscussionTopic` type — it is
+ * read defensively here so the discriminator needs no change to a shared public type.
+ */
+function anonymityDescription(topic: CanvasDiscussionTopic): string | undefined {
+  const state = (topic as { anonymous_state?: unknown }).anonymous_state
+  if (typeof state !== 'string' || state.length === 0) return undefined
+  // Canvas normalizes an unrecognized `anonymous_state` to NULL on create (see
+  // `ANONYMOUS_STATES` in `discussion_topics_controller.rb`), so an unknown value here
+  // should be unreachable. Describe it generically rather than echoing Canvas-authored
+  // text into a model-visible error message.
+  return ANONYMITY_DESCRIPTIONS[state] ?? 'anonymous'
+}
+
+function anonymousTopicMessage(courseId: number, topicId: number, description: string): string {
+  return (
+    `Discussion topic ${topicId} exists in course ${courseId} — list_discussions returns it — but ` +
+    'Canvas blocks the topic-scoped detail REST endpoint for anonymous discussion topics and ' +
+    `answers it with HTTP 404. This topic is ${description}. The topic ID is correct; no other ID ` +
+    "will work. Read the topic's listed attributes from list_discussions, or open the topic in the " +
+    'Canvas web UI. Replying with post_discussion_entry is unaffected.'
+  )
+}
+
+/**
+ * Resolve how an already-404ing topic is anonymous, or `undefined` when the 404 should
+ * keep its ordinary not-found meaning. A failure of the fallback request itself also
+ * yields `undefined`: the detail failure is the one the caller asked about, and
+ * replacing it with a list error would be less accurate, not more.
+ */
+async function describeAnonymityFromList(
+  canvas: CanvasClient,
+  courseId: number,
+  topicId: number,
+): Promise<string | undefined> {
+  let topics: CanvasDiscussionTopic[]
+  try {
+    topics = await canvas.discussions.list(courseId)
+  } catch {
+    return undefined
+  }
+  const listed = topics.find((topic) => topic.id === topicId)
+  return listed ? anonymityDescription(listed) : undefined
+}
 
 /**
  * Canvas returns 200 with a plain discussion topic (no error) when the caller
@@ -43,6 +109,9 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'get_discussion',
       title: 'Get Discussion',
+      // The anonymous-topic case is reported by the handler's error below rather than
+      // advertised here: `docs/generated/tool-manifest.json` embeds this string, so any
+      // edit also requires `pnpm generate:manifests`.
       description: 'Get details for a single discussion topic by ID.',
       inputSchema: {
         course_id: z.number().describe('The Canvas course ID'),
@@ -55,7 +124,18 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       handler: async (params) => {
         const course_id = params.course_id as number
         const topic_id = params.topic_id as number
-        return canvas.discussions.get(course_id, topic_id)
+        try {
+          return await canvas.discussions.get(course_id, topic_id)
+        } catch (error) {
+          // Only a 404 is ambiguous, and only one extra request is ever made — never on
+          // a successful read, and never for any other status.
+          if (!(error instanceof CanvasApiError) || error.status !== 404) throw error
+          const description = await describeAnonymityFromList(canvas, course_id, topic_id)
+          if (description === undefined) throw error
+          throw new Error(anonymousTopicMessage(course_id, topic_id, description), {
+            cause: error,
+          })
+        }
       },
     },
     {

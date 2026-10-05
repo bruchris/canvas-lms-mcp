@@ -125,6 +125,7 @@ export class CanvasHttpClient {
       nextUrl = this.parseNextLink(response.headers.get('Link'))
     }
 
+    this.assertNotTruncated(nextUrl, endpoint)
     return results
   }
 
@@ -166,7 +167,20 @@ export class CanvasHttpClient {
       nextUrl = this.parseNextLink(response.headers.get('Link'))
     }
 
+    this.assertNotTruncated(nextUrl, endpoint)
     return results
+  }
+
+  /**
+   * The pagination loops exit with a non-null `nextUrl` only when the page cap
+   * was reached while Canvas still advertised another page. Surface that as an
+   * error rather than returning a partial list that looks complete.
+   */
+  private assertNotTruncated(nextUrl: string | null, endpoint: string): void {
+    if (!nextUrl) return
+    throw new Error(
+      `Results are incomplete: ${endpoint} has more pages beyond the configured limit of ${this.maxPaginationPages} pages, so the list was truncated. Narrow the query with filters or raise maxPaginationPages.`,
+    )
   }
 
   private parseNextLink(linkHeader: string | null): string | null {

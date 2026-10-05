@@ -52,24 +52,35 @@ describe('NewQuizzesModule', () => {
 
   // --- Quiz CRUD ---
 
-  it('creates a quiz', async () => {
+  it('creates a quiz with the fields nested under `quiz`', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeQuiz())
     const result = await mod.create(COURSE_ID, { title: 'My New Quiz' })
     expect(result).toMatchObject({ id: 1, title: 'My New Quiz' })
-    expect(client.request).toHaveBeenCalledWith(
-      `/api/quiz/v1/courses/${COURSE_ID}/quizzes`,
-      expect.objectContaining({ method: 'POST' }),
-    )
+    expect(client.request).toHaveBeenCalledWith(`/api/quiz/v1/courses/${COURSE_ID}/quizzes`, {
+      method: 'POST',
+      body: JSON.stringify({ quiz: { title: 'My New Quiz' } }),
+    })
   })
 
-  it('updates a quiz', async () => {
+  it('updates a quiz with the patch nested under `quiz`', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({ ...makeQuiz(), published: true })
     const result = await mod.update(COURSE_ID, ASSIGNMENT_ID, { published: true })
     expect(result.published).toBe(true)
     expect(client.request).toHaveBeenCalledWith(
       `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}`,
-      expect.objectContaining({ method: 'PATCH' }),
+      { method: 'PATCH', body: JSON.stringify({ quiz: { published: true } }) },
     )
+  })
+
+  it('never sends quiz fields at the top level of the body', async () => {
+    // Regression: a flat body is rejected by Canvas with `400 quiz is missing`.
+    vi.spyOn(client, 'request').mockResolvedValue(makeQuiz())
+    await mod.create(COURSE_ID, { title: 'Flat?', published: false })
+    await mod.update(COURSE_ID, ASSIGNMENT_ID, { title: 'Flat?' })
+    for (const call of vi.mocked(client.request).mock.calls) {
+      const body = JSON.parse(call[1]?.body as string) as Record<string, unknown>
+      expect(Object.keys(body)).toEqual(['quiz'])
+    }
   })
 
   it('deletes a quiz without throwing on 204', async () => {
@@ -136,7 +147,7 @@ describe('NewQuizzesModule', () => {
       }),
     )
     const callArgs = vi.mocked(client.request).mock.calls[0]
-    const body = JSON.parse(callArgs[1]!.body as string)
+    const body = JSON.parse(callArgs[1]!.body as string).item
     expect(body).toMatchObject({
       entry_type: 'Item',
       points_possible: 5,
@@ -165,7 +176,7 @@ describe('NewQuizzesModule', () => {
         correct_answer: true,
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry_type: 'Item',
       points_possible: 1,
@@ -196,7 +207,7 @@ describe('NewQuizzesModule', () => {
         word_count_max: 300,
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry_type: 'Item',
       points_possible: 10,
@@ -225,7 +236,7 @@ describe('NewQuizzesModule', () => {
         distractors: ['London'],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry_type: 'Item',
       points_possible: 4,
@@ -264,7 +275,7 @@ describe('NewQuizzesModule', () => {
         answers: [{ kind: 'exact', value: 4, margin: 0 }],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry: {
         interaction_type_slug: 'numeric',
@@ -284,7 +295,7 @@ describe('NewQuizzesModule', () => {
         answers: [{ kind: 'range', min: 3.1, max: 3.2 }],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry: {
         interaction_type_slug: 'numeric',
@@ -304,7 +315,7 @@ describe('NewQuizzesModule', () => {
         answers: [{ kind: 'precision', value: 3.14, precision: 2 }],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       entry: {
         interaction_type_slug: 'numeric',
@@ -330,11 +341,72 @@ describe('NewQuizzesModule', () => {
       `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}/items/${ITEM_ID}`,
       expect.objectContaining({ method: 'PATCH' }),
     )
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       points_possible: 3,
       entry: { scoring_data: { value: 'false' } },
     })
+  })
+
+  // Regression: item fields must be nested under `item`, not sent flat.
+  it('createItem: sends the exact body nested under `item`', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      position: 2,
+      points_possible: 1,
+      item: { interaction_type_slug: 'true-false', item_body: '<p>T</p>', correct_answer: true },
+    })
+    expect(client.request).toHaveBeenCalledWith(
+      `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}/items`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          item: {
+            entry_type: 'Item',
+            points_possible: 1,
+            entry: {
+              interaction_type_slug: 'true-false',
+              item_body: '<p>T</p>',
+              interaction_data: {
+                choices: [
+                  { id: 'true', position: 1, item_body: 'True' },
+                  { id: 'false', position: 2, item_body: 'False' },
+                ],
+              },
+              properties: {},
+              scoring_data: { value: 'true' },
+              scoring_algorithm: 'Equivalence',
+            },
+            position: 2,
+          },
+        }),
+      },
+    )
+  })
+
+  it('updateItem: sends the exact body nested under `item`', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, {
+      position: 4,
+      points_possible: 3,
+    })
+    expect(client.request).toHaveBeenCalledWith(
+      `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}/items/${ITEM_ID}`,
+      { method: 'PATCH', body: JSON.stringify({ item: { position: 4, points_possible: 3 } }) },
+    )
+  })
+
+  it('item create/update never send item fields at the top level', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: { interaction_type_slug: 'true-false', item_body: '<p>T</p>', correct_answer: true },
+    })
+    await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, { points_possible: 2 })
+    for (const call of vi.mocked(client.request).mock.calls) {
+      const body = JSON.parse(call[1]?.body as string) as Record<string, unknown>
+      expect(Object.keys(body)).toEqual(['item'])
+    }
   })
 })
 

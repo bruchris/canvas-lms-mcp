@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-22  
 **Issue**: `BRU-530`  
-**Status**: Proposed design, not yet implemented
+**Status**: Design accepted. Phase 2 (profile boundary) and Phase 4 (single-institution brokered OAuth) are implemented per [`2026-09-17-issue-302-mcp-oauth-profile.md`](./2026-09-17-issue-302-mcp-oauth-profile.md) (issue #302)
 
 ## Goal
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { QuizzesModule } from '../../src/canvas/quizzes'
 import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
@@ -77,6 +77,84 @@ describe('QuizzesModule', () => {
       'quiz_submission_questions',
       { 'include[]': 'quiz_question' },
     )
+  })
+
+  describe('listSubmissionQuestions', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    function jsonPage(body: unknown, link?: string): Response {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (link) headers.Link = link
+      return new Response(JSON.stringify(body), { status: 200, headers })
+    }
+
+    it('sends both attempt params and merges every page of the bare array', async () => {
+      // Canvas copies the request's query params into its Link header
+      // (Api.build_links_hash @1c9f0bb), so page 2 keeps the submission scope.
+      const page2Url =
+        'https://canvas.example.com/api/v1/courses/100/quizzes/1/questions' +
+        '?quiz_submission_attempt=2&quiz_submission_id=55&page=2&per_page=100'
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          jsonPage(
+            [
+              {
+                id: 7001,
+                quiz_id: 1,
+                position: 2,
+                question_text: 'Drawn from the bank',
+                question_type: 'essay_question',
+                points_possible: 4,
+              },
+            ],
+            `<${page2Url}>; rel="next"`,
+          ),
+        )
+        .mockResolvedValueOnce(
+          jsonPage([
+            {
+              id: 10,
+              quiz_id: 1,
+              position: 1,
+              question_text: 'Fixed question',
+              question_type: 'multiple_choice_question',
+              points_possible: 1,
+            },
+          ]),
+        )
+
+      const result = await quizzes.listSubmissionQuestions(100, 1, 55, 2)
+
+      expect(result.map((q) => q.id)).toEqual([7001, 10])
+      expect(result[0]).toMatchObject({ question_type: 'essay_question', points_possible: 4 })
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+
+      const first = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+      expect(first.origin + first.pathname).toBe(
+        'https://canvas.example.com/api/v1/courses/100/quizzes/1/questions',
+      )
+      // Canvas only takes the submission branch when BOTH are present; with either
+      // one missing it silently returns the quiz's active questions instead.
+      expect(first.searchParams.get('quiz_submission_id')).toBe('55')
+      expect(first.searchParams.get('quiz_submission_attempt')).toBe('2')
+      expect(first.searchParams.get('per_page')).toBe('100')
+      expect(String(fetchSpy.mock.calls[1]?.[0])).toBe(page2Url)
+    })
+
+    it('propagates Canvas API errors', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ errors: [{ message: 'Unauthorized' }] }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      await expect(quizzes.listSubmissionQuestions(100, 1, 55, 2)).rejects.toBeInstanceOf(
+        CanvasApiError,
+      )
+    })
   })
 
   it('lists quizzes in a course', async () => {

@@ -45,7 +45,18 @@ export interface ToolFeatureFlags {
    * Not usable as a domain `gate` — see `ToolDomainGateKey` in `catalog.ts`.
    */
   destructiveTools?: DestructiveToolsMode
+  /**
+   * Write-tool policy for the OAuth profile (issue #302 §7.4). `block` keeps
+   * only tools with `readOnlyHint: true`, so a token that lacks the
+   * `canvas:write` scope neither lists nor can call a write tool. Unset
+   * resolves to `allow`. A string union on purpose: a boolean here would
+   * become a domain gate key (see `ToolDomainGateKey` in `catalog.ts`).
+   */
+  writeTools?: WriteToolsMode
 }
+
+/** `allow` = every tool the other policies permit; `block` = read-only tools only. */
+export type WriteToolsMode = 'allow' | 'block'
 
 export interface ToolDefinition {
   name: string
