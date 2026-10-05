@@ -29,12 +29,27 @@ function describeArguments(skill: GeneratedSkill): PromptArgumentDescriptor[] {
 }
 
 /**
- * Prompt definitions for a role, or every one when the role is unset — the same
- * filter `getAllTools` applies to tools, reading the same visibility table, so a
- * host is never offered a workflow whose tools its role filter hides.
+ * Prompt definitions for a role, or every one when the role is unset.
+ *
+ * The filter reads each skill's **own declared audience** — the `metadata`
+ * audience its `SKILL.md` frontmatter carries — through the same
+ * `isAudienceVisibleForRole` predicate and the same visibility table
+ * `getAllTools` applies to a tool's audience. That is the whole of it.
+ *
+ * It deliberately does *not* check the tools a skill body names, so it cannot
+ * promise that every tool a visible workflow reaches is itself visible. Two
+ * reasons it is not implemented: `GeneratedSkill` only derives the body's
+ * *destructive* tools (`writeTools`), so the read tools a body names are not
+ * available to compare at all; and a skill whose own audience were narrowed to
+ * the intersection of its tools' audiences would disappear from roles the skill
+ * is written for. Today no visible skill names a write tool its role cannot see
+ * — measured across student/teacher/admin, 0 mismatches — but nothing enforces
+ * that, and a skill tagged `shared` or `student` that reached an educator-only
+ * tool would be visible anyway.
  *
  * Like the tool filter, this is UX and context reduction, not a security
  * boundary: Canvas enforces permissions server-side, and a prompt is inert text.
+ * `_meta.writeTools` publishes the derived set so a host can filter further.
  */
 export function buildPromptDefinitions(
   role?: CanvasRole,

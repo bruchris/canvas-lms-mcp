@@ -1320,6 +1320,13 @@ import type { CanvasRole } from '../tools/types'
 
 export { buildPromptDefinitions, PROMPT_META_KEY } from './catalog'
 
+// NOTE, 2026-10-05: the sketch below is kept as the plan as written. It was
+// superseded during review — installing these handlers *instead of* calling
+// `McpServer.registerPrompt` breaks an embedder's own later `registerPrompt`.
+// The shipped version registers through the SDK first and then composes over the
+// handlers it installs. See correction 2 in §1.1 of
+// docs/superpowers/specs/2026-09-18-issue-355-skills-as-mcp-prompts.md.
+
 /**
  * Registers the prompt surface directly on the underlying `Server` rather than
  * through `McpServer.registerPrompt`.

@@ -1,10 +1,11 @@
 /**
  * Characterisation test — pins the SDK behaviour that decides our architecture.
  *
- * `src/prompts/index.ts` registers `prompts/list` and `prompts/get` on the
- * underlying `Server` instead of calling `McpServer.registerPrompt`. That is a
- * deliberate departure from the obvious API, and this file is the evidence for
- * it rather than a comment asserting it.
+ * `src/prompts/index.ts` registers every built-in through
+ * `McpServer.registerPrompt` and then replaces the two handlers the SDK installs
+ * with composing ones, so an embedder's later `registerPrompt` still works. This
+ * file is the evidence for *why* it replaces them rather than a comment
+ * asserting it.
  *
  * **2026-10-05, merging current `main` (SDK 1.30.0 -> 1.32.0, PR #375).** The
  * original reason this file recorded is now FIXED: on 1.30.0, `registerPrompt`
@@ -13,7 +14,10 @@
  * default — failed validation. On 1.32.0 that call succeeds. The first test
  * below is inverted and now guards against the SDK regressing.
  *
- * Handler ownership is still required, for two reasons measured on 1.32.0:
+ * Owning the two handlers is still required, for two reasons measured on 1.32.0.
+ * Note that these are reasons to *compose over* the SDK's handlers, not reasons
+ * to keep the SDK out of the registry — `src/prompts/index.ts` does both, and
+ * `tests/prompts/composition.test.ts` pins the coexistence that buys.
  *
  *   1. `registerPrompt`'s config accepts only `title`, `description` and
  *      `argsSchema`, and the SDK's `prompts/list` handler emits no `_meta` per
@@ -24,7 +28,8 @@
  *      Our handler answers `-32602` so a client typo is not swallowed.
  *
  * `tests/prompts/wire.test.ts` pins the positive half of both on our own
- * implementation. If reason 1 ever disappears, the handler-ownership decision in
+ * implementation. If reason 1 ever disappears — an SDK that lets `registerPrompt`
+ * carry `_meta` onto the listing — the handler-replacement decision in
  * docs/superpowers/specs/2026-09-18-issue-355-skills-as-mcp-prompts.md §1.1 is
  * worth revisiting; until then this file is why it stands.
  */

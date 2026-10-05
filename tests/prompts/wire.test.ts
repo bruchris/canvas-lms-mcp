@@ -65,10 +65,22 @@ describe('prompts/list', () => {
 
 describe('prompts/get', () => {
   it('succeeds when the client omits the arguments key entirely', async () => {
-    // Regression gate. `arguments` is optional in the MCP schema, but
-    // McpServer.registerPrompt parses it against an object schema, so a prompt
-    // with a declared argsSchema rejects this call. This test fails against any
-    // registerPrompt-based implementation — that is the point.
+    // Regression gate: `arguments` is optional on a GetPromptRequest in the MCP
+    // schema, and the SDK's own client omits the key when you pass nothing.
+    //
+    // This once failed through `registerPrompt`, which parsed a missing
+    // `arguments` against an object schema — fixed in SDK 1.32.0, and
+    // tests/prompts/sdk-registerprompt-characterisation.test.ts now pins the fix.
+    // So this is no longer evidence for or against a registerPrompt-based
+    // implementation; the current one *is* registerPrompt-based (src/prompts/
+    // index.ts registers through the SDK, then composes over its handlers).
+    //
+    // What still requires this server to own `prompts/get` are two other
+    // measured properties: the SDK emits no per-entry `_meta` on `prompts/list`,
+    // and it silently accepts an argument the prompt never declared. The two
+    // tests below this one — the `_meta` assertion and the -32602 on an
+    // undeclared name — are the ones that fail if handler ownership is dropped.
+    // This test keeps the omitted-key call itself from regressing.
     const client = await promptServer()
     const result = await client.getPrompt({ name: 'canvas-grading-pass' })
 

@@ -52,7 +52,36 @@ The issue's four proposals are all adopted. Four measurements change *how*.
 
 ### 1.1 A declared `argsSchema` makes a spec-legal `prompts/get` call fail
 
-> **Correction, 2026-10-05 — merging current `main` (SDK 1.30.0 → 1.32.0, PR #375).** ~~The finding
+> **Correction 2 (supersedes the resolution below), 2026-10-05 — CEO review, [BRU-2755](https://paperclip.bruchris.me/BRU/issues/BRU-2755).**
+> ~~**Resolution: this server owns the two prompt request handlers directly.**~~ Owning them by
+> calling `setRequestHandler` *first* is an **additive-compatibility break**: `McpServer.registerPrompt`
+> calls `assertCanSetRequestHandler`, so an in-process embedder that builds a Canvas server and then
+> registers one prompt of its own gets
+> `Error: A request handler for prompts/list already exists, which would be overridden`. Measured, not
+> inferred — and it reproduced through the public `createCanvasMCPServer` factory.
+>
+> The design below was right that the handlers must be *ours*; it was wrong that we may install them
+> *instead of* going through the SDK. **The order inverts:** register every built-in through
+> `registerPrompt`, which makes the SDK's registry the single source of truth for which prompt names
+> exist and leaves its `_promptHandlersInitialized` flag set, then replace the two handlers it
+> installed with composing ones that delegate to the originals for any name we did not register. A
+> later `registerPrompt` then finds the flag already set, returns early, and never asserts.
+>
+> Three consequences worth stating, all measured on 1.32.0:
+>
+> - **A custom prompt can no longer shadow a Canvas one.** The SDK's registry rejects the duplicate
+>   name (`Prompt canvas-grading-pass is already registered`). The old design had its own private map
+>   and would have silently served two prompts under one name.
+> - **`listChanged` becomes `true`, and that is the honest value** — see the correction to the
+>   paragraph on it below.
+> - **Order is now load-bearing in one direction:** `registerAllPrompts` must run before any other
+>   `registerPrompt` on the same server, because the SDK installs its handlers exactly once and they
+>   have to be captured as that happens. It throws a message naming both calls if it is second.
+>
+> This is close to the "rejected alternative" below, and that rejection's reasoning is corrected
+> there too.
+>
+> **Correction 1, 2026-10-05 — merging current `main` (SDK 1.30.0 → 1.32.0, PR #375).** ~~The finding
 > below is the justification for owning the two prompt handlers.~~ The specific defect measured here
 > was fixed in SDK 1.32.0: through `registerPrompt`, `getPrompt({ name })` with the `arguments` key
 > omitted now **succeeds**. Handler ownership still stands, on two other properties measured on
@@ -101,10 +130,13 @@ and advertises `def`, `type`, and `unwrap` as the prompt's arguments:
 So within `registerPrompt` the choice is: declare arguments and break a spec-legal call, or declare
 no arguments and lose the issue's item 2. Neither is acceptable.
 
-**Resolution: this server owns the two prompt request handlers directly.** `prompts/list` and
+~~**Resolution: this server owns the two prompt request handlers directly.** `prompts/list` and
 `prompts/get` are registered on the underlying `Server` with an explicit
-`registerCapabilities({ prompts: { listChanged: false } })`. Measured against the same in-memory
-transport, this serves the correct argument list *and* accepts all three call shapes:
+`registerCapabilities({ prompts: { listChanged: false } })`.~~ **Superseded by correction 2 above:
+the handlers are still ours, but they are installed over the SDK's rather than instead of them, and
+the capability is declared by `registerPrompt`.** Measured against the same in-memory
+transport, this serves the correct argument list *and* accepts all three call shapes — and every row
+below still holds under the composed implementation:
 
 | Call                                    | Result                                             |
 | --------------------------------------- | -------------------------------------------------- |
@@ -117,13 +149,33 @@ transport, this serves the correct argument list *and* accepts all three call sh
 Capability merging was measured in both registration orders (tools → prompts and prompts → tools)
 and is order-independent; `tools` and `resources` keep their own `listChanged: true`.
 
-The rejected alternative was a hybrid: keep `registerPrompt` for the listing and override only
+~~The rejected alternative was a hybrid: keep `registerPrompt` for the listing and override only
 `prompts/get`. It works, but it leaves 16 registered callbacks that can never run — dead code whose
 deadness depends on undocumented SDK handler-ordering. If a future SDK stops letting a later
-`setRequestHandler` win, the server silently reverts to the broken behaviour with no test failing.
+`setRequestHandler` win, the server silently reverts to the broken behaviour with no test failing.~~
 
-`listChanged` is `false` because it is true: the prompt list is fixed when the server is
-constructed, and nothing mutates it at runtime.
+**Corrected, 2026-10-05 (correction 2).** The adopted design is this hybrid, extended to override
+*both* handlers, and both halves of the rejection were weaker than written:
+
+- **"16 callbacks that can never run."** They share one `renderPrompt` with the live handler, so they
+  cannot diverge from it — the only behaviour they lack is the undeclared-argument rejection, which
+  the SDK makes unobservable to a callback anyway (it strips unknown keys before calling one). They
+  are a consistent fallback, not dead code.
+- **"Silently reverts with no test failing."** `tests/prompts/composition.test.ts` asserts the
+  composed behaviour end to end, and an injection sweep confirms each half is individually
+  load-bearing: dropping the listing `_meta` fails 2 tests, dropping the undeclared-argument guard
+  fails 2, dropping either delegation fails 2–4. An SDK that stopped letting a later
+  `setRequestHandler` win would turn those red, not silent.
+
+What the rejection got right is that the listing cannot come from `registerPrompt`. That is why both
+handlers are replaced rather than only `prompts/get`.
+
+~~`listChanged` is `false` because it is true: the prompt list is fixed when the server is
+constructed, and nothing mutates it at runtime.~~ **Corrected, 2026-10-05 (correction 2):
+`listChanged` is now `true`, declared by `registerPrompt`, and that is the accurate value — the
+*Canvas* prompts are still fixed at construction, but an embedder may add or remove its own at any
+time and the SDK emits `notifications/prompts/list_changed` when it does. A server that advertised
+`false` while accepting a later `registerPrompt` would be lying.**
 
 ### 1.2 Skill bodies name tools that deliberately do not exist
 
@@ -462,8 +514,11 @@ New file `tests/prompts/skills.test.ts` unless noted.
 **Wire behaviour** (in-memory client and server, as `tests/mcp-apps-wire.test.ts` does)
 
 7. `prompts/list` returns 16 entries with title, description, arguments, and `_meta`.
-8. `getPrompt` with no `arguments` key succeeds — the §1.1 regression gate. This test fails against
-   a `registerPrompt`-based implementation, which is the point.
+8. `getPrompt` with no `arguments` key succeeds — the §1.1 regression gate. ~~This test fails against
+   a `registerPrompt`-based implementation, which is the point.~~ **Corrected 2026-10-05:** SDK 1.32.0
+   fixed that, and the implementation is now itself `registerPrompt`-based, so this no longer
+   discriminates between the two designs. It stays as a gate on the call shape; items 11 and 13 are
+   what fail if handler replacement is dropped.
 9. `getPrompt` with `arguments: {}` succeeds and returns a body with no context block.
 10. `getPrompt` with a supplied argument prepends exactly one context block naming it.
 11. An unknown argument name and an unknown prompt name each raise `-32602`.
@@ -503,6 +558,16 @@ New file `tests/prompts/skills.test.ts` unless noted.
     client, including a `getPrompt` that lands on a different instance than the `listPrompts`
     before it.
 
+21. **Additive public API compatibility is pinned** — `tests/prompts/composition.test.ts`, added
+    2026-10-05 for correction 2 in §1.1. An embedder registers its own prompt through
+    `McpServer.registerPrompt` *after* `createCanvasMCPServer`, both before and after the transport is
+    connected, and the file asserts that the call does not throw, that the listing carries both
+    surfaces, that `prompts/get` serves both, that a custom prompt cannot shadow a Canvas name, and
+    that the three invariants this feature owns — listing `_meta`, `-32602` on an undeclared argument,
+    role filtering — are unchanged by the custom prompt's presence. Two of its cases characterise
+    behaviour that already held (an empty catalog leaves the surface entirely to the embedder) and are
+    there so a future change cannot quietly take it away.
+
 Verified end to end against the built artifact over real stdio as well: capability declaration,
 16 prompts, advertised arguments, `_meta`, a `getPrompt` with no `arguments` key, the context
 block, the unknown-argument rejection, and role counts of 2 / 13 / 14 / 16.
@@ -521,7 +586,11 @@ block, the unknown-argument rejection, and role counts of 2 / 13 / 14 / 16.
 6. `src/prompts/catalog.ts` — build prompt definitions: title, description with the appended write
    sentence, argument descriptors, `_meta`, and the message builder.
 7. `src/prompts/index.ts` — `registerAllPrompts(server, role)`: filter by role, and when the result
-   is non-empty register the capability and both handlers (§1.1, §5).
+   is non-empty ~~register the capability and both handlers~~ **(corrected 2026-10-05)** register each
+   built-in through `McpServer.registerPrompt` — which declares the capability — capturing the two
+   handlers the SDK installs, then replace them with handlers that add the listing `_meta` and the
+   undeclared-argument rejection for our names and delegate everything else to the captured originals
+   (§1.1 correction 2, §5).
 8. `src/server.ts` — call `registerAllPrompts` alongside `registerAllTools` and
    `registerAllResources`.
 9. `package.json#files` — add `skills/` (§6).
