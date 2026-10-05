@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.32.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.2...canvas-lms-mcp-v1.32.0) (2026-10-05)
+
+
+### Features
+
+* **prompts:** advertise the 16 Agent Skills as MCP prompts ([#358](https://github.com/bruchris/canvas-lms-mcp/issues/358)) ([1a2c000](https://github.com/bruchris/canvas-lms-mcp/commit/1a2c000cb99e6af43e6af586db4329533c72c3e3))
+
 ## [1.31.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.1...canvas-lms-mcp-v1.31.2) (2026-10-05)
 
 
