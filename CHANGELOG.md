@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.31.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.1...canvas-lms-mcp-v1.31.2) (2026-10-05)
+
+
+### Documentation
+
+* **spec:** correct PR 1b/1c split and inline count (BRU-2741) ([#385](https://github.com/bruchris/canvas-lms-mcp/issues/385)) ([298899e](https://github.com/bruchris/canvas-lms-mcp/commit/298899ecf0e67ba4d8764df31674b78eddd0fdb6))
+* **spec:** fix PR 1b cast rationale and PR 1c dependency (BRU-2740, BRU-2741) ([#384](https://github.com/bruchris/canvas-lms-mcp/issues/384)) ([7ad650c](https://github.com/bruchris/canvas-lms-mcp/commit/7ad650c48f4741aa7b7d73965365db6e8fcc8402))
+* **spec:** merge PR 1b and PR 1c; re-measure Phase 1 compile counts (BRU-2743) ([#386](https://github.com/bruchris/canvas-lms-mcp/issues/386)) ([ff88077](https://github.com/bruchris/canvas-lms-mcp/commit/ff880779fb0f61d64fe7bd716c64c1f5891979fe))
+* **spec:** preserve 64-bit Canvas identifiers without precision loss (BRU-2730) ([#382](https://github.com/bruchris/canvas-lms-mcp/issues/382)) ([d3d3705](https://github.com/bruchris/canvas-lms-mcp/commit/d3d3705c616357fb41b30de68391d3a302971b9d))
+* **spec:** resolve PR 1b/1c order with transitional union (BRU-2741) ([#387](https://github.com/bruchris/canvas-lms-mcp/issues/387)) ([dddf625](https://github.com/bruchris/canvas-lms-mcp/commit/dddf625a45818a3d8f965f7e1d3e50d68cdfd83b))
+
 ## [1.31.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.0...canvas-lms-mcp-v1.31.1) (2026-10-04)
 
 
