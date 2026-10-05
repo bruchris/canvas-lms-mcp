@@ -16,12 +16,20 @@ export type { GeneratedSkill, PromptDefinition } from './types'
  * Registers the prompt surface directly on the underlying `Server` rather than
  * through `McpServer.registerPrompt`.
  *
- * The reason is concrete: `registerPrompt` parses `request.params.arguments`
- * against an object schema, so a prompt that declares any argument rejects
- * `prompts/get` when the client omits `arguments` — which the MCP schema allows
- * and the SDK's own client does by default. Owning the handlers is what lets
- * this server both advertise arguments and honour that call.
- * `tests/prompts/wire.test.ts` pins the behaviour.
+ * The reason is concrete, and measured on SDK 1.32.0: `registerPrompt`'s config
+ * accepts only `title`, `description` and `argsSchema`, and the SDK's
+ * `prompts/list` handler emits no `_meta` per entry — so the namespaced skill
+ * metadata this feature exists to publish has nowhere to live. It also silently
+ * accepts an argument the prompt never declared, where this handler answers
+ * `-32602`. Owning the handlers is what lets this server advertise arguments,
+ * publish `_meta` on both `prompts/list` and `prompts/get`, and reject typos.
+ * `tests/prompts/wire.test.ts` pins our behaviour;
+ * `tests/prompts/sdk-registerprompt-characterisation.test.ts` pins the SDK's.
+ *
+ * Historical note: on SDK 1.30.0 `registerPrompt` additionally rejected a
+ * `prompts/get` that omitted `arguments` — spec-legal, and what the SDK's own
+ * client sends by default. That was the original justification; 1.32.0 fixed it,
+ * and the characterisation test now guards against the regression.
  *
  * Must run before the server is connected: `registerCapabilities` throws once a
  * transport is attached, and `setRequestHandler` refuses a method whose

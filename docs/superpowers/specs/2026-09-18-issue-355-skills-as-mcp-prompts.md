@@ -52,6 +52,22 @@ The issue's four proposals are all adopted. Four measurements change *how*.
 
 ### 1.1 A declared `argsSchema` makes a spec-legal `prompts/get` call fail
 
+> **Correction, 2026-10-05 — merging current `main` (SDK 1.30.0 → 1.32.0, PR #375).** ~~The finding
+> below is the justification for owning the two prompt handlers.~~ The specific defect measured here
+> was fixed in SDK 1.32.0: through `registerPrompt`, `getPrompt({ name })` with the `arguments` key
+> omitted now **succeeds**. Handler ownership still stands, on two other properties measured on
+> 1.32.0 and pinned by `tests/prompts/sdk-registerprompt-characterisation.test.ts`:
+>
+> 1. `registerPrompt`'s config accepts only `title`, `description` and `argsSchema`, and the SDK's
+>    `prompts/list` handler emits no per-entry `_meta`. The namespaced skill metadata in §1.3 is the
+>    point of this feature and cannot be published through `registerPrompt` at all. **This is now the
+>    load-bearing reason.**
+> 2. `registerPrompt` silently accepts an argument the prompt never declared, where this server
+>    answers `-32602`.
+>
+> Everything below is kept as the point-in-time measurement that produced the decision. Every
+> **fails** in the `getPrompt` column describes SDK 1.30.0, not 1.32.0.
+
 This is the load-bearing finding. The MCP schema makes `arguments` **optional** on a
 `GetPromptRequest`. The SDK does not.
 
@@ -476,6 +492,9 @@ New file `tests/prompts/skills.test.ts` unless noted.
     `registerPrompt` and shows `prompts/get` failing when `arguments` is omitted. §1.1 is the
     justification for the whole handler-ownership decision, so it earns a test rather than a
     comment. When a future SDK fixes this, that test turns red and points at the simplification.
+    **Updated 2026-10-05:** SDK 1.32.0 fixed it and the test did turn red during the `main`
+    reconciliation. It now pins the fix — so an SDK regression is caught — plus the two properties
+    that keep handler ownership necessary. See the correction at the top of §1.1.
 20. **The HTTP transport is exercised for real** — `tests/prompts/http-transport.test.ts`. The
     existing `tests/http.test.ts` mocks `createCanvasMCPServer`, so nothing there was a protocol
     round trip, and HTTP is precisely where the construction order matters: it builds a fresh
