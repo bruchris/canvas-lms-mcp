@@ -43,7 +43,7 @@ Required before design work. Result: **nothing has shipped, and no equivalent de
 Every measurement in this document was taken against this base commit with the SDK at 1.30.0, which
 was the latest published version on the date above (`npm view @modelcontextprotocol/sdk version`
 → `1.30.0`). ~~There is no newer release to wait for.~~ **Corrected 2026-10-05:** 1.30.1, 1.31.0,
-1.32.0 and 1.32.1 have since published, and one of them matters — see Correction 2 below.
+1.32.0 and 1.32.1 have since published, and one of them matters — see Correction 3 below.
 
 ---
 
@@ -51,7 +51,7 @@ was the latest published version on the date above (`npm view @modelcontextproto
 
 The issue's four proposals are all adopted. Four measurements change *how*.
 
-### 1.1 A declared `argsSchema` makes a spec-legal `prompts/get` call fail
+### 1.1 A declared `argsSchema` made a spec-legal `prompts/get` call fail (SDK 1.30.0, historical)
 
 > **Correction 2 (supersedes the resolution below), 2026-10-05 — CEO review, [BRU-2755](https://paperclip.bruchris.me/BRU/issues/BRU-2755).**
 > ~~**Resolution: this server owns the two prompt request handlers directly.**~~ Owning them by
@@ -98,7 +98,7 @@ The issue's four proposals are all adopted. Four measurements change *how*.
 > Everything below is kept as the point-in-time measurement that produced the decision. Every
 > **fails** in the `getPrompt` column describes SDK 1.30.0, not 1.32.0.
 
-> **Correction 2, 2026-10-05 — the declared floor now matches the fix (BRU-2761).** Correction 1
+> **Correction 3, 2026-10-05 — the declared floor now matches the fix (BRU-2761).** Correction 1
 > recorded that the defect was fixed in 1.32.0, but left `package.json` declaring
 > `@modelcontextprotocol/sdk: ^1.30.0`. The lockfile resolved 1.32.0, so CI exercised the fixed
 > version while a consumer resolving at the declared floor got the broken one — on the
@@ -110,8 +110,9 @@ The issue's four proposals are all adopted. Four measurements change *how*.
 > and that fix point in lockstep, so the behavioural tests in `tests/prompts/` are evidence about
 > the floor and not merely about whatever the lockfile happens to resolve.
 
-This is the load-bearing finding. The MCP schema makes `arguments` **optional** on a
-`GetPromptRequest`. The SDK does not.
+This was the load-bearing finding on SDK 1.30.0 (historical; Correction 1 above explains why it no
+longer holds on 1.32.0). The MCP schema makes `arguments` **optional** on a `GetPromptRequest`. On
+SDK 1.30.0, the SDK did not.
 
 `McpServer`'s `prompts/get` handler runs `safeParseAsync(normalizeObjectSchema(prompt.argsSchema),
 request.params.arguments)`. When the client omits `arguments` entirely, that parses `undefined`
