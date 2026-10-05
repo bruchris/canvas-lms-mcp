@@ -41,8 +41,9 @@ Required before design work. Result: **nothing has shipped, and no equivalent de
 | Skills on disk                         | dirs under `skills/` with a `SKILL.md`                  | **16**                                             |
 
 Every measurement in this document was taken against this base commit with the SDK at 1.30.0, which
-is the latest published version (`npm view @modelcontextprotocol/sdk version` → `1.30.0`). There is
-no newer release to wait for.
+was the latest published version on the date above (`npm view @modelcontextprotocol/sdk version`
+→ `1.30.0`). ~~There is no newer release to wait for.~~ **Corrected 2026-10-05:** 1.30.1, 1.31.0,
+1.32.0 and 1.32.1 have since published, and one of them matters — see Correction 2 below.
 
 ---
 
@@ -96,6 +97,18 @@ The issue's four proposals are all adopted. Four measurements change *how*.
 >
 > Everything below is kept as the point-in-time measurement that produced the decision. Every
 > **fails** in the `getPrompt` column describes SDK 1.30.0, not 1.32.0.
+
+> **Correction 2, 2026-10-05 — the declared floor now matches the fix (BRU-2761).** Correction 1
+> recorded that the defect was fixed in 1.32.0, but left `package.json` declaring
+> `@modelcontextprotocol/sdk: ^1.30.0`. The lockfile resolved 1.32.0, so CI exercised the fixed
+> version while a consumer resolving at the declared floor got the broken one — on the
+> `registerPrompt`-your-own path this server now documents, whose `prompts/get` delegates to the
+> SDK's handler. The floor is raised to `^1.32.0`, which is the **tightest** correct value rather
+> than a round number: bisecting every release in between, each run with a control call supplying
+> `arguments: {}` that had to succeed, gives `-32602` on 1.30.0, 1.30.1 and 1.31.0, and success on
+> 1.32.0 and 1.32.1. `tests/prompts/sdk-floor.test.ts` keeps the declaration, the installed version
+> and that fix point in lockstep, so the behavioural tests in `tests/prompts/` are evidence about
+> the floor and not merely about whatever the lockfile happens to resolve.
 
 This is the load-bearing finding. The MCP schema makes `arguments` **optional** on a
 `GetPromptRequest`. The SDK does not.

@@ -81,6 +81,11 @@ worth knowing:
   saying so. Registering afterwards works whether or not a transport is already connected.
 - **Canvas prompt names are reserved.** Reusing one is rejected by the SDK's registry rather than
   silently serving two prompts under one name.
+- **Your prompt needs `@modelcontextprotocol/sdk` >= 1.32.0**, which is this package's declared
+  floor. A custom prompt is served by delegating to the SDK's own handler, and below 1.32.0 that
+  handler answers `-32602` to a `prompts/get` that omits the `arguments` key — which the MCP
+  schema permits and the SDK's own client does by default. The Canvas prompts are unaffected
+  either way.
 
 Because the surface can change after construction, the server advertises
 `prompts.listChanged: true`; the SDK emits `notifications/prompts/list_changed` when you add or

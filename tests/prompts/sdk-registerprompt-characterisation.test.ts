@@ -14,6 +14,11 @@
  * default — failed validation. On 1.32.0 that call succeeds. The first test
  * below is inverted and now guards against the SDK regressing.
  *
+ * The declared dependency floor was raised to `^1.32.0` to match (BRU-2761), so the
+ * inverted test is a statement about the lowest version a consumer can resolve
+ * and not only about what the lockfile happens to install.
+ * `tests/prompts/sdk-floor.test.ts` is what keeps that true.
+ *
  * Owning the two handlers is still required, for two reasons measured on 1.32.0.
  * Note that these are reasons to *compose over* the SDK's handlers, not reasons
  * to keep the SDK out of the registry — `src/prompts/index.ts` does both, and
