@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.32.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.0...canvas-lms-mcp-v1.32.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **cli:** print usage for top-level --help and -h ([#389](https://github.com/bruchris/canvas-lms-mcp/issues/389)) ([3b3aa32](https://github.com/bruchris/canvas-lms-mcp/commit/3b3aa32b68f0bcd4b8db23c22e25a24bd57cf3a8))
+
 ## [1.32.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.2...canvas-lms-mcp-v1.32.0) (2026-10-05)
 
 
