@@ -5,7 +5,7 @@ import { formatError } from './errors'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
 import type { CourseSearchResult } from '../canvas/types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -149,9 +149,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         if (assignment_id !== undefined) {
           // Response id vs migrated input id — compared as canonical strings so the
           // join cannot silently miss on an ID above 2**53 (BRU-2730 §4.1).
-          const match = analytics.find(
-            (a) => canvasIdFromResponse(a.assignment_id) === assignment_id,
-          )
+          const match = analytics.find((a) => a.assignment_id === assignment_id)
           if (!match) {
             throw new Error(
               `Assignment ${assignment_id} not found in analytics for course ${course_id}.`,

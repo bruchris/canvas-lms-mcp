@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CanvasSubmission } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // ── Caveats ──────────────────────────────────────────────────────────────────
 
@@ -24,9 +24,9 @@ const UNMATCHED_CAVEAT = 'Some submissions could not be matched to an assignment
 // ── Output shape ─────────────────────────────────────────────────────────────
 
 interface AwaitingSubmissionRow {
-  submission_id: number
+  submission_id: CanvasId
   /** Always the raw Canvas numeric ID; never pseudonymized. */
-  user_id: number
+  user_id: CanvasId
   /** Pseudonymized when the flag is on; null when the user object was not sideloaded. */
   user_name: string | null
   workflow_state: 'submitted' | 'pending_review'
@@ -36,7 +36,7 @@ interface AwaitingSubmissionRow {
 }
 
 interface AwaitingItem {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string
   type: 'classic_quiz' | 'assignment'
   due_at: string | null
@@ -192,7 +192,7 @@ export function submissionsAwaitingGradingTools(
         // 'submitted' and 'pending_review', so filtering happens client-side below.
         const rawSubmissions = await canvas.submissions.listForStudents(courseId, {
           student_ids: ['all'],
-          assignment_ids: toFetch.map((a) => canvasIdFromResponse(a.id)),
+          assignment_ids: toFetch.map((a) => a.id),
           include: ['user'],
         })
 
@@ -212,7 +212,7 @@ export function submissionsAwaitingGradingTools(
         )
 
         // Step 10: group by assignment_id.
-        const byAssignment = new Map<number, CanvasSubmission[]>()
+        const byAssignment = new Map<CanvasId, CanvasSubmission[]>()
         for (const sub of processedSubmissions) {
           const group = byAssignment.get(sub.assignment_id) ?? []
           group.push(sub)
@@ -224,7 +224,7 @@ export function submissionsAwaitingGradingTools(
 
         // Step 12: assemble items; submissions within each item sorted oldest-first.
         // Stray submissions (assignment not in toFetch) are skipped defensively.
-        const unmatchedIds: number[] = []
+        const unmatchedIds: CanvasId[] = []
         const items: AwaitingItem[] = [...byAssignment.entries()].flatMap(
           ([assignmentId, subs]) => {
             const assignment = assignmentById.get(assignmentId)

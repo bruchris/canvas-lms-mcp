@@ -3,14 +3,14 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasQuiz } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // Quiz types that the Classic Quizzes extensions API can extend. New Quizzes
 // (`quizzes.next`) use a different accommodation mechanism and are skipped.
 const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])
 
 interface QuizAccommodationResult {
-  quiz_id: number
+  quiz_id: CanvasId
   quiz_title: string
   // Status (applied/skipped/failed) is conveyed by which bucket the entry lands
   // in. skip_reason is present only on skipped[]; error only on failed[].
@@ -107,11 +107,11 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           // the representation would go blind, and coercing the response id back
           // to a number is what §4.4 forbids.
           const requested = new Set(quizIds)
-          const present = new Set(quizzes.map((q) => canvasIdFromResponse(q.id)))
+          const present = new Set(quizzes.map((q) => q.id))
           for (const id of requested) {
             if (!present.has(id)) notFound.push(id)
           }
-          quizzes = quizzes.filter((q) => requested.has(canvasIdFromResponse(q.id)))
+          quizzes = quizzes.filter((q) => requested.has(q.id))
         }
 
         // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
@@ -163,13 +163,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
               }
             }
 
-            await canvas.quizzes.setExtension(
-              courseId,
-              canvasIdFromResponse(quiz.id),
-              userId,
-              extraTime,
-              extraAttempts,
-            )
+            await canvas.quizzes.setExtension(courseId, quiz.id, userId, extraTime, extraAttempts)
             return {
               status: 'applied',
               result: {
@@ -213,7 +207,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         const classicQuizzes = quizzes.filter((q) => CLASSIC_QUIZ_TYPES.has(q.quiz_type))
 
         const results: Array<{
-          quiz_id: number
+          quiz_id: CanvasId
           quiz_title: string
           has_accommodation: boolean
           extra_time_minutes: number | null
@@ -227,13 +221,10 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           // propagates to buildHandler (isError: true) rather than being silently
           // skipped. This differs from set_student_quiz_accommodation, which
           // catches per-quiz errors so the fan-out continues.
-          const submissions = await canvas.quizzes.listSubmissions(
-            courseId,
-            canvasIdFromResponse(quiz.id),
-          )
+          const submissions = await canvas.quizzes.listSubmissions(courseId, quiz.id)
           // Canonical-string comparison: `s.user_id` is a response value and
           // `userId` a migrated input (BRU-2730 §4.1).
-          const mySubmission = submissions.find((s) => canvasIdFromResponse(s.user_id) === userId)
+          const mySubmission = submissions.find((s) => s.user_id === userId)
           const rawTime = mySubmission?.extra_time
           const rawAttempts = mySubmission?.extra_attempts
           const extraTimeMinutes = typeof rawTime === 'number' && rawTime > 0 ? rawTime : null

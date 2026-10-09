@@ -49,7 +49,7 @@ interface Result {
 //    quizzes.test.ts mocks which carry fields absent from the real interfaces. ──
 
 const defaultQuiz: CanvasQuiz = {
-  id: 1,
+  id: '1',
   title: 'Essay Quiz',
   quiz_type: 'assignment',
   points_possible: 20,
@@ -61,16 +61,16 @@ const defaultQuiz: CanvasQuiz = {
 // Q1 is an essay (manually graded); Q2 is auto-graded. listQuestions returns them
 // out of position order to exercise the position sort.
 const q1Essay: CanvasQuizQuestion = {
-  id: 10,
-  quiz_id: 1,
+  id: '10',
+  quiz_id: '1',
   position: 1,
   question_text: 'Explain photosynthesis.',
   question_type: 'essay_question',
   points_possible: 10,
 }
 const q2Mc: CanvasQuizQuestion = {
-  id: 20,
-  quiz_id: 1,
+  id: '20',
+  quiz_id: '1',
   position: 2,
   question_text: 'What is 2 + 2?',
   question_type: 'multiple_choice_question',
@@ -78,20 +78,20 @@ const q2Mc: CanvasQuizQuestion = {
 }
 
 const subComplete: CanvasQuizSubmission = {
-  id: 100,
-  quiz_id: 1,
-  user_id: 5,
-  submission_id: 500,
+  id: '100',
+  quiz_id: '1',
+  user_id: '5',
+  submission_id: '500',
   attempt: 1,
   score: null,
   kept_score: null,
   workflow_state: 'complete',
 }
 const subPendingReview: CanvasQuizSubmission = {
-  id: 101,
-  quiz_id: 1,
-  user_id: 6,
-  submission_id: 501,
+  id: '101',
+  quiz_id: '1',
+  user_id: '6',
+  submission_id: '501',
   attempt: 2,
   score: null,
   kept_score: null,
@@ -100,22 +100,22 @@ const subPendingReview: CanvasQuizSubmission = {
 
 const answersForSub100: CanvasQuizSubmissionQuestion[] = [
   {
-    id: 10,
-    quiz_id: 1,
+    id: '10',
+    quiz_id: '1',
     answer: 'Plants convert light to chemical energy.',
     correct: null,
     flagged: false,
   },
-  { id: 20, quiz_id: 1, answer: '4', correct: true, flagged: false },
+  { id: '20', quiz_id: '1', answer: '4', correct: true, flagged: false },
 ]
 const answersForSub101: CanvasQuizSubmissionQuestion[] = [
   // `correct` intentionally omitted here to exercise the `?? null` passthrough.
-  { id: 10, quiz_id: 1, answer: 'It uses sunlight.', flagged: false },
-  { id: 20, quiz_id: 1, answer: '5', correct: false, flagged: true },
+  { id: '10', quiz_id: '1', answer: 'It uses sunlight.', flagged: false },
+  { id: '20', quiz_id: '1', answer: '5', correct: false, flagged: true },
 ]
 
-const alice: CanvasUser = { id: 5, name: 'Alice Anderson' }
-const bob: CanvasUser = { id: 6, name: 'Bob Brown' }
+const alice: CanvasUser = { id: '5', name: 'Alice Anderson' }
+const bob: CanvasUser = { id: '6', name: 'Bob Brown' }
 
 interface MockOpts {
   quiz?: CanvasQuiz
@@ -192,7 +192,7 @@ describe('quizQuestionResponseTools', () => {
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      expect(result.quiz_id).toBe(1)
+      expect(result.quiz_id).toBe('1')
       expect(result.quiz_title).toBe('Essay Quiz')
       expect(result.question_count).toBe(2)
       expect(result.submissions_scanned).toBe(2)
@@ -203,7 +203,7 @@ describe('quizQuestionResponseTools', () => {
       expect(canvas.quizzes.listSubmissionQuestions).not.toHaveBeenCalled()
 
       // Sorted by position: Q1 (essay, pos 1) then Q2 (mc, pos 2).
-      expect(result.questions.map((q) => q.question_id)).toEqual([10, 20])
+      expect(result.questions.map((q) => q.question_id)).toEqual(['10', '20'])
 
       const [essay, mc] = result.questions
       expect(essay.needs_manual_grading).toBe(true)
@@ -211,11 +211,11 @@ describe('quizQuestionResponseTools', () => {
       expect(mc.needs_manual_grading).toBe(false)
 
       // Each question has one response per scanned submission, in submission order.
-      expect(essay.responses.map((r) => r.user_id)).toEqual([5, 6])
+      expect(essay.responses.map((r) => r.user_id)).toEqual(['5', '6'])
       expect(essay.responses[0]).toMatchObject({
-        user_id: 5,
+        user_id: '5',
         user_name: 'Alice Anderson',
-        quiz_submission_id: 100,
+        quiz_submission_id: '100',
         attempt: 1,
         answer: 'Plants convert light to chemical energy.',
         correct: null,
@@ -235,7 +235,7 @@ describe('quizQuestionResponseTools', () => {
 
       expect(result.question_count).toBe(1)
       expect(result.questions).toHaveLength(1)
-      expect(result.questions[0].question_id).toBe(20)
+      expect(result.questions[0].question_id).toBe('20')
       expect(result.questions[0].responses).toHaveLength(2)
     })
 
@@ -278,8 +278,8 @@ describe('quizQuestionResponseTools', () => {
     it('scans only responded submissions (excludes untaken)', async () => {
       const untaken: CanvasQuizSubmission = {
         ...subComplete,
-        id: 102,
-        user_id: 7,
+        id: '102',
+        user_id: '7',
         workflow_state: 'untaken',
       }
       const canvas = buildMockCanvas({ submissions: [subComplete, untaken] })
@@ -298,7 +298,7 @@ describe('quizQuestionResponseTools', () => {
 
       expect(result.submissions_scanned).toBe(1)
       expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith('101')
-      expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toContain(101)
+      expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toContain('101')
     })
   })
 
@@ -312,10 +312,10 @@ describe('quizQuestionResponseTools', () => {
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      expect(result.submissions_failed).toEqual([101])
+      expect(result.submissions_failed).toEqual(['101'])
       // The healthy submission's answers are still pivoted in.
-      const essay = result.questions.find((q) => q.question_id === 10)!
-      expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual([100])
+      const essay = result.questions.find((q) => q.question_id === '10')!
+      expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual(['100'])
       expect(errorSpy).toHaveBeenCalled()
       errorSpy.mockRestore()
     })
@@ -327,15 +327,15 @@ describe('quizQuestionResponseTools', () => {
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      const mc = result.questions.find((q) => q.question_id === 20)!
+      const mc = result.questions.find((q) => q.question_id === '20')!
       const bySub = new Map(mc.responses.map((r) => [r.quiz_submission_id, r.correct]))
-      expect(bySub.get(100)).toBe(true) // correct: true
-      expect(bySub.get(101)).toBe(false) // correct: false
+      expect(bySub.get('100')).toBe(true) // correct: true
+      expect(bySub.get('101')).toBe(false) // correct: false
 
-      const essay = result.questions.find((q) => q.question_id === 10)!
+      const essay = result.questions.find((q) => q.question_id === '10')!
       const essayBySub = new Map(essay.responses.map((r) => [r.quiz_submission_id, r.correct]))
-      expect(essayBySub.get(100)).toBeNull() // correct: null
-      expect(essayBySub.get(101)).toBeNull() // correct omitted -> null
+      expect(essayBySub.get('100')).toBeNull() // correct: null
+      expect(essayBySub.get('101')).toBeNull() // correct omitted -> null
     })
   })
 
@@ -385,20 +385,20 @@ describe('quizQuestionResponseTools', () => {
 
   describe('unrostered submitter', () => {
     it('sets user_name to null when the submitter is not on the roster', async () => {
-      const strayUser: CanvasQuizSubmission = { ...subComplete, id: 103, user_id: 99 }
+      const strayUser: CanvasQuizSubmission = { ...subComplete, id: '103', user_id: '99' }
       const canvas = buildMockCanvas({
         submissions: [strayUser],
         answersBySubmission: {
-          103: [{ id: 10, quiz_id: 1, answer: 'Ghost answer', flagged: false }],
+          103: [{ id: '10', quiz_id: '1', answer: 'Ghost answer', flagged: false }],
         },
         students: [alice, bob], // user 99 absent
       })
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      const essay = result.questions.find((q) => q.question_id === 10)!
+      const essay = result.questions.find((q) => q.question_id === '10')!
       expect(essay.responses).toHaveLength(1)
-      expect(essay.responses[0]).toMatchObject({ user_id: 99, user_name: null })
+      expect(essay.responses[0]).toMatchObject({ user_id: '99', user_name: null })
     })
   })
 
@@ -431,15 +431,17 @@ describe('quizQuestionResponseTools', () => {
     // GET .../quizzes/:id/questions (active questions only) never returns, while
     // GET /quiz_submissions/:id/questions answers under the generated id.
     // Source: instructure/canvas-lms@1c9f0bb, see src/tools/quiz-question-responses.ts.
-    const carol: CanvasUser = { id: 7, name: 'Carol Chen' }
-    const subCarol: CanvasQuizSubmission = { ...subComplete, id: 102, user_id: 7, attempt: 1 }
+    const carol: CanvasUser = { id: '7', name: 'Carol Chen' }
+    const subCarol: CanvasQuizSubmission = { ...subComplete, id: '102', user_id: '7', attempt: 1 }
 
     function bankQuestion(id: number, type: string, position: number): CanvasQuizQuestion {
       // As served per attempt: position is that attempt's order and
-      // points_possible is the group's question_points.
+      // points_possible is the group's question_points. `id` is stringified
+      // because a response identifier is a canonical decimal string after
+      // PR 2a (BRU-2730 §4.3) — the number was what the shorthand hid.
       return {
-        id,
-        quiz_id: 1,
+        id: String(id),
+        quiz_id: '1',
         position,
         question_text: `Bank question ${id}`,
         question_type: type,
@@ -453,16 +455,16 @@ describe('quizQuestionResponseTools', () => {
     // First-seen order (7002 before 7001) deliberately differs from id order.
     const bankAnswers: Record<number, CanvasQuizSubmissionQuestion[]> = {
       100: [
-        { id: 10, quiz_id: 1, answer: 'Alice essay', correct: null, flagged: false },
-        { id: 7002, quiz_id: 1, answer: '3', correct: true, flagged: false },
+        { id: '10', quiz_id: '1', answer: 'Alice essay', correct: null, flagged: false },
+        { id: '7002', quiz_id: '1', answer: '3', correct: true, flagged: false },
       ],
       101: [
-        { id: 10, quiz_id: 1, answer: 'Bob essay', correct: null, flagged: false },
-        { id: 7001, quiz_id: 1, answer: 'Bob bank essay', correct: null, flagged: true },
+        { id: '10', quiz_id: '1', answer: 'Bob essay', correct: null, flagged: false },
+        { id: '7001', quiz_id: '1', answer: 'Bob bank essay', correct: null, flagged: true },
       ],
       102: [
-        { id: 10, quiz_id: 1, answer: 'Carol essay', correct: null, flagged: false },
-        { id: 7002, quiz_id: 1, answer: '4', correct: false, flagged: false },
+        { id: '10', quiz_id: '1', answer: 'Carol essay', correct: null, flagged: false },
+        { id: '7002', quiz_id: '1', answer: '4', correct: false, flagged: false },
       ],
     }
     const attemptQuestions: Record<number, CanvasQuizQuestion[]> = {
@@ -488,13 +490,13 @@ describe('quizQuestionResponseTools', () => {
 
       expect(result.question_count).toBe(3)
       // Fixed questions by position first, then attempt-resolved questions by id.
-      expect(result.questions.map((q) => q.question_id)).toEqual([10, 7001, 7002])
+      expect(result.questions.map((q) => q.question_id)).toEqual(['10', '7001', '7002'])
       expect(result.unmatched_response_count).toBe(0)
       expect(result.unmatched_question_ids).toEqual([])
 
-      const essay = result.questions.find((q) => q.question_id === 7001)!
+      const essay = result.questions.find((q) => q.question_id === '7001')!
       expect(essay).toEqual({
-        question_id: 7001,
+        question_id: '7001',
         question_text: 'Bank question 7001',
         question_type: 'essay_question',
         // Bank draws are shuffled per attempt, so there is no quiz-level position.
@@ -503,9 +505,9 @@ describe('quizQuestionResponseTools', () => {
         needs_manual_grading: true,
         responses: [
           {
-            user_id: 6,
+            user_id: '6',
             user_name: 'Bob Brown',
-            quiz_submission_id: 101,
+            quiz_submission_id: '101',
             attempt: 2,
             answer: 'Bob bank essay',
             correct: null,
@@ -514,17 +516,17 @@ describe('quizQuestionResponseTools', () => {
         ],
       })
 
-      const mc = result.questions.find((q) => q.question_id === 7002)!
+      const mc = result.questions.find((q) => q.question_id === '7002')!
       expect(mc.needs_manual_grading).toBe(false)
       expect(mc.responses.map((r) => [r.quiz_submission_id, r.user_name, r.answer])).toEqual([
-        [100, 'Alice Anderson', '3'],
-        [102, 'Carol Chen', '4'],
+        ['100', 'Alice Anderson', '3'],
+        ['102', 'Carol Chen', '4'],
       ])
 
       // The fixed question keeps its listQuestions metadata and all three responses.
-      const fixed = result.questions.find((q) => q.question_id === 10)!
+      const fixed = result.questions.find((q) => q.question_id === '10')!
       expect(fixed.position).toBe(1)
-      expect(fixed.responses.map((r) => r.quiz_submission_id)).toEqual([100, 101, 102])
+      expect(fixed.responses.map((r) => r.quiz_submission_id)).toEqual(['100', '101', '102'])
     })
 
     it('looks up only the attempts needed to cover the unmatched ids', async () => {
@@ -546,8 +548,8 @@ describe('quizQuestionResponseTools', () => {
       })) as Result
 
       expect(result.question_count).toBe(1)
-      expect(result.questions.map((q) => q.question_id)).toEqual([7002])
-      expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toEqual([100, 102])
+      expect(result.questions.map((q) => q.question_id)).toEqual(['7002'])
+      expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toEqual(['100', '102'])
       expect(result.unmatched_response_count).toBe(0)
       expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledTimes(1)
       expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith('1', '1', '100', 1)
@@ -561,7 +563,7 @@ describe('quizQuestionResponseTools', () => {
         question_id: '10',
       })) as Result
 
-      expect(result.questions.map((q) => q.question_id)).toEqual([10])
+      expect(result.questions.map((q) => q.question_id)).toEqual(['10'])
       expect(result.questions[0].responses).toHaveLength(3)
       // Answers to other questions are out of scope, not unmatched.
       expect(result.unmatched_response_count).toBe(0)
@@ -580,7 +582,7 @@ describe('quizQuestionResponseTools', () => {
       const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
 
       // 7002 (answered in 100 and 102) could not be resolved; 7001 still was.
-      expect(result.questions.map((q) => q.question_id)).toEqual([10, 7001])
+      expect(result.questions.map((q) => q.question_id)).toEqual(['10', '7001'])
       expect(result.question_count).toBe(2)
       expect(result.unmatched_question_ids).toEqual(['7002'])
       expect(result.unmatched_response_count).toBe(2)
@@ -616,8 +618,8 @@ describe('quizQuestionResponseTools', () => {
         submissions: [subComplete],
         answersBySubmission: {
           100: [
-            { id: 999, quiz_id: 1, answer: 'orphan answer', flagged: false },
-            { id: 10, quiz_id: 1, answer: 'real essay answer', correct: null, flagged: false },
+            { id: '999', quiz_id: '1', answer: 'orphan answer', flagged: false },
+            { id: '10', quiz_id: '1', answer: 'real essay answer', correct: null, flagged: false },
           ],
         },
         // The attempt lookup succeeds but does not know id 999 either.
@@ -626,9 +628,9 @@ describe('quizQuestionResponseTools', () => {
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      const essay = result.questions.find((q) => q.question_id === 10)!
+      const essay = result.questions.find((q) => q.question_id === '10')!
       expect(essay.responses.map((r) => r.answer)).toEqual(['real essay answer'])
-      expect(result.questions.some((q) => q.question_id === 999)).toBe(false)
+      expect(result.questions.some((q) => q.question_id === '999')).toBe(false)
       expect(result.unmatched_question_ids).toEqual(['999'])
       expect(result.unmatched_response_count).toBe(1)
     })
@@ -654,8 +656,8 @@ describe('quizQuestionResponseTools', () => {
         submissions: [subComplete],
         answersBySubmission: {
           100: [
-            { id: 7002, quiz_id: 1, answer: 'orphan A', flagged: false },
-            { id: 999, quiz_id: 1, answer: 'orphan B', flagged: false },
+            { id: '7002', quiz_id: '1', answer: 'orphan A', flagged: false },
+            { id: '999', quiz_id: '1', answer: 'orphan B', flagged: false },
           ],
         },
         attemptQuestionsImpl: () => Promise.resolve([]),
@@ -675,20 +677,22 @@ describe('quizQuestionResponseTools', () => {
 
   describe('multiple submissions per student', () => {
     it('keeps one response row per submission when a user appears twice', async () => {
-      const attempt1: CanvasQuizSubmission = { ...subComplete, id: 100, user_id: 5, attempt: 1 }
-      const attempt2: CanvasQuizSubmission = { ...subComplete, id: 101, user_id: 5, attempt: 2 }
+      const attempt1: CanvasQuizSubmission = { ...subComplete, id: '100', user_id: '5', attempt: 1 }
+      const attempt2: CanvasQuizSubmission = { ...subComplete, id: '101', user_id: '5', attempt: 2 }
       const canvas = buildMockCanvas({
         submissions: [attempt1, attempt2],
         answersBySubmission: {
-          100: [{ id: 10, quiz_id: 1, answer: 'first attempt', correct: null, flagged: false }],
-          101: [{ id: 10, quiz_id: 1, answer: 'second attempt', correct: null, flagged: false }],
+          100: [{ id: '10', quiz_id: '1', answer: 'first attempt', correct: null, flagged: false }],
+          101: [
+            { id: '10', quiz_id: '1', answer: 'second attempt', correct: null, flagged: false },
+          ],
         },
       })
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
-      const essay = result.questions.find((q) => q.question_id === 10)!
-      expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual([100, 101])
+      const essay = result.questions.find((q) => q.question_id === '10')!
+      expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual(['100', '101'])
       expect(essay.responses.map((r) => r.attempt)).toEqual([1, 2])
       // Both rows resolve to the same student identity.
       expect(essay.responses.every((r) => r.user_name === 'Alice Anderson')).toBe(true)

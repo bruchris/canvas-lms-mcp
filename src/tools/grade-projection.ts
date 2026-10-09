@@ -353,9 +353,18 @@ export function gradeProjectionTools(
           remainingPointsPossible,
         )
 
-        // FERPA: pseudonymize only when viewing another student's data.
+        // FERPA: pseudonymize only when viewing another student's data. Viewing
+        // one's own grade (`self`) exposes no third-party PII.
+        //
+        // The test was `typeof studentId === 'number'`, which PR 1b (BRU-2827)
+        // silently made dead: `canvasIdInput()` transforms every ID input to a
+        // canonical **string**, so the guard was always false and this tool
+        // stopped pseudonymizing altogether. It survived review because the test
+        // suite calls `tool.handler(args)` directly, which bypasses Zod, so the
+        // fixture still handed the handler a runtime `number` (§18 row G). The
+        // check now tests what the comment above actually describes.
         const anonUser =
-          pseudonymizer?.isEnabled() && typeof studentId === 'number'
+          pseudonymizer?.isEnabled() && studentId !== 'self'
             ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
             : user
 

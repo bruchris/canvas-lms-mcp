@@ -9,40 +9,40 @@ function buildMockCanvas(): CanvasClient {
     assignments: {
       list: vi.fn().mockResolvedValue([
         {
-          id: 1,
+          id: '1',
           name: 'Assignment 1',
           due_at: '2026-08-01T23:59:00Z',
           points_possible: 10,
           grading_type: 'points',
           submission_types: ['online_text_entry'],
-          course_id: 10,
+          course_id: '10',
           allowed_attempts: -1,
         },
         {
-          id: 2,
+          id: '2',
           name: 'Assignment 2',
           due_at: null,
           points_possible: 20,
           grading_type: 'points',
           submission_types: ['online_upload'],
-          course_id: 10,
+          course_id: '10',
           allowed_attempts: -1,
         },
       ]),
       listOverrides: vi.fn().mockResolvedValue([
         {
-          id: 5,
-          assignment_id: 1,
+          id: '5',
+          assignment_id: '1',
           title: 'Existing Override',
-          student_ids: [42],
+          student_ids: ['42'],
           due_at: '2026-09-10T23:59:00Z',
         },
       ]),
       createOverride: vi.fn().mockResolvedValue({
-        id: 99,
-        assignment_id: 1,
+        id: '99',
+        assignment_id: '1',
         title: 'Student accommodation',
-        student_ids: [42],
+        student_ids: ['42'],
         due_at: '2026-09-15T23:59:00Z',
       }),
     },
@@ -92,10 +92,10 @@ describe('assignmentOverrideTools', () => {
       expect(listOverrides).toHaveBeenCalledWith('10', '1')
       expect(result).toEqual([
         {
-          id: 5,
-          assignment_id: 1,
+          id: '5',
+          assignment_id: '1',
           title: 'Existing Override',
-          student_ids: [42],
+          student_ids: ['42'],
           due_at: '2026-09-10T23:59:00Z',
         },
       ])
@@ -139,10 +139,10 @@ describe('assignmentOverrideTools', () => {
       const passedParams = createOverride.mock.calls[0][2] as Record<string, unknown>
       expect('title' in passedParams).toBe(false)
       expect(result).toEqual({
-        id: 99,
-        assignment_id: 1,
+        id: '99',
+        assignment_id: '1',
         title: 'Student accommodation',
-        student_ids: [42],
+        student_ids: ['42'],
         due_at: '2026-09-15T23:59:00Z',
       })
     })
@@ -248,8 +248,8 @@ describe('assignmentOverrideTools', () => {
       expect(result.applied).toHaveLength(2)
       expect(result.failed).toHaveLength(0)
       expect(result.skipped).toHaveLength(0)
-      expect(result.applied[0].assignment_id).toBe(1)
-      expect(result.applied[0].override_id).toBe(99)
+      expect(result.applied[0].assignment_id).toBe('1')
+      expect(result.applied[0].override_id).toBe('99')
       // No student identifier may leak into the output entries.
       expect('user_id' in result.applied[0]).toBe(false)
     })
@@ -289,7 +289,7 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       createOverride
-        .mockResolvedValueOnce({ id: 99, assignment_id: 1, title: 'x', student_ids: [42] })
+        .mockResolvedValueOnce({ id: '99', assignment_id: '1', title: 'x', student_ids: ['42'] })
         .mockRejectedValueOnce(
           new CanvasApiError(
             'Unprocessable Entity',
@@ -307,9 +307,9 @@ describe('assignmentOverrideTools', () => {
 
       expect(result.applied).toHaveLength(1)
       expect(result.failed).toHaveLength(1)
-      expect(result.failed[0].assignment_id).toBe(2)
+      expect(result.failed[0].assignment_id).toBe('2')
       expect(result.failed[0].error).toBe('Unprocessable Entity')
-      expect(result.applied[0].assignment_id).toBe(1)
+      expect(result.applied[0].assignment_id).toBe('1')
       // A routine CanvasApiError (e.g. an expected 422 duplicate) is recorded
       // quietly — it must NOT be logged, unlike the non-Canvas branch.
       expect(errorSpy).not.toHaveBeenCalled()
@@ -323,7 +323,7 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       createOverride
-        .mockResolvedValueOnce({ id: 99, assignment_id: 1, title: 'x', student_ids: [42] })
+        .mockResolvedValueOnce({ id: '99', assignment_id: '1', title: 'x', student_ids: ['42'] })
         .mockRejectedValueOnce(new Error('boom'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -338,7 +338,7 @@ describe('assignmentOverrideTools', () => {
       expect(errorSpy).toHaveBeenCalledTimes(1)
       expect(result.applied).toHaveLength(1)
       expect(result.failed).toHaveLength(1)
-      expect(result.failed[0].assignment_id).toBe(2)
+      expect(result.failed[0].assignment_id).toBe('2')
       expect(result.failed[0].error).toBe('boom')
       errorSpy.mockRestore()
     })
@@ -383,8 +383,8 @@ describe('assignmentOverrideTools', () => {
     it('rejects an explicit empty assignment_ids array at the schema boundary', () => {
       const def = tool(buildMockCanvas(), 'set_student_assignment_dates')
       const parsed = z.object(def.inputSchema).safeParse({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         assignment_ids: [],
         due_at: '2026-09-15T23:59:00Z',
       })

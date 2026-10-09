@@ -9,7 +9,7 @@ describe('analyticsTools', () => {
       analytics: {
         searchContentType: vi
           .fn()
-          .mockResolvedValue([{ id: 1, title: 'Intro Page', type: 'page', course_id: 10 }]),
+          .mockResolvedValue([{ id: '1', title: 'Intro Page', type: 'page', course_id: '10' }]),
         getCourseActivity: vi
           .fn()
           .mockResolvedValue([{ date: '2024-01-01', views: 30, participations: 5 }]),
@@ -22,7 +22,7 @@ describe('analyticsTools', () => {
           .mockResolvedValue([{ type: 'Submission', count: 7, unread_count: 0 }]),
         getAssignmentAnalytics: vi.fn().mockResolvedValue([
           {
-            assignment_id: 1,
+            assignment_id: '1',
             title: 'Essay',
             points_possible: 100,
             due_at: '2024-03-01T23:59:00Z',
@@ -95,10 +95,10 @@ describe('analyticsTools', () => {
     it('flattens results from multiple content types', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.analytics.searchContentType)
-        .mockResolvedValueOnce([{ id: 1, title: 'Page A', type: 'page', course_id: 10 }])
+        .mockResolvedValueOnce([{ id: '1', title: 'Page A', type: 'page', course_id: '10' }])
         .mockResolvedValueOnce([
-          { id: 2, title: 'Essay', type: 'assignment', course_id: 10 },
-          { id: 3, title: 'Report', type: 'assignment', course_id: 10 },
+          { id: '2', title: 'Essay', type: 'assignment', course_id: '10' },
+          { id: '3', title: 'Report', type: 'assignment', course_id: '10' },
         ])
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = (await tool.handler({
@@ -113,7 +113,7 @@ describe('analyticsTools', () => {
     it('returns partial results with warnings when some types fail', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.analytics.searchContentType)
-        .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
+        .mockResolvedValueOnce([{ id: '1', title: 'Intro', type: 'page', course_id: '10' }])
         .mockRejectedValueOnce(new Error('Network error'))
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = (await tool.handler({
@@ -129,7 +129,7 @@ describe('analyticsTools', () => {
     it('formats CanvasApiError failures in partial warnings', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.analytics.searchContentType)
-        .mockResolvedValueOnce([{ id: 1, title: 'Intro', type: 'page', course_id: 10 }])
+        .mockResolvedValueOnce([{ id: '1', title: 'Intro', type: 'page', course_id: '10' }])
         .mockRejectedValueOnce(
           new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/assignments'),
         )
@@ -232,7 +232,7 @@ describe('analyticsTools', () => {
         assignment_id: number
         title: string
       }
-      expect(result.assignment_id).toBe(1)
+      expect(result.assignment_id).toBe('1')
       expect(result.title).toBe('Essay')
     })
 

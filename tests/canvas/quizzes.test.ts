@@ -16,7 +16,7 @@ describe('QuizzesModule', () => {
 
   it('gets a single quiz', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({
-      id: 1,
+      id: '1',
       title: 'Midterm',
       quiz_type: 'assignment',
       points_possible: 100,
@@ -25,17 +25,17 @@ describe('QuizzesModule', () => {
       published: true,
     })
     const result = await quizzes.get(100, 1)
-    expect(result).toMatchObject({ id: 1, title: 'Midterm' })
+    expect(result).toMatchObject({ id: '1', title: 'Midterm' })
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/1')
   })
 
   it('lists quiz submissions using envelope pagination', async () => {
     vi.spyOn(client, 'paginateEnvelope').mockResolvedValueOnce([
       {
-        id: 1,
-        quiz_id: 1,
-        user_id: 10,
-        submission_id: 100,
+        id: '1',
+        quiz_id: '1',
+        user_id: '10',
+        submission_id: '100',
         attempt: 1,
         score: 85,
         kept_score: 85,
@@ -53,8 +53,8 @@ describe('QuizzesModule', () => {
   it('lists quiz questions', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
       {
-        id: 1,
-        quiz_id: 1,
+        id: '1',
+        quiz_id: '1',
         position: 1,
         question_text: 'What is 2+2?',
         question_type: 'multiple_choice_question',
@@ -68,7 +68,7 @@ describe('QuizzesModule', () => {
 
   it('gets submission answers using envelope pagination', async () => {
     vi.spyOn(client, 'paginateEnvelope').mockResolvedValueOnce([
-      { id: 1, quiz_id: 1, answer: '4', flagged: false },
+      { id: '1', quiz_id: '1', answer: '4', flagged: false },
     ])
     const result = await quizzes.getSubmissionAnswers(99)
     expect(result).toHaveLength(1)
@@ -102,8 +102,8 @@ describe('QuizzesModule', () => {
           jsonPage(
             [
               {
-                id: 7001,
-                quiz_id: 1,
+                id: '7001',
+                quiz_id: '1',
                 position: 2,
                 question_text: 'Drawn from the bank',
                 question_type: 'essay_question',
@@ -116,8 +116,8 @@ describe('QuizzesModule', () => {
         .mockResolvedValueOnce(
           jsonPage([
             {
-              id: 10,
-              quiz_id: 1,
+              id: '10',
+              quiz_id: '1',
               position: 1,
               question_text: 'Fixed question',
               question_type: 'multiple_choice_question',
@@ -128,7 +128,7 @@ describe('QuizzesModule', () => {
 
       const result = await quizzes.listSubmissionQuestions(100, 1, 55, 2)
 
-      expect(result.map((q) => q.id)).toEqual([7001, 10])
+      expect(result.map((q) => q.id)).toEqual(['7001', '10'])
       expect(result[0]).toMatchObject({ question_type: 'essay_question', points_possible: 4 })
       expect(fetchSpy).toHaveBeenCalledTimes(2)
 
@@ -160,7 +160,7 @@ describe('QuizzesModule', () => {
   it('lists quizzes in a course', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
       {
-        id: 1,
+        id: '1',
         title: 'Midterm',
         quiz_type: 'assignment',
         points_possible: 100,
@@ -302,13 +302,13 @@ describe('QuizzesModule', () => {
   })
 
   describe('setExtension', () => {
-    const mockExtension = { user_id: 42, extra_time: 20, extra_attempts: 1 }
+    const mockExtension = { user_id: '42', extra_time: 20, extra_attempts: 1 }
 
     it('posts both fields and returns the extensions', async () => {
       const spy = vi
         .spyOn(client, 'request')
         .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
-      const result = await quizzes.setExtension(100, 7, 42, 20, 1)
+      const result = await quizzes.setExtension('100', '7', '42', 20, 1)
       expect(result).toEqual([mockExtension])
       expect(spy).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/7/extensions', {
         method: 'POST',
@@ -316,7 +316,7 @@ describe('QuizzesModule', () => {
       })
       const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
       expect(body).toEqual({
-        quiz_extensions: [{ user_id: 42, extra_time: 20, extra_attempts: 1 }],
+        quiz_extensions: [{ user_id: '42', extra_time: 20, extra_attempts: 1 }],
       })
     })
 
@@ -324,25 +324,27 @@ describe('QuizzesModule', () => {
       const spy = vi
         .spyOn(client, 'request')
         .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
-      await quizzes.setExtension(100, 7, 42, 30, undefined)
+      await quizzes.setExtension('100', '7', '42', 30, undefined)
       const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
-      expect(body).toEqual({ quiz_extensions: [{ user_id: 42, extra_time: 30 }] })
+      expect(body).toEqual({ quiz_extensions: [{ user_id: '42', extra_time: 30 }] })
     })
 
     it('omits extra_time when only extra_attempts is provided', async () => {
       const spy = vi
         .spyOn(client, 'request')
         .mockResolvedValueOnce({ quiz_extensions: [mockExtension] })
-      await quizzes.setExtension(100, 7, 42, undefined, 2)
+      await quizzes.setExtension('100', '7', '42', undefined, 2)
       const body = JSON.parse(spy.mock.calls[0][1]!.body as string)
-      expect(body).toEqual({ quiz_extensions: [{ user_id: 42, extra_attempts: 2 }] })
+      expect(body).toEqual({ quiz_extensions: [{ user_id: '42', extra_attempts: 2 }] })
     })
 
     it('propagates Canvas API errors', async () => {
       vi.spyOn(client, 'request').mockRejectedValueOnce(
         new CanvasApiError('Forbidden', 403, '/api/v1/courses/100/quizzes/7/extensions'),
       )
-      await expect(quizzes.setExtension(100, 7, 42, 20, 1)).rejects.toBeInstanceOf(CanvasApiError)
+      await expect(quizzes.setExtension('100', '7', '42', 20, 1)).rejects.toBeInstanceOf(
+        CanvasApiError,
+      )
     })
   })
 })

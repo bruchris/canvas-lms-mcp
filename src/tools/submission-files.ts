@@ -14,12 +14,12 @@ const URL_EXPIRY_NOTE =
   'Attachment download URLs are time-limited (typically 1 hour). Use file_id with the download_file tool to re-fetch a fresh URL.'
 
 interface SubmissionFileEntry {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string | null
-  user_id: number
+  user_id: CanvasId
   user_name: string | null
   original_filename: string
-  file_id: number
+  file_id: CanvasId
   download_url: string
   content_type: string
   size: number

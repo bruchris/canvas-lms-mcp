@@ -2,10 +2,10 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { CanvasFile, CanvasFolder } from '../canvas/types'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 interface DuplicateFileEntry {
-  id: number
+  id: CanvasId
   folder_path: string
   created_at?: string
 }
@@ -29,9 +29,9 @@ function collectFolderSubtree(folders: CanvasFolder[], folderId: CanvasId): Set<
   const childrenByParent = new Map<CanvasId, CanvasId[]>()
   for (const folder of folders) {
     if (folder.parent_folder_id == null) continue
-    const parentKey = canvasIdFromResponse(folder.parent_folder_id)
+    const parentKey = folder.parent_folder_id
     const siblings = childrenByParent.get(parentKey) ?? []
-    siblings.push(canvasIdFromResponse(folder.id))
+    siblings.push(folder.id)
     childrenByParent.set(parentKey, siblings)
   }
 
@@ -56,8 +56,7 @@ function findDuplicateFiles(
 ): { duplicate_groups: DuplicateGroup[]; total_redundant_copies: number } {
   const folderPathById = new Map(folders.map((f) => [f.id, f.full_name]))
   const subtree = folderId == null ? null : collectFolderSubtree(folders, folderId)
-  const scoped =
-    subtree == null ? files : files.filter((f) => subtree.has(canvasIdFromResponse(f.folder_id)))
+  const scoped = subtree == null ? files : files.filter((f) => subtree.has(f.folder_id))
 
   const groups = new Map<string, CanvasFile[]>()
   for (const file of scoped) {

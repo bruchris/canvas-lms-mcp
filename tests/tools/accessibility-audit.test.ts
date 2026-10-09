@@ -35,7 +35,7 @@ function buildMockCanvas(): CanvasClient {
     pages: {
       listWithBodies: vi.fn().mockResolvedValue([
         {
-          page_id: 1,
+          page_id: '1',
           url: 'intro',
           title: 'Introduction',
           published: true,
@@ -47,10 +47,10 @@ function buildMockCanvas(): CanvasClient {
     assignments: {
       list: vi.fn().mockResolvedValue([
         {
-          id: 10,
+          id: '10',
           name: 'Essay',
           description: '<p>Write a good essay.</p>',
-          course_id: 100,
+          course_id: '100',
           due_at: null,
           points_possible: 10,
           grading_type: 'points',
@@ -58,10 +58,10 @@ function buildMockCanvas(): CanvasClient {
           allowed_attempts: -1,
         },
         {
-          id: 40,
+          id: '40',
           name: 'Final (New Quiz)',
           description: null,
-          course_id: 100,
+          course_id: '100',
           due_at: null,
           points_possible: 20,
           grading_type: 'points',
@@ -74,7 +74,7 @@ function buildMockCanvas(): CanvasClient {
     quizzes: {
       list: vi.fn().mockResolvedValue([
         {
-          id: 30,
+          id: '30',
           title: 'Midterm',
           quiz_type: 'assignment',
           description: '<p>Answer all questions.</p>',
@@ -84,7 +84,7 @@ function buildMockCanvas(): CanvasClient {
           published: true,
         },
         {
-          id: 31,
+          id: '31',
           title: 'Migrated Stub',
           quiz_type: 'quizzes.next',
           description: null,
@@ -96,8 +96,8 @@ function buildMockCanvas(): CanvasClient {
       ]),
       listQuestions: vi.fn().mockResolvedValue([
         {
-          id: 300,
-          quiz_id: 30,
+          id: '300',
+          quiz_id: '30',
           position: 1,
           question_text: '<p>Choose the correct answer.</p>',
           question_type: 'multiple_choice_question',
@@ -134,7 +134,7 @@ function buildMockCanvas(): CanvasClient {
       listAnnouncements: vi
         .fn()
         .mockResolvedValue([
-          { id: 20, title: 'Welcome', message: '<p>Welcome to the course!</p>', posted_at: '' },
+          { id: '20', title: 'Welcome', message: '<p>Welcome to the course!</p>', posted_at: '' },
         ]),
     },
   } as unknown as CanvasClient
@@ -161,16 +161,16 @@ async function runScan(
   let canvas: CanvasClient
   if (source === 'pages') {
     canvas = makeCanvas({
-      pages: [{ page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: html }],
+      pages: [{ page_id: '1', url: 'p', title: 'P', published: true, updated_at: '', body: html }],
     })
   } else if (source === 'assignments') {
     canvas = makeCanvas({
       assignments: [
         {
-          id: 10,
+          id: '10',
           name: 'A',
           description: html,
-          course_id: 100,
+          course_id: '100',
           due_at: null,
           points_possible: 10,
           grading_type: 'points',
@@ -183,7 +183,7 @@ async function runScan(
     canvas = makeCanvas({ syllabus: html })
   } else {
     canvas = makeCanvas({
-      announcements: [{ id: 20, title: 'Ann', message: html, posted_at: '' }],
+      announcements: [{ id: '20', title: 'Ann', message: html, posted_at: '' }],
     })
   }
   const [tool] = accessibilityAuditTools(canvas)
@@ -434,7 +434,9 @@ describe('accessibilityAuditTools', () => {
 
     it('32a: null page body → no findings and no error', async () => {
       const canvas = makeCanvas({
-        pages: [{ page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: null }],
+        pages: [
+          { page_id: '1', url: 'p', title: 'P', published: true, updated_at: '', body: null },
+        ],
       })
       const [tool] = accessibilityAuditTools(canvas)
       const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
@@ -445,10 +447,10 @@ describe('accessibilityAuditTools', () => {
       const canvas = makeCanvas({
         assignments: [
           {
-            id: 10,
+            id: '10',
             name: 'A',
             description: undefined,
-            course_id: 100,
+            course_id: '100',
             due_at: null,
             points_possible: 10,
             grading_type: 'points',
@@ -509,10 +511,10 @@ describe('accessibilityAuditTools', () => {
         assignments: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 40,
+              id: '40',
               name: 'Final (New Quiz)',
               description: null,
-              course_id: 100,
+              course_id: '100',
               due_at: null,
               points_possible: 20,
               grading_type: 'points',
@@ -525,7 +527,7 @@ describe('accessibilityAuditTools', () => {
         quizzes: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 30,
+              id: '30',
               title: 'Midterm',
               quiz_type: 'assignment',
               description: '<img src="midterm.jpg">',
@@ -537,8 +539,8 @@ describe('accessibilityAuditTools', () => {
           ]),
           listQuestions: vi.fn().mockResolvedValue([
             {
-              id: 300,
-              quiz_id: 30,
+              id: '300',
+              quiz_id: '30',
               position: 1,
               question_text: '<a href="#">click here</a>',
               question_type: 'multiple_choice_question',
@@ -575,7 +577,7 @@ describe('accessibilityAuditTools', () => {
       // Classic quiz description: img_missing_alt
       expect(result.findings).toContainEqual(
         expect.objectContaining({
-          location: expect.objectContaining({ type: 'quizzes', id: 30, quiz_engine: 'classic' }),
+          location: expect.objectContaining({ type: 'quizzes', id: '30', quiz_engine: 'classic' }),
           rule: 'img_missing_alt',
         }),
       )
@@ -585,9 +587,9 @@ describe('accessibilityAuditTools', () => {
         expect.objectContaining({
           location: expect.objectContaining({
             type: 'quizzes',
-            id: 30,
+            id: '30',
             quiz_engine: 'classic',
-            question_id: 300,
+            question_id: '300',
           }),
           rule: 'link_non_descriptive_text',
         }),
@@ -598,7 +600,7 @@ describe('accessibilityAuditTools', () => {
         expect.objectContaining({
           location: expect.objectContaining({
             type: 'quizzes',
-            id: 40,
+            id: '40',
             quiz_engine: 'new',
             question_id: 'item-1',
           }),
@@ -680,7 +682,7 @@ describe('accessibilityAuditTools', () => {
         id: i + 1,
         name: `New Quiz ${i + 1}`,
         description: null,
-        course_id: 100,
+        course_id: '100',
         due_at: null,
         points_possible: 10,
         grading_type: 'points',
@@ -746,7 +748,7 @@ describe('accessibilityAuditTools', () => {
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          location: expect.objectContaining({ type: 'pages', id: 1 }),
+          location: expect.objectContaining({ type: 'pages', id: '1' }),
           reason: 'oversized_content_skipped',
         }),
       )

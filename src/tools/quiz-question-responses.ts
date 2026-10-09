@@ -6,7 +6,7 @@ import type {
 } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, compareCanvasIds, canvasIdInput } from '../canvas/id'
+import { type CanvasId, compareCanvasIds, canvasIdInput } from '../canvas/id'
 
 // Classic Quiz `quiz_type` values. An allow-list (not a `!== 'quizzes.next'`
 // deny-list) so an unrecognized future quiz_type fails closed rather than being
@@ -24,9 +24,9 @@ const MANUALLY_GRADED_QUESTION_TYPES = new Set(['essay_question', 'file_upload_q
 const RESPONDED_WORKFLOW_STATES = new Set(['complete', 'pending_review'])
 
 interface QuestionResponse {
-  user_id: number
+  user_id: CanvasId
   user_name: string | null
-  quiz_submission_id: number
+  quiz_submission_id: CanvasId
   attempt: number
   answer: CanvasQuizSubmissionQuestion['answer']
   correct: boolean | null
@@ -34,7 +34,7 @@ interface QuestionResponse {
 }
 
 interface QuestionGroup {
-  question_id: number
+  question_id: CanvasId
   question_text: string
   question_type: string
   // null for a question resolved from students' attempts (a bank draw, or one
@@ -86,11 +86,10 @@ async function resolveAttemptQuestions(
   courseId: CanvasId,
   quizId: CanvasId,
   submissions: CanvasQuizSubmission[],
-  // `answersBySubmission` stays keyed by `number`: both the key and the values
-  // are response-sourced, so PR 2a migrates it. `missing` holds question ids
-  // that are compared against the migrated `question_id` input, so it is
-  // string-keyed here (BRU-2730 §4.1).
-  answersBySubmission: Map<number, CanvasQuizSubmissionQuestion[]>,
+  // Both `answersBySubmission` and `missing` are now `CanvasId`-keyed: PR 2a
+  // normalized the response side, so a response-sourced id and an
+  // input-sourced one are the same representation (BRU-2730 §4.1).
+  answersBySubmission: Map<CanvasId, CanvasQuizSubmissionQuestion[]>,
   missing: ReadonlySet<CanvasId>,
 ): Promise<CanvasQuizQuestion[]> {
   const uncovered = new Set(missing)
@@ -100,9 +99,7 @@ async function resolveAttemptQuestions(
     let bestCount = 0
     for (const submission of submissions) {
       const answers = answersBySubmission.get(submission.id) ?? []
-      const count = answers.filter((answer) =>
-        uncovered.has(canvasIdFromResponse(answer.id)),
-      ).length
+      const count = answers.filter((answer) => uncovered.has(answer.id)).length
       if (count > bestCount) {
         best = submission
         bestCount = count
@@ -110,19 +107,11 @@ async function resolveAttemptQuestions(
     }
     if (!best) break // unreachable: every missing id came from some submission's answers
     picked.push(best)
-    for (const answer of answersBySubmission.get(best.id) ?? [])
-      uncovered.delete(canvasIdFromResponse(answer.id))
+    for (const answer of answersBySubmission.get(best.id) ?? []) uncovered.delete(answer.id)
   }
 
   const settled = await Promise.allSettled(
-    picked.map((s) =>
-      canvas.quizzes.listSubmissionQuestions(
-        courseId,
-        quizId,
-        canvasIdFromResponse(s.id),
-        s.attempt,
-      ),
-    ),
+    picked.map((s) => canvas.quizzes.listSubmissionQuestions(courseId, quizId, s.id, s.attempt)),
   )
   const resolved = new Map<CanvasId, CanvasQuizQuestion>()
   settled.forEach((outcome, i) => {
@@ -130,7 +119,7 @@ async function resolveAttemptQuestions(
     if (!submission) return // index-aligned with `settled`; guard for the type checker
     if (outcome.status === 'fulfilled') {
       for (const question of outcome.value) {
-        const key = canvasIdFromResponse(question.id)
+        const key = question.id
         if (missing.has(key) && !resolved.has(key)) {
           resolved.set(key, question)
         }
@@ -205,7 +194,7 @@ export function quizQuestionResponseTools(
         // unknown question_id is only rejected once the attempts have been scanned.
         let questions = await canvas.quizzes.listQuestions(courseId, quizId)
         if (questionId !== undefined) {
-          questions = questions.filter((q) => canvasIdFromResponse(q.id) === questionId)
+          questions = questions.filter((q) => q.id === questionId)
         }
         questions = [...questions].sort((a, b) => a.position - b.position)
 
@@ -228,11 +217,11 @@ export function quizQuestionResponseTools(
         // One answer-fetch per submission, tolerating individual failures: a single
         // broken submission must not blank out the whole grade-by-question view.
         const settled = await Promise.allSettled(
-          submissions.map((s) => canvas.quizzes.getSubmissionAnswers(canvasIdFromResponse(s.id))),
+          submissions.map((s) => canvas.quizzes.getSubmissionAnswers(s.id)),
         )
 
-        const answersBySubmission = new Map<number, CanvasQuizSubmissionQuestion[]>()
-        const submissionsFailed: number[] = []
+        const answersBySubmission = new Map<CanvasId, CanvasQuizSubmissionQuestion[]>()
+        const submissionsFailed: CanvasId[] = []
         settled.forEach((outcome, i) => {
           const submission = submissions[i]
           if (!submission) return // index-aligned with `settled`; guard for the type checker
@@ -252,7 +241,7 @@ export function quizQuestionResponseTools(
         // input — is looked up in it below (BRU-2730 §4.1: no `Number(id)` to
         // make a numeric key fit).
         const groups = new Map<CanvasId, QuestionGroup>(
-          questions.map((q) => [canvasIdFromResponse(q.id), toGroup(q, q.position)]),
+          questions.map((q) => [q.id, toGroup(q, q.position)]),
         )
         const inScope = (id: CanvasId) => questionId === undefined || id === questionId
 
@@ -261,7 +250,7 @@ export function quizQuestionResponseTools(
         const missing = new Set<CanvasId>()
         for (const answers of answersBySubmission.values()) {
           for (const answer of answers) {
-            const key = canvasIdFromResponse(answer.id)
+            const key = answer.id
             if (inScope(key) && !groups.has(key)) missing.add(key)
           }
         }
@@ -276,10 +265,11 @@ export function quizQuestionResponseTools(
           )
           // After the fixed questions, in id order: a bank draw's per-attempt
           // position differs between students, so it is not a stable sort key.
-          // `a.id - b.id` is still arithmetic on two response-sourced numbers,
-          // which PR 2a revisits; the map key is the canonical string.
-          for (const question of resolved.sort((a, b) => a.id - b.id)) {
-            groups.set(canvasIdFromResponse(question.id), toGroup(question, null))
+          // `compareCanvasIds` rather than `a.id - b.id`: the ids are canonical
+          // strings now, and the subtraction would round both operands above
+          // 2**53 and order two distinct ids as equal (§4.4).
+          for (const question of resolved.sort((a, b) => compareCanvasIds(a.id, b.id))) {
+            groups.set(question.id, toGroup(question, null))
           }
         }
 
@@ -301,7 +291,7 @@ export function quizQuestionResponseTools(
           const answers = answersBySubmission.get(submission.id)
           if (!answers) continue
           for (const answer of answers) {
-            const answerKey = canvasIdFromResponse(answer.id)
+            const answerKey = answer.id
             if (!inScope(answerKey)) continue // another question, excluded by question_id
             const group = groups.get(answerKey)
             if (!group) {

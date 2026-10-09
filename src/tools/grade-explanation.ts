@@ -15,7 +15,7 @@ import {
 import type { GroupModeResult } from './grade-engine'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // ── Output assembly ──────────────────────────────────────────────────────────
 
@@ -213,7 +213,7 @@ export function gradeExplanationTools(
         if (groupFilter !== undefined) {
           // Canonical-string comparison: `g.id` is a response value, `groupFilter`
           // a migrated input (BRU-2730 §4.1).
-          selectedGroups = groups.filter((g) => canvasIdFromResponse(g.id) === groupFilter)
+          selectedGroups = groups.filter((g) => g.id === groupFilter)
           const matched = selectedGroups[0]
           if (matched === undefined) {
             caveats.push(`Assignment group ${groupFilter} was not found in this course.`)
@@ -297,11 +297,19 @@ export function gradeExplanationTools(
         }
 
         // FERPA: pseudonymize only when viewing another student's data. Viewing
-        // one's own grade (self) exposes no third-party PII. Pass the already-
-        // fetched enrollments so role classification uses real enrollment types
-        // (a staff member fetched by id is correctly left un-pseudonymized).
+        // one's own grade (`self`) exposes no third-party PII.
+        //
+        // The test was `typeof studentId === 'number'`, which PR 1b (BRU-2827)
+        // silently made dead: `canvasIdInput()` transforms every ID input to a
+        // canonical **string**, so the guard was always false and this tool
+        // stopped pseudonymizing altogether. It survived review because the test
+        // suite calls `tool.handler(args)` directly, which bypasses Zod, so the
+        // fixture still handed the handler a runtime `number` (§18 row G). The
+        // check now tests what the comment above actually describes.
+        // Enrollments are passed through so role classification uses real
+        // enrollment types (a staff member fetched by id stays un-pseudonymized).
         const anonUser =
-          pseudonymizer?.isEnabled() && typeof studentId === 'number'
+          pseudonymizer?.isEnabled() && studentId !== 'self'
             ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
             : user
 

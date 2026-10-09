@@ -10,6 +10,7 @@
 // See `docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md` for the
 // full threat model and rationale.
 
+import type { CanvasId } from '../canvas/id'
 import type {
   CanvasAppointmentGroup,
   CanvasCalendarEvent,
@@ -330,7 +331,7 @@ export class Pseudonymizer {
   // --- Internals --------------------------------------------------------------
 
   private async anonymizeCalendarEventUser(
-    apptGroupId: number,
+    apptGroupId: CanvasId,
     event: CanvasCalendarEvent,
   ): Promise<CanvasCalendarEvent> {
     if (!event.user) return event
@@ -346,7 +347,7 @@ export class Pseudonymizer {
   private async assignPseudonym(
     host: string,
     courseId: number | string,
-    userId: number,
+    userId: CanvasId,
   ): Promise<StudentEntry> {
     const key = `${host}/${courseId}`
     return this.withLock(key, async () => {
@@ -382,7 +383,7 @@ export class Pseudonymizer {
     })
   }
 
-  private async assignConversationPseudonym(host: string, userId: number): Promise<string> {
+  private async assignConversationPseudonym(host: string, userId: CanvasId): Promise<string> {
     const key = `${host}/_conversations`
     return this.withLock(key, async () => {
       const map = (await this.loadConversationMap(host)) ?? emptyConversationMap(host)

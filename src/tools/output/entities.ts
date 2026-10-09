@@ -45,7 +45,15 @@ type Expect<T extends true> = T
 /** `CanvasPage` — `src/canvas/types.ts`. Canvas also returns `front_page`, */
 /** `hide_from_students`, `last_edited_by` and more; the looseness is the point. */
 export const canvasPageSchema = z.looseObject({
-  page_id: z.number(),
+  // A union rather than `z.string()`, per BRU-2730 §7.2. PR 2a normalizes every
+  // response identifier to a canonical decimal string, so the value a handler
+  // emits today is always a string — but a union is non-breaking for a client
+  // validator written against the numeric shape, and narrowing to `z.string()`
+  // is Phase 3's decision (open question 1). The compile-time bridge below is
+  // what forced this edit: widening `CanvasPage.page_id` to `CanvasId` makes
+  // `_PageTypesAreAccepted` fail, which is the mechanism §7.2 relies on instead
+  // of a checklist.
+  page_id: z.union([z.number(), z.string()]),
   url: z.string(),
   title: z.string(),
   // Absent on the paginated list endpoint, which returns stubs without a body.

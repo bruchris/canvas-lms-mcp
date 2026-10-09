@@ -4,7 +4,7 @@ import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
 import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
 type ContentSource = (typeof CONTENT_SOURCES)[number]
@@ -385,7 +385,7 @@ async function scanQuizzesAccessibility(
         quiz_engine: 'classic',
       }
       const findings = scanContentAccessibility(quiz.description, location, warnings)
-      const questions = await canvas.quizzes.listQuestions(courseId, canvasIdFromResponse(quiz.id))
+      const questions = await canvas.quizzes.listQuestions(courseId, quiz.id)
       for (const question of questions) {
         findings.push(
           ...scanContentAccessibility(
@@ -410,7 +410,7 @@ async function scanQuizzesAccessibility(
         title: assignment.name,
         quiz_engine: 'new',
       }
-      const items = await canvas.newQuizzes.listItems(courseId, canvasIdFromResponse(assignment.id))
+      const items = await canvas.newQuizzes.listItems(courseId, assignment.id)
       return items.flatMap((item) =>
         scanContentAccessibility(
           item.entry?.item_body,

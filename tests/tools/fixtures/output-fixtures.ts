@@ -24,7 +24,7 @@ import { registerAllTools } from '../../../src/tools'
  * than a `Z` suffix, which is the form `z.iso.datetime()` would have rejected.
  */
 export const driftedPage = {
-  page_id: 1,
+  page_id: '1',
   url: 'welcome-page',
   title: 'Welcome Page',
   body: '<p>Welcome!</p>',
@@ -34,7 +34,7 @@ export const driftedPage = {
   editing_roles: 'teachers',
   front_page: false,
   hide_from_students: false,
-  last_edited_by: { id: 7, display_name: 'A Teacher' },
+  last_edited_by: { id: '7', display_name: 'A Teacher' },
 }
 
 export type PagesOverrides = Partial<
@@ -52,7 +52,7 @@ export function buildPagesCanvas(overrides: PagesOverrides = {}): CanvasClient {
       ...overrides,
     },
     modules: {
-      get: vi.fn().mockResolvedValue({ id: 9, name: 'Module One', unlock_at: null }),
+      get: vi.fn().mockResolvedValue({ id: '9', name: 'Module One', unlock_at: null }),
     },
   } as unknown as CanvasClient
 }
@@ -102,7 +102,7 @@ export interface OutputFixture {
 
 export const OUTPUT_FIXTURES: Record<string, OutputFixture> = {
   list_pages: {
-    args: { course_id: 1 },
+    args: { course_id: '1' },
     buildCanvas: () => buildPagesCanvas(),
     envelopeKey: 'pages',
     readUndeclared: (structured) =>
@@ -110,28 +110,28 @@ export const OUTPUT_FIXTURES: Record<string, OutputFixture> = {
     pseudonymization: null,
   },
   get_page: {
-    args: { course_id: 1, page_url: 'welcome-page' },
+    args: { course_id: '1', page_url: 'welcome-page' },
     buildCanvas: () => buildPagesCanvas(),
     envelopeKey: null,
     readUndeclared: (structured) => structured.hide_from_students,
     pseudonymization: null,
   },
   create_page: {
-    args: { course_id: 1, title: 'New Page' },
+    args: { course_id: '1', title: 'New Page' },
     buildCanvas: () => buildPagesCanvas(),
     envelopeKey: null,
     readUndeclared: (structured) => structured.hide_from_students,
     pseudonymization: null,
   },
   update_page: {
-    args: { course_id: 1, page_url: 'welcome-page', title: 'Renamed' },
+    args: { course_id: '1', page_url: 'welcome-page', title: 'Renamed' },
     buildCanvas: () => buildPagesCanvas(),
     envelopeKey: null,
     readUndeclared: (structured) => structured.hide_from_students,
     pseudonymization: null,
   },
   delete_page: {
-    args: { course_id: 1, page_url: 'welcome-page' },
+    args: { course_id: '1', page_url: 'welcome-page' },
     buildCanvas: () => buildPagesCanvas(),
     envelopeKey: null,
     // Authored by the handler, not by Canvas — strict on purpose, so there is

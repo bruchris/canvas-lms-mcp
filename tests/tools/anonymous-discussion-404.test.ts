@@ -14,7 +14,7 @@ import { formatError } from '../../src/tools/errors'
 type ListedTopic = CanvasDiscussionTopic & { anonymous_state?: string | null }
 
 const baseTopic: ListedTopic = {
-  id: 7,
+  id: '7',
   title: 'Week 1 Discussion',
   message: '<p>Discuss the readings</p>',
   posted_at: '2026-04-01T00:00:00Z',
@@ -119,7 +119,7 @@ describe('get_discussion — anonymous topic 404 classification', () => {
   it('preserves ordinary not-found semantics when the topic is absent from the list', async () => {
     const canvas = buildCanvas({
       get: CANVAS_ANONYMOUS_404,
-      list: [{ ...baseTopic, id: 99, anonymous_state: 'full_anonymity' }],
+      list: [{ ...baseTopic, id: '99', anonymous_state: 'full_anonymity' }],
     })
 
     const text = await toolErrorText(canvas)

@@ -18,17 +18,17 @@ export interface CanvasErrorResponse {
 // --- Courses ---
 
 export interface CanvasCourse {
-  id: number
+  id: CanvasId
   name: string
   course_code: string
   workflow_state: string
-  enrollment_term_id?: number
+  enrollment_term_id?: CanvasId
   total_students?: number
   syllabus_body?: string
   term?: CanvasTerm
   enrollments?: CanvasEnrollment[]
-  account_id?: number
-  root_account_id?: number
+  account_id?: CanvasId
+  root_account_id?: CanvasId
   is_public?: boolean
   is_public_to_auth_users?: boolean
   public_syllabus?: boolean
@@ -58,7 +58,7 @@ export interface CanvasCourse {
   permissions?: Record<string, boolean>
   sections?: CanvasCourseSection[]
   teachers?: Array<{
-    id: number
+    id: CanvasId
     anonymous_id?: string
     display_name: string
     avatar_image_url?: string | null
@@ -70,17 +70,17 @@ export interface CanvasCourse {
   banner_image_download_url?: string | null
   concluded?: boolean
   post_manually?: boolean
-  grading_standard_id?: number | null
+  grading_standard_id?: CanvasId | null
 }
 
 export interface CanvasCourseSection {
-  id: number
+  id: CanvasId
   name: string
   start_at?: string | null
   end_at?: string | null
   created_at?: string
   restrict_enrollments_to_section_dates?: boolean
-  nonxlist_course_id?: number | null
+  nonxlist_course_id?: CanvasId | null
   sis_section_id?: string | null
   sis_course_id?: string | null
 }
@@ -93,7 +93,7 @@ export interface CanvasCourseProgress {
 }
 
 export interface CanvasTerm {
-  id: number
+  id: CanvasId
   name: string
   start_at: string | null
   end_at: string | null
@@ -107,18 +107,18 @@ export interface CanvasEnrollmentGrades {
 }
 
 export interface CanvasEnrollment {
-  id: number
-  course_id: number
-  user_id: number
+  id: CanvasId
+  course_id: CanvasId
+  user_id: CanvasId
   type: string
   role: string
-  role_id?: number
+  role_id?: CanvasId
   enrollment_state: string
   created_at?: string
   updated_at?: string
   start_at?: string | null
   end_at?: string | null
-  course_section_id?: number
+  course_section_id?: CanvasId
   last_activity_at?: string | null
   last_attended_at?: string | null
   total_activity_time?: number
@@ -134,7 +134,7 @@ export interface CanvasEnrollment {
   can_be_removed?: boolean
   avatar_url?: string
   observed_users?: CanvasUser[]
-  group_ids?: number[]
+  group_ids?: CanvasId[]
   uuid?: string
 }
 
@@ -163,7 +163,7 @@ export interface UpdateCourseParams {
 // --- Assignments ---
 
 export interface CanvasAssignment {
-  id: number
+  id: CanvasId
   name: string
   description: string | null
   due_at: string | null
@@ -172,12 +172,12 @@ export interface CanvasAssignment {
   points_possible: number
   grading_type: string
   submission_types: string[]
-  course_id: number
-  rubric_settings?: { id: number }
-  group_category_id?: number | null
-  quiz_id?: number | null
+  course_id: CanvasId
+  rubric_settings?: { id: CanvasId }
+  group_category_id?: CanvasId | null
+  quiz_id?: CanvasId | null
   allowed_attempts: number
-  assignment_group_id?: number
+  assignment_group_id?: CanvasId
   position?: number
   muted?: boolean
   published?: boolean
@@ -198,7 +198,7 @@ export interface CanvasAssignment {
     median?: number
     lower_q?: number
   }
-  assignment_visibility?: number[]
+  assignment_visibility?: CanvasId[]
   is_quiz_assignment?: boolean
   is_quiz_lti_assignment?: boolean // true when backed by the New Quizzes (Quizzes.Next) LTI tool
   in_closed_grading_period?: boolean
@@ -208,7 +208,7 @@ export interface CanvasAssignment {
 }
 
 export interface CanvasAssignmentDate {
-  id?: number
+  id?: CanvasId
   base?: boolean
   title?: string
   due_at: string | null
@@ -217,21 +217,21 @@ export interface CanvasAssignmentDate {
 }
 
 export interface CanvasAssignmentOverride {
-  id: number
-  assignment_id: number
+  id: CanvasId
+  assignment_id: CanvasId
   title: string
   due_at?: string | null
   unlock_at?: string | null
   lock_at?: string | null
   all_day?: boolean
   all_day_date?: string | null
-  student_ids?: number[]
-  group_id?: number
-  course_section_id?: number
+  student_ids?: CanvasId[]
+  group_id?: CanvasId
+  course_section_id?: CanvasId
 }
 
 export interface CanvasAssignmentGroup {
-  id: number
+  id: CanvasId
   name: string
   position: number
   group_weight: number
@@ -240,14 +240,14 @@ export interface CanvasAssignmentGroup {
   rules?: {
     drop_lowest?: number
     drop_highest?: number
-    never_drop?: number[]
+    never_drop?: CanvasId[]
   }
   assignments?: CanvasAssignment[]
   any_assignment_in_closed_grading_period?: boolean
 }
 
 export interface CanvasUpcomingEvent {
-  id: number
+  id: CanvasId
   title: string
   type: string
   workflow_state?: string
@@ -262,10 +262,10 @@ export interface CanvasUpcomingEvent {
 // --- Submissions ---
 
 export interface CanvasSubmission {
-  id: number
-  assignment_id: number
-  user_id: number
-  grader_id?: number | null
+  id: CanvasId
+  assignment_id: CanvasId
+  user_id: CanvasId
+  grader_id?: CanvasId | null
   submitted_at: string | null
   graded_at?: string | null
   posted_at?: string | null
@@ -289,7 +289,7 @@ export interface CanvasSubmission {
   preview_url?: string
   html_url?: string
   read_status?: 'read' | 'unread'
-  custom_grade_status_id?: number | null
+  custom_grade_status_id?: CanvasId | null
   attachments?: CanvasAttachment[]
   submission_comments?: CanvasSubmissionComment[]
   submission_history?: CanvasSubmission[]
@@ -304,7 +304,7 @@ export interface CanvasSubmission {
 }
 
 export interface CanvasAttachment {
-  id: number
+  id: CanvasId
   filename: string
   display_name: string
   url: string
@@ -313,17 +313,17 @@ export interface CanvasAttachment {
 }
 
 export interface CanvasSubmissionComment {
-  id: number
-  author_id: number
+  id: CanvasId
+  author_id: CanvasId
   author_name: string
   comment: string
   created_at: string
 }
 
 export interface CanvasGradebookHistoryGrader {
-  id: number
+  id: CanvasId
   name: string
-  assignments: number[]
+  assignments: CanvasId[]
 }
 
 export interface CanvasGradebookHistoryDay {
@@ -339,7 +339,7 @@ export interface CanvasGradebookHistorySubmissionVersion extends CanvasSubmissio
   grade_matches_current_submission?: boolean
   graded_at?: string | null
   grader?: string | null
-  grader_id?: number | null
+  grader_id?: CanvasId | null
   new_grade?: string | null
   new_graded_at?: string | null
   new_grader?: string | null
@@ -351,14 +351,14 @@ export interface CanvasGradebookHistorySubmissionVersion extends CanvasSubmissio
 }
 
 export interface CanvasGradebookHistorySubmission {
-  submission_id: number
+  submission_id: CanvasId
   versions: CanvasGradebookHistorySubmissionVersion[] | null
 }
 
 // --- Rubrics ---
 
 export interface CanvasRubric {
-  id: number
+  id: CanvasId
   title: string
   points_possible: number
   data: CanvasRubricCriterion[]
@@ -378,8 +378,8 @@ export interface CanvasRubricRating {
 }
 
 export interface CanvasRubricAssessment {
-  id: number
-  rubric_id: number
+  id: CanvasId
+  rubric_id: CanvasId
   score: number
   data: Array<{
     criterion_id: string
@@ -391,7 +391,7 @@ export interface CanvasRubricAssessment {
 // --- Quizzes ---
 
 export interface CanvasQuiz {
-  id: number
+  id: CanvasId
   title: string
   quiz_type: string
   description?: string | null // HTML shown above the quiz's questions
@@ -403,10 +403,10 @@ export interface CanvasQuiz {
 }
 
 export interface CanvasQuizSubmission {
-  id: number
-  quiz_id: number
-  user_id: number
-  submission_id: number
+  id: CanvasId
+  quiz_id: CanvasId
+  user_id: CanvasId
+  submission_id: CanvasId
   attempt: number
   score: number | null
   kept_score: number | null
@@ -419,18 +419,18 @@ export interface CanvasQuizSubmission {
 }
 
 export interface CanvasQuizQuestion {
-  id: number
-  quiz_id: number
+  id: CanvasId
+  quiz_id: CanvasId
   position: number
   question_text: string
   question_type: string
   points_possible: number
-  answers?: Array<{ id: number; text: string; weight: number }>
+  answers?: Array<{ id: CanvasId; text: string; weight: number }>
 }
 
 export interface CanvasQuizSubmissionQuestion {
-  id: number
-  quiz_id: number
+  id: CanvasId
+  quiz_id: CanvasId
   // Widened from `string | number | null`: matching / multiple-answer question
   // types return arrays or keyed objects, not a plain scalar. Still backward
   // compatible — the scalar members remain valid.
@@ -444,7 +444,7 @@ export interface CanvasQuizSubmissionQuestion {
 }
 
 export interface CanvasQuizExtension {
-  user_id: number
+  user_id: CanvasId
   // Canvas field name (minutes); tool output renames this to extra_time_minutes.
   extra_time: number | null
   extra_attempts: number | null
@@ -473,22 +473,22 @@ export interface CanvasQuizSubmissionEventsResponse {
 // --- Files ---
 
 export interface CanvasFile {
-  id: number
+  id: CanvasId
   filename?: string
   display_name: string
   content_type: string
   url: string
   size: number
-  folder_id: number
+  folder_id: CanvasId
   created_at?: string
   updated_at?: string
 }
 
 export interface CanvasFolder {
-  id: number
+  id: CanvasId
   name: string
   full_name: string
-  parent_folder_id: number | null
+  parent_folder_id: CanvasId | null
   created_at?: string
   files_count?: number
   folders_count?: number
@@ -511,7 +511,7 @@ export interface DownloadedFile {
 // --- Users ---
 
 export interface CanvasUser {
-  id: number
+  id: CanvasId
   name: string
   sortable_name?: string
   short_name?: string
@@ -535,7 +535,7 @@ export interface CanvasUser {
 }
 
 export interface CanvasUserProfile {
-  id: number
+  id: CanvasId
   name: string
   primary_email: string
   login_id: string
@@ -547,16 +547,16 @@ export interface CanvasUserProfile {
 // --- Groups ---
 
 export interface CanvasGroup {
-  id: number
+  id: CanvasId
   name: string
-  group_category_id: number
+  group_category_id: CanvasId
   members_count: number
 }
 
 // --- Modules ---
 
 export interface CanvasModule {
-  id: number
+  id: CanvasId
   name: string
   position: number
   items_count: number
@@ -567,12 +567,12 @@ export interface CanvasModule {
 }
 
 export interface CanvasModuleItem {
-  id: number
-  module_id: number
+  id: CanvasId
+  module_id: CanvasId
   title: string
   position: number
   type: string
-  content_id?: number
+  content_id?: CanvasId
   html_url?: string
   page_url?: string
   indent?: number
@@ -582,7 +582,7 @@ export interface CanvasModuleItem {
 }
 
 export interface CanvasCourseStructureModule {
-  id: number
+  id: CanvasId
   name: string
   position: number
   state: string
@@ -615,7 +615,7 @@ export interface CanvasCourseStructure {
 // --- Pages ---
 
 export interface CanvasPage {
-  page_id: number
+  page_id: CanvasId
   url: string
   title: string
   body?: string
@@ -628,7 +628,7 @@ export interface CanvasPage {
 // --- Discussions ---
 
 export interface CanvasDiscussionTopic {
-  id: number
+  id: CanvasId
   title: string
   message: string | null
   posted_at: string
@@ -644,14 +644,14 @@ export interface CanvasDiscussionTopic {
 }
 
 export interface CanvasDiscussionEntry {
-  id: number
-  user_id: number
+  id: CanvasId
+  user_id: CanvasId
   message: string
   created_at: string
 }
 
 export interface CanvasAnnouncement {
-  id: number
+  id: CanvasId
   title: string
   message: string
   posted_at: string
@@ -679,7 +679,7 @@ export interface UpdateDiscussionParams {
 // --- Calendar ---
 
 export interface CanvasCalendarEvent {
-  id: number
+  id: CanvasId
   title: string
   description?: string | null
   start_at: string
@@ -698,7 +698,7 @@ export interface CanvasCalendarEvent {
 // --- Appointment Groups ---
 
 export interface CanvasAppointmentGroup {
-  id: number
+  id: CanvasId
   title: string
   context_codes: string[]
   sub_context_codes?: string[]
@@ -711,7 +711,7 @@ export interface CanvasAppointmentGroup {
   location_name?: string | null
   location_address?: string | null
   participant_count?: number
-  reserved_times?: Array<{ id: number; start_at: string; end_at: string }>
+  reserved_times?: Array<{ id: CanvasId; start_at: string; end_at: string }>
   appointment_count?: number
   appointments?: CanvasCalendarEvent[]
   participant_type?: string
@@ -724,19 +724,19 @@ export interface CanvasAppointmentGroup {
 // --- Conversations ---
 
 export interface CanvasConversation {
-  id: number
+  id: CanvasId
   subject: string
   last_message: string
   last_message_at: string
   message_count: number
-  participants: Array<{ id: number; name: string }>
+  participants: Array<{ id: CanvasId; name: string }>
 }
 
 export interface CanvasConversationMessage {
-  id: number
+  id: CanvasId
   created_at: string
   body: string
-  author_id: number
+  author_id: CanvasId
   generated: boolean
   media_comment?: { media_id: string; media_type: string; url: string }
   attachments?: Pick<CanvasAttachment, 'id' | 'filename' | 'url'>[]
@@ -762,9 +762,9 @@ export interface CanvasOutcomeRating {
 }
 
 export interface CanvasOutcome {
-  id: number
+  id: CanvasId
   url: string
-  context_id: number | null
+  context_id: CanvasId | null
   context_type: 'Account' | 'Course' | 'Global' | (string & {})
   title: string
   display_name?: string | null
@@ -778,9 +778,9 @@ export interface CanvasOutcome {
 }
 
 export interface CanvasOutcomeGroup {
-  id: number
+  id: CanvasId
   url: string
-  context_id: number | null
+  context_id: CanvasId | null
   context_type: 'Account' | 'Course' | 'Global' | (string & {})
   title: string
   description?: string | null
@@ -791,9 +791,9 @@ export interface CanvasOutcomeGroup {
 }
 
 export interface CanvasOutcomeLink {
-  id: number | string
+  id: CanvasId
   url?: string
-  context_id?: number | null
+  context_id?: CanvasId | null
   context_type?: 'Account' | 'Course' | 'Global' | (string & {})
   outcome_group?: CanvasOutcomeGroup | null
   outcome?: CanvasOutcome | null
@@ -801,22 +801,22 @@ export interface CanvasOutcomeLink {
 }
 
 export interface CanvasOutcomeAlignment {
-  id: number
-  assignment_id: number | null
-  assessment_id: number | null
+  id: CanvasId
+  assignment_id: CanvasId | null
+  assessment_id: CanvasId | null
   submission_types?: string | null
   url?: string | null
   title: string
 }
 
 export interface CanvasOutcomeResult {
-  id: number
+  id: CanvasId
   score: number | null
   submitted_or_assessed_at: string | null
   links: {
-    user: string | number
-    learning_outcome: string | number
-    alignment: string | number
+    user: CanvasId
+    learning_outcome: CanvasId
+    alignment: CanvasId
   }
   percent: number | null
 }
@@ -835,7 +835,7 @@ export interface CanvasOutcomeRollupScore {
   score: number | null
   count: number
   links: {
-    outcome: string | number
+    outcome: CanvasId
   }
 }
 
@@ -843,9 +843,9 @@ export interface CanvasOutcomeRollup {
   scores: CanvasOutcomeRollupScore[] | null
   name: string
   links: {
-    course?: number
-    user?: number
-    section?: number
+    course?: CanvasId
+    user?: CanvasId
+    section?: CanvasId
   }
 }
 
@@ -856,7 +856,7 @@ export interface CanvasOutcomeRollupsResponse {
     outcomes?: CanvasOutcome[]
     outcome_groups?: CanvasOutcomeGroup[]
     courses?: CanvasCourse[]
-    sections?: Array<{ id: number; name: string }>
+    sections?: Array<{ id: CanvasId; name: string }>
   }
 }
 
@@ -882,7 +882,7 @@ export interface CanvasOutcomeMasteryDistributionResponse {
 // --- Accounts ---
 
 export interface CanvasAccountNotification {
-  id: number
+  id: CanvasId
   subject: string
   message: string
   start_at: string
@@ -891,10 +891,10 @@ export interface CanvasAccountNotification {
 }
 
 export interface CanvasAccount {
-  id: number
+  id: CanvasId
   name: string
-  parent_account_id: number | null
-  root_account_id: number | null
+  parent_account_id: CanvasId | null
+  root_account_id: CanvasId | null
   uuid: string
   default_storage_quota_mb: number
   default_user_storage_quota_mb: number
@@ -907,7 +907,7 @@ export interface CanvasAccountReport {
   title: string
   parameters: Record<string, { required?: boolean; description?: string }> | null
   last_run: {
-    id: number
+    id: CanvasId
     report: string
     status: 'created' | 'running' | 'complete' | 'error'
     created_at: string
@@ -927,10 +927,10 @@ export interface CanvasGradingSchemeEntry {
 export type CanvasGradingStandardContextType = 'Course' | 'Account'
 
 export interface CanvasGradingStandard {
-  id: number
+  id: CanvasId
   title: string
   context_type: CanvasGradingStandardContextType
-  context_id: number
+  context_id: CanvasId
   grading_scheme: CanvasGradingSchemeEntry[]
 }
 
@@ -944,8 +944,8 @@ export interface CanvasGradingStandard {
  * policy saved returns 404.
  */
 export interface CanvasLatePolicy {
-  id?: number
-  course_id?: number
+  id?: CanvasId
+  course_id?: CanvasId
   late_submission_deduction_enabled: boolean
   /** Percent deducted per interval (0–100; used as-is, no normalization). */
   late_submission_deduction: number
@@ -1013,7 +1013,7 @@ export interface CanvasActivityStreamItem {
 }
 
 export interface CanvasStudentSummary {
-  id: number
+  id: CanvasId
   page_views: number
   max_page_views?: number
   page_views_level?: number
@@ -1044,7 +1044,7 @@ export interface CourseSearchResult {
 }
 
 export interface CanvasAssignmentAnalytics {
-  assignment_id: number
+  assignment_id: CanvasId
   title: string
   points_possible: number
   due_at: string | null
@@ -1069,7 +1069,7 @@ export interface CanvasAssignmentAnalytics {
 // --- Dashboard & Notifications ---
 
 export interface CanvasDashboardCard {
-  id: number
+  id: CanvasId
   shortName: string
   originalName: string
   courseCode: string
@@ -1088,39 +1088,39 @@ export interface CanvasDashboardCard {
   canChangeCourseState: boolean
   defaultView: string
   longName: string
-  courseId: number
+  courseId: CanvasId
   position: number | null
 }
 
 export interface CanvasTodoItem {
   type: string
   assignment?: {
-    id: number
+    id: CanvasId
     name: string
     due_at: string | null
-    course_id: number
+    course_id: CanvasId
     points_possible: number
   }
   quiz?: {
-    id: number
+    id: CanvasId
     title: string
     due_at: string | null
-    course_id: number
+    course_id: CanvasId
   }
   ignore: string
   ignore_permanently: string
   html_url: string
   needs_grading_count?: number
   context_type: string
-  course_id?: number
-  group_id?: number
+  course_id?: CanvasId
+  group_id?: CanvasId
 }
 
 export interface CanvasMissingSubmission {
-  id: number
+  id: CanvasId
   name: string
   due_at: string | null
-  course_id: number
+  course_id: CanvasId
   points_possible: number
   submission_types: string[]
   html_url: string
@@ -1129,7 +1129,7 @@ export interface CanvasMissingSubmission {
 // --- New Quizzes ---
 
 export interface CanvasNewQuiz {
-  id: number
+  id: CanvasId
   title: string
   instructions: string | null
   points_possible: number
@@ -1137,7 +1137,7 @@ export interface CanvasNewQuiz {
   unlock_at: string | null
   lock_at: string | null
   published: boolean
-  assignment_id: number
+  assignment_id: CanvasId
 }
 
 export interface CanvasNewQuizItem {
@@ -1157,7 +1157,7 @@ export interface CanvasNewQuizItem {
 }
 
 export interface CanvasNewQuizAccommodation {
-  user_id: number
+  user_id: CanvasId
   time_multiplier: number | null
   extra_attempts: number | null
 }
@@ -1165,12 +1165,12 @@ export interface CanvasNewQuizAccommodation {
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {
-  id: number
+  id: CanvasId
   /** The user ID of the reviewer (the person doing the reviewing). */
-  assessor_id: number
+  assessor_id: CanvasId
   /** The user ID of the reviewee (the student whose submission is being reviewed). */
-  user_id: number
-  asset_id: number
+  user_id: CanvasId
+  asset_id: CanvasId
   asset_type: 'Submission'
   workflow_state: 'assigned' | 'completed'
 }
@@ -1194,7 +1194,7 @@ export interface CanvasContentExportAttachment {
 }
 
 export interface CanvasContentExport {
-  id: number
+  id: CanvasId
   export_type: ContentExportType
   workflow_state: ContentExportWorkflowState
   /** null while 'created'; a Canvas progress URL once 'exporting'/'exported'. */
@@ -1202,7 +1202,7 @@ export interface CanvasContentExport {
   /** Non-null (time-limited download link) only when workflow_state === 'exported'. */
   attachment: CanvasContentExportAttachment | null
   /** Opaque integer — the teacher/admin who initiated the export, not a student identifier. */
-  user_id?: number
+  user_id?: CanvasId
   created_at: string
   updated_at: string
 }
@@ -1213,7 +1213,7 @@ export type ContentMigrationWorkflowState =
   'created' | 'queued' | 'running' | 'waiting_for_select' | 'completed' | 'failed' | (string & {})
 
 export interface CanvasContentMigration {
-  id: number
+  id: CanvasId
   migration_type: string
   migration_type_title?: string
   workflow_state: ContentMigrationWorkflowState
@@ -1224,7 +1224,7 @@ export interface CanvasContentMigration {
   started_at: string | null
   created_at: string
   updated_at: string
-  user_id?: number
+  user_id?: CanvasId
   attachment?: {
     url: string
     filename: string
@@ -1241,7 +1241,7 @@ export interface CanvasContentMigrator {
 }
 
 export interface CanvasMigrationIssue {
-  id: number
+  id: CanvasId
   content_migration_url: string
   description: string
   workflow_state: 'active' | 'resolved'

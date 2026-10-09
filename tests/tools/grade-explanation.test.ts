@@ -76,7 +76,7 @@ interface MockOverrides {
 function buildMockCanvas(overrides: MockOverrides = {}): CanvasClient {
   return {
     courses: {
-      get: vi.fn().mockResolvedValue(overrides.course ?? { id: 1, name: 'Course' }),
+      get: vi.fn().mockResolvedValue(overrides.course ?? { id: '1', name: 'Course' }),
     },
     assignments: {
       listGroups: vi.fn().mockResolvedValue(overrides.groups ?? []),
@@ -89,8 +89,8 @@ function buildMockCanvas(overrides: MockOverrides = {}): CanvasClient {
       listForCourse: vi.fn().mockResolvedValue(overrides.enrollments ?? []),
     },
     users: {
-      getSelf: vi.fn().mockResolvedValue(overrides.user ?? { id: 1, name: 'Self User' }),
-      get: vi.fn().mockResolvedValue(overrides.user ?? { id: 1, name: 'Self User' }),
+      getSelf: vi.fn().mockResolvedValue(overrides.user ?? { id: '1', name: 'Self User' }),
+      get: vi.fn().mockResolvedValue(overrides.user ?? { id: '1', name: 'Self User' }),
     },
     gradingStandards: {
       listForCourse: vi.fn().mockResolvedValue(overrides.courseStandards ?? []),
@@ -111,59 +111,63 @@ async function run(
   return (await tool(canvas, overrides.pseudonymizer).handler(params)) as GradeExplanation
 }
 
-function graded(assignment_id: number, score: number): unknown {
-  return { assignment_id, workflow_state: 'graded', score }
+// Response identifiers are canonical decimal strings after PR 2a
+// (BRU-2730 §4.3), so these three helpers build and compare on the string form.
+// They still take a number at the call site, because `graded(1, 8)` reads
+// better than `graded('1', 8)` and the conversion is in one place.
+function graded(assignment_id: number | string, score: number): unknown {
+  return { assignment_id: String(assignment_id), workflow_state: 'graded', score }
 }
 
-function findGroup(result: GradeExplanation, id: number): GroupOut {
-  return result.groups.find((g) => g.group_id === id)!
+function findGroup(result: GradeExplanation, id: number | string): GroupOut {
+  return result.groups.find((g) => g.group_id === String(id))!
 }
 
-function findAssignment(group: GroupOut, id: number): AssignmentOut {
-  return group.assignments.find((a) => a.assignment_id === id)!
+function findAssignment(group: GroupOut, id: number | string): AssignmentOut {
+  return group.assignments.find((a) => a.assignment_id === String(id))!
 }
 
 // ── Fixture A — weighted, drop_lowest + never_drop ───────────────────────────
 
 const FIXTURE_A: MockOverrides = {
   course: {
-    id: 1,
+    id: '1',
     name: 'Bio 101',
     apply_assignment_group_weights: true,
-    grading_standard_id: 42,
-    account_id: 7,
+    grading_standard_id: '42',
+    account_id: '7',
   },
   groups: [
     {
-      id: 1,
+      id: '1',
       name: 'Homework',
       position: 1,
       group_weight: 30,
-      rules: { drop_lowest: 1, never_drop: [3] },
+      rules: { drop_lowest: 1, never_drop: ['3'] },
       assignments: [
-        { id: 1, name: 'HW1', points_possible: 10, grading_type: 'points' },
-        { id: 2, name: 'HW2', points_possible: 10, grading_type: 'points' },
-        { id: 3, name: 'HW3', points_possible: 10, grading_type: 'points' },
+        { id: '1', name: 'HW1', points_possible: 10, grading_type: 'points' },
+        { id: '2', name: 'HW2', points_possible: 10, grading_type: 'points' },
+        { id: '3', name: 'HW3', points_possible: 10, grading_type: 'points' },
       ],
     },
     {
-      id: 2,
+      id: '2',
       name: 'Exams',
       position: 2,
       group_weight: 70,
       assignments: [
-        { id: 4, name: 'Midterm', points_possible: 100, grading_type: 'points' },
-        { id: 5, name: 'Final', points_possible: 100, grading_type: 'points' },
+        { id: '4', name: 'Midterm', points_possible: 100, grading_type: 'points' },
+        { id: '5', name: 'Final', points_possible: 100, grading_type: 'points' },
       ],
     },
   ],
   submissions: [graded(1, 8), graded(2, 5), graded(3, 6), graded(4, 88), graded(5, 75)],
   courseStandards: [
     {
-      id: 42,
+      id: '42',
       title: 'Standard',
       context_type: 'Course',
-      context_id: 1,
+      context_id: '1',
       grading_scheme: GRADING_SCHEME,
     },
   ],
@@ -195,25 +199,25 @@ describe('explain_grade — Fixture A (weighted, drop_lowest + never_drop)', () 
 describe('explain_grade — Fixture B (unweighted)', () => {
   const fixture: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Math 200',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
     },
     groups: [
       {
-        id: 1,
+        id: '1',
         name: 'Group A',
         position: 1,
         group_weight: 0,
-        assignments: [{ id: 1, name: 'A1', points_possible: 100, grading_type: 'points' }],
+        assignments: [{ id: '1', name: 'A1', points_possible: 100, grading_type: 'points' }],
       },
       {
-        id: 2,
+        id: '2',
         name: 'Group B',
         position: 2,
         group_weight: 0,
-        assignments: [{ id: 2, name: 'B1', points_possible: 50, grading_type: 'points' }],
+        assignments: [{ id: '2', name: 'B1', points_possible: 50, grading_type: 'points' }],
       },
     ],
     submissions: [graded(1, 90), graded(2, 40)],
@@ -277,30 +281,30 @@ describe('explain_grade — Fixture C (reconciliation)', () => {
 describe('explain_grade — Fixture D (excused / missing / pending)', () => {
   const fixture: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Hist 101',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
     },
     groups: [
       {
-        id: 1,
+        id: '1',
         name: 'Work',
         position: 1,
         group_weight: 0,
         assignments: [
-          { id: 1, name: 'A1', points_possible: 10, grading_type: 'points' },
-          { id: 2, name: 'A2', points_possible: 10, grading_type: 'points' },
-          { id: 3, name: 'A3', points_possible: 10, grading_type: 'points' },
-          { id: 4, name: 'A4', points_possible: 10, grading_type: 'points' },
+          { id: '1', name: 'A1', points_possible: 10, grading_type: 'points' },
+          { id: '2', name: 'A2', points_possible: 10, grading_type: 'points' },
+          { id: '3', name: 'A3', points_possible: 10, grading_type: 'points' },
+          { id: '4', name: 'A4', points_possible: 10, grading_type: 'points' },
         ],
       },
     ],
     submissions: [
       graded(1, 8),
-      { assignment_id: 2, workflow_state: 'graded', score: null, excused: true },
-      { assignment_id: 3, workflow_state: 'unsubmitted', score: null, missing: true },
-      { assignment_id: 4, workflow_state: 'pending_review', score: null },
+      { assignment_id: '2', workflow_state: 'graded', score: null, excused: true },
+      { assignment_id: '3', workflow_state: 'unsubmitted', score: null, missing: true },
+      { assignment_id: '4', workflow_state: 'pending_review', score: null },
     ],
   }
 
@@ -325,23 +329,23 @@ describe('explain_grade — Fixture D (excused / missing / pending)', () => {
 describe('explain_grade — Fixture E (drop_highest)', () => {
   const fixture: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Phys 101',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
     },
     groups: [
       {
-        id: 1,
+        id: '1',
         name: 'Quizzes',
         position: 1,
         group_weight: 0,
         rules: { drop_highest: 1 },
         assignments: [
-          { id: 1, name: 'Q1', points_possible: 10, grading_type: 'points' },
-          { id: 2, name: 'Q2', points_possible: 10, grading_type: 'points' },
-          { id: 3, name: 'Q3', points_possible: 10, grading_type: 'points' },
-          { id: 4, name: 'Q4', points_possible: 10, grading_type: 'points' },
+          { id: '1', name: 'Q1', points_possible: 10, grading_type: 'points' },
+          { id: '2', name: 'Q2', points_possible: 10, grading_type: 'points' },
+          { id: '3', name: 'Q3', points_possible: 10, grading_type: 'points' },
+          { id: '4', name: 'Q4', points_possible: 10, grading_type: 'points' },
         ],
       },
     ],
@@ -376,22 +380,23 @@ describe('explain_grade — Fixture F (pseudonymization)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [],
-        user: { id: 1234, name: 'Alice Student' },
+        user: { id: '1234', name: 'Alice Student' },
         pseudonymizer: ps,
       },
-      { course_id: 1, student_id: 1234 },
+      { course_id: '1', student_id: '1234' },
     )
     // Pseudonymizer replaces the real name with a stable "Student N" label
-    // (Canvas's pseudonym index starts at 1) but preserves the numeric id.
+    // (Canvas's pseudonym index starts at 1) but preserves the id, which is a
+    // canonical decimal string after PR 2a (BRU-2730 §4.3).
     expect(result.student.name).toMatch(/^Student \d+$/)
     expect(result.student.name).not.toBe('Alice Student')
-    expect(result.student.id).toBe(1234)
+    expect(result.student.id).toBe('1234')
   })
 
   it('does not pseudonymize the authenticated user (self)', async () => {
@@ -403,16 +408,16 @@ describe('explain_grade — Fixture F (pseudonymization)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [],
-        user: { id: 99, name: 'Real Name' },
+        user: { id: '99', name: 'Real Name' },
         pseudonymizer: ps,
       },
-      { course_id: 1 },
+      { course_id: '1' },
     )
     expect(result.student.name).toBe('Real Name')
   })
@@ -426,21 +431,21 @@ describe('explain_grade — Fixture F (pseudonymization)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [],
-        user: { id: 555, name: 'Dr. Teacher' },
+        user: { id: '555', name: 'Dr. Teacher' },
         // enrollments fetched for the target id carry a staff type → not student
         enrollments: [{ type: 'TeacherEnrollment', grades: { current_score: null } }],
         pseudonymizer: ps,
       },
-      { course_id: 1, student_id: 555 },
+      { course_id: '1', student_id: '555' },
     )
     expect(result.student.name).toBe('Dr. Teacher')
-    expect(result.student.id).toBe(555)
+    expect(result.student.id).toBe('555')
   })
 })
 
@@ -450,18 +455,18 @@ describe('explain_grade — Fixture G (missing enrollment)', () => {
   it('returns null posted scores, a caveat, and still computes the grade', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'Course',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'Work',
           position: 1,
           group_weight: 0,
-          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 10, grading_type: 'points' }],
         },
       ],
       submissions: [graded(1, 9)],
@@ -481,7 +486,7 @@ describe('explain_grade — Fixture H (greedy cap)', () => {
   it('falls back to a greedy drop and adds a caveat when combinations explode', async () => {
     // 16 assignments, drop_lowest 8 → C(16,8) = 12_870 > 10_000 cap.
     const assignments = Array.from({ length: 16 }, (_, i) => ({
-      id: i + 1,
+      id: String(i + 1),
       name: `A${i + 1}`,
       points_possible: 10,
       grading_type: 'points',
@@ -491,14 +496,14 @@ describe('explain_grade — Fixture H (greedy cap)', () => {
     const submissions = assignments.map((a, i) => graded(a.id, i))
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'Big',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'Daily',
           position: 1,
           group_weight: 0,
@@ -530,7 +535,7 @@ describe('explain_grade — tool metadata', () => {
   it('filters to a single assignment group and caveats the partial total', async () => {
     const result = await run(FIXTURE_A, { course_id: '1', assignment_group_id: '2' })
     expect(result.groups).toHaveLength(1)
-    expect(result.groups[0].group_id).toBe(2)
+    expect(result.groups[0].group_id).toBe('2')
     expect(result.caveats.some((c) => c.includes('filtered to assignment group'))).toBe(true)
   })
 
@@ -548,32 +553,32 @@ describe('explain_grade — tool metadata', () => {
 describe('explain_grade — grading standard resolution', () => {
   const oneGradedGroup = [
     {
-      id: 1,
+      id: '1',
       name: 'G',
       position: 1,
       group_weight: 0,
-      assignments: [{ id: 1, name: 'A1', points_possible: 100, grading_type: 'points' }],
+      assignments: [{ id: '1', name: 'A1', points_possible: 100, grading_type: 'points' }],
     },
   ]
 
   it('falls back to the account standard when the course list has no match', async () => {
     const canvas = buildMockCanvas({
       course: {
-        id: 1,
+        id: '1',
         name: 'Course',
         apply_assignment_group_weights: false,
-        grading_standard_id: 99,
-        account_id: 7,
+        grading_standard_id: '99',
+        account_id: '7',
       },
       groups: oneGradedGroup,
       submissions: [graded(1, 95)],
       courseStandards: [], // no course-level match
       accountStandards: [
         {
-          id: 99,
+          id: '99',
           title: 'Acct',
           context_type: 'Account',
-          context_id: 7,
+          context_id: '7',
           grading_scheme: GRADING_SCHEME,
         },
       ],
@@ -586,20 +591,20 @@ describe('explain_grade — grading standard resolution', () => {
   it('does not query the account when the course standard already matches', async () => {
     const canvas = buildMockCanvas({
       course: {
-        id: 1,
+        id: '1',
         name: 'Course',
         apply_assignment_group_weights: false,
-        grading_standard_id: 42,
-        account_id: 7,
+        grading_standard_id: '42',
+        account_id: '7',
       },
       groups: oneGradedGroup,
       submissions: [graded(1, 95)],
       courseStandards: [
         {
-          id: 42,
+          id: '42',
           title: 'Std',
           context_type: 'Course',
-          context_id: 1,
+          context_id: '1',
           grading_scheme: GRADING_SCHEME,
         },
       ],
@@ -612,10 +617,10 @@ describe('explain_grade — grading standard resolution', () => {
   it('caveats and yields a null letter when the standard cannot be resolved', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'Course',
         apply_assignment_group_weights: false,
-        grading_standard_id: 5,
+        grading_standard_id: '5',
         account_id: null,
       },
       groups: oneGradedGroup,
@@ -633,21 +638,26 @@ describe('explain_grade — grading standard resolution', () => {
 describe('explain_grade — weighted edge cases', () => {
   it('renormalizes by active weight when a weighted group has no graded work', async () => {
     const result = await run({
-      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      course: {
+        id: '1',
+        name: 'C',
+        apply_assignment_group_weights: true,
+        grading_standard_id: null,
+      },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'Empty',
           position: 1,
           group_weight: 30,
-          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 10, grading_type: 'points' }],
         },
         {
-          id: 2,
+          id: '2',
           name: 'Exams',
           position: 2,
           group_weight: 70,
-          assignments: [{ id: 2, name: 'Exam', points_possible: 100, grading_type: 'points' }],
+          assignments: [{ id: '2', name: 'Exam', points_possible: 100, grading_type: 'points' }],
         },
       ],
       submissions: [graded(2, 80)], // group 1 has no submission → no graded work
@@ -659,14 +669,19 @@ describe('explain_grade — weighted edge cases', () => {
 
   it('returns a null overall (no caveat) when no group has graded work', async () => {
     const result = await run({
-      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      course: {
+        id: '1',
+        name: 'C',
+        apply_assignment_group_weights: true,
+        grading_standard_id: null,
+      },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G1',
           position: 1,
           group_weight: 50,
-          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 10, grading_type: 'points' }],
         },
       ],
       submissions: [], // nothing graded anywhere
@@ -676,14 +691,19 @@ describe('explain_grade — weighted edge cases', () => {
 
   it('caveats a weighted course that has no configured group weights', async () => {
     const result = await run({
-      course: { id: 1, name: 'C', apply_assignment_group_weights: true, grading_standard_id: null },
+      course: {
+        id: '1',
+        name: 'C',
+        apply_assignment_group_weights: true,
+        grading_standard_id: null,
+      },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G1',
           position: 1,
           group_weight: 0,
-          assignments: [{ id: 1, name: 'A1', points_possible: 100, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 100, grading_type: 'points' }],
         },
       ],
       submissions: [graded(1, 90)],
@@ -722,18 +742,18 @@ describe('explain_grade — robustness', () => {
   it('caveats when an enrollment exists but carries no grades', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'C',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G',
           position: 1,
           group_weight: 0,
-          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 10, grading_type: 'points' }],
         },
       ],
       submissions: [graded(1, 8)],
@@ -748,18 +768,18 @@ describe('explain_grade — robustness', () => {
   it('caveats when the enrollment carries grades but the posted scores are null', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'C',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G',
           position: 1,
           group_weight: 0,
-          assignments: [{ id: 1, name: 'A1', points_possible: 10, grading_type: 'points' }],
+          assignments: [{ id: '1', name: 'A1', points_possible: 10, grading_type: 'points' }],
         },
       ],
       submissions: [graded(1, 8)],
@@ -785,20 +805,20 @@ describe('explain_grade — robustness', () => {
   it('treats a null/absent points_possible as zero without poisoning the total', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'C',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G',
           position: 1,
           group_weight: 0,
           assignments: [
-            { id: 1, name: 'A1', points_possible: 10, grading_type: 'points' },
-            { id: 2, name: 'EC', points_possible: null, grading_type: 'points' },
+            { id: '1', name: 'A1', points_possible: 10, grading_type: 'points' },
+            { id: '2', name: 'EC', points_possible: null, grading_type: 'points' },
           ],
         },
       ],
@@ -817,23 +837,23 @@ describe('explain_grade — robustness', () => {
   it('keeps a never_drop missing assignment and excludes not_graded from totals', async () => {
     const result = await run({
       course: {
-        id: 1,
+        id: '1',
         name: 'C',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
       },
       groups: [
         {
-          id: 1,
+          id: '1',
           name: 'G',
           position: 1,
           group_weight: 0,
-          rules: { drop_lowest: 1, never_drop: [1] },
+          rules: { drop_lowest: 1, never_drop: ['1'] },
           assignments: [
-            { id: 1, name: 'Pinned', points_possible: 10, grading_type: 'points' },
-            { id: 2, name: 'High', points_possible: 10, grading_type: 'points' },
-            { id: 3, name: 'Low', points_possible: 10, grading_type: 'points' },
-            { id: 4, name: 'Survey', points_possible: 10, grading_type: 'not_graded' },
+            { id: '1', name: 'Pinned', points_possible: 10, grading_type: 'points' },
+            { id: '2', name: 'High', points_possible: 10, grading_type: 'points' },
+            { id: '3', name: 'Low', points_possible: 10, grading_type: 'points' },
+            { id: '4', name: 'Survey', points_possible: 10, grading_type: 'not_graded' },
           ],
         },
       ],
@@ -852,7 +872,7 @@ describe('explain_grade — robustness', () => {
   })
 
   it('caveats when the assignment_group_id filter matches no group', async () => {
-    const result = await run(FIXTURE_A, { course_id: 1, assignment_group_id: 999 })
+    const result = await run(FIXTURE_A, { course_id: '1', assignment_group_id: '999' })
     expect(result.groups).toHaveLength(0)
     expect(result.caveats.some((c) => c.includes('was not found in this course'))).toBe(true)
   })

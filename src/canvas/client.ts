@@ -1,4 +1,5 @@
 import { version } from '../../package.json'
+import { normalizeCanvasIds } from './normalize-ids'
 import { appendCanvasQuery, type CanvasQueryParams } from './query'
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
@@ -89,7 +90,7 @@ export class CanvasHttpClient {
       return undefined as T
     }
 
-    return response.json() as Promise<T>
+    return normalizeCanvasIds((await response.json()) as T)
   }
 
   async paginate<T>(endpoint: string, params?: CanvasQueryParams): Promise<T[]> {
@@ -118,7 +119,7 @@ export class CanvasHttpClient {
         throw new CanvasApiError(message, response.status, endpoint)
       }
 
-      const data = (await response.json()) as T[]
+      const data = normalizeCanvasIds((await response.json()) as T[])
       results.push(...data)
       pages++
 
@@ -159,7 +160,10 @@ export class CanvasHttpClient {
         throw new CanvasApiError(message, response.status, endpoint)
       }
 
-      const body = (await response.json()) as Record<string, T[]>
+      // Normalized before the envelope is opened, not after: the `answer`
+      // exception in `normalize-ids.ts` is scoped to the envelope key it
+      // arrives under, so the walk has to see the whole body (§4.3).
+      const body = normalizeCanvasIds((await response.json()) as Record<string, T[]>)
       const data = body[envelopeKey] ?? []
       results.push(...data)
       pages++

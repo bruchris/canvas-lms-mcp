@@ -64,8 +64,12 @@ const CANONICAL_DECIMAL_ID = /^[1-9][0-9]{0,18}$/
 export type CanvasId = string
 
 /**
- * What the **wire** may carry, for use in `src/canvas/types.ts` before
- * normalization. Never let this escape the HTTP client boundary (§4.1).
+ * What the **wire** may carry: `JSON.parse` of a Canvas body yields a `number`
+ * for an identifier unless Canvas stringified it. Nothing past the HTTP client
+ * boundary sees this type, because `normalizeCanvasIds()` in
+ * `src/canvas/normalize-ids.ts` rewrites every identifier to a `CanvasId`
+ * before the body is returned (§4.1, §4.3). Kept exported as the name for that
+ * boundary.
  */
 export type CanvasWireId = string | number
 
@@ -277,31 +281,6 @@ export function canvasIdList(options?: CanvasIdInputOptions): z.ZodType<CanvasId
 export function compareCanvasIds(a: CanvasId, b: CanvasId): number {
   if (a.length !== b.length) return a.length - b.length
   return a < b ? -1 : a > b ? 1 : 0
-}
-
-/**
- * The Phase 1 → Phase 2 bridge, and deliberately the narrowest thing that
- * works.
- *
- * PR 1b migrates the **input** side: every ID a caller supplies is a
- * `CanvasId`, and every `src/canvas/` parameter takes one. Response types are
- * still `number` until PR 2a (§8 ordering constraint — PR 1b widens only
- * `CourseSearchResult`). So a tool that reads an ID out of one Canvas response
- * and passes it into the next request now meets a `CanvasId` parameter with a
- * `number` in hand.
- *
- * `String()` is loss-free in that direction: the rounding, if any, already
- * happened inside `JSON.parse` on the response body, and no Canvas ID is large
- * enough for `String()` to emit exponential notation (that starts at `1e21`;
- * `MAX_ID` is ~9.2e18). The remaining precision loss is exactly what PR 2a
- * removes, and it is **not** `Number(id)` — the direction §4.4 forbids.
- *
- * Named rather than written inline so the transitional sites are greppable:
- * PR 2a's work is to widen the response types and delete every call to this
- * function. A bare `String(x)` would hide that list.
- */
-export function canvasIdFromResponse(value: CanvasWireId): CanvasId {
-  return String(value)
 }
 
 /**

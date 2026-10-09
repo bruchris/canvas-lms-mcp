@@ -2,7 +2,7 @@ import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { CanvasLatePolicy } from '../canvas/types'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 /**
  * Synthetic policy used when Canvas returns 404 for `late_policy` — i.e. the
@@ -36,7 +36,7 @@ interface LatePolicyOut {
 }
 
 interface GroupWeightOut {
-  id: number
+  id: CanvasId
   name: string
   weight: number
 }
@@ -203,7 +203,7 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
               standardTitle = found.title
             } else if (course.account_id != null) {
               const accountStandards = await canvas.gradingStandards.listForAccount(
-                canvasIdFromResponse(course.account_id),
+                course.account_id,
               )
               const foundInAccount = accountStandards.find(
                 (s) => s.id === course.grading_standard_id,

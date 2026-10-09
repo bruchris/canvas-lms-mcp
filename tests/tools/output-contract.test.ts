@@ -250,7 +250,7 @@ describe('structured output — shared gates', () => {
     it('threads pseudonymization through a real handler, off vs. on', async () => {
       const canvas = {
         users: {
-          get: async () => ({ id: 42, name: 'Ada Lovelace', sortable_name: 'Lovelace, Ada' }),
+          get: async () => ({ id: '42', name: 'Ada Lovelace', sortable_name: 'Lovelace, Ada' }),
         },
       } as unknown as CanvasClient
       const buildPseudonymizer = (enabled: boolean) =>
@@ -264,13 +264,13 @@ describe('structured output — shared gates', () => {
         canvas,
         buildPseudonymizer(false),
         'get_user',
-        { user_id: 42 },
+        { user_id: '42' },
       )
       const enabled = await callArmedWithPseudonymizer(
         canvas,
         buildPseudonymizer(true),
         'get_user',
-        { user_id: 42 },
+        { user_id: '42' },
       )
 
       expect(disabled.isError).toBeFalsy()
@@ -348,13 +348,13 @@ describe('structured output — shared gates', () => {
 
   describe('envelope construction', () => {
     it('object contracts pass the value through untouched', () => {
-      const value = { page_id: 1, url: 'a', title: 'A', extra: true }
+      const value = { page_id: '1', url: 'a', title: 'A', extra: true }
 
       expect(buildEnvelope(objectOutput(canvasPageSchema), value)).toBe(value)
     })
 
     it('list contracts wrap the array under the authored key', () => {
-      const value = [{ page_id: 1, url: 'a', title: 'A' }]
+      const value = [{ page_id: '1', url: 'a', title: 'A' }]
 
       expect(buildEnvelope(listOutput('pages', canvasPageSchema), value)).toEqual({ pages: value })
     })
@@ -374,7 +374,7 @@ describe('structured output — shared gates', () => {
     it('accepts undeclared fields inside a loose Canvas entity', () => {
       const contract = listOutput('pages', canvasPageSchema)
       const envelope = buildEnvelope(contract, [
-        { page_id: 1, url: 'a', title: 'A', invented_by_canvas: 'later' },
+        { page_id: '1', url: 'a', title: 'A', invented_by_canvas: 'later' },
       ])
 
       expect(validateEnvelope(contract, envelope)).toEqual({ ok: true })
@@ -400,8 +400,11 @@ describe('structured output — shared gates', () => {
     })
 
     it('reports issues as path and message only, never the offending value', () => {
+      // The drift has to be a shape neither arm of `page_id`'s union accepts
+      // (BRU-2730 §7.2 widened it to `number | string`), with the sentinel still
+      // inside the payload so the no-leak assertion below stays meaningful.
       const result = validateEnvelope(objectOutput(canvasPageSchema), {
-        page_id: 'SECRET-CANARY-VALUE',
+        page_id: { leaked: 'SECRET-CANARY-VALUE' },
         url: 'a',
         title: 'A',
       })

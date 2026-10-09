@@ -57,7 +57,7 @@ interface MockOverrides {
 function buildMockCanvas(overrides: MockOverrides = {}): CanvasClient {
   return {
     courses: {
-      get: vi.fn().mockResolvedValue(overrides.course ?? { id: 1, name: 'Course' }),
+      get: vi.fn().mockResolvedValue(overrides.course ?? { id: '1', name: 'Course' }),
     },
     assignments: {
       listGroups: vi.fn().mockResolvedValue(overrides.groups ?? []),
@@ -67,11 +67,13 @@ function buildMockCanvas(overrides: MockOverrides = {}): CanvasClient {
       listForStudents: vi.fn().mockResolvedValue(overrides.submissions ?? []),
     },
     enrollments: {
-      listForCourse: vi.fn().mockResolvedValue(overrides.enrollments ?? [{ id: 1, user_id: 1 }]),
+      listForCourse: vi
+        .fn()
+        .mockResolvedValue(overrides.enrollments ?? [{ id: '1', user_id: '1' }]),
     },
     users: {
-      getSelf: vi.fn().mockResolvedValue(overrides.user ?? { id: 1, name: 'Self User' }),
-      get: vi.fn().mockResolvedValue(overrides.user ?? { id: 1, name: 'Self User' }),
+      getSelf: vi.fn().mockResolvedValue(overrides.user ?? { id: '1', name: 'Self User' }),
+      get: vi.fn().mockResolvedValue(overrides.user ?? { id: '1', name: 'Self User' }),
     },
     gradingStandards: {
       listForCourse: vi.fn().mockResolvedValue(overrides.courseStandards ?? []),
@@ -92,12 +94,15 @@ async function run(
   return (await tool(canvas, overrides.pseudonymizer).handler(params)) as GradeProjection
 }
 
-function graded(assignment_id: number, score: number): unknown {
-  return { assignment_id, workflow_state: 'graded', score }
+// Response identifiers are canonical decimal strings after PR 2a
+// (BRU-2730 §4.3). These helpers still take a number at the call site and
+// convert in one place, so the fixtures read as before.
+function graded(assignment_id: number | string, score: number): unknown {
+  return { assignment_id: String(assignment_id), workflow_state: 'graded', score }
 }
 
-function findGroup(result: GradeProjection, id: number): GroupProjectionOut {
-  return result.projection.groups.find((g) => g.group_id === id)!
+function findGroup(result: GradeProjection, id: number | string): GroupProjectionOut {
+  return result.projection.groups.find((g) => g.group_id === String(id))!
 }
 
 function pointsGroup(
@@ -107,13 +112,13 @@ function pointsGroup(
   rules?: unknown,
 ): unknown {
   return {
-    id,
+    id: String(id),
     name,
     position: id,
     group_weight: 0,
     ...(rules ? { rules } : {}),
     assignments: assignments.map((a) => ({
-      id: a.id,
+      id: String(a.id),
       name: `A${a.id}`,
       points_possible: a.points,
       grading_type: 'points',
@@ -128,21 +133,21 @@ describe('project_grade — Fixture A (points-based, achievable, exact boundary)
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
-            { id: 3, points: 100 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
+            { id: '3', points: 100 },
           ]),
         ],
         submissions: [graded(1, 90), graded(2, 80)],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.projection.feasibility).toBe('achievable')
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(100, 2)
@@ -151,7 +156,7 @@ describe('project_grade — Fixture A (points-based, achievable, exact boundary)
     expect(result.projection.locked_in.possible).toBe(200)
     const group = findGroup(result, 1)
     expect(group.remaining_assignments).toHaveLength(1)
-    expect(group.remaining_assignments[0]?.assignment_id).toBe(3)
+    expect(group.remaining_assignments[0]?.assignment_id).toBe('3')
     expect(result.summary).toContain('100.0%')
   })
 })
@@ -163,21 +168,21 @@ describe('project_grade — Fixture B (already secured)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
-            { id: 3, points: 20 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
+            { id: '3', points: 20 },
           ]),
         ],
         submissions: [graded(1, 95), graded(2, 90)],
       },
-      { course_id: 1, target_percentage: 80 },
+      { course_id: '1', target_percentage: 80 },
     )
     expect(result.projection.feasibility).toBe('already_secured')
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(-45, 2)
@@ -192,21 +197,21 @@ describe('project_grade — Fixture C (impossible)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
-            { id: 3, points: 50 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
+            { id: '3', points: 50 },
           ]),
         ],
         submissions: [graded(1, 50), graded(2, 50)],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.projection.feasibility).toBe('impossible')
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(250, 2)
@@ -220,30 +225,30 @@ describe('project_grade — Fixture D (weighted, achievable)', () => {
   it('solves the weighted linear equation across groups', async () => {
     const groups = [
       {
-        id: 1,
+        id: '1',
         name: 'Homework',
         position: 1,
         group_weight: 30,
         assignments: [
-          { id: 1, name: 'A1', points_possible: 100, grading_type: 'points' },
-          { id: 2, name: 'A2', points_possible: 100, grading_type: 'points' },
+          { id: '1', name: 'A1', points_possible: 100, grading_type: 'points' },
+          { id: '2', name: 'A2', points_possible: 100, grading_type: 'points' },
         ],
       },
       {
-        id: 2,
+        id: '2',
         name: 'Exams',
         position: 2,
         group_weight: 70,
         assignments: [
-          { id: 3, name: 'A3', points_possible: 100, grading_type: 'points' },
-          { id: 4, name: 'A4', points_possible: 100, grading_type: 'points' },
+          { id: '3', name: 'A3', points_possible: 100, grading_type: 'points' },
+          { id: '4', name: 'A4', points_possible: 100, grading_type: 'points' },
         ],
       },
     ]
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: true,
           grading_standard_id: null,
@@ -251,7 +256,7 @@ describe('project_grade — Fixture D (weighted, achievable)', () => {
         groups,
         submissions: [graded(1, 80), graded(3, 85)],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.projection.feasibility).toBe('achievable')
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(96.5, 2)
@@ -270,24 +275,24 @@ describe('project_grade — Fixture E (target letter)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
-          grading_standard_id: 42,
+          grading_standard_id: '42',
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
           ]),
         ],
         submissions: [graded(1, 80)],
         courseStandards: [
           {
-            id: 42,
+            id: '42',
             title: 'Standard',
             context_type: 'Course',
-            context_id: 1,
+            context_id: '1',
             grading_scheme: [
               { name: 'A', value: 0.9 },
               { name: 'B', value: 0.8 },
@@ -297,7 +302,7 @@ describe('project_grade — Fixture E (target letter)', () => {
           },
         ],
       },
-      { course_id: 1, target_letter: 'B' },
+      { course_id: '1', target_letter: 'B' },
     )
     expect(result.target.percentage).toBe(80)
     expect(result.target.requested).toBe('B')
@@ -313,7 +318,7 @@ describe('project_grade — Fixture F (letter target, no scheme)', () => {
   it('errors when the course has no grading standard configured', async () => {
     const canvas = buildMockCanvas({
       course: {
-        id: 1,
+        id: '1',
         name: 'C',
         apply_assignment_group_weights: false,
         grading_standard_id: null,
@@ -331,14 +336,19 @@ describe('project_grade — Fixture F (letter target, no scheme)', () => {
 describe('project_grade — Fixture G (letter target, letter not in scheme)', () => {
   it('errors with a valid-letters list', async () => {
     const canvas = buildMockCanvas({
-      course: { id: 1, name: 'C', apply_assignment_group_weights: false, grading_standard_id: 42 },
+      course: {
+        id: '1',
+        name: 'C',
+        apply_assignment_group_weights: false,
+        grading_standard_id: '42',
+      },
       groups: [],
       courseStandards: [
         {
-          id: 42,
+          id: '42',
           title: 'Standard',
           context_type: 'Course',
-          context_id: 1,
+          context_id: '1',
           grading_scheme: [
             { name: 'A', value: 0.9 },
             { name: 'F', value: 0.0 },
@@ -359,7 +369,7 @@ describe('project_grade — Fixture H (drop_lowest interaction)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
@@ -369,16 +379,16 @@ describe('project_grade — Fixture H (drop_lowest interaction)', () => {
             1,
             'G',
             [
-              { id: 1, points: 50 },
-              { id: 2, points: 50 },
-              { id: 3, points: 50 },
+              { id: '1', points: 50 },
+              { id: '2', points: 50 },
+              { id: '3', points: 50 },
             ],
             { drop_lowest: 1 },
           ),
         ],
         submissions: [graded(1, 10), graded(2, 40)],
       },
-      { course_id: 1, target_percentage: 80 },
+      { course_id: '1', target_percentage: 80 },
     )
     expect(result.projection.locked_in.earned).toBe(40)
     expect(result.projection.locked_in.possible).toBe(50)
@@ -395,20 +405,20 @@ describe('project_grade — Fixture I (no remaining work, secured)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
           ]),
         ],
         submissions: [graded(1, 95), graded(2, 90)],
       },
-      { course_id: 1, target_percentage: 80 },
+      { course_id: '1', target_percentage: 80 },
     )
     expect(result.projection.minimum_pct_on_remaining).toBeNull()
     expect(result.projection.feasibility).toBe('already_secured')
@@ -424,20 +434,20 @@ describe('project_grade — Fixture J (no remaining work, impossible)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
           ]),
         ],
         submissions: [graded(1, 50), graded(2, 60)],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.projection.minimum_pct_on_remaining).toBeNull()
     expect(result.projection.feasibility).toBe('impossible')
@@ -464,19 +474,45 @@ describe('project_grade — Fixture K (FERPA pseudonymization)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [],
-        user: { id: 1234, name: 'Alice Student' },
+        user: { id: '1234', name: 'Alice Student' },
         pseudonymizer: ps,
       },
-      { course_id: 1, target_percentage: 90, student_id: 1234 },
+      { course_id: '1', target_percentage: 90, student_id: '1234' },
     )
     expect(result.student.name).toMatch(/^Student \d+$/)
-    expect(result.student.id).toBe(1234)
+    expect(result.student.id).toBe('1234')
+  })
+
+  it('does not pseudonymize the caller viewing their own grade', async () => {
+    // The negative half of the guard. Without it, `studentId !== 'self'` could
+    // be replaced by a constant `true` and the assertion above would still
+    // pass, so this is what makes the pair load-bearing.
+    const ps = new Pseudonymizer({
+      baseUrl: 'https://school.instructure.com/api/v1',
+      rootDir: tmpRoot,
+      env: { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' },
+    })
+    const result = await run(
+      {
+        course: {
+          id: '1',
+          name: 'C',
+          apply_assignment_group_weights: false,
+          grading_standard_id: null,
+        },
+        groups: [],
+        user: { id: '1234', name: 'Alice Student' },
+        pseudonymizer: ps,
+      },
+      { course_id: '1', target_percentage: 90 },
+    )
+    expect(result.student.name).toBe('Alice Student')
   })
 })
 
@@ -487,24 +523,24 @@ describe('project_grade — Fixture L (weighted, inactive group excluded)', () =
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: true,
           grading_standard_id: null,
         },
         groups: [
           {
-            id: 1,
+            id: '1',
             name: 'Exams',
             position: 1,
             group_weight: 70,
             assignments: [
-              { id: 1, name: 'A1', points_possible: 100, grading_type: 'points' },
-              { id: 2, name: 'A2', points_possible: 100, grading_type: 'points' },
+              { id: '1', name: 'A1', points_possible: 100, grading_type: 'points' },
+              { id: '2', name: 'A2', points_possible: 100, grading_type: 'points' },
             ],
           },
           {
-            id: 2,
+            id: '2',
             name: 'Extra Credit',
             position: 2,
             group_weight: 10,
@@ -513,7 +549,7 @@ describe('project_grade — Fixture L (weighted, inactive group excluded)', () =
         ],
         submissions: [graded(1, 80)],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.projection.minimum_pct_on_remaining).toBeCloseTo(100, 2)
     expect(result.projection.feasibility).toBe('achievable')
@@ -528,21 +564,21 @@ describe('project_grade — Fixture M (enrollment empty)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
         },
         groups: [
           pointsGroup(1, 'G', [
-            { id: 1, points: 100 },
-            { id: 2, points: 100 },
+            { id: '1', points: 100 },
+            { id: '2', points: 100 },
           ]),
         ],
         submissions: [graded(1, 80)],
         enrollments: [],
       },
-      { course_id: 1, target_percentage: 90 },
+      { course_id: '1', target_percentage: 90 },
     )
     expect(result.current_grade.percentage).toBeNull()
     expect(result.current_grade.letter).toBeNull()
@@ -559,7 +595,7 @@ describe('project_grade — Fixture N (caveat ordering)', () => {
     const result = await run(
       {
         course: {
-          id: 1,
+          id: '1',
           name: 'C',
           apply_assignment_group_weights: false,
           grading_standard_id: null,
@@ -569,16 +605,16 @@ describe('project_grade — Fixture N (caveat ordering)', () => {
             1,
             'G',
             [
-              { id: 1, points: 50 },
-              { id: 2, points: 50 },
-              { id: 3, points: 50 },
+              { id: '1', points: 50 },
+              { id: '2', points: 50 },
+              { id: '3', points: 50 },
             ],
             { drop_lowest: 1 },
           ),
         ],
         submissions: [graded(1, 10), graded(2, 40)],
       },
-      { course_id: 1, target_percentage: 80 },
+      { course_id: '1', target_percentage: 80 },
     )
     const dropIdx = result.caveats.findIndex((c) => c.toLowerCase().includes('drop rules'))
     const submittedIdx = result.caveats.findIndex((c) => c.toLowerCase().includes('submitted'))

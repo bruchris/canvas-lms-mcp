@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { CanvasApiError } from '../canvas'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
-import { canvasIdFromResponse } from '../canvas/id'
+import type { CanvasId } from '../canvas/id'
 import type { CanvasCourse, CanvasUser } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
@@ -11,7 +11,7 @@ const INSTRUCTOR_ENROLLMENT_TYPES = new Set(['TeacherEnrollment', 'TaEnrollment'
 const CONCURRENT_COURSE_LIMIT = 10
 
 interface FindStudentMatchedCourse {
-  course_id: number
+  course_id: CanvasId
   course_name: string
   term: string | null
   enrollment_state: string
@@ -20,7 +20,7 @@ interface FindStudentMatchedCourse {
 }
 
 interface FindStudentMatch {
-  user_id: number
+  user_id: CanvasId
   matched_courses: FindStudentMatchedCourse[]
 }
 
@@ -73,7 +73,7 @@ export function studentSearchTools(
           ? await canvas.courses.list({ enrollment_state: 'completed' })
           : []
 
-        const byId = new Map<number, CanvasCourse>()
+        const byId = new Map<CanvasId, CanvasCourse>()
         for (const c of [...activeCourses, ...concludedCourses]) {
           const existing = byId.get(c.id)
           if (!existing) {
@@ -104,8 +104,11 @@ export function studentSearchTools(
         const coursesToScan = truncated ? sorted.slice(0, maxCourses) : sorted
 
         // 3. Fan out per-course search, bounding concurrent Canvas API requests.
-        const coursesFailed: Array<{ course_id: number; status: number | null; message: string }> =
-          []
+        const coursesFailed: Array<{
+          course_id: CanvasId
+          status: number | null
+          message: string
+        }> = []
         const perCourseMatches: Array<{ course: CanvasCourse; users: CanvasUser[] }> = []
 
         const scanResults = await mapWithConcurrency(
@@ -113,7 +116,7 @@ export function studentSearchTools(
           CONCURRENT_COURSE_LIMIT,
           async (course) => {
             try {
-              const users = await canvas.users.listCourseUsers(canvasIdFromResponse(course.id), {
+              const users = await canvas.users.listCourseUsers(course.id, {
                 search_term: searchTerm,
                 enrollment_type: ['student'],
                 enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
@@ -138,7 +141,7 @@ export function studentSearchTools(
         }
 
         // 4. Pseudonymize per course (per-course map, never hoisted).
-        const resolvedByCourse = new Map<number, CanvasUser[]>()
+        const resolvedByCourse = new Map<CanvasId, CanvasUser[]>()
         for (const { course, users } of perCourseMatches) {
           resolvedByCourse.set(
             course.id,
@@ -149,7 +152,7 @@ export function studentSearchTools(
         }
 
         // 5. Group by real user_id across courses.
-        const byUser = new Map<number, FindStudentMatch>()
+        const byUser = new Map<CanvasId, FindStudentMatch>()
         for (const { course, users: rawUsers } of perCourseMatches) {
           const resolved = resolvedByCourse.get(course.id)!
           rawUsers.forEach((rawUser, i) => {

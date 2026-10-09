@@ -4,7 +4,6 @@ import {
   canvasIdInput,
   canvasIdList,
   normalizeCanvasIdInput,
-  canvasIdFromResponse,
   compareCanvasIds,
 } from '../../src/canvas/id'
 
@@ -162,35 +161,5 @@ describe('`compareCanvasIds` — ordering IDs without `a - b` (§4.4)', () => {
   it('orders Canvas MAX_ID above every smaller 19-digit id', () => {
     expect(compareCanvasIds('9223372036854775807', '9223372036854775806')).toBeGreaterThan(0)
     expect(compareCanvasIds('1000000000000000000', '9223372036854775807')).toBeLessThan(0)
-  })
-})
-
-describe('`canvasIdFromResponse` — the Phase 1 to Phase 2 bridge', () => {
-  it('turns a response-sourced number into the canonical string', () => {
-    expect(canvasIdFromResponse(12345)).toBe('12345')
-  })
-
-  it('passes a string through, so a payload Canvas already stringified is untouched', () => {
-    expect(canvasIdFromResponse(SHARD_901_ID)).toBe(SHARD_901_ID)
-  })
-
-  it('never emits exponential notation for any value Canvas can store', () => {
-    // `String()` switches to exponential at 1e21; Canvas's MAX_ID is ~9.2e18,
-    // so the whole representable range is safe — asserted rather than assumed,
-    // because the claim is what makes the plain `String()` acceptable here.
-    // Written as exponentials where a decimal literal would itself lose
-    // precision at parse time (and trip `no-loss-of-precision`).
-    for (const value of [2 ** 53, 9.2e18, 1e18, 9.1e18]) {
-      expect(canvasIdFromResponse(value)).not.toContain('e')
-    }
-  })
-
-  it('does not pretend to recover precision the response already lost', () => {
-    // The rounding happened inside `JSON.parse` on the response body. This
-    // function is not a fix for that — PR 2a is — and the test says so, so a
-    // reader does not mistake it for one.
-    const rounded = (JSON.parse('{"id":9007199254740993}') as { id: number }).id
-
-    expect(canvasIdFromResponse(rounded)).toBe('9007199254740992')
   })
 })

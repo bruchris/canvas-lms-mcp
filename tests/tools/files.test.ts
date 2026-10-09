@@ -5,17 +5,17 @@ import { fileTools } from '../../src/tools/files'
 
 describe('fileTools', () => {
   const mockFile: CanvasFile = {
-    id: 1,
+    id: '1',
     filename: 'syllabus.pdf',
     display_name: 'Syllabus',
     url: 'https://canvas.example.com/files/1/download',
     content_type: 'application/pdf',
     size: 12345,
-    folder_id: 1,
+    folder_id: '1',
   }
 
   const mockFolder: CanvasFolder = {
-    id: 1,
+    id: '1',
     name: 'Course Files',
     full_name: 'course files',
     parent_folder_id: null,
@@ -198,20 +198,20 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'a.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'b.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 20,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),
@@ -243,20 +243,20 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'notes.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 100,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'notes.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 200,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),
@@ -271,39 +271,39 @@ describe('fileTools', () => {
 
     it('groups files with matching name and size, resolving folder paths', async () => {
       const subFolder = {
-        id: 2,
+        id: '2',
         name: 'Week 1',
         full_name: 'course files/Week 1',
-        parent_folder_id: 1,
+        parent_folder_id: '1',
       }
       const canvas: CanvasClient = {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'syllabus.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 500,
-              folder_id: 1,
+              folder_id: '1',
               created_at: '2026-01-01T00:00:00Z',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'syllabus.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 500,
-              folder_id: 2,
+              folder_id: '2',
               created_at: '2026-02-01T00:00:00Z',
             },
             {
-              id: 3,
+              id: '3',
               display_name: 'other.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 999,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder, subFolder]),
@@ -320,8 +320,8 @@ describe('fileTools', () => {
             size: 500,
             count: 2,
             files: [
-              { id: 1, folder_path: 'course files', created_at: '2026-01-01T00:00:00Z' },
-              { id: 2, folder_path: 'course files/Week 1', created_at: '2026-02-01T00:00:00Z' },
+              { id: '1', folder_path: 'course files', created_at: '2026-01-01T00:00:00Z' },
+              { id: '2', folder_path: 'course files/Week 1', created_at: '2026-02-01T00:00:00Z' },
             ],
           },
         ],
@@ -333,13 +333,13 @@ describe('fileTools', () => {
 
     it('scopes to a folder subtree when folder_id is provided', async () => {
       const subFolder = {
-        id: 2,
+        id: '2',
         name: 'Week 1',
         full_name: 'course files/Week 1',
-        parent_folder_id: 1,
+        parent_folder_id: '1',
       }
       const otherFolder = {
-        id: 3,
+        id: '3',
         name: 'Week 2',
         full_name: 'course files/Week 2',
         parent_folder_id: null,
@@ -348,28 +348,28 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 2,
+              folder_id: '2',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 2,
+              folder_id: '2',
             },
             {
-              id: 3,
+              id: '3',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 3,
+              folder_id: '3',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder, subFolder, otherFolder]),
@@ -386,8 +386,8 @@ describe('fileTools', () => {
             size: 10,
             count: 2,
             files: [
-              { id: 1, folder_path: 'course files/Week 1' },
-              { id: 2, folder_path: 'course files/Week 1' },
+              { id: '1', folder_path: 'course files/Week 1' },
+              { id: '2', folder_path: 'course files/Week 1' },
             ],
           },
         ],
@@ -396,15 +396,20 @@ describe('fileTools', () => {
     })
 
     it('scopes through a multi-level subtree (grandchild folders)', async () => {
-      const child = { id: 2, name: 'Unit 1', full_name: 'course files/Unit 1', parent_folder_id: 1 }
+      const child = {
+        id: '2',
+        name: 'Unit 1',
+        full_name: 'course files/Unit 1',
+        parent_folder_id: '1',
+      }
       const grandchild = {
-        id: 3,
+        id: '3',
         name: 'Readings',
         full_name: 'course files/Unit 1/Readings',
-        parent_folder_id: 2,
+        parent_folder_id: '2',
       }
       const outside = {
-        id: 4,
+        id: '4',
         name: 'Unit 2',
         full_name: 'course files/Unit 2',
         parent_folder_id: null,
@@ -413,28 +418,28 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 3,
+              folder_id: '3',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 3,
+              folder_id: '3',
             },
             {
-              id: 3,
+              id: '3',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 4,
+              folder_id: '4',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder, child, grandchild, outside]),
@@ -446,7 +451,7 @@ describe('fileTools', () => {
 
       expect(result.duplicate_groups).toHaveLength(1)
       expect(result.duplicate_groups[0].count).toBe(2)
-      expect(result.duplicate_groups[0].files.map((f: { id: number }) => f.id)).toEqual([1, 2])
+      expect(result.duplicate_groups[0].files.map((f: { id: number }) => f.id)).toEqual(['1', '2'])
     })
 
     it('returns an empty result when folder_id does not match any known folder', async () => {
@@ -454,20 +459,20 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),
@@ -485,20 +490,20 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 77,
+              folder_id: '77',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 77,
+              folder_id: '77',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),
@@ -509,8 +514,8 @@ describe('fileTools', () => {
       const result = await tool.handler({ course_id: '1' })
 
       expect(result.duplicate_groups[0].files).toEqual([
-        { id: 1, folder_path: '(unknown folder 77)' },
-        { id: 2, folder_path: '(unknown folder 77)' },
+        { id: '1', folder_path: '(unknown folder 77)' },
+        { id: '2', folder_path: '(unknown folder 77)' },
       ])
     })
 
@@ -519,28 +524,28 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 3,
+              id: '3',
               display_name: 'dup.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),
@@ -560,44 +565,44 @@ describe('fileTools', () => {
         files: {
           list: vi.fn().mockResolvedValue([
             {
-              id: 1,
+              id: '1',
               display_name: 'a.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 2,
+              id: '2',
               display_name: 'a.pdf',
               content_type: 'application/pdf',
               url: '',
               size: 10,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 3,
+              id: '3',
               display_name: 'b.docx',
               content_type: 'application/msword',
               url: '',
               size: 30,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 4,
+              id: '4',
               display_name: 'b.docx',
               content_type: 'application/msword',
               url: '',
               size: 30,
-              folder_id: 1,
+              folder_id: '1',
             },
             {
-              id: 5,
+              id: '5',
               display_name: 'unique.png',
               content_type: 'image/png',
               url: '',
               size: 40,
-              folder_id: 1,
+              folder_id: '1',
             },
           ]),
           listFolders: vi.fn().mockResolvedValue([mockFolder]),

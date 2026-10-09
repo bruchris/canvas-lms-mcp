@@ -116,7 +116,6 @@ export {
   canvasIdInput,
   canvasIdList,
   normalizeCanvasIdInput,
-  canvasIdFromResponse,
   compareCanvasIds,
   CANVAS_MAX_ID,
   MAX_SAFE_CANVAS_NUMBER_ID,

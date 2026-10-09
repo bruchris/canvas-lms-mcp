@@ -4,7 +4,7 @@ import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
 import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
 type ContentSource = (typeof CONTENT_SOURCES)[number]
@@ -173,7 +173,7 @@ async function scanQuizzes(
         quiz_engine: 'classic',
       }
       const findings = scanHtml(quiz.description, courseId, location, warnings)
-      const questions = await canvas.quizzes.listQuestions(courseId, canvasIdFromResponse(quiz.id))
+      const questions = await canvas.quizzes.listQuestions(courseId, quiz.id)
       for (const question of questions) {
         findings.push(
           ...scanHtml(
@@ -199,7 +199,7 @@ async function scanQuizzes(
         title: assignment.name,
         quiz_engine: 'new',
       }
-      const items = await canvas.newQuizzes.listItems(courseId, canvasIdFromResponse(assignment.id))
+      const items = await canvas.newQuizzes.listItems(courseId, assignment.id)
       // `entry` is optional-chained defensively: New Quizzes list items include
       // Stimulus blocks and other entry shapes, and a malformed/entry-less item
       // would otherwise throw a raw TypeError that aborts the whole audit. A

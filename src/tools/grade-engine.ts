@@ -1,5 +1,5 @@
 import type { CanvasClient } from '../canvas'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import type { CanvasId } from '../canvas/id'
 import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
@@ -94,7 +94,7 @@ export function combinations<T>(items: readonly T[], k: number): T[][] {
 export function classify(
   assignment: CanvasAssignment,
   sub: CanvasSubmission | undefined,
-  neverDrop: ReadonlySet<number>,
+  neverDrop: ReadonlySet<CanvasId>,
 ): GradeItem {
   const base = {
     assignment,
@@ -213,7 +213,7 @@ export function applyDrop(
 /** Compute one group's earned/possible totals for a single mode. */
 export function computeGroupGrade(
   group: CanvasAssignmentGroup,
-  submissionsById: ReadonlyMap<number, CanvasSubmission>,
+  submissionsById: ReadonlyMap<CanvasId, CanvasSubmission>,
   mode: Mode,
 ): GroupModeResult {
   const dropLowest = group.rules?.drop_lowest ?? 0
@@ -322,9 +322,7 @@ export async function resolveGradingScheme(
   if (courseMatch) return courseMatch.grading_scheme
 
   if (course.account_id != null) {
-    const accountStandards = await canvas.gradingStandards.listForAccount(
-      canvasIdFromResponse(course.account_id),
-    )
+    const accountStandards = await canvas.gradingStandards.listForAccount(course.account_id)
     const accountMatch = accountStandards.find((s) => s.id === targetId)
     if (accountMatch) return accountMatch.grading_scheme
   }

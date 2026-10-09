@@ -3,12 +3,12 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CreateAssignmentOverrideParams } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 interface AssignmentOverrideResult {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string
-  override_id?: number
+  override_id?: CanvasId
   // Status (applied/failed) is conveyed by which bucket the entry lands in, so
   // no per-entry status flag is carried; `error` is present only on failed[].
   error?: string
@@ -208,11 +208,11 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
           // `Set<number>` is exactly where §4.1 said the union would go blind, and
           // `Number(a.id)` to make the key fit is what §4.4 forbids.
           const requested = new Set(assignmentIds)
-          const present = new Set(assignments.map((a) => canvasIdFromResponse(a.id)))
+          const present = new Set(assignments.map((a) => a.id))
           for (const id of requested) {
             if (!present.has(id)) notFound.push(id)
           }
-          assignments = assignments.filter((a) => requested.has(canvasIdFromResponse(a.id)))
+          assignments = assignments.filter((a) => requested.has(a.id))
         }
 
         // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
@@ -240,7 +240,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
 
             const override = await canvas.assignments.createOverride(
               courseId,
-              canvasIdFromResponse(assignment.id),
+              assignment.id,
               overrideParams,
             )
             return {

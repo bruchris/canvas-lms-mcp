@@ -65,7 +65,7 @@ function buildMockCanvas(o: MockOverrides = {}): CanvasClient {
   return {
     latePolicy: { get: latePolicyGet },
     courses: {
-      get: vi.fn().mockResolvedValue(o.course ?? { id: 1, name: 'Course' }),
+      get: vi.fn().mockResolvedValue(o.course ?? { id: '1', name: 'Course' }),
     },
     assignments: {
       listGroups: vi.fn().mockResolvedValue(o.groups ?? []),
@@ -105,11 +105,11 @@ describe('explain_grading_policy — metadata', () => {
 describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weighted + scheme)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Physics 101',
       apply_assignment_group_weights: true,
-      grading_standard_id: 42,
-      account_id: 10,
+      grading_standard_id: '42',
+      account_id: '10',
     },
     latePolicy: latePolicy({
       missing_submission_deduction_enabled: true,
@@ -121,10 +121,10 @@ describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weigh
       late_submission_minimum_percent: 50,
     }),
     groups: [
-      { id: 1, name: 'Exams', group_weight: 60 },
-      { id: 2, name: 'Homework', group_weight: 40 },
+      { id: '1', name: 'Exams', group_weight: 60 },
+      { id: '2', name: 'Homework', group_weight: 40 },
     ],
-    courseStandards: [{ id: 42, title: 'Default Grading Scale', grading_scheme: [] }],
+    courseStandards: [{ id: '42', title: 'Default Grading Scale', grading_scheme: [] }],
   }
 
   it('surfaces the full policy with an instructor-facing summary', async () => {
@@ -144,11 +144,11 @@ describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weigh
     })
     expect(result.group_weighting.weighted).toBe(true)
     expect(result.group_weighting.groups).toEqual([
-      { id: 1, name: 'Exams', weight: 60 },
-      { id: 2, name: 'Homework', weight: 40 },
+      { id: '1', name: 'Exams', weight: 60 },
+      { id: '2', name: 'Homework', weight: 40 },
     ])
     expect(result.grading_scheme.applied).toBe(true)
-    expect(result.grading_scheme.standard_id).toBe(42)
+    expect(result.grading_scheme.standard_id).toBe('42')
     expect(result.grading_scheme.standard_title).toBe('Default Grading Scale')
     for (const fragment of ['auto-zero', '10%', 'day', '50%', 'Exams', 'Homework']) {
       expect(result.summary).toContain(fragment)
@@ -164,14 +164,14 @@ describe('explain_grading_policy — Fixture A (auto-zero + late penalty + weigh
 describe('explain_grading_policy — Fixture B (late_policy 404)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       // apply_assignment_group_weights intentionally omitted — exercises the
       // `?? false` coalescing for the realistic Canvas shape where it is absent.
       grading_standard_id: null,
     },
     latePolicyError: new CanvasApiError('Not Found', 404, '/api/v1/courses/1/late_policy'),
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('normalises a 404 to defaults (source: default), no caveat', async () => {
@@ -196,13 +196,13 @@ describe('explain_grading_policy — Fixture B (late_policy 404)', () => {
 describe('explain_grading_policy — Fixture C (late_policy 403)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: true,
       grading_standard_id: null,
     },
     latePolicyError: new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/late_policy'),
-    groups: [{ id: 1, name: 'Exams', group_weight: 100 }],
+    groups: [{ id: '1', name: 'Exams', group_weight: 100 }],
   }
 
   it('returns null policy blocks and exactly one permission caveat', async () => {
@@ -224,16 +224,16 @@ describe('explain_grading_policy — Fixture C (late_policy 403)', () => {
 describe('explain_grading_policy — Fixture D (account-scoped standard)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
-      grading_standard_id: 42,
-      account_id: 10,
+      grading_standard_id: '42',
+      account_id: '10',
     },
     latePolicy: latePolicy(),
     courseStandards: [],
-    accountStandards: [{ id: 42, title: 'Institutional Scale', grading_scheme: [] }],
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    accountStandards: [{ id: '42', title: 'Institutional Scale', grading_scheme: [] }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('falls back to the account standard and records both lookups', async () => {
@@ -251,22 +251,22 @@ describe('explain_grading_policy — Fixture D (account-scoped standard)', () =>
 describe('explain_grading_policy — Fixture E (standard unretrievable)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
-      grading_standard_id: 99,
-      account_id: 10,
+      grading_standard_id: '99',
+      account_id: '10',
     },
     latePolicy: latePolicy(),
-    courseStandards: [{ id: 1, title: 'Other', grading_scheme: [] }],
+    courseStandards: [{ id: '1', title: 'Other', grading_scheme: [] }],
     accountStandards: [],
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('reports applied but with a null title and a retrieval caveat', async () => {
     const { result } = await run(overrides)
     expect(result.grading_scheme.applied).toBe(true)
-    expect(result.grading_scheme.standard_id).toBe(99)
+    expect(result.grading_scheme.standard_id).toBe('99')
     expect(result.grading_scheme.standard_title).toBeNull()
     // Applied-but-title-unknown must read differently from "no scheme applied".
     expect(result.summary).toContain('A letter-grade scheme is applied (title unavailable)')
@@ -281,7 +281,7 @@ describe('explain_grading_policy — Fixture E (standard unretrievable)', () => 
 describe('explain_grading_policy — Fixture F (late penalty, no floor)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
@@ -293,7 +293,7 @@ describe('explain_grading_policy — Fixture F (late penalty, no floor)', () => 
       late_submission_minimum_percent_enabled: false,
       late_submission_minimum_percent: 0,
     }),
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('omits the floor sentence when no minimum is configured', async () => {
@@ -313,7 +313,7 @@ describe('explain_grading_policy — Fixture F (late penalty, no floor)', () => 
 describe('explain_grading_policy — Fixture G (enabled, 0% deduction)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
@@ -322,7 +322,7 @@ describe('explain_grading_policy — Fixture G (enabled, 0% deduction)', () => {
       missing_submission_deduction_enabled: true,
       missing_submission_deduction: 0,
     }),
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('says "no deduction (0%)" rather than inferring 100%', async () => {
@@ -337,7 +337,7 @@ describe('explain_grading_policy — Fixture G (enabled, 0% deduction)', () => {
 describe('explain_grading_policy — Fixture H (partial missing deduction)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
       grading_standard_id: null,
@@ -346,7 +346,7 @@ describe('explain_grading_policy — Fixture H (partial missing deduction)', () 
       missing_submission_deduction_enabled: true,
       missing_submission_deduction: 25,
     }),
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('describes a partial missing-work deduction without auto-zero/0% wording', async () => {
@@ -363,21 +363,21 @@ describe('explain_grading_policy — Fixture H (partial missing deduction)', () 
 describe('explain_grading_policy — Fixture I (standard set, no account_id)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: false,
-      grading_standard_id: 99,
+      grading_standard_id: '99',
       // account_id intentionally omitted
     },
     latePolicy: latePolicy(),
-    courseStandards: [{ id: 1, title: 'Other', grading_scheme: [] }],
-    groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+    courseStandards: [{ id: '1', title: 'Other', grading_scheme: [] }],
+    groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
   }
 
   it('caveats without an account fallback and never calls listForAccount', async () => {
     const { result, canvas } = await run(overrides)
     expect(result.grading_scheme.applied).toBe(true)
-    expect(result.grading_scheme.standard_id).toBe(99)
+    expect(result.grading_scheme.standard_id).toBe('99')
     expect(result.grading_scheme.standard_title).toBeNull()
     expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
     expect(
@@ -391,7 +391,7 @@ describe('explain_grading_policy — Fixture I (standard set, no account_id)', (
 describe('explain_grading_policy — Fixture J (weighted, empty groups)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: true,
       grading_standard_id: null,
@@ -417,15 +417,15 @@ describe('explain_grading_policy — Fixture K (call-4 CanvasApiError degrades)'
       latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
       courses: {
         get: vi.fn().mockResolvedValue({
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
-          grading_standard_id: 42,
-          account_id: 10,
+          grading_standard_id: '42',
+          account_id: '10',
         }),
       },
       assignments: {
-        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+        listGroups: vi.fn().mockResolvedValue([{ id: '1', name: 'Assignments', group_weight: 0 }]),
       },
       gradingStandards: {
         listForCourse: vi.fn().mockResolvedValue([]),
@@ -455,16 +455,16 @@ describe('explain_grading_policy — Fixture K (call-4 CanvasApiError degrades)'
 describe('explain_grading_policy — Fixture L (coexisting caveats)', () => {
   const overrides: MockOverrides = {
     course: {
-      id: 1,
+      id: '1',
       name: 'Course',
       apply_assignment_group_weights: true,
-      grading_standard_id: 99,
-      account_id: 10,
+      grading_standard_id: '99',
+      account_id: '10',
     },
     latePolicyError: new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/late_policy'),
     courseStandards: [],
     accountStandards: [],
-    groups: [{ id: 1, name: 'Exams', group_weight: 100 }],
+    groups: [{ id: '1', name: 'Exams', group_weight: 100 }],
   }
 
   it('emits both the permission and the standard-retrieval caveats', async () => {
@@ -485,15 +485,15 @@ describe('explain_grading_policy — Fixture M (call-4 non-Canvas error propagat
       latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
       courses: {
         get: vi.fn().mockResolvedValue({
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
-          grading_standard_id: 42,
-          account_id: 10,
+          grading_standard_id: '42',
+          account_id: '10',
         }),
       },
       assignments: {
-        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+        listGroups: vi.fn().mockResolvedValue([{ id: '1', name: 'Assignments', group_weight: 0 }]),
       },
       gradingStandards: {
         listForCourse: vi.fn().mockRejectedValue(new TypeError('boom')),
@@ -514,15 +514,15 @@ describe('explain_grading_policy — Fixture N (call-4 5xx propagates)', () => {
       latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
       courses: {
         get: vi.fn().mockResolvedValue({
-          id: 1,
+          id: '1',
           name: 'Course',
           apply_assignment_group_weights: false,
-          grading_standard_id: 42,
-          account_id: 10,
+          grading_standard_id: '42',
+          account_id: '10',
         }),
       },
       assignments: {
-        listGroups: vi.fn().mockResolvedValue([{ id: 1, name: 'Assignments', group_weight: 0 }]),
+        listGroups: vi.fn().mockResolvedValue([{ id: '1', name: 'Assignments', group_weight: 0 }]),
       },
       gradingStandards: {
         listForCourse: vi.fn().mockResolvedValue([]),
@@ -544,9 +544,9 @@ describe('explain_grading_policy — Fixture N (call-4 5xx propagates)', () => {
 describe('explain_grading_policy — required-call failures propagate', () => {
   it('propagates a non-403/404 error from the late_policy call', async () => {
     const canvas = buildMockCanvas({
-      course: { id: 1, name: 'Course', grading_standard_id: null },
+      course: { id: '1', name: 'Course', grading_standard_id: null },
       latePolicyError: new CanvasApiError('Server Error', 500, '/api/v1/courses/1/late_policy'),
-      groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
+      groups: [{ id: '1', name: 'Assignments', group_weight: 0 }],
     })
     await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toThrow(
       CanvasApiError,
@@ -574,7 +574,7 @@ describe('explain_grading_policy — required-call failures propagate', () => {
     const canvas = {
       latePolicy: { get: vi.fn().mockResolvedValue(latePolicy()) },
       courses: {
-        get: vi.fn().mockResolvedValue({ id: 1, name: 'Course', grading_standard_id: null }),
+        get: vi.fn().mockResolvedValue({ id: '1', name: 'Course', grading_standard_id: null }),
       },
       assignments: {
         listGroups: vi

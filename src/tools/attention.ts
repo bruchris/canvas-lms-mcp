@@ -23,7 +23,7 @@ function latestComment(
 
 function trailingStudentCommentCount(
   comments: ReadonlyArray<CanvasSubmissionComment>,
-  userId: number,
+  userId: CanvasId,
 ): number {
   const sorted = [...comments].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -202,7 +202,7 @@ export function attentionTools(
             )
           : rawEnrollments
 
-        const summaryMap = new Map<number, CanvasStudentSummary>()
+        const summaryMap = new Map<CanvasId, CanvasStudentSummary>()
         let analyticsAvailable = true
         try {
           const summaries = await canvas.analytics.getStudentSummaries(courseId)

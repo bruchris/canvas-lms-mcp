@@ -5,7 +5,7 @@ import { quizAccommodationTools } from '../../src/tools/quiz-accommodations'
 
 const QUIZZES = [
   {
-    id: 1,
+    id: '1',
     title: 'Classic Quiz 1',
     quiz_type: 'assignment',
     time_limit: 60,
@@ -15,7 +15,7 @@ const QUIZZES = [
     due_at: null,
   },
   {
-    id: 2,
+    id: '2',
     title: 'Classic Quiz 2',
     quiz_type: 'practice_quiz',
     time_limit: null,
@@ -25,7 +25,7 @@ const QUIZZES = [
     due_at: null,
   },
   {
-    id: 3,
+    id: '3',
     title: 'New Quiz',
     quiz_type: 'quizzes.next',
     time_limit: null,
@@ -40,12 +40,16 @@ function buildMockCanvas(): CanvasClient {
   return {
     quizzes: {
       list: vi.fn().mockResolvedValue(QUIZZES),
-      setExtension: vi.fn().mockResolvedValue([{ user_id: 42, extra_time: 20, extra_attempts: 1 }]),
+      setExtension: vi
+        .fn()
+        .mockResolvedValue([{ user_id: '42', extra_time: 20, extra_attempts: 1 }]),
       // The read tool audits accommodations via quiz submissions, not a
       // (non-existent) GET extensions endpoint.
       listSubmissions: vi
         .fn()
-        .mockResolvedValue([{ id: 5, quiz_id: 1, user_id: 42, extra_time: 20, extra_attempts: 1 }]),
+        .mockResolvedValue([
+          { id: '5', quiz_id: '1', user_id: '42', extra_time: 20, extra_attempts: 1 },
+        ]),
     },
   } as unknown as CanvasClient
 }
@@ -114,11 +118,11 @@ describe('quizAccommodationTools', () => {
         not_found: 0,
       })
       // The applied entry reports exactly what was requested (the user-visible contract).
-      expect(result.applied[0].quiz_id).toBe(1)
+      expect(result.applied[0].quiz_id).toBe('1')
       expect(result.applied[0].extra_time_minutes).toBe(20)
       expect(result.applied[0].extra_attempts).toBeNull()
       // The New Quiz lands in skipped[] with its reason.
-      expect(result.skipped[0].quiz_id).toBe(3)
+      expect(result.skipped[0].quiz_id).toBe('3')
       expect(result.skipped[0].skip_reason).toBe('new_quiz_not_supported')
     })
 
@@ -167,7 +171,7 @@ describe('quizAccommodationTools', () => {
       // Untimed quiz (id 2): no extra time, attempts still applied — not skipped.
       expect(setExtension).toHaveBeenCalledWith('10', '2', '42', undefined, 1)
       // The untimed quiz (id 2) is applied, not skipped.
-      const quiz2 = result.applied.find((r) => r.quiz_id === 2)!
+      const quiz2 = result.applied.find((r) => r.quiz_id === '2')!
       expect(quiz2.skip_reason).toBeUndefined()
       expect(quiz2.extra_time_minutes).toBeNull()
       expect(quiz2.extra_attempts).toBe(1)
@@ -178,7 +182,7 @@ describe('quizAccommodationTools', () => {
       const canvas = buildMockCanvas()
       ;(canvas.quizzes.list as ReturnType<typeof vi.fn>).mockResolvedValue([
         {
-          id: 1,
+          id: '1',
           title: 'One-minute quiz',
           quiz_type: 'assignment',
           time_limit: 1,
@@ -201,7 +205,7 @@ describe('quizAccommodationTools', () => {
       const canvas = buildMockCanvas()
       ;(canvas.quizzes.list as ReturnType<typeof vi.fn>).mockResolvedValue([
         {
-          id: 1,
+          id: '1',
           title: 'Zero-limit quiz',
           quiz_type: 'assignment',
           time_limit: 0,
@@ -218,7 +222,7 @@ describe('quizAccommodationTools', () => {
       })) as FanOutResult
       const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
       expect(setExtension).not.toHaveBeenCalled()
-      expect(result.skipped[0].quiz_id).toBe(1)
+      expect(result.skipped[0].quiz_id).toBe('1')
       expect(result.skipped[0].skip_reason).toBe('no_time_limit_for_multiplier')
     })
 
@@ -256,7 +260,7 @@ describe('quizAccommodationTools', () => {
         expect.anything(),
         expect.anything(),
       )
-      const quiz2 = result.skipped.find((r) => r.quiz_id === 2)!
+      const quiz2 = result.skipped.find((r) => r.quiz_id === '2')!
       expect(quiz2.skip_reason).toBe('no_time_limit_for_multiplier')
     })
 
@@ -294,15 +298,15 @@ describe('quizAccommodationTools', () => {
       const canvas = buildMockCanvas()
       const setExtension = canvas.quizzes.setExtension as ReturnType<typeof vi.fn>
       setExtension
-        .mockResolvedValueOnce([{ user_id: 42, extra_time: 20, extra_attempts: null }])
+        .mockResolvedValueOnce([{ user_id: '42', extra_time: 20, extra_attempts: null }])
         .mockRejectedValueOnce(new CanvasApiError('Forbidden', 403, '/extensions'))
       const result = (await tool(canvas, 'set_student_quiz_accommodation').handler({
         course_id: '10',
         user_id: '42',
         extra_time_minutes: 20,
       })) as FanOutResult
-      expect(result.applied[0].quiz_id).toBe(1)
-      expect(result.failed[0].quiz_id).toBe(2)
+      expect(result.applied[0].quiz_id).toBe('1')
+      expect(result.failed[0].quiz_id).toBe('2')
       expect(result.failed[0].error).toBe('Forbidden')
       expect(result.summary.applied).toBe(1)
       expect(result.summary.failed).toBe(1)
@@ -385,7 +389,7 @@ describe('quizAccommodationTools', () => {
     it('treats a submission with no extension (null/zero values) as no accommodation', async () => {
       const canvas = buildMockCanvas()
       ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { id: 5, quiz_id: 1, user_id: 42, extra_time: 0, extra_attempts: null },
+        { id: '5', quiz_id: '1', user_id: '42', extra_time: 0, extra_attempts: null },
       ])
       const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
         course_id: '10',
@@ -399,7 +403,7 @@ describe('quizAccommodationTools', () => {
     it('ignores another student present on the quiz', async () => {
       const canvas = buildMockCanvas()
       ;(canvas.quizzes.listSubmissions as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { id: 9, quiz_id: 1, user_id: 99, extra_time: 30, extra_attempts: 2 },
+        { id: '9', quiz_id: '1', user_id: '99', extra_time: 30, extra_attempts: 2 },
       ])
       const result = (await tool(canvas, 'list_student_quiz_accommodations').handler({
         course_id: '10',

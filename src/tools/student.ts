@@ -5,7 +5,7 @@ import type { SubmissionListInclude } from '../canvas/submissions'
 import type { CanvasSubmission, CanvasSubmissionComment } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const MY_SUBMISSION_FEEDBACK_INCLUDE = [
   'submission_comments',
@@ -18,7 +18,7 @@ const MY_SUBMISSION_FEEDBACK_INCLUDE = [
 type CommentAuthorRole = 'self' | 'teacher' | 'peer'
 
 interface FeedbackComment {
-  id: number
+  id: CanvasId
   author_role: CommentAuthorRole
   author_name: string
   comment: string
@@ -26,13 +26,11 @@ interface FeedbackComment {
 }
 
 interface SubmissionFeedback {
-  // `course_id` is the migrated input; `assignment_id` and `submission_id` are
-  // response values and stay `number` until PR 2a (BRU-2730 §8).
   course_id: CanvasId
   course_name: string | null
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string | null
-  submission_id: number
+  submission_id: CanvasId
   workflow_state: string
   score: number | null
   read_status: 'read' | 'unread' | null
@@ -171,9 +169,7 @@ export function studentTools(
         const courseIds =
           courseIdParam !== undefined
             ? [courseIdParam]
-            : (await canvas.courses.list({ enrollment_state: 'active' })).map((c) =>
-                canvasIdFromResponse(c.id),
-              )
+            : (await canvas.courses.list({ enrollment_state: 'active' })).map((c) => c.id)
 
         const perCourse: Array<{ courseId: CanvasId; submissions: CanvasSubmission[] }> = []
         const coursesFailed: Array<{
@@ -241,7 +237,7 @@ export function studentTools(
         }
 
         if (pseudonymizer?.isEnabled()) {
-          const peerAuthors = new Map<string, { courseId: CanvasId; id: number; name: string }>()
+          const peerAuthors = new Map<string, { courseId: CanvasId; id: CanvasId; name: string }>()
           for (const { courseId, submission } of candidates) {
             for (const comment of submission.submission_comments ?? []) {
               if (classifyCommentAuthor(comment, submission) === 'peer') {
@@ -262,7 +258,7 @@ export function studentTools(
 
         const findings: SubmissionFeedback[] = []
         for (const { courseId, submission } of candidates) {
-          const roles = new Map<number, CommentAuthorRole>()
+          const roles = new Map<CanvasId, CommentAuthorRole>()
           for (const c of submission.submission_comments ?? []) {
             roles.set(c.id, classifyCommentAuthor(c, submission))
           }

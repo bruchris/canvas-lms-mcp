@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { CanvasDiscussionTopic } from '../canvas/types'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 /**
  * Canvas deliberately hides anonymous discussion topics from its topic-scoped REST
@@ -69,7 +69,7 @@ async function describeAnonymityFromList(
   // Compared as canonical strings, not by coercing `topicId` back to a number:
   // `topic.id` is a response value (still `number` until PR 2a) and `topicId` is
   // a migrated input, so this is one of §4.1's ID-to-ID comparisons.
-  const listed = topics.find((topic) => canvasIdFromResponse(topic.id) === topicId)
+  const listed = topics.find((topic) => topic.id === topicId)
   return listed ? anonymityDescription(listed) : undefined
 }
 
