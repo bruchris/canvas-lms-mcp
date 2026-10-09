@@ -11,7 +11,7 @@ import {
 } from './grade-engine'
 import type { GroupModeResult } from './grade-engine'
 import type { ToolDefinition } from './types'
-import type { CanvasId } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 type Feasibility = 'already_secured' | 'achievable' | 'impossible'
 
@@ -192,11 +192,9 @@ export function gradeProjectionTools(
         '- V1 computes one student per call. Omit student_id to compute for the authenticated user. ' +
         'When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to compute the grade projection for.'),
+        course_id: canvasIdInput().describe(
+          'Canvas course ID to compute the grade projection for.',
+        ),
         target_percentage: z
           .number()
           .min(0)
@@ -214,10 +212,7 @@ export function gradeProjectionTools(
               'grading standard configured. Exactly one of target_percentage or target_letter must ' +
               'be provided. Case-insensitive.',
           ),
-        student_id: z
-          .number()
-          .int()
-          .positive()
+        student_id: canvasIdInput()
           .optional()
           .describe(
             'Canvas user_id of the student to compute for. Omit to compute for the authenticated user. ' +

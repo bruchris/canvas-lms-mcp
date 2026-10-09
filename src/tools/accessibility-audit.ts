@@ -4,7 +4,7 @@ import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
 import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
 type ContentSource = (typeof CONTENT_SOURCES)[number]
@@ -444,7 +444,7 @@ export function accessibilityAuditTools(canvas: CanvasClient): ToolDefinition[] 
         'the same WCAG areas plus rendered color contrast and offers in-UI remediation. ' +
         'Requires instructor permissions in the course.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
         include: z
           .array(z.enum(['pages', 'assignments', 'syllabus', 'announcements', 'quizzes']))
           .optional()

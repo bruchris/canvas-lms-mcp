@@ -153,11 +153,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'admin',
       description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
-        account_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('The Canvas account ID to create the course in'),
+        account_id: canvasIdInput().describe('The Canvas account ID to create the course in'),
         name: z.string().describe('The name of the course'),
         course_code: z.string().optional().describe('The course code (e.g. CS101)'),
         start_at: z
@@ -193,7 +189,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('The Canvas course ID to update'),
+        course_id: canvasIdInput().describe('The Canvas course ID to update'),
         name: z.string().optional().describe('New course name'),
         course_code: z.string().optional().describe('New course code'),
         start_at: z

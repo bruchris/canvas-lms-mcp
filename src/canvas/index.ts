@@ -103,4 +103,23 @@ export { CanvasHttpClient, CanvasApiError } from './client'
 export type { CanvasRequestOptions } from './client'
 export { appendCanvasQuery, toCanvasQuery } from './query'
 export type { CanvasQueryParams, CanvasQueryPrimitive, CanvasQueryValue } from './query'
+/**
+ * The identifier contract, re-exported because `canvas-lms-mcp/canvas` is a
+ * published entry point and every ID-taking method on `CanvasClient` now names
+ * `CanvasId` in its signature (BRU-2730 §3.6). Without this a consumer can see
+ * the type in the emitted `.d.ts` and still not import it — `TS2305` from the
+ * subpath, which is what `tests/canvas/id-package-consumer.test.ts` caught.
+ * `CanvasIdInputOptions` is included because `normalizeCanvasIdInput`'s
+ * signature references it.
+ */
+export {
+  canvasIdInput,
+  canvasIdList,
+  normalizeCanvasIdInput,
+  canvasIdFromResponse,
+  compareCanvasIds,
+  CANVAS_MAX_ID,
+  MAX_SAFE_CANVAS_NUMBER_ID,
+} from './id'
+export type { CanvasId, CanvasWireId, CanvasIdInputOptions } from './id'
 export type * from './types'

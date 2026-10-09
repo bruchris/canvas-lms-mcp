@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CreateAssignmentOverrideParams } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 interface AssignmentOverrideResult {
   assignment_id: number
@@ -25,8 +25,8 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Useful for auditing before creating a new override — Canvas returns a 422 if a ' +
         'student-set override already exists for the same students on the same assignment.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        assignment_id: z.number().int().positive().describe('Canvas assignment ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        assignment_id: canvasIdInput().describe('Canvas assignment ID'),
       },
       annotations: {
         readOnlyHint: true,
@@ -52,29 +52,23 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Provide student_ids as real Canvas user IDs. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to resolve pseudonyms to real user IDs.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        assignment_id: z.number().int().positive().describe('Canvas assignment ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        assignment_id: canvasIdInput().describe('Canvas assignment ID'),
         student_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .min(1)
           .optional()
           .describe(
             'Real Canvas user IDs to grant the override to. ' +
               'Mutually exclusive with course_section_id and group_id.',
           ),
-        course_section_id: z
-          .number()
-          .int()
-          .positive()
+        course_section_id: canvasIdInput()
           .optional()
           .describe(
             'ID of the course section to override. ' +
               'Mutually exclusive with student_ids and group_id.',
           ),
-        group_id: z
-          .number()
-          .int()
-          .positive()
+        group_id: canvasIdInput()
           .optional()
           .describe(
             'ID of the group to override. ' +
@@ -157,14 +151,10 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Real Canvas user ID of the student to accommodate'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student to accommodate'),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .min(1)
           .optional()
           .describe(

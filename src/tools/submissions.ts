@@ -73,7 +73,7 @@ export function submissionTools(
           .enum(SUBMISSION_WORKFLOW_STATE)
           .optional()
           .describe('Only include submissions in this workflow state'),
-        grading_period_id: z.number().int().optional().describe('Restrict to a grading period'),
+        grading_period_id: canvasIdInput().optional().describe('Restrict to a grading period'),
       },
       annotations: {
         readOnlyHint: true,

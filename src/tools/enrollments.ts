@@ -70,14 +70,10 @@ export function enrollmentTools(
           .array(z.enum(ENROLLMENT_INCLUDE))
           .optional()
           .describe('Extra fields to include on each enrollment (Canvas include[] param)'),
-        grading_period_id: z
-          .number()
-          .int()
+        grading_period_id: canvasIdInput()
           .optional()
           .describe('Return enrollments scoped to this grading period'),
-        enrollment_term_id: z
-          .number()
-          .int()
+        enrollment_term_id: canvasIdInput()
           .optional()
           .describe('Limit to enrollments in the given term'),
       },
@@ -124,14 +120,10 @@ export function enrollmentTools(
         user_id: canvasIdInput({ sentinels: ['self'] })
           .optional()
           .describe('Filter to a specific user. Canvas ID (pass large IDs as a string) or "self".'),
-        grading_period_id: z
-          .number()
-          .int()
+        grading_period_id: canvasIdInput()
           .optional()
           .describe('Scope grade-related includes to this grading period'),
-        enrollment_term_id: z
-          .number()
-          .int()
+        enrollment_term_id: canvasIdInput()
           .optional()
           .describe('Limit to enrollments in the given term'),
       },

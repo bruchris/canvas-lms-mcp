@@ -123,16 +123,35 @@ describe('§2.2 — the input defect on the wire, fixed by PR 1b (BRU-2730/BRU-2
 })
 
 /**
- * §3.4 / §9 — every ID-named `z.number().int()` input site already rejects
+ * ~~§3.4 / §9 — every ID-named `z.number().int()` input site already rejects
  * `2**53` today, split into the 46 `.int().positive()` sites and the 6 bare
- * `.int()` sites the spec names (BRU-2730 §3.4). Enumerated from the live
- * registry via the same AST-adjacent rule the spec states (ID-named =
- * `/(^|_)ids?$/i`, attributing an array item to its enclosing property),
- * run against `getAllTools` with every opt-in domain and policy enabled so
- * no gated-off tool hides a site from the count.
+ * `.int()` sites the spec names.~~ **Superseded by PR 1b (BRU-2827),
+ * 2026-10-09.**
+ *
+ * Phase 0 recorded **52** such sites: 46 `.int().positive()` and 6 bare
+ * `.int()` (4 × `grading_period_id`, 2 × `enrollment_term_id`). §8 PR 1b
+ * names only "the 222 un-`.int()` ID sites", which would have left those 52
+ * rejecting a shard >= 901 ID in *either* representation — among them
+ * `update_course.course_id`, `explain_grade.course_id`,
+ * `project_grade.course_id` and `audit_course_links.course_id`.
+ *
+ * They were migrated anyway, because leaving them is not merely incomplete,
+ * it is broken. PR 1b retypes every ID-named `as number` cast in
+ * `src/tools/**` to `as CanvasId`, so an unmigrated site's handler asserts
+ * `CanvasId` over a runtime `number`, and every ID join in that tool then
+ * compares a string against a number. Measured before migrating them: with
+ * `assignment_group_id` arriving as a number — exactly what its integer-only
+ * schema produced — `explain_grade` matched **0** assignment groups instead
+ * of 1. The deviation from §8's "222" is called out in the PR body.
+ *
+ * This block now asserts the post-migration property and **keeps the Phase-0
+ * detector**, so a regression back to the integer-only shape is named rather
+ * than merely changing a count.
  */
 
 const ID_NAME = /(^|_)ids?$/i
+/** The shard-901 case from §2.1: the reason this migration exists. */
+const SHARD_901_ID = '9010000000000001'
 
 interface ZodIntrospectable {
   _zod: { def: Record<string, unknown> }
@@ -150,6 +169,7 @@ function unwrapModifiers(schema: z.ZodType): z.ZodType {
   }
 }
 
+/** The Phase-0 shape: `z.number().int()`, with or without `.positive()`. */
 function isSafeIntNumber(schema: z.ZodType): boolean {
   const def = (schema as unknown as ZodIntrospectable)._zod.def
   if (def.type !== 'number') return false
@@ -157,56 +177,47 @@ function isSafeIntNumber(schema: z.ZodType): boolean {
   return checks.some((check) => check._zod.def.format === 'safeint')
 }
 
-function hasPositiveCheck(schema: z.ZodType): boolean {
-  const def = (schema as unknown as ZodIntrospectable)._zod.def
-  const checks = (def.checks as ZodIntrospectable[]) ?? []
-  return checks.some(
-    (check) => check._zod.def.check === 'greater_than' && check._zod.def.value === 0,
-  )
+/**
+ * Classified by **behaviour**, not by introspection: `canvasIdInput()` is a
+ * union behind a transform, so its `_zod.def` shape is an implementation
+ * detail, while "accepts a safe integer AND accepts a canonical 16-digit
+ * string" is the contract §4.2 actually specifies. It also separates the
+ * canonical sites from the handful of ID fields that are declared
+ * `z.string()` and were left alone by §4.4 (they are already strings, so
+ * they carry no precision risk).
+ */
+function isCanonicalIdSchema(schema: z.ZodType): boolean {
+  return schema.safeParse(42).success && schema.safeParse(SHARD_901_ID).success
 }
 
-interface IntIdSite {
+interface IdSite {
   tool: string
   field: string
   kind: 'scalar' | 'array-item'
   schema: z.ZodType
-  bare: boolean
 }
 
-function findIntIdSites(tools: ReturnType<typeof getAllTools>): IntIdSite[] {
-  const sites: IntIdSite[] = []
+function findIdSites(tools: ReturnType<typeof getAllTools>): IdSite[] {
+  const sites: IdSite[] = []
   for (const tool of tools) {
     for (const [field, rawSchema] of Object.entries(tool.inputSchema)) {
       if (!ID_NAME.test(field)) continue
       const base = unwrapModifiers(rawSchema)
       const baseDef = (base as unknown as ZodIntrospectable)._zod.def
-      if (isSafeIntNumber(base)) {
-        sites.push({
-          tool: tool.name,
-          field,
-          kind: 'scalar',
-          schema: base,
-          bare: !hasPositiveCheck(base),
-        })
-      } else if (baseDef.type === 'array') {
+      if (baseDef.type === 'array') {
         const element = unwrapModifiers(baseDef.element as z.ZodType)
-        if (isSafeIntNumber(element)) {
-          sites.push({
-            tool: tool.name,
-            field,
-            kind: 'array-item',
-            schema: element,
-            bare: !hasPositiveCheck(element),
-          })
-        }
+        sites.push({ tool: tool.name, field, kind: 'array-item', schema: element })
+      } else {
+        sites.push({ tool: tool.name, field, kind: 'scalar', schema: base })
       }
     }
   }
   return sites
 }
 
-describe('§3.4 — the 52 ID-named .int() sites that already reject 2**53 today (BRU-2730)', () => {
-  let sites: IntIdSite[]
+describe('§3.4 — every ID-named input site now takes a 64-bit ID (BRU-2730/BRU-2827)', () => {
+  let sites: IdSite[]
+  let canonical: IdSite[]
 
   beforeAll(() => {
     const canvas = {} as CanvasClient
@@ -218,23 +229,36 @@ describe('§3.4 — the 52 ID-named .int() sites that already reject 2**53 today
     })
     // Anti-vacuity: a registry that failed to build would have far fewer tools.
     expect(tools.length).toBeGreaterThan(100)
-    sites = findIntIdSites(tools)
+    sites = findIdSites(tools)
+    canonical = sites.filter((site) => isCanonicalIdSchema(site.schema))
   })
 
-  it('finds exactly the 52 sites the spec records: 46 already `.positive()`, 6 still bare', () => {
-    expect(sites.length).toBe(52)
-    expect(sites.filter((s) => !s.bare).length).toBe(46)
-    expect(sites.filter((s) => s.bare).length).toBe(6)
-
-    // The 6 bare sites the spec names by file:line (§3.4): 4 `grading_period_id`,
-    // 2 `enrollment_term_id`, all reachable here by tool + field instead.
-    const bareFields = sites.filter((s) => s.bare).map((s) => s.field)
-    expect(bareFields.filter((f) => f === 'grading_period_id').length).toBe(4)
-    expect(bareFields.filter((f) => f === 'enrollment_term_id').length).toBe(2)
+  it('finds every ID-named input site in the registry, so the sweeps below are not vacuous', () => {
+    // §3.4 counts 274 ID-named `z.number()` occurrences plus a handful of
+    // `z.string()` ID fields. The floor is deliberately well under that so an
+    // ordinary tool addition never has to touch it.
+    expect(sites.length).toBeGreaterThanOrEqual(250)
+    expect(canonical.length).toBeGreaterThanOrEqual(250)
   })
 
-  it('rejects 2**53 at every one of the 52 sites, with no exceptions', () => {
-    const failures = sites
+  it('no site publishes a safe-integer-only schema any more — Phase 0 recorded exactly 52', () => {
+    const integerOnly = sites
+      .filter((site) => isSafeIntNumber(site.schema))
+      .map((site) => `${site.tool}.${site.field}`)
+
+    expect(integerOnly).toEqual([])
+  })
+
+  it(`accepts the shard-901 string "${SHARD_901_ID}" at every canonical site — the case Phase 0 recorded as unaddressable`, () => {
+    const failures = canonical
+      .filter((site) => !site.schema.safeParse(SHARD_901_ID).success)
+      .map((site) => `${site.tool}.${site.field}`)
+
+    expect(failures).toEqual([])
+  })
+
+  it('still rejects 2**53 as a number at every site, so the Phase 0 guarantee is not traded away', () => {
+    const failures = canonical
       .filter((site) => site.schema.safeParse(SAFE_LARGE_INT).success)
       .map((site) => `${site.tool}.${site.field}`)
 
@@ -242,30 +266,42 @@ describe('§3.4 — the 52 ID-named .int() sites that already reject 2**53 today
   })
 
   it('accepts an ordinary safe integer at every site, so the rejection is about 2**53 specifically', () => {
-    const failures = sites
+    const failures = canonical
       .filter((site) => !site.schema.safeParse(42).success)
       .map((site) => `${site.tool}.${site.field}`)
 
     expect(failures).toEqual([])
   })
 
-  it('publishes the §9 keyword split as it stands today: bare sites have no floor, positive sites exclude 0', () => {
-    for (const site of sites) {
-      const json = z.toJSONSchema(site.schema) as {
-        type: string
-        minimum?: number
-        exclusiveMinimum?: number
-        maximum?: number
+  it('rejects a non-canonical decimal string at every site, so one object has exactly one ID', () => {
+    // §4.2 rule 2: Canvas tolerates `"007"`; we do not, or `Map` keys fork and
+    // §4.1's whole argument is defeated.
+    const failures = canonical
+      .filter((site) => site.schema.safeParse('007').success)
+      .map((site) => `${site.tool}.${site.field}`)
+
+    expect(failures).toEqual([])
+  })
+
+  it('publishes the §9 `anyOf` body at every site rather than the old integer keywords', () => {
+    for (const site of canonical) {
+      // `{ io: 'input' }` is required, not optional: the `.transform()` makes
+      // the default mode throw (§4.2.1 N2). The SDK passes `io: 'input'` for
+      // tool input schemas, which is the only reason `tools/list` works.
+      const json = z.toJSONSchema(site.schema, { io: 'input' }) as {
+        anyOf?: Array<Record<string, unknown>>
       }
-      expect(json.type, `${site.tool}.${site.field}`).toBe('integer')
-      expect(json.maximum, `${site.tool}.${site.field}`).toBe(9007199254740991)
-      if (site.bare) {
-        expect(json.minimum, `${site.tool}.${site.field}`).toBe(-9007199254740991)
-        expect(json.exclusiveMinimum, `${site.tool}.${site.field}`).toBeUndefined()
-      } else {
-        expect(json.exclusiveMinimum, `${site.tool}.${site.field}`).toBe(0)
-        expect(json.minimum, `${site.tool}.${site.field}`).toBeUndefined()
-      }
+      const label = `${site.tool}.${site.field}`
+      expect(json.anyOf, label).toBeDefined()
+      const members = json.anyOf!
+      expect(
+        members.some((m) => m.type === 'integer' && m.maximum === 9007199254740991),
+        label,
+      ).toBe(true)
+      expect(
+        members.some((m) => m.type === 'string' && m.pattern === '^[1-9][0-9]{0,18}$'),
+        label,
+      ).toBe(true)
     }
   })
 })

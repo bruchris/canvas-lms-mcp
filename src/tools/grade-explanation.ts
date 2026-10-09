@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type {
   CanvasAssignmentGroup,
@@ -16,7 +15,7 @@ import {
 import type { GroupModeResult } from './grade-engine'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 // ── Output assembly ──────────────────────────────────────────────────────────
 
@@ -127,15 +126,8 @@ export function gradeExplanationTools(
         '- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled and you are passing a student_id, first call ' +
         'resolve_pseudonym to obtain the real Canvas user_id.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to compute the grade for.'),
-        student_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput().describe('Canvas course ID to compute the grade for.'),
+        student_id: canvasIdInput()
           .optional()
           .describe(
             'Canvas user_id of the student to compute the grade for. Omit to compute for the ' +
@@ -143,10 +135,7 @@ export function gradeExplanationTools(
               'When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, pass the numeric Canvas user_id after ' +
               'resolving the pseudonym via resolve_pseudonym.',
           ),
-        assignment_group_id: z
-          .number()
-          .int()
-          .positive()
+        assignment_group_id: canvasIdInput()
           .optional()
           .describe(
             'Narrow the output to a single assignment group. When omitted all groups are included and ' +

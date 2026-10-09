@@ -210,9 +210,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .boolean()
           .optional()
           .describe('Apply assignment overrides to due/unlock/lock dates'),
-        grading_period_id: z
-          .number()
-          .int()
+        grading_period_id: canvasIdInput()
           .optional()
           .describe('Scope to a specific grading period'),
         scope_assignments_to_student: z

@@ -1,9 +1,8 @@
-import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { CanvasLatePolicy } from '../canvas/types'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 /**
  * Synthetic policy used when Canvas returns 404 for `late_policy` — i.e. the
@@ -130,11 +129,7 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
         'receive the group-weighting and grading-scheme sections only, with a caveat noting what is ' +
         'unavailable. Use explain_grade to compute the actual weighted grade for a specific student.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to explain the grading policy for.'),
+        course_id: canvasIdInput().describe('Canvas course ID to explain the grading policy for.'),
       },
       annotations: {
         readOnlyHint: true,

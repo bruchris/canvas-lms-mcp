@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasQuiz } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 // Quiz types that the Classic Quizzes extensions API can extend. New Quizzes
 // (`quizzes.next`) use a different accommodation mechanism and are skipped.
@@ -39,12 +39,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Real Canvas user ID of the student to accommodate'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student to accommodate'),
         extra_time_minutes: z
           .number()
           .int()
@@ -72,7 +68,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Additional attempts to grant beyond the quiz default.'),
         quiz_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Limit accommodation to these specific quiz IDs. ' +
@@ -202,8 +198,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z.number().int().positive().describe('Real Canvas user ID of the student'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student'),
       },
       annotations: {
         readOnlyHint: true,

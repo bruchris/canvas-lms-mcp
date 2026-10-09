@@ -8,7 +8,7 @@ import type {
   CanvasModuleItem,
 } from '../canvas/types'
 import type { ToolDefinition } from './types'
-import type { CanvasId } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const ALL_CHECKS = [
   'missing_due_dates',
@@ -133,7 +133,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
         '(see list_students_needing_attention / get_missing_submissions for those). ' +
         'Requires instructor permissions in the course.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
         checks: z
           .array(
             z.enum([

@@ -132,10 +132,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         'assignment; omit to return analytics for all assignments in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
-        assignment_id: z
-          .number()
-          .int()
-          .positive()
+        assignment_id: canvasIdInput()
           .optional()
           .describe(
             'Scope the result to a single assignment ID. Omit to return analytics for all assignments.',

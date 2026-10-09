@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CanvasSubmission } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 // ── Caveats ──────────────────────────────────────────────────────────────────
 
@@ -94,13 +94,11 @@ export function submissionsAwaitingGradingTools(
         '- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with ' +
         'pseudonyms. Use resolve_pseudonym to look up the real identity.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to scan for submissions awaiting grading.'),
+        course_id: canvasIdInput().describe(
+          'Canvas course ID to scan for submissions awaiting grading.',
+        ),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Limit the scan to these specific assignment IDs (numeric Canvas IDs). ' +

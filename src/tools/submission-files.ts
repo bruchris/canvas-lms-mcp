@@ -3,7 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { ListStudentSubmissionsOptions, SubmissionWorkflowState } from '../canvas/submissions'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import type { CanvasId } from '../canvas/id'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const WORKFLOW_STATE = ['submitted', 'graded', 'pending_review', 'unsubmitted'] as const
 
@@ -53,13 +53,13 @@ export function submissionFileTools(
         '(e.g. "Student 1"); user_id (the raw numeric Canvas ID) is always returned and works as a ' +
         'stable per-student folder key.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID.'),
+        course_id: canvasIdInput().describe('Canvas course ID.'),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe('Restrict to these assignment IDs. Omit to scan all assignments.'),
         student_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Restrict to these student user IDs. Omit to include all students. When ' +

@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type {
   CanvasQuizQuestion,
@@ -7,7 +6,7 @@ import type {
 } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
-import { type CanvasId, canvasIdFromResponse, compareCanvasIds } from '../canvas/id'
+import { type CanvasId, canvasIdFromResponse, compareCanvasIds, canvasIdInput } from '../canvas/id'
 
 // Classic Quiz `quiz_type` values. An allow-list (not a `!== 'quizzes.next'`
 // deny-list) so an unrecognized future quiz_type fails closed rather than being
@@ -172,12 +171,9 @@ export function quizQuestionResponseTools(
         'rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'student names are replaced with stable pseudonyms.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('The Canvas course ID'),
-        quiz_id: z.number().int().positive().describe('The Canvas quiz ID (Classic Quizzes only)'),
-        question_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        quiz_id: canvasIdInput().describe('The Canvas quiz ID (Classic Quizzes only)'),
+        question_id: canvasIdInput()
           .optional()
           .describe(
             'Scope the result to a single question ID (from list_quiz_questions, or a ' +
