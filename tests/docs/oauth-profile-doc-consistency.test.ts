@@ -110,11 +110,15 @@ describe('OAuth profile documentation', () => {
       // Anti-vacuity: a parser that silently stopped resolving, or a filter
       // that matched nothing, would satisfy the existence check with an
       // empty list. The two halves get separate floors so that a re-narrowing
-      // of either one fails on its own assertion: >40 under src/ is the floor
-      // BRU-2673 shipped, and >30 outside it is what this widening added.
+      // of either one fails on its own assertion. The src/ floor dropped from
+      // 40 to 20 with BRU-2822, which trimmed `src/canvas/`, `src/tools/` and
+      // `src/resources/` from near-exhaustive enumerations down to a handful
+      // of representative rows each (see the "representative, not exhaustive"
+      // describe block below) -- >20 still fails on a parser that resolved
+      // only the top level. >30 outside src/ is unchanged from BRU-2673.
       const src = paths.filter((p) => p.startsWith('canvas-lms-mcp/src/'))
       const nonSrc = paths.filter((p) => !p.startsWith('canvas-lms-mcp/src/'))
-      expect(src.length).toBeGreaterThan(40)
+      expect(src.length).toBeGreaterThan(20)
       expect(nonSrc.length).toBeGreaterThan(30)
       for (const known of [
         'canvas-lms-mcp/src/server.ts',
@@ -139,10 +143,11 @@ describe('OAuth profile documentation', () => {
     // until this gate, and ten more entries had accumulated behind it. Same
     // drift class as BRU-2673, same root cause: a surface the gate could not see.
     //
-    // Scoped to the top level of `src/`. The block's deeper enumerations
-    // (`src/canvas/`, `src/tools/`, `src/resources/`, `src/auth/`) are a much
-    // larger surface with the same hole, and closing it is a judgement about
-    // what the block is for rather than a missing edit -- BRU-2820.
+    // Scoped to the top level of `src/`. BRU-2820 judged the block's deeper
+    // enumerations (`src/canvas/`, `src/tools/`, `src/resources/`, `src/auth/`)
+    // to be an architectural map rather than a file inventory; BRU-2822 made
+    // that explicit by trimming them to representative rows (see below) instead
+    // of widening this assertion to match them.
     it('names every top-level entry under src/ as a row of the layout block', () => {
       const paths = new Set(layoutBlockPaths(designSpec))
       const entries = readdirSync(resolve(ROOT, 'src')).sort()
@@ -152,6 +157,75 @@ describe('OAuth profile documentation', () => {
       expect(entries.length).toBeGreaterThan(15)
       const unlisted = entries.filter((name) => !paths.has(`canvas-lms-mcp/src/${name}`))
       expect(unlisted).toEqual([])
+    })
+
+    // BRU-2822: makes the top-level -> spec check itself falsifiable, since the
+    // real repo currently happening to have a row for every top-level entry
+    // would otherwise let the assertion above go quietly vacuous forever. A
+    // synthetic repo listing with one injected top-level name absent from the
+    // spec's path set must still be caught by the same set-difference the test
+    // above runs against the real repo.
+    it('the top-level set-difference catches an entry the block does not list', () => {
+      const paths = new Set(layoutBlockPaths(designSpec))
+      const entries = [...readdirSync(resolve(ROOT, 'src')).sort(), 'not-a-real-top-level-dir']
+      const unlisted = entries.filter((name) => !paths.has(`canvas-lms-mcp/src/${name}`))
+      expect(unlisted).toEqual(['not-a-real-top-level-dir'])
+    })
+  })
+
+  // BRU-2822: Option B from BRU-2820. `src/canvas/`, `src/tools/` and
+  // `src/resources/` keep a handful of child rows, same as `src/auth/oauth/`
+  // and the newer top-level directories above them -- but the block no longer
+  // claims those rows are the complete contents of each domain.
+  describe('depth-2 enumerations are representative, not exhaustive (BRU-2822)', () => {
+    it('says so in the prose next to the layout block', () => {
+      expect(designSpec).toContain('src/tools/')
+      expect(designSpec).toContain('src/canvas/')
+      expect(designSpec).toContain('src/resources/')
+      expect(designSpec).toContain('representative sample')
+      expect(designSpec).toContain('not an exhaustive listing')
+    })
+
+    // Criterion 2: a new domain file under a representative directory is not a
+    // doc-gate failure. Proven against the real repo rather than a fixture, so
+    // it stays true as `src/tools/` and `src/canvas/` grow: each already holds
+    // a file the block's representative rows do not name, and the gate above
+    // only walks spec -> repo, never the reverse at this depth.
+    it('src/tools/ and src/canvas/ each already contain a file the block does not list', () => {
+      const listed = new Set(layoutBlockPaths(designSpec))
+      for (const dir of ['tools', 'canvas']) {
+        const realFiles = readdirSync(resolve(ROOT, 'src', dir))
+        const unlistedReal = realFiles.filter(
+          (name) => !listed.has(`canvas-lms-mcp/src/${dir}/${name}`),
+        )
+        expect(
+          unlistedReal.length,
+          `expected src/${dir}/ to outgrow its sample rows`,
+        ).toBeGreaterThan(0)
+      }
+    })
+
+    // Criterion 3: the spec -> repo assertion still walks every depth, so a
+    // representative row naming a path that does not exist is still a failure
+    // -- trimming the enumeration did not also narrow the direction that is
+    // still checked. Run against a synthetic fence block, independent of
+    // whatever the real spec happens to contain, so this cannot pass by luck.
+    it('a representative child row naming a nonexistent path still fails spec -> repo', () => {
+      const fixture = [
+        '```',
+        'canvas-lms-mcp/',
+        '├── src/',
+        '│   ├── tools/                     # representative sample, not exhaustive',
+        '│   │   ├── courses.ts',
+        '│   │   └── not-a-real-tool-file.ts',
+        '```',
+        '',
+      ].join('\n')
+      const paths = layoutBlockPaths(fixture)
+      const missing = paths.filter(
+        (p) => !existsSync(resolve(ROOT, p.replace(/^canvas-lms-mcp\/?/, ''))),
+      )
+      expect(missing).toEqual(['canvas-lms-mcp/src/tools/not-a-real-tool-file.ts'])
     })
   })
 })

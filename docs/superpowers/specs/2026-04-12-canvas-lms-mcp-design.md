@@ -28,45 +28,18 @@ A `createCanvasMCPServer(config)` factory in `src/server.ts` wires tools + resou
 ```
 canvas-lms-mcp/
 ├── src/
-│   ├── canvas/                    # Standalone Canvas API client
+│   ├── canvas/                    # Standalone Canvas API client — a representative sample of modules, not every one; see src/canvas/index.ts for the full facade
 │   │   ├── client.ts              # HTTP client, pagination, error handling
 │   │   ├── types.ts               # Canvas API types
 │   │   ├── courses.ts             # Course module
-│   │   ├── assignments.ts         # Assignment module
-│   │   ├── submissions.ts         # Submission module (read + write)
-│   │   ├── rubrics.ts             # Rubric module (read + write)
-│   │   ├── quizzes.ts             # Quiz module (read + write)
-│   │   ├── files.ts               # File module
-│   │   ├── users.ts               # User module
-│   │   ├── groups.ts              # Group module
-│   │   ├── enrollments.ts         # Enrollment module
-│   │   ├── discussions.ts         # Discussions + announcements
-│   │   ├── modules.ts             # Modules + module items
-│   │   ├── pages.ts               # Course pages
-│   │   ├── calendar.ts            # Calendar events
-│   │   ├── conversations.ts       # Inbox messages
 │   │   └── index.ts               # CanvasClient facade
-│   ├── tools/                     # MCP tool definitions (one file per domain)
+│   ├── tools/                     # MCP tool definitions, one file per domain — a representative sample, not every domain; see src/tools/index.ts for the registry
 │   │   ├── types.ts               # ToolDefinition type
 │   │   ├── courses.ts
-│   │   ├── assignments.ts
-│   │   ├── submissions.ts
-│   │   ├── rubrics.ts
-│   │   ├── quizzes.ts
-│   │   ├── files.ts
-│   │   ├── users.ts
-│   │   ├── groups.ts
-│   │   ├── enrollments.ts
-│   │   ├── discussions.ts
-│   │   ├── modules.ts
-│   │   ├── pages.ts
-│   │   ├── calendar.ts
-│   │   ├── conversations.ts
-│   │   ├── health.ts              # health_check tool
+│   │   ├── output/                # Structured output contracts (objectOutput/listOutput/ackOutput)
 │   │   └── index.ts               # Tool registry (registers all tools)
-│   ├── resources/                 # MCP resources (URI-addressable content)
+│   ├── resources/                 # MCP resources (URI-addressable content) — a representative sample, not every resource
 │   │   ├── syllabus.ts
-│   │   ├── assignment-description.ts
 │   │   └── index.ts
 │   ├── prompts/                   # Agent Skills advertised to clients as MCP prompts
 │   ├── ui/                        # MCP Apps UI resources — HTML widgets and their sanitizers
@@ -133,6 +106,16 @@ Do not annotate a row that has gone stale — an annotated row still parses as a
 row, so the only corrections available here are adding and removing rows. Do not
 write a count into the rows or the surrounding prose; state the rule and point at
 the oracle, as the skill count does under [Agent Skills](#agent-skills).
+
+The rows nested under `src/tools/`, `src/canvas/`, and `src/resources/` are a
+representative sample of each domain, not an exhaustive listing — the same shape
+already used above for `src/auth/oauth/` and the newer top-level directories
+(`prompts/`, `ui/`, `provenance/`, `pseudonym/`, `discovery/`, `init/`). Adding or
+removing a domain file under `src/tools/` or `src/canvas/` does not touch this
+block (BRU-2822; the depth-2 enumerations were judged an architectural map, not a
+file inventory, in BRU-2820). A row at this depth still names a real path — the
+spec -> repo direction above still fails if one does not exist — but nothing here
+asserts the reverse (repo -> spec) for anything deeper than the top level of `src/`.
 
 ## Transport & Deployment Modes
 
