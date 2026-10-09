@@ -74,8 +74,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.list', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'list_discussions')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.discussions.list).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.discussions.list).toHaveBeenCalledWith('1')
     })
   })
 
@@ -88,8 +88,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.get', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'get_discussion')!
-      await tool.handler({ course_id: 1, topic_id: 1 })
-      expect(canvas.discussions.get).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', topic_id: '1' })
+      expect(canvas.discussions.get).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -102,8 +102,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.listAnnouncements', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'list_announcements')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.discussions.listAnnouncements).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.discussions.listAnnouncements).toHaveBeenCalledWith('1')
     })
   })
 
@@ -118,8 +118,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.postEntry', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'post_discussion_entry')!
-      await tool.handler({ course_id: 1, topic_id: 1, message: 'Hello!' })
-      expect(canvas.discussions.postEntry).toHaveBeenCalledWith(1, 1, 'Hello!')
+      await tool.handler({ course_id: '1', topic_id: '1', message: 'Hello!' })
+      expect(canvas.discussions.postEntry).toHaveBeenCalledWith('1', '1', 'Hello!')
     })
   })
 
@@ -132,8 +132,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.create with required params', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
-      await tool.handler({ course_id: 1, title: 'New Topic' })
-      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1', title: 'New Topic' })
+      expect(canvas.discussions.create).toHaveBeenCalledWith('1', {
         title: 'New Topic',
         message: undefined,
         discussion_type: undefined,
@@ -148,14 +148,14 @@ describe('discussionTools', () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'New Topic',
         message: '<p>Hello</p>',
         discussion_type: 'threaded',
         published: true,
         require_initial_post: true,
       })
-      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+      expect(canvas.discussions.create).toHaveBeenCalledWith('1', {
         title: 'New Topic',
         message: '<p>Hello</p>',
         discussion_type: 'threaded',
@@ -174,12 +174,12 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Course Update',
         is_announcement: true,
         delayed_post_at: '2026-09-01T08:00:00.000Z',
       })
-      expect(canvas.discussions.create).toHaveBeenCalledWith(1, {
+      expect(canvas.discussions.create).toHaveBeenCalledWith('1', {
         title: 'Course Update',
         message: undefined,
         discussion_type: undefined,
@@ -199,7 +199,7 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
       const result = await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Course Update',
         is_announcement: true,
       })
@@ -215,10 +215,10 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
       await expect(
-        tool.handler({ course_id: 1, title: 'Course Update', is_announcement: true }),
+        tool.handler({ course_id: '1', title: 'Course Update', is_announcement: true }),
       ).rejects.toThrow(/99/)
       await expect(
-        tool.handler({ course_id: 1, title: 'Course Update', is_announcement: true }),
+        tool.handler({ course_id: '1', title: 'Course Update', is_announcement: true }),
       ).rejects.toThrow(/announcement/i)
     })
 
@@ -229,7 +229,7 @@ describe('discussionTools', () => {
         is_announcement: false,
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'create_discussion')!
-      await expect(tool.handler({ course_id: 1, title: 'New Topic' })).resolves.toMatchObject({
+      await expect(tool.handler({ course_id: '1', title: 'New Topic' })).resolves.toMatchObject({
         is_announcement: false,
       })
     })
@@ -244,8 +244,8 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.update', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
-      await tool.handler({ course_id: 1, topic_id: 1, title: 'Updated', published: false })
-      expect(canvas.discussions.update).toHaveBeenCalledWith(1, 1, {
+      await tool.handler({ course_id: '1', topic_id: '1', title: 'Updated', published: false })
+      expect(canvas.discussions.update).toHaveBeenCalledWith('1', '1', {
         title: 'Updated',
         message: undefined,
         published: false,
@@ -263,12 +263,12 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
       await tool.handler({
-        course_id: 1,
-        topic_id: 2,
+        course_id: '1',
+        topic_id: '2',
         is_announcement: true,
         delayed_post_at: '2026-10-15T09:00:00.000Z',
       })
-      expect(canvas.discussions.update).toHaveBeenCalledWith(1, 2, {
+      expect(canvas.discussions.update).toHaveBeenCalledWith('1', '2', {
         title: undefined,
         message: undefined,
         published: undefined,
@@ -286,7 +286,7 @@ describe('discussionTools', () => {
         is_announcement: true,
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
-      const result = await tool.handler({ course_id: 1, topic_id: 7, is_announcement: true })
+      const result = await tool.handler({ course_id: '1', topic_id: '7', is_announcement: true })
       expect(result).toMatchObject({ id: 7, is_announcement: true })
     })
 
@@ -299,10 +299,10 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
       await expect(
-        tool.handler({ course_id: 1, topic_id: 13, is_announcement: true }),
+        tool.handler({ course_id: '1', topic_id: '13', is_announcement: true }),
       ).rejects.toThrow(/13/)
       await expect(
-        tool.handler({ course_id: 1, topic_id: 13, is_announcement: true }),
+        tool.handler({ course_id: '1', topic_id: '13', is_announcement: true }),
       ).rejects.toThrow(/announcement/i)
     })
 
@@ -314,7 +314,7 @@ describe('discussionTools', () => {
       })
       const tool = discussionTools(canvas).find((t) => t.name === 'update_discussion')!
       await expect(
-        tool.handler({ course_id: 1, topic_id: 1, title: 'Updated' }),
+        tool.handler({ course_id: '1', topic_id: '1', title: 'Updated' }),
       ).resolves.toMatchObject({ is_announcement: false })
     })
   })
@@ -328,9 +328,9 @@ describe('discussionTools', () => {
     it('delegates to canvas.discussions.delete and returns confirmation', async () => {
       const canvas = buildMockCanvas()
       const tool = discussionTools(canvas).find((t) => t.name === 'delete_discussion')!
-      const result = await tool.handler({ course_id: 1, topic_id: 5 })
-      expect(canvas.discussions.delete).toHaveBeenCalledWith(1, 5)
-      expect(result).toEqual({ deleted: true, topic_id: 5 })
+      const result = await tool.handler({ course_id: '1', topic_id: '5' })
+      expect(canvas.discussions.delete).toHaveBeenCalledWith('1', '5')
+      expect(result).toEqual({ deleted: true, topic_id: '5' })
     })
   })
 })

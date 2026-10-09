@@ -80,20 +80,20 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.list with the course_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      await tool.handler({ course_id: 42 })
-      expect(canvas.assignments.list).toHaveBeenCalledWith(42, {})
+      await tool.handler({ course_id: '42' })
+      expect(canvas.assignments.list).toHaveBeenCalledWith('42', {})
     })
 
     it('forwards include[], bucket, and search_term', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
       await tool.handler({
-        course_id: 42,
+        course_id: '42',
         include: ['submission', 'all_dates'],
         bucket: 'upcoming',
         search_term: 'hw',
       })
-      expect(canvas.assignments.list).toHaveBeenCalledWith(42, {
+      expect(canvas.assignments.list).toHaveBeenCalledWith('42', {
         include: ['submission', 'all_dates'],
         bucket: 'upcoming',
         search_term: 'hw',
@@ -103,21 +103,21 @@ describe('assignmentTools', () => {
     it('returns the assignment list from Canvas when fields is omitted (full mode)', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
       expect(result).toEqual([mockAssignment])
     })
 
     it('returns the full assignment list when fields="full"', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      const result = await tool.handler({ course_id: 1, fields: 'full' })
+      const result = await tool.handler({ course_id: '1', fields: 'full' })
       expect(result).toEqual([mockAssignment])
     })
 
     it('returns slim projection when fields="slim"', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      const result = await tool.handler({ course_id: 1, fields: 'slim' })
+      const result = await tool.handler({ course_id: '1', fields: 'slim' })
       expect(result).toEqual([
         {
           id: 101,
@@ -133,7 +133,7 @@ describe('assignmentTools', () => {
     it('slim mode does not include extra fields', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      const result = (await tool.handler({ course_id: 1, fields: 'slim' })) as Array<
+      const result = (await tool.handler({ course_id: '1', fields: 'slim' })) as Array<
         Record<string, unknown>
       >
       expect(result[0]).not.toHaveProperty('description')
@@ -145,8 +145,8 @@ describe('assignmentTools', () => {
     it('slim mode ignores the include param', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
-      await tool.handler({ course_id: 42, fields: 'slim', include: ['submission'] })
-      expect(canvas.assignments.list).toHaveBeenCalledWith(42, {})
+      await tool.handler({ course_id: '42', fields: 'slim', include: ['submission'] })
+      expect(canvas.assignments.list).toHaveBeenCalledWith('42', {})
     })
 
     it('has a description', () => {
@@ -176,20 +176,20 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.get with course_id, assignment_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'get_assignment')!
-      await tool.handler({ course_id: 1, assignment_id: 101 })
-      expect(canvas.assignments.get).toHaveBeenCalledWith(1, 101, {})
+      await tool.handler({ course_id: '1', assignment_id: '101' })
+      expect(canvas.assignments.get).toHaveBeenCalledWith('1', '101', {})
     })
 
     it('forwards include[] and flags', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'get_assignment')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
+        course_id: '1',
+        assignment_id: '101',
         include: ['submission', 'overrides'],
         all_dates: true,
       })
-      expect(canvas.assignments.get).toHaveBeenCalledWith(1, 101, {
+      expect(canvas.assignments.get).toHaveBeenCalledWith('1', '101', {
         include: ['submission', 'overrides'],
         all_dates: true,
       })
@@ -198,7 +198,7 @@ describe('assignmentTools', () => {
     it('returns the assignment from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'get_assignment')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 101 })
+      const result = await tool.handler({ course_id: '1', assignment_id: '101' })
       expect(result).toEqual(mockAssignment)
     })
 
@@ -228,28 +228,28 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.listGroups with the course_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignment_groups')!
-      await tool.handler({ course_id: 42 })
-      expect(canvas.assignments.listGroups).toHaveBeenCalledWith(42, {})
+      await tool.handler({ course_id: '42' })
+      expect(canvas.assignments.listGroups).toHaveBeenCalledWith('42', {})
     })
 
     it('forwards include[] and filters', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignment_groups')!
       await tool.handler({
-        course_id: 42,
+        course_id: '42',
         include: ['assignments', 'submission'],
-        grading_period_id: 3,
+        grading_period_id: '3',
       })
-      expect(canvas.assignments.listGroups).toHaveBeenCalledWith(42, {
+      expect(canvas.assignments.listGroups).toHaveBeenCalledWith('42', {
         include: ['assignments', 'submission'],
-        grading_period_id: 3,
+        grading_period_id: '3',
       })
     })
 
     it('returns the assignment groups from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignment_groups')!
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
       expect(result).toEqual([mockGroup])
     })
 
@@ -280,8 +280,8 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.create with course_id and params', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
-      await tool.handler({ course_id: 1, name: 'New HW', points_possible: 50 })
-      expect(canvas.assignments.create).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1', name: 'New HW', points_possible: 50 })
+      expect(canvas.assignments.create).toHaveBeenCalledWith('1', {
         name: 'New HW',
         points_possible: 50,
       })
@@ -290,7 +290,7 @@ describe('assignmentTools', () => {
     it('returns the created assignment', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
-      const result = await tool.handler({ course_id: 1, name: 'New HW' })
+      const result = await tool.handler({ course_id: '1', name: 'New HW' })
       expect(result).toEqual(mockAssignment)
     })
 
@@ -306,13 +306,13 @@ describe('assignmentTools', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'create_assignment')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         name: 'Group project',
         published: false,
         omit_from_final_grade: true,
         grade_group_students_individually: true,
       })
-      expect(canvas.assignments.create).toHaveBeenCalledWith(1, {
+      expect(canvas.assignments.create).toHaveBeenCalledWith('1', {
         name: 'Group project',
         published: false,
         omit_from_final_grade: true,
@@ -342,8 +342,13 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.update with course_id, assignment_id, and params', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
-      await tool.handler({ course_id: 1, assignment_id: 101, name: 'Updated', points_possible: 75 })
-      expect(canvas.assignments.update).toHaveBeenCalledWith(1, 101, {
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '101',
+        name: 'Updated',
+        points_possible: 75,
+      })
+      expect(canvas.assignments.update).toHaveBeenCalledWith('1', '101', {
         name: 'Updated',
         points_possible: 75,
       })
@@ -353,13 +358,13 @@ describe('assignmentTools', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
+        course_id: '1',
+        assignment_id: '101',
         published: true,
         omit_from_final_grade: true,
         grade_group_students_individually: false,
       })
-      expect(canvas.assignments.update).toHaveBeenCalledWith(1, 101, {
+      expect(canvas.assignments.update).toHaveBeenCalledWith('1', '101', {
         published: true,
         omit_from_final_grade: true,
         grade_group_students_individually: false,
@@ -376,7 +381,7 @@ describe('assignmentTools', () => {
     it('returns the updated assignment', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'update_assignment')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 101, name: 'Updated' })
+      const result = await tool.handler({ course_id: '1', assignment_id: '101', name: 'Updated' })
       expect(result).toEqual(mockAssignment)
     })
 
@@ -408,14 +413,14 @@ describe('assignmentTools', () => {
     it('calls canvas.assignments.delete with course_id and assignment_id', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
-      await tool.handler({ course_id: 1, assignment_id: 101 })
-      expect(canvas.assignments.delete).toHaveBeenCalledWith(1, 101)
+      await tool.handler({ course_id: '1', assignment_id: '101' })
+      expect(canvas.assignments.delete).toHaveBeenCalledWith('1', '101')
     })
 
     it('returns undefined', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 101 })
+      const result = await tool.handler({ course_id: '1', assignment_id: '101' })
       expect(result).toBeUndefined()
     })
 

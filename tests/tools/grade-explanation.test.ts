@@ -105,7 +105,7 @@ function tool(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
 
 async function run(
   overrides: MockOverrides,
-  params: Record<string, unknown> = { course_id: 1 },
+  params: Record<string, unknown> = { course_id: '1' },
 ): Promise<GradeExplanation> {
   const canvas = buildMockCanvas(overrides)
   return (await tool(canvas, overrides.pseudonymizer).handler(params)) as GradeExplanation
@@ -528,7 +528,7 @@ describe('explain_grade — tool metadata', () => {
   })
 
   it('filters to a single assignment group and caveats the partial total', async () => {
-    const result = await run(FIXTURE_A, { course_id: 1, assignment_group_id: 2 })
+    const result = await run(FIXTURE_A, { course_id: '1', assignment_group_id: '2' })
     expect(result.groups).toHaveLength(1)
     expect(result.groups[0].group_id).toBe(2)
     expect(result.caveats.some((c) => c.includes('filtered to assignment group'))).toBe(true)
@@ -539,7 +539,7 @@ describe('explain_grade — tool metadata', () => {
     ;(canvas.courses.get as ReturnType<typeof vi.fn>).mockRejectedValue(
       new CanvasApiError('Not Found', 404, '/api/v1/courses/1'),
     )
-    await expect(tool(canvas).handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
+    await expect(tool(canvas).handler({ course_id: '1' })).rejects.toThrow(CanvasApiError)
   })
 })
 
@@ -578,9 +578,9 @@ describe('explain_grade — grading standard resolution', () => {
         },
       ],
     })
-    const result = (await tool(canvas).handler({ course_id: 1 })) as GradeExplanation
+    const result = (await tool(canvas).handler({ course_id: '1' })) as GradeExplanation
     expect(result.totals.current.letter).toBe('A') // 95% → 0.95 ≥ 0.9
-    expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith(7)
+    expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith('7')
   })
 
   it('does not query the account when the course standard already matches', async () => {
@@ -604,7 +604,7 @@ describe('explain_grade — grading standard resolution', () => {
         },
       ],
     })
-    const result = (await tool(canvas).handler({ course_id: 1 })) as GradeExplanation
+    const result = (await tool(canvas).handler({ course_id: '1' })) as GradeExplanation
     expect(result.totals.current.letter).toBe('A')
     expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
   })

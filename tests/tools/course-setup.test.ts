@@ -903,7 +903,7 @@ describe('courseSetupTools', () => {
       ;(canvas.assignments.list as ReturnType<typeof vi.fn>).mockRejectedValue(
         new CanvasApiError('Not Found', 404, '/api/v1/courses/10/assignments'),
       )
-      await expect(getTool(canvas).handler({ course_id: 10 })).rejects.toThrow(CanvasApiError)
+      await expect(getTool(canvas).handler({ course_id: '10' })).rejects.toThrow(CanvasApiError)
     })
   })
 })

@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasGradingSchemeEntry, CanvasGradingStandard } from './types'
+import type { CanvasId } from './id'
 
 /**
  * Canvas grading standards (letter-to-percentage grading schemes).
@@ -12,20 +13,20 @@ import type { CanvasGradingSchemeEntry, CanvasGradingStandard } from './types'
 export class GradingStandardsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async listForCourse(courseId: number): Promise<CanvasGradingStandard[]> {
+  async listForCourse(courseId: CanvasId): Promise<CanvasGradingStandard[]> {
     return this.client.paginate<CanvasGradingStandard>(
       `/api/v1/courses/${courseId}/grading_standards`,
     )
   }
 
-  async listForAccount(accountId: number): Promise<CanvasGradingStandard[]> {
+  async listForAccount(accountId: CanvasId): Promise<CanvasGradingStandard[]> {
     return this.client.paginate<CanvasGradingStandard>(
       `/api/v1/accounts/${accountId}/grading_standards`,
     )
   }
 
   async createForCourse(
-    courseId: number,
+    courseId: CanvasId,
     title: string,
     schemeEntries: CanvasGradingSchemeEntry[],
   ): Promise<CanvasGradingStandard> {
@@ -40,7 +41,7 @@ export class GradingStandardsModule {
   }
 
   async createForAccount(
-    accountId: number,
+    accountId: CanvasId,
     title: string,
     schemeEntries: CanvasGradingSchemeEntry[],
   ): Promise<CanvasGradingStandard> {

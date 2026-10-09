@@ -197,7 +197,7 @@ describe('submissionFileTools', () => {
   describe('basic two-assignment walk (Fixture A)', () => {
     it('emits one entry per attachment and skips attachment-less submissions', async () => {
       const { canvas } = buildMockCanvas(FIXTURE_A)
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       expect(result.total_files).toBe(3)
       expect(result.total_submissions_scanned).toBe(4)
       expect(result.truncated).toBe(false)
@@ -208,7 +208,7 @@ describe('submissionFileTools', () => {
       expect(result.files[0].download_url).toBe('https://canvas.example.com/files/501/download')
       expect(result.files[0].size).toBe(24576)
       expect(result.url_expiry_note).toContain('file_id')
-      expect(result.course_id).toBe(1)
+      expect(result.course_id).toBe('1')
     })
   })
 
@@ -217,7 +217,7 @@ describe('submissionFileTools', () => {
     it('still emits only attachment-based entries and counts every submission', async () => {
       const { canvas } = buildMockCanvas(FIXTURE_A)
       const result = (await getTool(canvas).handler({
-        course_id: 1,
+        course_id: '1',
         attachments_only: false,
       })) as Manifest
       expect(result.total_files).toBe(3)
@@ -238,7 +238,7 @@ describe('submissionFileTools', () => {
         }),
       )
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1, max_files: 3 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1', max_files: 3 })) as Manifest
       expect(result.total_files).toBe(3)
       expect(result.truncated).toBe(true)
       // Pin the interpolated max_files in the note, plus the recovery guidance.
@@ -277,7 +277,7 @@ describe('submissionFileTools', () => {
         }),
       ]
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1, max_files: 4 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1', max_files: 4 })) as Manifest
       expect(result.total_files).toBe(4)
       expect(result.truncated).toBe(true)
       expect(result.files.map((f) => f.file_id)).toEqual([1, 2, 3, 4])
@@ -296,7 +296,7 @@ describe('submissionFileTools', () => {
         }),
       )
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1, max_files: 3 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1', max_files: 3 })) as Manifest
       expect(result.total_files).toBe(3)
       expect(result.truncated).toBe(false)
       expect(result.truncation_note).toBeNull()
@@ -316,7 +316,7 @@ describe('submissionFileTools', () => {
         }),
       ]
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       expect(result.total_files).toBe(1)
       expect(result.files[0]._warning).toContain('attachment url unavailable')
       // file_id is still present so the caller can re-fetch once the file is ready.
@@ -334,7 +334,7 @@ describe('submissionFileTools', () => {
         }),
       ]
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       // Both clauses present, user-warning first, joined by '; '.
       expect(result.files[0]._warning).toMatch(/user data unavailable; attachment url unavailable/)
     })
@@ -361,7 +361,7 @@ describe('submissionFileTools', () => {
     it('replaces user_name with a stable per-student pseudonym while keeping the raw user_id', async () => {
       const { canvas } = buildMockCanvas(FIXTURE_A)
       const result = (await getTool(canvas, makePseudonymizer()).handler({
-        course_id: 1,
+        course_id: '1',
       })) as Manifest
       // Names are pseudonymized...
       expect(result.files[0].user_name).toMatch(/^Student \d+$/)
@@ -379,7 +379,7 @@ describe('submissionFileTools', () => {
     it('passes through real names when pseudonymization is disabled', async () => {
       const { canvas } = buildMockCanvas(FIXTURE_A)
       const result = (await getTool(canvas, makePseudonymizer(false)).handler({
-        course_id: 1,
+        course_id: '1',
       })) as Manifest
       expect(result.files[0].user_name).toBe('Alice')
       expect(result.files[1].user_name).toBe('Bob')
@@ -399,7 +399,7 @@ describe('submissionFileTools', () => {
         }),
       ]
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       expect(result.files[0].user_id).toBe(200)
       expect(result.files[0].user_name).toBeNull()
       expect(result.files[0]._warning).toBe('user data unavailable')
@@ -410,45 +410,45 @@ describe('submissionFileTools', () => {
   describe('filter pass-through (Fixture F)', () => {
     it('forwards assignment_ids', async () => {
       const { canvas, listForStudents } = buildMockCanvas([])
-      await getTool(canvas).handler({ course_id: 1, assignment_ids: [10, 20] })
+      await getTool(canvas).handler({ course_id: '1', assignment_ids: ['10', '20'] })
       expect(listForStudents).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ assignment_ids: [10, 20] }),
+        '1',
+        expect.objectContaining({ assignment_ids: ['10', '20'] }),
       )
     })
 
     it('forwards student_ids verbatim (not "all")', async () => {
       const { canvas, listForStudents } = buildMockCanvas([])
-      await getTool(canvas).handler({ course_id: 1, student_ids: [100] })
+      await getTool(canvas).handler({ course_id: '1', student_ids: ['100'] })
       expect(listForStudents).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ student_ids: [100] }),
+        '1',
+        expect.objectContaining({ student_ids: ['100'] }),
       )
     })
 
     it('defaults student_ids to ["all"] when none are provided', async () => {
       const { canvas, listForStudents } = buildMockCanvas([])
-      await getTool(canvas).handler({ course_id: 1 })
+      await getTool(canvas).handler({ course_id: '1' })
       expect(listForStudents).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ student_ids: ['all'] }),
       )
     })
 
     it('always requests the user and assignment includes', async () => {
       const { canvas, listForStudents } = buildMockCanvas([])
-      await getTool(canvas).handler({ course_id: 1 })
+      await getTool(canvas).handler({ course_id: '1' })
       expect(listForStudents).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ include: ['user', 'assignment'] }),
       )
     })
 
     it('forwards workflow_state when provided', async () => {
       const { canvas, listForStudents } = buildMockCanvas([])
-      await getTool(canvas).handler({ course_id: 1, workflow_state: 'graded' })
+      await getTool(canvas).handler({ course_id: '1', workflow_state: 'graded' })
       expect(listForStudents).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ workflow_state: 'graded' }),
       )
     })
@@ -458,7 +458,7 @@ describe('submissionFileTools', () => {
   describe('empty course (Fixture G)', () => {
     it('returns an empty manifest with the expiry note still present', async () => {
       const { canvas } = buildMockCanvas([])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       expect(result.total_files).toBe(0)
       expect(result.files).toEqual([])
       expect(result.truncated).toBe(false)
@@ -494,7 +494,7 @@ describe('submissionFileTools', () => {
         }),
       ]
       const { canvas } = buildMockCanvas(submissions)
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as Manifest
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as Manifest
       expect(result.total_files).toBe(3)
       expect(result.files.map((f) => f.user_id)).toEqual([300, 300, 300])
       expect(result.files.map((f) => f.assignment_id)).toEqual([40, 40, 40])

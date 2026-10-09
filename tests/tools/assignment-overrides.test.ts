@@ -85,11 +85,11 @@ describe('assignmentOverrideTools', () => {
     it('returns the overrides for an assignment', async () => {
       const canvas = buildMockCanvas()
       const result = await tool(canvas, 'list_assignment_overrides').handler({
-        course_id: 10,
-        assignment_id: 1,
+        course_id: '10',
+        assignment_id: '1',
       })
       const listOverrides = canvas.assignments.listOverrides as ReturnType<typeof vi.fn>
-      expect(listOverrides).toHaveBeenCalledWith(10, 1)
+      expect(listOverrides).toHaveBeenCalledWith('10', '1')
       expect(result).toEqual([
         {
           id: 5,
@@ -105,8 +105,8 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       ;(canvas.assignments.listOverrides as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
       const result = await tool(canvas, 'list_assignment_overrides').handler({
-        course_id: 10,
-        assignment_id: 1,
+        course_id: '10',
+        assignment_id: '1',
       })
       expect(result).toEqual([])
     })
@@ -123,16 +123,16 @@ describe('assignmentOverrideTools', () => {
     it('creates an override targeting student_ids without an unset title', async () => {
       const canvas = buildMockCanvas()
       const result = await tool(canvas, 'create_assignment_override').handler({
-        course_id: 10,
-        assignment_id: 1,
-        student_ids: [42],
+        course_id: '10',
+        assignment_id: '1',
+        student_ids: ['42'],
         due_at: '2026-09-15T23:59:00Z',
       })
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       expect(createOverride).toHaveBeenCalledWith(
-        10,
-        1,
-        expect.objectContaining({ student_ids: [42], due_at: '2026-09-15T23:59:00Z' }),
+        '10',
+        '1',
+        expect.objectContaining({ student_ids: ['42'], due_at: '2026-09-15T23:59:00Z' }),
       )
       // The handler only includes fields with non-undefined values, so an
       // unprovided title must NOT appear in the params object.
@@ -150,14 +150,14 @@ describe('assignmentOverrideTools', () => {
     it('creates an override targeting course_section_id', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'create_assignment_override').handler({
-        course_id: 10,
-        assignment_id: 1,
-        course_section_id: 5,
+        course_id: '10',
+        assignment_id: '1',
+        course_section_id: '5',
         due_at: '2026-09-15T23:59:00Z',
       })
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       const passedParams = createOverride.mock.calls[0][2] as Record<string, unknown>
-      expect(passedParams).toMatchObject({ course_section_id: 5 })
+      expect(passedParams).toMatchObject({ course_section_id: '5' })
       expect('student_ids' in passedParams).toBe(false)
       expect('group_id' in passedParams).toBe(false)
     })
@@ -165,14 +165,14 @@ describe('assignmentOverrideTools', () => {
     it('creates an override targeting group_id', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'create_assignment_override').handler({
-        course_id: 10,
-        assignment_id: 1,
-        group_id: 7,
+        course_id: '10',
+        assignment_id: '1',
+        group_id: '7',
         due_at: '2026-09-15T23:59:00Z',
       })
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       const passedParams = createOverride.mock.calls[0][2] as Record<string, unknown>
-      expect(passedParams).toMatchObject({ group_id: 7 })
+      expect(passedParams).toMatchObject({ group_id: '7' })
       expect('student_ids' in passedParams).toBe(false)
       expect('course_section_id' in passedParams).toBe(false)
     })
@@ -181,8 +181,8 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       await expect(
         tool(canvas, 'create_assignment_override').handler({
-          course_id: 10,
-          assignment_id: 1,
+          course_id: '10',
+          assignment_id: '1',
           due_at: '2026-09-15T23:59:00Z',
         }),
       ).rejects.toThrow(/exactly one of/)
@@ -192,10 +192,10 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       await expect(
         tool(canvas, 'create_assignment_override').handler({
-          course_id: 10,
-          assignment_id: 1,
-          student_ids: [42],
-          course_section_id: 5,
+          course_id: '10',
+          assignment_id: '1',
+          student_ids: ['42'],
+          course_section_id: '5',
           due_at: '2026-09-15T23:59:00Z',
         }),
       ).rejects.toThrow(/mutually exclusive/)
@@ -204,9 +204,9 @@ describe('assignmentOverrideTools', () => {
     it('passes a null due_at through to remove the due date', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'create_assignment_override').handler({
-        course_id: 10,
-        assignment_id: 1,
-        student_ids: [42],
+        course_id: '10',
+        assignment_id: '1',
+        student_ids: ['42'],
         due_at: null,
       })
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
@@ -226,21 +226,21 @@ describe('assignmentOverrideTools', () => {
     it('fans the override across every assignment in the course', async () => {
       const canvas = buildMockCanvas()
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
       const list = canvas.assignments.list as ReturnType<typeof vi.fn>
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
-      expect(list).toHaveBeenCalledWith(10)
+      expect(list).toHaveBeenCalledWith('10')
       expect(createOverride).toHaveBeenCalledTimes(2)
       expect(createOverride).toHaveBeenNthCalledWith(
         1,
-        10,
-        1,
+        '10',
+        '1',
         expect.objectContaining({
-          student_ids: [42],
+          student_ids: ['42'],
           due_at: '2026-09-15T23:59:00Z',
           title: 'Student accommodation',
         }),
@@ -257,9 +257,9 @@ describe('assignmentOverrideTools', () => {
     it('limits the fan-out to assignment_ids when provided', async () => {
       const canvas = buildMockCanvas()
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
-        assignment_ids: [1],
+        course_id: '10',
+        user_id: '42',
+        assignment_ids: ['1'],
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -271,16 +271,16 @@ describe('assignmentOverrideTools', () => {
     it('uses a custom title when provided', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         due_at: '2026-09-15T23:59:00Z',
         title: 'Excused absence makeup',
       })
       const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
       expect(createOverride).toHaveBeenNthCalledWith(
         1,
-        10,
-        1,
+        '10',
+        '1',
         expect.objectContaining({ title: 'Excused absence makeup' }),
       )
     })
@@ -300,8 +300,8 @@ describe('assignmentOverrideTools', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -328,8 +328,8 @@ describe('assignmentOverrideTools', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -346,9 +346,9 @@ describe('assignmentOverrideTools', () => {
     it('reports requested assignment_ids absent from the course in not_found', async () => {
       const canvas = buildMockCanvas()
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
-        assignment_ids: [1, 999],
+        course_id: '10',
+        user_id: '42',
+        assignment_ids: ['1', '999'],
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -357,16 +357,16 @@ describe('assignmentOverrideTools', () => {
       expect(createOverride).toHaveBeenCalledTimes(1)
       expect(result.summary.total).toBe(1)
       expect(result.failed).toEqual([])
-      expect(result.not_found).toEqual([999])
+      expect(result.not_found).toEqual(['999'])
       expect(result.summary.not_found).toBe(1)
     })
 
     it('applies to nothing when every requested assignment_id is absent', async () => {
       const canvas = buildMockCanvas()
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
-        assignment_ids: [999],
+        course_id: '10',
+        user_id: '42',
+        assignment_ids: ['999'],
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -377,7 +377,7 @@ describe('assignmentOverrideTools', () => {
       expect(result.summary.total).toBe(0)
       expect(result.applied).toEqual([])
       expect(result.failed).toEqual([])
-      expect(result.not_found).toEqual([999])
+      expect(result.not_found).toEqual(['999'])
     })
 
     it('rejects an explicit empty assignment_ids array at the schema boundary', () => {
@@ -397,8 +397,8 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       ;(canvas.assignments.list as ReturnType<typeof vi.fn>).mockResolvedValueOnce([])
       const result = (await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         due_at: '2026-09-15T23:59:00Z',
       })) as FanOutResult
 
@@ -411,8 +411,8 @@ describe('assignmentOverrideTools', () => {
       const canvas = buildMockCanvas()
       await expect(
         tool(canvas, 'set_student_assignment_dates').handler({
-          course_id: 10,
-          user_id: 42,
+          course_id: '10',
+          user_id: '42',
         }),
       ).rejects.toThrow(/at least one/)
     })
@@ -420,8 +420,8 @@ describe('assignmentOverrideTools', () => {
     it('supports unlock_at and lock_at without a due_at', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'set_student_assignment_dates').handler({
-        course_id: 10,
-        user_id: 42,
+        course_id: '10',
+        user_id: '42',
         unlock_at: '2026-09-01T00:00:00Z',
         lock_at: '2026-09-20T23:59:00Z',
       })

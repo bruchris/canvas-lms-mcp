@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { CanvasApiError } from '../canvas'
 import type { CanvasClient } from '../canvas'
 import { mapWithConcurrency } from '../canvas/concurrency'
+import { canvasIdFromResponse } from '../canvas/id'
 import type { CanvasCourse, CanvasUser } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
@@ -112,7 +113,7 @@ export function studentSearchTools(
           CONCURRENT_COURSE_LIMIT,
           async (course) => {
             try {
-              const users = await canvas.users.listCourseUsers(course.id, {
+              const users = await canvas.users.listCourseUsers(canvasIdFromResponse(course.id), {
                 search_term: searchTerm,
                 enrollment_type: ['student'],
                 enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],

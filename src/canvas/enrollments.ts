@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasEnrollment } from './types'
+import type { CanvasId } from './id'
 
 export type EnrollmentType =
   | 'StudentEnrollment'
@@ -36,9 +37,9 @@ export interface ListCourseEnrollmentsOptions {
   role?: ReadonlyArray<string>
   state?: ReadonlyArray<EnrollmentState>
   include?: ReadonlyArray<EnrollmentInclude>
-  user_id?: number | string
-  grading_period_id?: number
-  enrollment_term_id?: number
+  user_id?: CanvasId
+  grading_period_id?: CanvasId
+  enrollment_term_id?: CanvasId
   sis_account_id?: ReadonlyArray<string>
   sis_course_id?: ReadonlyArray<string>
   sis_section_id?: ReadonlyArray<string>
@@ -51,8 +52,8 @@ export interface ListUserEnrollmentsOptions {
   role?: ReadonlyArray<string>
   state?: ReadonlyArray<EnrollmentState>
   include?: ReadonlyArray<EnrollmentInclude>
-  grading_period_id?: number
-  enrollment_term_id?: number
+  grading_period_id?: CanvasId
+  enrollment_term_id?: CanvasId
 }
 
 function buildParams(opts: object): CanvasQueryParams {
@@ -84,7 +85,7 @@ export class EnrollmentsModule {
   }
 
   async listForCourse(
-    courseId: number,
+    courseId: CanvasId,
     opts: ListCourseEnrollmentsOptions = {},
   ): Promise<CanvasEnrollment[]> {
     return this.client.paginate<CanvasEnrollment>(
@@ -94,8 +95,8 @@ export class EnrollmentsModule {
   }
 
   async enroll(
-    courseId: number,
-    userId: number,
+    courseId: CanvasId,
+    userId: CanvasId,
     type: string,
     enrollmentState?: string,
   ): Promise<CanvasEnrollment> {
@@ -112,14 +113,18 @@ export class EnrollmentsModule {
     })
   }
 
-  async remove(courseId: number, enrollmentId: number, task: string): Promise<CanvasEnrollment> {
+  async remove(
+    courseId: CanvasId,
+    enrollmentId: CanvasId,
+    task: string,
+  ): Promise<CanvasEnrollment> {
     return this.client.request<CanvasEnrollment>(
       `/api/v1/courses/${courseId}/enrollments/${enrollmentId}?task=${encodeURIComponent(task)}`,
       { method: 'DELETE' },
     )
   }
 
-  async listMyGrades(courseId?: number): Promise<CanvasEnrollment[]> {
+  async listMyGrades(courseId?: CanvasId): Promise<CanvasEnrollment[]> {
     if (courseId !== undefined) {
       return this.client.paginate<CanvasEnrollment>(`/api/v1/courses/${courseId}/enrollments`, {
         user_id: 'self',

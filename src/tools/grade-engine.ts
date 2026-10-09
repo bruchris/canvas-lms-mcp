@@ -1,4 +1,5 @@
 import type { CanvasClient } from '../canvas'
+import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
 import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
@@ -310,7 +311,7 @@ export function mapLetter(
 /** Resolve the course grading scheme, falling back to the account standard. */
 export async function resolveGradingScheme(
   canvas: CanvasClient,
-  courseId: number,
+  courseId: CanvasId,
   course: CanvasCourse,
 ): Promise<ReadonlyArray<CanvasGradingSchemeEntry> | null> {
   const targetId = course.grading_standard_id
@@ -321,7 +322,9 @@ export async function resolveGradingScheme(
   if (courseMatch) return courseMatch.grading_scheme
 
   if (course.account_id != null) {
-    const accountStandards = await canvas.gradingStandards.listForAccount(course.account_id)
+    const accountStandards = await canvas.gradingStandards.listForAccount(
+      canvasIdFromResponse(course.account_id),
+    )
     const accountMatch = accountStandards.find((s) => s.id === targetId)
     if (accountMatch) return accountMatch.grading_scheme
   }

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -9,10 +10,10 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Content Migrations',
       description: 'List all content migrations for a course (most recent first).',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
-      handler: async (params) => canvas.contentMigrations.list(params.course_id as number),
+      handler: async (params) => canvas.contentMigrations.list(params.course_id as CanvasId),
     },
     {
       name: 'get_content_migration',
@@ -20,12 +21,12 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get the status of a single content migration. When workflow_state is "running", poll progress_url for live updates. When "completed", the migration is done.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        migration_id: z.number().describe('The content migration ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        migration_id: canvasIdInput().describe('The content migration ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.contentMigrations.get(params.course_id as number, params.migration_id as number),
+        canvas.contentMigrations.get(params.course_id as CanvasId, params.migration_id as CanvasId),
     },
     {
       name: 'list_content_migration_types',
@@ -33,10 +34,11 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'List available migration types (migrators) for a course. Returns migrator type keys such as course_copy_importer, common_cartridge_importer, zip_file_importer, qti_converter, moodle_converter.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
-      handler: async (params) => canvas.contentMigrations.listMigrators(params.course_id as number),
+      handler: async (params) =>
+        canvas.contentMigrations.listMigrators(params.course_id as CanvasId),
     },
     {
       name: 'get_migration_selective_data',
@@ -44,8 +46,8 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get the selective import tree for a migration — the list of content items available to selectively import. Only meaningful for migrations in the "waiting_for_select" state.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        migration_id: z.number().describe('The content migration ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        migration_id: canvasIdInput().describe('The content migration ID'),
         type: z
           .string()
           .optional()
@@ -56,8 +58,8 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.contentMigrations.getSelectiveData(
-          params.course_id as number,
-          params.migration_id as number,
+          params.course_id as CanvasId,
+          params.migration_id as CanvasId,
           params.type as string | undefined,
         ),
     },
@@ -67,14 +69,14 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get the old-to-new asset ID mapping for a completed migration. Useful for resolving references to content that existed in the source course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        migration_id: z.number().describe('The content migration ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        migration_id: canvasIdInput().describe('The content migration ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.contentMigrations.getAssetIdMapping(
-          params.course_id as number,
-          params.migration_id as number,
+          params.course_id as CanvasId,
+          params.migration_id as CanvasId,
         ),
     },
     {
@@ -83,14 +85,14 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'List issues encountered during a content migration. Each issue has a type (todo, warning, or error) and a description.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        migration_id: z.number().describe('The content migration ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        migration_id: canvasIdInput().describe('The content migration ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.contentMigrations.listMigrationIssues(
-          params.course_id as number,
-          params.migration_id as number,
+          params.course_id as CanvasId,
+          params.migration_id as CanvasId,
         ),
     },
     {
@@ -99,7 +101,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Start a content migration (course copy, Common Cartridge import, zip import, QTI conversion, or Moodle conversion). Migrations are asynchronous — this tool returns immediately with a migration ID and progress_url. Poll get_content_migration or progress_url to track completion.',
       inputSchema: {
-        course_id: z.number().describe('The destination Canvas course ID'),
+        course_id: canvasIdInput().describe('The destination Canvas course ID'),
         migration_type: z
           .enum([
             'course_copy_importer',
@@ -130,7 +132,7 @@ export function contentMigrationsTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.contentMigrations.create(params.course_id as number, {
+        canvas.contentMigrations.create(params.course_id as CanvasId, {
           migration_type: params.migration_type as string,
           settings: params.settings as Record<string, unknown> | undefined,
           date_shift_options: params.date_shift_options as Record<string, unknown> | undefined,

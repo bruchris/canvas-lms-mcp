@@ -71,8 +71,8 @@ describe('contentExportsTools', () => {
       async (exportType) => {
         const canvas = buildMockCanvas()
         const tool = contentExportsTools(canvas).find((t) => t.name === 'create_content_export')!
-        const result = await tool.handler({ course_id: 7, export_type: exportType })
-        expect(canvas.contentExports.create).toHaveBeenCalledWith(7, exportType)
+        const result = await tool.handler({ course_id: '7', export_type: exportType })
+        expect(canvas.contentExports.create).toHaveBeenCalledWith('7', exportType)
         expect(result).toEqual(mockExport)
       },
     )
@@ -82,8 +82,11 @@ describe('contentExportsTools', () => {
     it('delegates to canvas.contentExports.get and surfaces the attachment URL', async () => {
       const canvas = buildMockCanvas()
       const tool = contentExportsTools(canvas).find((t) => t.name === 'get_content_export')!
-      const result = (await tool.handler({ course_id: 7, export_id: 42 })) as CanvasContentExport
-      expect(canvas.contentExports.get).toHaveBeenCalledWith(7, 42)
+      const result = (await tool.handler({
+        course_id: '7',
+        export_id: '42',
+      })) as CanvasContentExport
+      expect(canvas.contentExports.get).toHaveBeenCalledWith('7', '42')
       expect(result.attachment?.url).toBe('https://s3.example.com/course_42.imscc')
     })
   })
@@ -92,8 +95,8 @@ describe('contentExportsTools', () => {
     it('delegates to canvas.contentExports.list', async () => {
       const canvas = buildMockCanvas()
       const tool = contentExportsTools(canvas).find((t) => t.name === 'list_content_exports')!
-      const result = await tool.handler({ course_id: 7 })
-      expect(canvas.contentExports.list).toHaveBeenCalledWith(7)
+      const result = await tool.handler({ course_id: '7' })
+      expect(canvas.contentExports.list).toHaveBeenCalledWith('7')
       expect(result).toEqual([mockExported, mockExport])
     })
   })

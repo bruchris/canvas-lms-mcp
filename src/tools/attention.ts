@@ -8,6 +8,7 @@ import type {
 } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const ATTENTION_INCLUDE = ['submission_comments', 'user', 'assignment', 'read_status'] as const
 
@@ -60,9 +61,9 @@ export function attentionTools(
       description:
         'List submissions where the most recent comment is from the student and has not been addressed by grading or a reply — i.e. comments the instructor has likely not seen. Returns a triage list, oldest-unaddressed first. Requires instructor/TA permissions in the course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Scope the scan to specific assignment IDs (fetches all assignments when omitted)',
@@ -79,8 +80,8 @@ export function attentionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const courseId = params.course_id as CanvasId
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
         const unreadOnly = (params.unread_only as boolean | undefined) ?? false
 
         const rawSubmissions = await canvas.submissions.listForStudents(courseId, {
@@ -153,7 +154,7 @@ export function attentionTools(
       description:
         'Report students who may need instructor attention based on inactivity, missing or late submissions, and low current score. Each finding lists the exact signals that fired and the thresholds used — this is a factual report, not a prediction. Requires instructor/TA permissions in the course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         inactive_days: z
           .number()
           .optional()
@@ -176,7 +177,7 @@ export function attentionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const inactiveDays = (params.inactive_days as number | undefined) ?? 7
         const minMissing = (params.min_missing as number | undefined) ?? 1
         const minLate = (params.min_late as number | undefined) ?? 3

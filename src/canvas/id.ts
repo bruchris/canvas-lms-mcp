@@ -75,6 +75,26 @@ export interface CanvasIdInputOptions {
    * are accepted; declaring one does not open the field to arbitrary strings.
    */
   readonly sentinels?: readonly string[]
+  /**
+   * Canvas SIS-style alternate identifier prefixes this call site accepts,
+   * written **without** the trailing colon: `['sis_user_id']` accepts
+   * `"sis_user_id:A1234"` and nothing else that is not already a Canvas ID.
+   *
+   * This option is PR 1b's resolution of PR #395 correction C4. Four call
+   * sites in `src/tools/outcomes.ts` document and accept
+   * `"sis_user_id:<sis id>"`, which `sentinels` cannot express: a sentinel is
+   * an exact literal, and the SIS identifier after the colon is free-form.
+   * Dropping the form would break tools that work today, and accepting any
+   * string would reintroduce exactly what §4.1 exists to remove, so the
+   * prefix is **declared per call site** on the same terms as a sentinel.
+   *
+   * The remainder after the colon is deliberately unconstrained beyond being
+   * non-empty: a Canvas SIS ID is an arbitrary institution-assigned string,
+   * and Canvas itself splits on the first colon and passes the rest through
+   * (`Api.sis_parse_id`). A prefixed value is returned unchanged, so it is
+   * never confused with a canonical numeric ID.
+   */
+  readonly prefixes?: readonly string[]
 }
 
 /** The subset of a Zod issue the messages below read. */
@@ -173,12 +193,44 @@ function stringArm(): z.ZodType<string, unknown> {
 }
 
 /**
+ * The message a declared SIS prefix publishes when the value starts with the
+ * prefix but carries nothing after the colon. Its own message for the same
+ * reason `ceilingMessage` has one: a union-level `error` does not reach a
+ * member's issues (§4.2.1 N3).
+ */
+function prefixMessage(prefix: string): (issue: IdIssueContext) => string {
+  return (issue) =>
+    `${issueLabel(issue.path)} may be a Canvas ID, or an SIS identifier written ` +
+    `"${prefix}:<sis id>" with a non-empty SIS id (received ${describeReceived(issue.input)}).`
+}
+
+/** Escapes every ECMAScript regex metacharacter, so a prefix matches literally. */
+function escapeForRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * One declared SIS-prefix arm. A `.regex` rather than a `.startsWith` +
+ * `.refine` so that the accepted form is **published** in the emitted JSON
+ * Schema as a `pattern` — §9's argument for a self-documenting schema applies
+ * to this arm as much as to the canonical one. `[\s\S]` rather than `.` so a
+ * literal newline inside an institution-assigned SIS id is not silently a
+ * rejection the pattern does not explain.
+ */
+function prefixedArm(prefix: string): z.ZodType<string, unknown> {
+  return z.string().regex(new RegExp(`^${escapeForRegExp(prefix)}:[\\s\\S]+$`), {
+    error: prefixMessage(prefix),
+  })
+}
+
+/**
  * A required Canvas identifier input. Accepts a safe positive integer or a
  * canonical decimal string, and always yields the canonical decimal string.
  *
  * ```ts
  * course_id: canvasIdInput()
  * user_id: canvasIdInput({ sentinels: ['self'] }).optional()
+ * user_ids: canvasIdList({ prefixes: ['sis_user_id'] }).optional()
  * ```
  */
 export function canvasIdInput(options?: CanvasIdInputOptions): z.ZodType<CanvasId, unknown> {
@@ -186,6 +238,7 @@ export function canvasIdInput(options?: CanvasIdInputOptions): z.ZodType<CanvasI
   const members = [
     numberArm(),
     stringArm(),
+    ...(options?.prefixes ?? []).map(prefixedArm),
     ...(sentinels.length > 0 ? [z.literal([...sentinels])] : []),
   ] as [z.ZodType<unknown, unknown>, z.ZodType<unknown, unknown>, ...z.ZodType<unknown, unknown>[]]
 
@@ -202,6 +255,48 @@ export function canvasIdList(options?: CanvasIdInputOptions): z.ZodType<CanvasId
 }
 
 /**
+ * Numeric ordering of two canonical Canvas IDs, without `Number()`.
+ *
+ * `a - b` is the obvious thing and is exactly what §4.4 forbids: it rounds both
+ * operands above `2**53` and can order two distinct IDs as equal. Because a
+ * `CanvasId` is a decimal string with no sign and no leading zeros, "shorter is
+ * smaller, same length compares lexicographically" is total and exact at any
+ * magnitude — no `BigInt` allocation per comparison.
+ *
+ * Sentinel and SIS-prefixed values are not decimal and sort after the numeric
+ * ones by the same rule; no call site mixes them into a sort today.
+ */
+export function compareCanvasIds(a: CanvasId, b: CanvasId): number {
+  if (a.length !== b.length) return a.length - b.length
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+/**
+ * The Phase 1 → Phase 2 bridge, and deliberately the narrowest thing that
+ * works.
+ *
+ * PR 1b migrates the **input** side: every ID a caller supplies is a
+ * `CanvasId`, and every `src/canvas/` parameter takes one. Response types are
+ * still `number` until PR 2a (§8 ordering constraint — PR 1b widens only
+ * `CourseSearchResult`). So a tool that reads an ID out of one Canvas response
+ * and passes it into the next request now meets a `CanvasId` parameter with a
+ * `number` in hand.
+ *
+ * `String()` is loss-free in that direction: the rounding, if any, already
+ * happened inside `JSON.parse` on the response body, and no Canvas ID is large
+ * enough for `String()` to emit exponential notation (that starts at `1e21`;
+ * `MAX_ID` is ~9.2e18). The remaining precision loss is exactly what PR 2a
+ * removes, and it is **not** `Number(id)` — the direction §4.4 forbids.
+ *
+ * Named rather than written inline so the transitional sites are greppable:
+ * PR 2a's work is to widen the response types and delete every call to this
+ * function. A bare `String(x)` would hide that list.
+ */
+export function canvasIdFromResponse(value: CanvasWireId): CanvasId {
+  return String(value)
+}
+
+/**
  * The same §4.2 rules, callable outside a Zod parse — for code that receives
  * an identifier from somewhere other than a tool input schema.
  *
@@ -215,6 +310,14 @@ export function normalizeCanvasIdInput(value: unknown, options?: CanvasIdInputOp
 
   if (typeof value === 'string') {
     if (options?.sentinels?.includes(value)) return value
+    // A declared SIS prefix is matched by `startsWith`, not by the published
+    // pattern, so this path needs no escaping to be correct — and a prefix
+    // containing a regex metacharacter cannot diverge between the two.
+    for (const prefix of options?.prefixes ?? []) {
+      if (!value.startsWith(`${prefix}:`)) continue
+      if (value.length === prefix.length + 1) throw new TypeError(prefixMessage(prefix)(issue))
+      return value
+    }
     // Order matters, for the same reason `{ abort: true }` does above: a
     // `BigInt` call on a non-numeric string throws a SyntaxError, so the
     // pattern check has to come first (§4.2.1 N1, outside Zod).

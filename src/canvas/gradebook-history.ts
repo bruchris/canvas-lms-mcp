@@ -5,33 +5,34 @@ import type {
   CanvasGradebookHistorySubmission,
   CanvasGradebookHistorySubmissionVersion,
 } from './types'
+import type { CanvasId } from './id'
 
 export interface GradebookHistoryFeedParams {
-  assignment_id?: number
-  user_id?: number
+  assignment_id?: CanvasId
+  user_id?: CanvasId
   ascending?: boolean
 }
 
 export class GradebookHistoryModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async listDays(courseId: number): Promise<CanvasGradebookHistoryDay[]> {
+  async listDays(courseId: CanvasId): Promise<CanvasGradebookHistoryDay[]> {
     return this.client.request<CanvasGradebookHistoryDay[]>(
       `/api/v1/courses/${courseId}/gradebook_history/days`,
     )
   }
 
-  async getDay(courseId: number, date: string): Promise<CanvasGradebookHistoryGrader[]> {
+  async getDay(courseId: CanvasId, date: string): Promise<CanvasGradebookHistoryGrader[]> {
     return this.client.request<CanvasGradebookHistoryGrader[]>(
       `/api/v1/courses/${courseId}/gradebook_history/${encodeURIComponent(date)}`,
     )
   }
 
   async listSubmissions(
-    courseId: number,
+    courseId: CanvasId,
     date: string,
-    graderId: number,
-    assignmentId: number,
+    graderId: CanvasId,
+    assignmentId: CanvasId,
   ): Promise<CanvasGradebookHistorySubmission[]> {
     return this.client.request<CanvasGradebookHistorySubmission[]>(
       `/api/v1/courses/${courseId}/gradebook_history/${encodeURIComponent(date)}/graders/${graderId}/assignments/${assignmentId}/submissions`,
@@ -39,7 +40,7 @@ export class GradebookHistoryModule {
   }
 
   async getFeed(
-    courseId: number,
+    courseId: CanvasId,
     params: GradebookHistoryFeedParams = {},
   ): Promise<CanvasGradebookHistorySubmissionVersion[]> {
     const searchParams = new URLSearchParams()

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
+import type { CanvasId } from '../canvas/id'
 
 const schemeEntrySchema = z.object({
   name: z.string().min(1).describe('Letter grade name (e.g. "A", "B+", "F")'),
@@ -47,8 +48,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number | undefined
-        const accountId = params.account_id as number | undefined
+        const courseId = params.course_id as CanvasId | undefined
+        const accountId = params.account_id as CanvasId | undefined
         if (courseId !== undefined && accountId !== undefined) {
           throw new Error('Provide either course_id or account_id, not both.')
         }
@@ -105,8 +106,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number | undefined
-        const accountId = params.account_id as number | undefined
+        const courseId = params.course_id as CanvasId | undefined
+        const accountId = params.account_id as CanvasId | undefined
         const title = params.title as string
         const schemeEntries = params.scheme_entries as Array<{ name: string; value: number }>
         if (courseId !== undefined && accountId !== undefined) {
@@ -165,8 +166,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const gradingStandardId = params.grading_standard_id as number | null
+        const courseId = params.course_id as CanvasId
+        const gradingStandardId = params.grading_standard_id as CanvasId | null
         return canvas.courses.update(courseId, { grading_standard_id: gradingStandardId })
       },
     },

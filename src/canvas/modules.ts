@@ -1,10 +1,11 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasModule, CanvasModuleItem, CanvasCourseStructure } from './types'
+import type { CanvasId } from './id'
 
 export interface CreateModuleItemParams {
   title: string
   type: string
-  content_id?: number
+  content_id?: CanvasId
   /** Page slug — Page items are addressed by URL slug, not by `content_id`. */
   page_url?: string
   external_url?: string
@@ -21,13 +22,13 @@ export interface UpdateModuleItemParams {
   new_tab?: boolean
   published?: boolean
   /** Move the item to a different module. */
-  module_id?: number
+  module_id?: CanvasId
 }
 
 export class ModulesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasModule[]> {
+  async list(courseId: CanvasId): Promise<CanvasModule[]> {
     return this.client.paginate<CanvasModule>(`/api/v1/courses/${courseId}/modules`)
   }
 
@@ -38,7 +39,7 @@ export class ModulesModule {
    * course-setup health check needs to detect unpublished content.
    */
   async listWithItems(
-    courseId: number,
+    courseId: CanvasId,
   ): Promise<(CanvasModule & { items?: CanvasModuleItem[] })[]> {
     return this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
       `/api/v1/courses/${courseId}/modules`,
@@ -46,23 +47,23 @@ export class ModulesModule {
     )
   }
 
-  async get(courseId: number, moduleId: number): Promise<CanvasModule> {
+  async get(courseId: CanvasId, moduleId: CanvasId): Promise<CanvasModule> {
     return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules/${moduleId}`)
   }
 
-  async listItems(courseId: number, moduleId: number): Promise<CanvasModuleItem[]> {
+  async listItems(courseId: CanvasId, moduleId: CanvasId): Promise<CanvasModuleItem[]> {
     return this.client.paginate<CanvasModuleItem>(
       `/api/v1/courses/${courseId}/modules/${moduleId}/items`,
     )
   }
 
   async create(
-    courseId: number,
+    courseId: CanvasId,
     params: {
       name: string
       position?: number
       unlock_at?: string
-      prerequisite_module_ids?: number[]
+      prerequisite_module_ids?: CanvasId[]
     },
   ): Promise<CanvasModule> {
     return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules`, {
@@ -72,8 +73,8 @@ export class ModulesModule {
   }
 
   async update(
-    courseId: number,
-    moduleId: number,
+    courseId: CanvasId,
+    moduleId: CanvasId,
     params: { name?: string; position?: number; published?: boolean },
   ): Promise<CanvasModule> {
     return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules/${moduleId}`, {
@@ -83,8 +84,8 @@ export class ModulesModule {
   }
 
   async createItem(
-    courseId: number,
-    moduleId: number,
+    courseId: CanvasId,
+    moduleId: CanvasId,
     params: CreateModuleItemParams,
   ): Promise<CanvasModuleItem> {
     return this.client.request<CanvasModuleItem>(
@@ -97,9 +98,9 @@ export class ModulesModule {
   }
 
   async updateItem(
-    courseId: number,
-    moduleId: number,
-    itemId: number,
+    courseId: CanvasId,
+    moduleId: CanvasId,
+    itemId: CanvasId,
     params: UpdateModuleItemParams,
   ): Promise<CanvasModuleItem> {
     return this.client.request<CanvasModuleItem>(
@@ -112,7 +113,11 @@ export class ModulesModule {
   }
 
   /** Canvas answers a module-item DELETE with the deleted item's body. */
-  async deleteItem(courseId: number, moduleId: number, itemId: number): Promise<CanvasModuleItem> {
+  async deleteItem(
+    courseId: CanvasId,
+    moduleId: CanvasId,
+    itemId: CanvasId,
+  ): Promise<CanvasModuleItem> {
     return this.client.request<CanvasModuleItem>(
       `/api/v1/courses/${courseId}/modules/${moduleId}/items/${itemId}`,
       { method: 'DELETE' },
@@ -120,7 +125,7 @@ export class ModulesModule {
   }
 
   async getCourseStructure(
-    courseId: number,
+    courseId: CanvasId,
     opts: { includePublishedOnly?: boolean; includeContentDetails?: boolean } = {},
   ): Promise<CanvasCourseStructure> {
     const include: string[] = ['items']

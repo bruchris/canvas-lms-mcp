@@ -49,8 +49,8 @@ describe('calendarTools', () => {
     it('delegates to canvas.calendar.list', async () => {
       const canvas = buildMockCanvas()
       const tool = calendarTools(canvas).find((t) => t.name === 'list_calendar_events')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.calendar.list).toHaveBeenCalledWith(1, {
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.calendar.list).toHaveBeenCalledWith('1', {
         type: undefined,
         start_date: undefined,
         end_date: undefined,
@@ -62,12 +62,12 @@ describe('calendarTools', () => {
       const canvas = buildMockCanvas()
       const tool = calendarTools(canvas).find((t) => t.name === 'list_calendar_events')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         type: 'assignment',
         start_date: '2026-05-01',
         end_date: '2026-05-31',
       })
-      expect(canvas.calendar.list).toHaveBeenCalledWith(1, {
+      expect(canvas.calendar.list).toHaveBeenCalledWith('1', {
         type: 'assignment',
         start_date: '2026-05-01',
         end_date: '2026-05-31',
@@ -130,11 +130,11 @@ describe('calendarTools', () => {
       const canvas = buildMockCanvas()
       const tool = calendarTools(canvas).find((t) => t.name === 'update_calendar_event')!
       const result = await tool.handler({
-        event_id: 1,
+        event_id: '1',
         title: 'Updated Title',
         start_at: '2026-04-16T10:00:00Z',
       })
-      expect(canvas.calendar.updateEvent).toHaveBeenCalledWith(1, {
+      expect(canvas.calendar.updateEvent).toHaveBeenCalledWith('1', {
         title: 'Updated Title',
         start_at: '2026-04-16T10:00:00Z',
         end_at: undefined,

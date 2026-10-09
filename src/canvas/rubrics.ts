@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasRubric, CanvasRubricAssessment, CanvasSubmission } from './types'
+import type { CanvasId } from './id'
 
 export interface RubricRatingInput {
   description: string
@@ -18,7 +19,7 @@ export interface RubricCreateInput {
 }
 
 export interface RubricAssociationInput {
-  assignment_id: number
+  assignment_id: CanvasId
   use_for_grading?: boolean
   purpose?: string
 }
@@ -26,18 +27,18 @@ export interface RubricAssociationInput {
 export class RubricsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasRubric[]> {
+  async list(courseId: CanvasId): Promise<CanvasRubric[]> {
     return this.client.paginate<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics`)
   }
 
-  async get(courseId: number, rubricId: number): Promise<CanvasRubric> {
+  async get(courseId: CanvasId, rubricId: CanvasId): Promise<CanvasRubric> {
     return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics/${rubricId}`)
   }
 
   async getAssessment(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
   ): Promise<CanvasSubmission> {
     return this.client.request<CanvasSubmission>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${userId}?include[]=rubric_assessment`,
@@ -45,8 +46,8 @@ export class RubricsModule {
   }
 
   async submitAssessment(
-    courseId: number,
-    associationId: number,
+    courseId: CanvasId,
+    associationId: CanvasId,
     data: CanvasRubricAssessment['data'],
   ): Promise<CanvasRubricAssessment> {
     return this.client.request<CanvasRubricAssessment>(
@@ -59,7 +60,7 @@ export class RubricsModule {
   }
 
   async create(
-    courseId: number,
+    courseId: CanvasId,
     rubric: RubricCreateInput,
     association?: RubricAssociationInput,
   ): Promise<CanvasRubric> {

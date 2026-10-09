@@ -68,8 +68,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.list', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'list_rubrics')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.rubrics.list).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.rubrics.list).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockRubric])
     })
   })
@@ -83,8 +83,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.get', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric')!
-      const result = await tool.handler({ course_id: 1, rubric_id: 10 })
-      expect(canvas.rubrics.get).toHaveBeenCalledWith(1, 10)
+      const result = await tool.handler({ course_id: '1', rubric_id: '10' })
+      expect(canvas.rubrics.get).toHaveBeenCalledWith('1', '10')
       expect(result).toEqual(mockRubric)
     })
   })
@@ -98,8 +98,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.getAssessment', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric_assessment')!
-      await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5 })
-      expect(canvas.rubrics.getAssessment).toHaveBeenCalledWith(1, 101, 5)
+      await tool.handler({ course_id: '1', assignment_id: '101', user_id: '5' })
+      expect(canvas.rubrics.getAssessment).toHaveBeenCalledWith('1', '101', '5')
     })
   })
 
@@ -119,8 +119,8 @@ describe('rubricTools', () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'submit_rubric_assessment')!
       const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
-      await tool.handler({ course_id: 1, association_id: 10, data })
-      expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith(1, 10, data)
+      await tool.handler({ course_id: '1', association_id: '10', data })
+      expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith('1', '10', data)
     })
   })
 
@@ -145,12 +145,12 @@ describe('rubricTools', () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
       const result = await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Essay Rubric',
         criteria: validCriteria,
       })
       expect(canvas.rubrics.create).toHaveBeenCalledWith(
-        1,
+        '1',
         { title: 'Essay Rubric', criteria: validCriteria },
         undefined,
       )
@@ -162,13 +162,13 @@ describe('rubricTools', () => {
       const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
       const association = { assignment_id: 55, use_for_grading: true, purpose: 'grading' }
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Essay Rubric',
         criteria: validCriteria,
         association,
       })
       expect(canvas.rubrics.create).toHaveBeenCalledWith(
-        1,
+        '1',
         { title: 'Essay Rubric', criteria: validCriteria },
         association,
       )

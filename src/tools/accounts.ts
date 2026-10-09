@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function accountTools(
   canvas: CanvasClient,
@@ -13,14 +14,14 @@ export function accountTools(
       title: 'Get Account',
       description: 'Get details for a Canvas account by ID.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID'),
+        account_id: canvasIdInput().describe('The Canvas account ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.accounts.get(params.account_id as number)
+        return canvas.accounts.get(params.account_id as CanvasId)
       },
     },
     {
@@ -41,14 +42,14 @@ export function accountTools(
       title: 'List Sub-Accounts',
       description: 'List sub-accounts under a given Canvas account.',
       inputSchema: {
-        account_id: z.number().describe('The parent Canvas account ID'),
+        account_id: canvasIdInput().describe('The parent Canvas account ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.accounts.listSubAccounts(params.account_id as number)
+        return canvas.accounts.listSubAccounts(params.account_id as CanvasId)
       },
     },
     {
@@ -56,7 +57,7 @@ export function accountTools(
       title: 'List Account Courses',
       description: 'List courses under a given Canvas account.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID'),
+        account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().optional().describe('Search courses by name or course code'),
       },
       annotations: {
@@ -64,7 +65,7 @@ export function accountTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.accounts.listCourses(params.account_id as number, {
+        return canvas.accounts.listCourses(params.account_id as CanvasId, {
           search_term: params.search_term as string | undefined,
         })
       },
@@ -74,7 +75,7 @@ export function accountTools(
       title: 'List Account Users',
       description: 'List users in a Canvas account.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID'),
+        account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().optional().describe('Search users by name, email, or login'),
       },
       annotations: {
@@ -82,7 +83,7 @@ export function accountTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const account_id = params.account_id as number
+        const account_id = params.account_id as CanvasId
         const users = await canvas.accounts.listUsers(account_id, {
           search_term: params.search_term as string | undefined,
         })
@@ -96,14 +97,14 @@ export function accountTools(
       title: 'Get Account Reports',
       description: 'List available report types for a Canvas account.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID'),
+        account_id: canvasIdInput().describe('The Canvas account ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.accounts.getReports(params.account_id as number)
+        return canvas.accounts.getReports(params.account_id as CanvasId)
       },
     },
     {

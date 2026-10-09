@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasUpcomingEvent, CanvasUser, CanvasUserProfile } from './types'
+import type { CanvasId } from './id'
 
 export type CourseUserEnrollmentType = 'student' | 'teacher' | 'ta' | 'observer' | 'designer'
 
@@ -24,10 +25,10 @@ export type SearchUserInclude = 'email' | 'last_login' | 'avatar_url' | 'time_zo
 export interface ListCourseUsersOptions {
   enrollment_type?: CourseUserEnrollmentType | ReadonlyArray<CourseUserEnrollmentType>
   enrollment_state?: ReadonlyArray<CourseUserEnrollmentState>
-  enrollment_role_id?: number
+  enrollment_role_id?: CanvasId
   include?: ReadonlyArray<CourseUserInclude>
-  user_ids?: ReadonlyArray<number | string>
-  user_id?: number | string
+  user_ids?: ReadonlyArray<CanvasId>
+  user_id?: CanvasId
   search_term?: string
   sort?: UserSort
   order?: 'asc' | 'desc'
@@ -42,13 +43,13 @@ export interface SearchUsersOptions {
 export class UsersModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async listStudents(courseId: number): Promise<CanvasUser[]> {
+  async listStudents(courseId: CanvasId): Promise<CanvasUser[]> {
     return this.client.paginate<CanvasUser>(`/api/v1/courses/${courseId}/users`, {
       enrollment_type: ['student'],
     })
   }
 
-  async get(userId: number): Promise<CanvasUser> {
+  async get(userId: CanvasId): Promise<CanvasUser> {
     return this.client.request<CanvasUser>(`/api/v1/users/${userId}`)
   }
 
@@ -61,7 +62,7 @@ export class UsersModule {
   }
 
   async searchUsers(
-    accountId: number,
+    accountId: CanvasId,
     searchTerm: string,
     opts: SearchUsersOptions = {},
   ): Promise<CanvasUser[]> {
@@ -73,7 +74,7 @@ export class UsersModule {
   }
 
   async listCourseUsers(
-    courseId: number,
+    courseId: CanvasId,
     opts: ListCourseUsersOptions = {},
   ): Promise<CanvasUser[]> {
     const params: CanvasQueryParams = {}

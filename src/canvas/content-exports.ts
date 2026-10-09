@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasContentExport, ContentExportType } from './types'
+import type { CanvasId } from './id'
 
 /**
  * Canvas `content_exports` API — exports a course (or its assessments) as a
@@ -11,7 +12,7 @@ export class ContentExportsModule {
   constructor(private client: CanvasHttpClient) {}
 
   /** Start a content export. Returns the export in its initial `created` state. */
-  async create(courseId: number, exportType: ContentExportType): Promise<CanvasContentExport> {
+  async create(courseId: CanvasId, exportType: ContentExportType): Promise<CanvasContentExport> {
     // Canvas accepts `export_type` as a top-level param here (no `content_export:` envelope).
     return this.client.request<CanvasContentExport>(`/api/v1/courses/${courseId}/content_exports`, {
       method: 'POST',
@@ -20,14 +21,14 @@ export class ContentExportsModule {
   }
 
   /** Poll a single export's status; `attachment` is populated only once `exported`. */
-  async get(courseId: number, exportId: number): Promise<CanvasContentExport> {
+  async get(courseId: CanvasId, exportId: CanvasId): Promise<CanvasContentExport> {
     return this.client.request<CanvasContentExport>(
       `/api/v1/courses/${courseId}/content_exports/${exportId}`,
     )
   }
 
   /** List all content exports for a course (most recent first, per Canvas). */
-  async list(courseId: number): Promise<CanvasContentExport[]> {
+  async list(courseId: CanvasId): Promise<CanvasContentExport[]> {
     return this.client.paginate<CanvasContentExport>(`/api/v1/courses/${courseId}/content_exports`)
   }
 }

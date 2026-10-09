@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from 'fs/promises'
+import type { CanvasId } from '../../src/canvas/id'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -254,9 +255,10 @@ describe('studentSearchTools', () => {
       .mockResolvedValueOnce([activeCourse])
       .mockResolvedValueOnce([concludedCourse])
     ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(
-      async (courseId: number) => {
-        if (courseId === 1) return [janeInCourse1]
-        if (courseId === 2) return [janeInCourse2]
+      // `courseId` is a canonical `CanvasId` string after BRU-2730.
+      async (courseId: CanvasId) => {
+        if (courseId === '1') return [janeInCourse1]
+        if (courseId === '2') return [janeInCourse2]
         return []
       },
     )
@@ -294,8 +296,8 @@ describe('studentSearchTools', () => {
     const callArgs = (canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => c[0],
     )
-    expect(callArgs).toContain(1)
-    expect(callArgs).not.toContain(3)
+    expect(callArgs).toContain('1')
+    expect(callArgs).not.toContain('3')
   })
 
   it('includes a course with missing enrollments (defensive fallback)', async () => {
@@ -316,7 +318,7 @@ describe('studentSearchTools', () => {
     const callArgs = (canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => c[0],
     )
-    expect(callArgs).toContain(99)
+    expect(callArgs).toContain('99')
   })
 
   it('groups a student match across two courses by user_id', async () => {
@@ -325,9 +327,10 @@ describe('studentSearchTools', () => {
       .mockResolvedValueOnce([activeCourse])
       .mockResolvedValueOnce([concludedCourse])
     ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(
-      async (courseId: number) => {
-        if (courseId === 1) return [janeInCourse1]
-        if (courseId === 2) return [janeInCourse2]
+      // `courseId` is a canonical `CanvasId` string after BRU-2730.
+      async (courseId: CanvasId) => {
+        if (courseId === '1') return [janeInCourse1]
+        if (courseId === '2') return [janeInCourse2]
         return []
       },
     )
@@ -375,7 +378,7 @@ describe('studentSearchTools', () => {
     const tool = studentSearchTools(canvas)[0]
     await tool.handler({ search_term: 'Jane' })
 
-    expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(1, {
+    expect(canvas.users.listCourseUsers).toHaveBeenCalledWith('1', {
       search_term: 'Jane',
       enrollment_type: ['student'],
       enrollment_state: ['active', 'completed', 'inactive', 'invited', 'rejected'],
@@ -418,8 +421,8 @@ describe('studentSearchTools', () => {
       .mockResolvedValueOnce([activeCourse, concludedCourse])
       .mockResolvedValueOnce([])
     ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(
-      async (courseId: number) => {
-        if (courseId === 1) return [janeInCourse1]
+      async (courseId: CanvasId) => {
+        if (courseId === '1') return [janeInCourse1]
         throw new CanvasApiError('Forbidden', 403, '/api/v1/courses/2/users')
       },
     )
@@ -466,8 +469,8 @@ describe('studentSearchTools', () => {
     const callArgs = (canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => c[0],
     )
-    expect(callArgs).toContain(12) // 2026
-    expect(callArgs).toContain(11) // 2025
+    expect(callArgs).toContain('12') // 2026
+    expect(callArgs).toContain('11') // 2025
     expect(callArgs).not.toContain(10) // 2024 dropped
   })
 
@@ -496,9 +499,9 @@ describe('studentSearchTools', () => {
     const callArgs = (canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => c[0],
     )
-    expect(callArgs).not.toContain(20) // undated dropped
-    expect(callArgs).toContain(22)
-    expect(callArgs).toContain(21)
+    expect(callArgs).not.toContain('20') // undated dropped
+    expect(callArgs).toContain('22')
+    expect(callArgs).toContain('21')
   })
 
   it('falls back gracefully when matched user has no enrollments', async () => {
@@ -625,9 +628,9 @@ describe('studentSearchTools', () => {
         .mockResolvedValueOnce([activeCourse])
         .mockResolvedValueOnce([concludedCourse])
       ;(canvas.users.listCourseUsers as ReturnType<typeof vi.fn>).mockImplementation(
-        async (courseId: number) => {
-          if (courseId === 1) return [janeInCourse1]
-          if (courseId === 2) return [janeInCourse2]
+        async (courseId: CanvasId) => {
+          if (courseId === '1') return [janeInCourse1]
+          if (courseId === '2') return [janeInCourse2]
           return []
         },
       )

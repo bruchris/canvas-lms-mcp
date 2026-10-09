@@ -11,6 +11,7 @@ import {
 } from './grade-engine'
 import type { GroupModeResult } from './grade-engine'
 import type { ToolDefinition } from './types'
+import type { CanvasId } from '../canvas/id'
 
 type Feasibility = 'already_secured' | 'achievable' | 'impossible'
 
@@ -230,11 +231,13 @@ export function gradeProjectionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const targetPercentageParam = params.target_percentage as number | undefined
         const targetLetterParam = params.target_letter as string | undefined
-        const studentParam = params.student_id as number | undefined
-        const studentId: number | 'self' = studentParam === undefined ? 'self' : studentParam
+        const studentParam = params.student_id as CanvasId | undefined
+        // See the note in grade-explanation.ts: the annotation documents the
+        // contract; `CanvasId | 'self'` is `string` to the compiler.
+        const studentId: CanvasId | 'self' = studentParam === undefined ? 'self' : studentParam
 
         if (targetPercentageParam !== undefined && targetLetterParam !== undefined) {
           throw new Error('Provide either target_percentage or target_letter, not both.')

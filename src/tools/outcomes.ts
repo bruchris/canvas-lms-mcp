@@ -10,6 +10,7 @@ import {
   OUTCOME_ROLLUP_SORT_BY,
   OUTCOME_SORT_ORDER,
 } from '../canvas/outcomes'
+import { type CanvasId, canvasIdInput, canvasIdList } from '../canvas/id'
 
 export function outcomeTools(
   canvas: CanvasClient,
@@ -24,13 +25,13 @@ export function outcomeTools(
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
           .describe('Whether to read outcomes from an account or course context.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.outcomes.getRootOutcomeGroup(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
+          params.context_id as CanvasId,
         ),
     },
     {
@@ -41,13 +42,13 @@ export function outcomeTools(
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
           .describe('Whether to read outcome groups from an account or course context.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.outcomes.listOutcomeGroups(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
+          params.context_id as CanvasId,
         ),
     },
     {
@@ -58,7 +59,7 @@ export function outcomeTools(
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
           .describe('Whether to read outcome links from an account or course context.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
         outcome_style: z
           .enum(OUTCOME_DETAIL_LEVELS)
           .optional()
@@ -74,7 +75,7 @@ export function outcomeTools(
       handler: async (params) =>
         canvas.outcomes.listOutcomeGroupLinks(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
+          params.context_id as CanvasId,
           {
             outcome_style: params.outcome_style as 'abbrev' | 'full' | undefined,
             outcome_group_style: params.outcome_group_style as 'abbrev' | 'full' | undefined,
@@ -87,15 +88,15 @@ export function outcomeTools(
       description: 'Get details for a specific outcome group in an account or course context.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
-        outcome_group_id: z.number().describe('The Canvas outcome group ID.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
+        outcome_group_id: canvasIdInput().describe('The Canvas outcome group ID.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.outcomes.getOutcomeGroup(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
-          params.outcome_group_id as number,
+          params.context_id as CanvasId,
+          params.outcome_group_id as CanvasId,
         ),
     },
     {
@@ -104,8 +105,8 @@ export function outcomeTools(
       description: 'List the linked outcomes directly under a specific outcome group.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
-        outcome_group_id: z.number().describe('The Canvas outcome group ID.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
+        outcome_group_id: canvasIdInput().describe('The Canvas outcome group ID.'),
         outcome_style: z
           .enum(OUTCOME_DETAIL_LEVELS)
           .optional()
@@ -115,8 +116,8 @@ export function outcomeTools(
       handler: async (params) =>
         canvas.outcomes.listGroupOutcomes(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
-          params.outcome_group_id as number,
+          params.context_id as CanvasId,
+          params.outcome_group_id as CanvasId,
           {
             outcome_style: params.outcome_style as 'abbrev' | 'full' | undefined,
           },
@@ -128,15 +129,15 @@ export function outcomeTools(
       description: 'List the immediate child outcome groups under a specific outcome group.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
-        context_id: z.number().describe('The Canvas account ID or course ID for the context.'),
-        outcome_group_id: z.number().describe('The Canvas outcome group ID.'),
+        context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
+        outcome_group_id: canvasIdInput().describe('The Canvas outcome group ID.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.outcomes.listGroupSubgroups(
           params.context_type as 'account' | 'course',
-          params.context_id as number,
-          params.outcome_group_id as number,
+          params.context_id as CanvasId,
+          params.outcome_group_id as CanvasId,
         ),
     },
     {
@@ -144,7 +145,7 @@ export function outcomeTools(
       title: 'Get Outcome',
       description: 'Get the full details for a specific learning outcome by ID.',
       inputSchema: {
-        outcome_id: z.number().describe('The Canvas outcome ID.'),
+        outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
         add_defaults: z
           .boolean()
           .optional()
@@ -152,7 +153,7 @@ export function outcomeTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.outcomes.getOutcome(params.outcome_id as number, {
+        canvas.outcomes.getOutcome(params.outcome_id as CanvasId, {
           add_defaults: params.add_defaults as boolean | undefined,
         }),
     },
@@ -162,21 +163,19 @@ export function outcomeTools(
       description:
         'Get outcome alignments for a course, optionally filtered to a specific student or assignment.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID.'),
-        student_id: z
-          .number()
+        course_id: canvasIdInput().describe('The Canvas course ID.'),
+        student_id: canvasIdInput()
           .optional()
           .describe('Optional Canvas user ID of the student to filter alignments by.'),
-        assignment_id: z
-          .number()
+        assignment_id: canvasIdInput()
           .optional()
           .describe('Optional Canvas assignment ID to filter alignments by.'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.outcomes.getOutcomeAlignments(params.course_id as number, {
-          student_id: params.student_id as number | undefined,
-          assignment_id: params.assignment_id as number | undefined,
+        canvas.outcomes.getOutcomeAlignments(params.course_id as CanvasId, {
+          student_id: params.student_id as CanvasId | undefined,
+          assignment_id: params.assignment_id as CanvasId | undefined,
         }),
     },
     {
@@ -185,13 +184,15 @@ export function outcomeTools(
       description:
         'Get per-student outcome results for a course, with optional outcome, student, and alignment filters.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID.'),
-        user_ids: z
-          .array(z.union([z.number(), z.string()]))
+        course_id: canvasIdInput().describe('The Canvas course ID.'),
+        user_ids: canvasIdList({ prefixes: ['sis_user_id'] })
           .optional()
-          .describe('Optional Canvas user IDs or SIS user IDs prefixed with "sis_user_id:".'),
+          .describe(
+            'Optional Canvas user IDs (pass large IDs as strings) or SIS user IDs ' +
+              'prefixed with "sis_user_id:".',
+          ),
         outcome_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Optional outcome IDs to restrict the results.'),
         include_alignments: z
@@ -205,10 +206,10 @@ export function outcomeTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const response = await canvas.outcomes.getOutcomeResults(course_id, {
-          user_ids: params.user_ids as Array<number | string> | undefined,
-          outcome_ids: params.outcome_ids as number[] | undefined,
+          user_ids: params.user_ids as CanvasId[] | undefined,
+          outcome_ids: params.outcome_ids as CanvasId[] | undefined,
           include_alignments: params.include_alignments as boolean | undefined,
           include_hidden: params.include_hidden as boolean | undefined,
         })
@@ -222,7 +223,7 @@ export function outcomeTools(
       description:
         'Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID.'),
+        course_id: canvasIdInput().describe('The Canvas course ID.'),
         aggregate: z
           .enum(['course'])
           .optional()
@@ -231,12 +232,14 @@ export function outcomeTools(
           .enum(OUTCOME_ROLLUP_AGGREGATE_STATS)
           .optional()
           .describe('Statistic to use when aggregate="course".'),
-        user_ids: z
-          .array(z.union([z.number(), z.string()]))
+        user_ids: canvasIdList({ prefixes: ['sis_user_id'] })
           .optional()
-          .describe('Optional Canvas user IDs or SIS user IDs prefixed with "sis_user_id:".'),
+          .describe(
+            'Optional Canvas user IDs (pass large IDs as strings) or SIS user IDs ' +
+              'prefixed with "sis_user_id:".',
+          ),
         outcome_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Optional outcome IDs to restrict the rollups.'),
         include_courses: z
@@ -251,8 +254,7 @@ export function outcomeTools(
           .enum(OUTCOME_ROLLUP_SORT_BY)
           .optional()
           .describe('Sort rollups by student name or by a specific outcome score.'),
-        sort_outcome_id: z
-          .number()
+        sort_outcome_id: canvasIdInput()
           .optional()
           .describe('Outcome ID to sort by when sort_by="outcome".'),
         sort_order: z
@@ -266,17 +268,17 @@ export function outcomeTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const response = await canvas.outcomes.getOutcomeRollups(course_id, {
           aggregate: params.aggregate as 'course' | undefined,
           aggregate_stat: params.aggregate_stat as 'mean' | 'median' | undefined,
-          user_ids: params.user_ids as Array<number | string> | undefined,
-          outcome_ids: params.outcome_ids as number[] | undefined,
+          user_ids: params.user_ids as CanvasId[] | undefined,
+          outcome_ids: params.outcome_ids as CanvasId[] | undefined,
           include_courses: params.include_courses as boolean | undefined,
           exclude: params.exclude as
             Array<'missing_user_rollups' | 'missing_outcome_results'> | undefined,
           sort_by: params.sort_by as 'student' | 'outcome' | undefined,
-          sort_outcome_id: params.sort_outcome_id as number | undefined,
+          sort_outcome_id: params.sort_outcome_id as CanvasId | undefined,
           sort_order: params.sort_order as 'asc' | 'desc' | undefined,
           add_defaults: params.add_defaults as boolean | undefined,
         })
@@ -290,12 +292,14 @@ export function outcomeTools(
       description:
         'Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID.'),
-        outcome_id: z.number().describe('The Canvas outcome ID.'),
-        user_ids: z
-          .array(z.union([z.number(), z.string()]))
+        course_id: canvasIdInput().describe('The Canvas course ID.'),
+        outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
+        user_ids: canvasIdList({ prefixes: ['sis_user_id'] })
           .optional()
-          .describe('Optional Canvas user IDs or SIS user IDs prefixed with "sis_user_id:".'),
+          .describe(
+            'Optional Canvas user IDs (pass large IDs as strings) or SIS user IDs ' +
+              'prefixed with "sis_user_id:".',
+          ),
         only_assignment_alignments: z
           .boolean()
           .optional()
@@ -308,10 +312,10 @@ export function outcomeTools(
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.outcomes.getOutcomeContributingScores(
-          params.course_id as number,
-          params.outcome_id as number,
+          params.course_id as CanvasId,
+          params.outcome_id as CanvasId,
           {
-            user_ids: params.user_ids as Array<number | string> | undefined,
+            user_ids: params.user_ids as CanvasId[] | undefined,
             only_assignment_alignments: params.only_assignment_alignments as boolean | undefined,
             show_unpublished_assignments: params.show_unpublished_assignments as
               boolean | undefined,
@@ -324,19 +328,21 @@ export function outcomeTools(
       description:
         'Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID.'),
+        course_id: canvasIdInput().describe('The Canvas course ID.'),
         exclude: z
           .array(z.enum(OUTCOME_EXCLUDE_OPTIONS))
           .optional()
           .describe('Optional exclusions for missing users or missing outcome results.'),
         outcome_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Optional outcome IDs to restrict the distribution results.'),
-        student_ids: z
-          .array(z.union([z.number(), z.string()]))
+        student_ids: canvasIdList({ prefixes: ['sis_user_id'] })
           .optional()
-          .describe('Optional Canvas student IDs or SIS user IDs prefixed with "sis_user_id:".'),
+          .describe(
+            'Optional Canvas student IDs (pass large IDs as strings) or SIS user IDs ' +
+              'prefixed with "sis_user_id:".',
+          ),
         include_alignment_distributions: z
           .boolean()
           .optional()
@@ -356,11 +362,11 @@ export function outcomeTools(
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.outcomes.getOutcomeMasteryDistribution(params.course_id as number, {
+        canvas.outcomes.getOutcomeMasteryDistribution(params.course_id as CanvasId, {
           exclude: params.exclude as
             Array<'missing_user_rollups' | 'missing_outcome_results'> | undefined,
-          outcome_ids: params.outcome_ids as number[] | undefined,
-          student_ids: params.student_ids as Array<number | string> | undefined,
+          outcome_ids: params.outcome_ids as CanvasId[] | undefined,
+          student_ids: params.student_ids as CanvasId[] | undefined,
           include_alignment_distributions: params.include_alignment_distributions as
             boolean | undefined,
           only_assignment_alignments: params.only_assignment_alignments as boolean | undefined,

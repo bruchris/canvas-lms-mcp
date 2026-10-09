@@ -9,26 +9,27 @@ import type {
   CanvasQuizSubmissionEventsResponse,
   CanvasQuizExtension,
 } from './types'
+import type { CanvasId } from './id'
 
 export class QuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasQuiz[]> {
+  async list(courseId: CanvasId): Promise<CanvasQuiz[]> {
     return this.client.paginate<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes`)
   }
 
-  async get(courseId: number, quizId: number): Promise<CanvasQuiz> {
+  async get(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuiz> {
     return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`)
   }
 
-  async listSubmissions(courseId: number, quizId: number): Promise<CanvasQuizSubmission[]> {
+  async listSubmissions(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuizSubmission[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmission>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions`,
       'quiz_submissions',
     )
   }
 
-  async listQuestions(courseId: number, quizId: number): Promise<CanvasQuizQuestion[]> {
+  async listQuestions(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuizQuestion[]> {
     return this.client.paginate<CanvasQuizQuestion>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
     )
@@ -43,9 +44,9 @@ export class QuizzesModule {
    * either missing it silently returns the active list instead.
    */
   async listSubmissionQuestions(
-    courseId: number,
-    quizId: number,
-    quizSubmissionId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    quizSubmissionId: CanvasId,
     attempt: number,
   ): Promise<CanvasQuizQuestion[]> {
     return this.client.paginate<CanvasQuizQuestion>(
@@ -54,7 +55,7 @@ export class QuizzesModule {
     )
   }
 
-  async getSubmissionAnswers(quizSubmissionId: number): Promise<CanvasQuizSubmissionQuestion[]> {
+  async getSubmissionAnswers(quizSubmissionId: CanvasId): Promise<CanvasQuizSubmissionQuestion[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmissionQuestion>(
       `/api/v1/quiz_submissions/${quizSubmissionId}/questions`,
       'quiz_submission_questions',
@@ -63,10 +64,10 @@ export class QuizzesModule {
   }
 
   async scoreQuestion(
-    courseId: number,
-    quizId: number,
-    submissionId: number,
-    questionId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    submissionId: CanvasId,
+    questionId: CanvasId,
     score: number,
     comment?: string,
     attempt?: number,
@@ -92,9 +93,9 @@ export class QuizzesModule {
   }
 
   async getSubmissionEvents(
-    courseId: number,
-    quizId: number,
-    submissionId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    submissionId: CanvasId,
     attempt?: number,
   ): Promise<CanvasQuizSubmissionEvent[]> {
     const query: CanvasQueryParams = {}
@@ -118,13 +119,21 @@ export class QuizzesModule {
    * body — never pass `extra_time: 0` (Canvas rejects zero/negative extensions).
    */
   async setExtension(
-    courseId: number,
-    quizId: number,
-    userId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    userId: CanvasId,
     extra_time?: number,
     extra_attempts?: number,
   ): Promise<CanvasQuizExtension[]> {
-    const extension: Record<string, number> = { user_id: userId }
+    // Not `Record<string, number>` any more (BRU-2730 §8 PR 1b): `user_id` is
+    // an identifier and `extra_time` / `extra_attempts` are quantities, so the
+    // two cannot share one value type. Spelling the three keys out is what
+    // makes that split checkable instead of a comment. Emitting `user_id` as a
+    // JSON string is also the correct form — a numeric `user_id` in a request
+    // body reaches Canvas's `Api::ID_REGEX.match?(42)` and raises there (§2.4).
+    const extension: { user_id: CanvasId; extra_time?: number; extra_attempts?: number } = {
+      user_id: userId,
+    }
     if (extra_time !== undefined) extension.extra_time = extra_time
     if (extra_attempts !== undefined) extension.extra_attempts = extra_attempts
     const response = await this.client.request<{ quiz_extensions: CanvasQuizExtension[] }>(

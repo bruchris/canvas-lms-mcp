@@ -169,15 +169,15 @@ describe('courseTools', () => {
     it('calls canvas.courses.get with the course_id and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
-      await tool.handler({ course_id: 42 })
-      expect(canvas.courses.get).toHaveBeenCalledWith(42, {})
+      await tool.handler({ course_id: '42' })
+      expect(canvas.courses.get).toHaveBeenCalledWith('42', {})
     })
 
     it('forwards include[] to canvas.courses.get', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
-      await tool.handler({ course_id: 42, include: ['teachers', 'permissions'] })
-      expect(canvas.courses.get).toHaveBeenCalledWith(42, {
+      await tool.handler({ course_id: '42', include: ['teachers', 'permissions'] })
+      expect(canvas.courses.get).toHaveBeenCalledWith('42', {
         include: ['teachers', 'permissions'],
       })
     })
@@ -185,7 +185,7 @@ describe('courseTools', () => {
     it('returns the course from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
       expect(result).toEqual(mockCourse)
     })
 
@@ -215,15 +215,15 @@ describe('courseTools', () => {
     it('calls canvas.courses.getSyllabus with the course_id', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_syllabus')!
-      await tool.handler({ course_id: 42 })
-      expect(canvas.courses.getSyllabus).toHaveBeenCalledWith(42)
+      await tool.handler({ course_id: '42' })
+      expect(canvas.courses.getSyllabus).toHaveBeenCalledWith('42')
     })
 
     it('returns the syllabus HTML from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'get_syllabus')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(result).toEqual({ course_id: 1, syllabus_body: '<p>Welcome to the course</p>' })
+      const result = await tool.handler({ course_id: '1' })
+      expect(result).toEqual({ course_id: '1', syllabus_body: '<p>Welcome to the course</p>' })
     })
 
     it('returns null syllabus when none set', async () => {
@@ -237,8 +237,8 @@ describe('courseTools', () => {
         } as unknown as CanvasClient['courses'],
       })
       const tool = courseTools(canvas).find((t) => t.name === 'get_syllabus')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(result).toEqual({ course_id: 1, syllabus_body: null })
+      const result = await tool.handler({ course_id: '1' })
+      expect(result).toEqual({ course_id: '1', syllabus_body: null })
     })
 
     it('has a description', () => {
@@ -276,9 +276,9 @@ describe('courseTools', () => {
     it('calls canvas.courses.create with params', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
-      await tool.handler({ account_id: 1, name: 'New Course', course_code: 'NEW101' })
+      await tool.handler({ account_id: '1', name: 'New Course', course_code: 'NEW101' })
       expect(canvas.courses.create).toHaveBeenCalledWith({
-        account_id: 1,
+        account_id: '1',
         name: 'New Course',
         course_code: 'NEW101',
       })
@@ -287,7 +287,7 @@ describe('courseTools', () => {
     it('returns the created course', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'create_course')!
-      const result = await tool.handler({ account_id: 1, name: 'New Course' })
+      const result = await tool.handler({ account_id: '1', name: 'New Course' })
       expect(result).toEqual(mockCourse)
     })
 
@@ -329,8 +329,8 @@ describe('courseTools', () => {
     it('calls canvas.courses.update with course_id and fields', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
-      await tool.handler({ course_id: 1, name: 'Renamed', default_view: 'modules' })
-      expect(canvas.courses.update).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1', name: 'Renamed', default_view: 'modules' })
+      expect(canvas.courses.update).toHaveBeenCalledWith('1', {
         name: 'Renamed',
         default_view: 'modules',
       })
@@ -339,7 +339,7 @@ describe('courseTools', () => {
     it('returns the updated course', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
-      const result = await tool.handler({ course_id: 1, name: 'Updated' })
+      const result = await tool.handler({ course_id: '1', name: 'Updated' })
       expect(result).toEqual(mockCourse)
     })
 

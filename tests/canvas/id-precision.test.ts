@@ -8,15 +8,28 @@ import { getAllTools } from '../../src/tools'
 import type { CanvasClient } from '../../src/canvas'
 
 /**
- * Phase 0 (BRU-2815) of the 64-bit identifier migration design
+ * The 64-bit identifier migration
  * (`docs/superpowers/specs/2026-10-05-bru-2730-canvas-64bit-identifiers.md`,
- * BRU-2730). Per spec §8: "Nothing to build." These are **characterization
- * tests** — they record the ID precision defect as it exists on `main`
- * today, not a regression this PR fixes. Red-first is impossible by
- * construction (the defect is the thing being recorded), so none of these
- * tests were ever red; `+N tests` here is not `+N red`. The fix is Phase 1
- * (BRU-2730 §8, PR 1a/1b) and is explicitly out of scope — no schema, type
- * or handler changes ship in this PR.
+ * BRU-2730).
+ *
+ * ~~Phase 0 (BRU-2815) … These are **characterization tests** — they record
+ * the ID precision defect as it exists on `main` today, not a regression this
+ * PR fixes.~~ **Superseded by PR 1b (BRU-2827), 2026-10-09.** Phase 1 fixed
+ * the defect, so the three §2.2 assertions that recorded it now assert the
+ * opposite. Each one's Phase-0 value is kept inline, because the before/after
+ * pair *is* the evidence that the migration reached the wire:
+ *
+ * | Input to `get_course.course_id` | Phase 0 (recorded) | After PR 1b |
+ * | --- | --- | --- |
+ * | `12345` | accepted | accepted, unchanged (control) |
+ * | `"12345"` | **rejected** | accepted → `/courses/12345` |
+ * | `9007199254740993` (via JSON) | **accepted, silently `…992`** | **rejected**, message names the value |
+ * | `"9007199254740993"` | **rejected** | accepted → `/courses/9007199254740993` |
+ *
+ * The §3.4 block below is unchanged and still passing: the 52 `.int()` ID
+ * sites are deliberately NOT part of PR 1b's 222, so they still reject a
+ * large ID in either form. See the PR body — that is a known, measured gap in
+ * the spec's own phase plan, not a side effect of this change.
  */
 
 const TEST_TOKEN = 'test-token'
@@ -36,7 +49,7 @@ async function connectArmedClient() {
   return client
 }
 
-describe('§2.2 — the input defect on the wire, as it exists on main today (BRU-2730)', () => {
+describe('§2.2 — the input defect on the wire, fixed by PR 1b (BRU-2730/BRU-2827)', () => {
   let client: Client
   let requestSpy: ReturnType<typeof vi.spyOn>
 
@@ -61,14 +74,17 @@ describe('§2.2 — the input defect on the wire, as it exists on main today (BR
     expect(requestSpy).toHaveBeenCalledWith('/api/v1/courses/12345', expect.anything())
   })
 
-  it('control: the same small ID as a string is rejected, so the rejection is about declared type, not magnitude', async () => {
+  it('the same small ID as a string is now accepted and reaches the same endpoint (Phase 0: rejected)', async () => {
     const result = await client.callTool({ name: 'get_course', arguments: { course_id: '12345' } })
 
-    expect(result.isError).toBe(true)
-    expect(requestSpy).not.toHaveBeenCalled()
+    expect(result.isError).toBeFalsy()
+    // Byte-identical to the numeric form above: `canvasIdInput()` normalizes
+    // both representations to the one canonical decimal string, which is the
+    // §4.1 property the whole design rests on.
+    expect(requestSpy).toHaveBeenCalledWith('/api/v1/courses/12345', expect.anything())
   })
 
-  it('characterizes the defect: an unsafe integer that crossed a JSON boundary is silently rounded and still succeeds', async () => {
+  it('an unsafe integer that crossed a JSON boundary is now rejected, naming the value (Phase 0: silently rounded and succeeded)', async () => {
     // `JSON.parse` — what every MCP transport does to wire bytes — has
     // already rounded the value before this line runs. The object literal
     // `{ course_id: 9007199254740993 }` would round identically at parse
@@ -79,19 +95,30 @@ describe('§2.2 — the input defect on the wire, as it exists on main today (BR
 
     const result = await client.callTool({ name: 'get_course', arguments: args })
 
-    expect(result.isError).toBeFalsy()
-    // A different course than the one requested — no error, no warning.
-    expect(requestSpy).toHaveBeenCalledWith(`/api/v1/courses/${SAFE_LARGE_INT}`, expect.anything())
+    // Phase 0 recorded `isError: false` and a request to the WRONG course,
+    // `/api/v1/courses/9007199254740992`. No request is made now.
+    expect(result.isError).toBe(true)
+    expect(requestSpy).not.toHaveBeenCalled()
+    // §4.2.1 N3: the message a caller hitting the precision bug actually sees
+    // has to name the received value and the remedy, not just `too_big`.
+    const text = JSON.stringify(result.content)
+    expect(text).toContain(String(SAFE_LARGE_INT))
+    expect(text).toContain('Pass large IDs as strings')
   })
 
-  it('the string form of the same unsafe ID is rejected — today there is no way to address that object', async () => {
+  it('the string form of the same unsafe ID now reaches Canvas byte-exact (Phase 0: rejected, unaddressable)', async () => {
     const result = await client.callTool({
       name: 'get_course',
       arguments: { course_id: UNSAFE_INT_DECIMAL },
     })
 
-    expect(result.isError).toBe(true)
-    expect(requestSpy).not.toHaveBeenCalled()
+    expect(result.isError).toBeFalsy()
+    // The whole point of the design: 19 digits in, the same 19 digits on the
+    // wire, with no double in the path to round them.
+    expect(requestSpy).toHaveBeenCalledWith(
+      `/api/v1/courses/${UNSAFE_INT_DECIMAL}`,
+      expect.anything(),
+    )
   })
 })
 

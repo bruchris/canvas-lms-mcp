@@ -116,8 +116,8 @@ describe('contentMigrationsTools', () => {
     it('delegates to canvas.contentMigrations.list', async () => {
       const canvas = buildMockCanvas()
       const tool = contentMigrationsTools(canvas).find((t) => t.name === 'list_content_migrations')!
-      const result = await tool.handler({ course_id: 99 })
-      expect(canvas.contentMigrations.list).toHaveBeenCalledWith(99)
+      const result = await tool.handler({ course_id: '99' })
+      expect(canvas.contentMigrations.list).toHaveBeenCalledWith('99')
       expect(result).toEqual([mockMigrationCompleted, mockMigrationCreated])
     })
   })
@@ -127,10 +127,10 @@ describe('contentMigrationsTools', () => {
       const canvas = buildMockCanvas()
       const tool = contentMigrationsTools(canvas).find((t) => t.name === 'get_content_migration')!
       const result = (await tool.handler({
-        course_id: 99,
-        migration_id: 10,
+        course_id: '99',
+        migration_id: '10',
       })) as CanvasContentMigration
-      expect(canvas.contentMigrations.get).toHaveBeenCalledWith(99, 10)
+      expect(canvas.contentMigrations.get).toHaveBeenCalledWith('99', '10')
       expect(result.progress_url).toBe('https://canvas.example.com/api/v1/progress/42')
     })
   })
@@ -141,8 +141,8 @@ describe('contentMigrationsTools', () => {
       const tool = contentMigrationsTools(canvas).find(
         (t) => t.name === 'list_content_migration_types',
       )!
-      const result = await tool.handler({ course_id: 99 })
-      expect(canvas.contentMigrations.listMigrators).toHaveBeenCalledWith(99)
+      const result = await tool.handler({ course_id: '99' })
+      expect(canvas.contentMigrations.listMigrators).toHaveBeenCalledWith('99')
       expect(result).toEqual(mockMigrators)
     })
   })
@@ -153,8 +153,8 @@ describe('contentMigrationsTools', () => {
       const tool = contentMigrationsTools(canvas).find(
         (t) => t.name === 'get_migration_selective_data',
       )!
-      await tool.handler({ course_id: 99, migration_id: 10 })
-      expect(canvas.contentMigrations.getSelectiveData).toHaveBeenCalledWith(99, 10, undefined)
+      await tool.handler({ course_id: '99', migration_id: '10' })
+      expect(canvas.contentMigrations.getSelectiveData).toHaveBeenCalledWith('99', '10', undefined)
     })
 
     it('passes type filter when provided', async () => {
@@ -162,8 +162,12 @@ describe('contentMigrationsTools', () => {
       const tool = contentMigrationsTools(canvas).find(
         (t) => t.name === 'get_migration_selective_data',
       )!
-      await tool.handler({ course_id: 99, migration_id: 10, type: 'assignments' })
-      expect(canvas.contentMigrations.getSelectiveData).toHaveBeenCalledWith(99, 10, 'assignments')
+      await tool.handler({ course_id: '99', migration_id: '10', type: 'assignments' })
+      expect(canvas.contentMigrations.getSelectiveData).toHaveBeenCalledWith(
+        '99',
+        '10',
+        'assignments',
+      )
     })
   })
 
@@ -173,8 +177,8 @@ describe('contentMigrationsTools', () => {
       const tool = contentMigrationsTools(canvas).find(
         (t) => t.name === 'get_migration_asset_id_mapping',
       )!
-      const result = await tool.handler({ course_id: 99, migration_id: 10 })
-      expect(canvas.contentMigrations.getAssetIdMapping).toHaveBeenCalledWith(99, 10)
+      const result = await tool.handler({ course_id: '99', migration_id: '10' })
+      expect(canvas.contentMigrations.getAssetIdMapping).toHaveBeenCalledWith('99', '10')
       expect(result).toEqual({ old_123: 456 })
     })
   })
@@ -183,8 +187,8 @@ describe('contentMigrationsTools', () => {
     it('delegates to canvas.contentMigrations.listMigrationIssues', async () => {
       const canvas = buildMockCanvas()
       const tool = contentMigrationsTools(canvas).find((t) => t.name === 'list_migration_issues')!
-      const result = await tool.handler({ course_id: 99, migration_id: 10 })
-      expect(canvas.contentMigrations.listMigrationIssues).toHaveBeenCalledWith(99, 10)
+      const result = await tool.handler({ course_id: '99', migration_id: '10' })
+      expect(canvas.contentMigrations.listMigrationIssues).toHaveBeenCalledWith('99', '10')
       expect(result).toEqual(mockIssues)
     })
   })
@@ -196,11 +200,11 @@ describe('contentMigrationsTools', () => {
         (t) => t.name === 'create_content_migration',
       )!
       const result = (await tool.handler({
-        course_id: 99,
+        course_id: '99',
         migration_type: 'course_copy_importer',
         settings: { source_course_id: 1 },
       })) as CanvasContentMigration
-      expect(canvas.contentMigrations.create).toHaveBeenCalledWith(99, {
+      expect(canvas.contentMigrations.create).toHaveBeenCalledWith('99', {
         migration_type: 'course_copy_importer',
         settings: { source_course_id: 1 },
         date_shift_options: undefined,
@@ -219,7 +223,7 @@ describe('contentMigrationsTools', () => {
         (t) => t.name === 'create_content_migration',
       )!
       const result = (await tool.handler({
-        course_id: 99,
+        course_id: '99',
         migration_type: 'course_copy_importer',
       })) as CanvasContentMigration
       expect(result.progress_url).toBe('https://canvas.example.com/api/v1/progress/42')

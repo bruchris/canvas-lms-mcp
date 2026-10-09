@@ -70,23 +70,23 @@ describe('submissionTools', () => {
     it('calls canvas.submissions.list with course_id, assignment_id, and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
-      await tool.handler({ course_id: 1, assignment_id: 101 })
-      expect(canvas.submissions.list).toHaveBeenCalledWith(1, 101, {})
+      await tool.handler({ course_id: '1', assignment_id: '101' })
+      expect(canvas.submissions.list).toHaveBeenCalledWith('1', '101', {})
     })
 
     it('forwards include[] and filters', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
+        course_id: '1',
+        assignment_id: '101',
         include: ['user', 'rubric_assessment'],
-        student_ids: [5, 6],
+        student_ids: ['5', '6'],
         workflow_state: 'submitted',
       })
-      expect(canvas.submissions.list).toHaveBeenCalledWith(1, 101, {
+      expect(canvas.submissions.list).toHaveBeenCalledWith('1', '101', {
         include: ['user', 'rubric_assessment'],
-        student_ids: [5, 6],
+        student_ids: ['5', '6'],
         workflow_state: 'submitted',
       })
     })
@@ -94,7 +94,7 @@ describe('submissionTools', () => {
     it('returns the submission list from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 101 })
+      const result = await tool.handler({ course_id: '1', assignment_id: '101' })
       expect(result).toEqual([mockSubmission])
     })
 
@@ -126,20 +126,20 @@ describe('submissionTools', () => {
     it('calls canvas.submissions.get with all three IDs and empty opts', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'get_submission')!
-      await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5 })
-      expect(canvas.submissions.get).toHaveBeenCalledWith(1, 101, 5, {})
+      await tool.handler({ course_id: '1', assignment_id: '101', user_id: '5' })
+      expect(canvas.submissions.get).toHaveBeenCalledWith('1', '101', '5', {})
     })
 
     it('forwards include[] to canvas.submissions.get', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'get_submission')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
-        user_id: 5,
+        course_id: '1',
+        assignment_id: '101',
+        user_id: '5',
         include: ['rubric_assessment', 'user'],
       })
-      expect(canvas.submissions.get).toHaveBeenCalledWith(1, 101, 5, {
+      expect(canvas.submissions.get).toHaveBeenCalledWith('1', '101', '5', {
         include: ['rubric_assessment', 'user'],
       })
     })
@@ -147,7 +147,7 @@ describe('submissionTools', () => {
     it('returns the submission from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'get_submission')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5 })
+      const result = await tool.handler({ course_id: '1', assignment_id: '101', user_id: '5' })
       expect(result).toEqual(mockSubmission)
     })
 
@@ -181,17 +181,17 @@ describe('submissionTools', () => {
     it('calls canvas.submissions.grade with all params', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'grade_submission')!
-      await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5, grade: '95' })
-      expect(canvas.submissions.grade).toHaveBeenCalledWith(1, 101, 5, '95')
+      await tool.handler({ course_id: '1', assignment_id: '101', user_id: '5', grade: '95' })
+      expect(canvas.submissions.grade).toHaveBeenCalledWith('1', '101', '5', '95')
     })
 
     it('returns the graded submission from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'grade_submission')!
       const result = await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
-        user_id: 5,
+        course_id: '1',
+        assignment_id: '101',
+        user_id: '5',
         grade: '95',
       })
       expect(result).toEqual(mockSubmission)
@@ -227,21 +227,21 @@ describe('submissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'comment_on_submission')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
-        user_id: 5,
+        course_id: '1',
+        assignment_id: '101',
+        user_id: '5',
         comment: 'Great work!',
       })
-      expect(canvas.submissions.comment).toHaveBeenCalledWith(1, 101, 5, 'Great work!')
+      expect(canvas.submissions.comment).toHaveBeenCalledWith('1', '101', '5', 'Great work!')
     })
 
     it('returns the updated submission from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'comment_on_submission')!
       const result = await tool.handler({
-        course_id: 1,
-        assignment_id: 101,
-        user_id: 5,
+        course_id: '1',
+        assignment_id: '101',
+        user_id: '5',
         comment: 'Great work!',
       })
       expect(result).toEqual(mockSubmission)
@@ -309,8 +309,8 @@ describe('submissionTools', () => {
           (t) => t.name === 'list_submissions',
         )!
         const result = (await tool.handler({
-          course_id: 1,
-          assignment_id: 101,
+          course_id: '1',
+          assignment_id: '101',
         })) as CanvasSubmission[]
         expect(result[0].user?.name).toMatch(/^Student \d+$/)
       })
@@ -320,8 +320,8 @@ describe('submissionTools', () => {
           (t) => t.name === 'list_submissions',
         )!
         const result = (await tool.handler({
-          course_id: 1,
-          assignment_id: 101,
+          course_id: '1',
+          assignment_id: '101',
         })) as CanvasSubmission[]
         expect(result[0].user?.name).toBe('Alice')
       })
@@ -333,9 +333,9 @@ describe('submissionTools', () => {
           (t) => t.name === 'get_submission',
         )!
         const result = (await tool.handler({
-          course_id: 1,
-          assignment_id: 101,
-          user_id: 5,
+          course_id: '1',
+          assignment_id: '101',
+          user_id: '5',
         })) as CanvasSubmission
         expect(result.user?.name).toMatch(/^Student \d+$/)
       })
@@ -345,9 +345,9 @@ describe('submissionTools', () => {
           (t) => t.name === 'get_submission',
         )!
         const result = (await tool.handler({
-          course_id: 1,
-          assignment_id: 101,
-          user_id: 5,
+          course_id: '1',
+          assignment_id: '101',
+          user_id: '5',
         })) as CanvasSubmission
         expect(result.user?.name).toBe('Alice')
       })

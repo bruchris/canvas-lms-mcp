@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { CanvasFile, CanvasFolder } from '../canvas/types'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 interface DuplicateFileEntry {
   id: number
@@ -20,16 +21,21 @@ interface DuplicateGroup {
 // `folderId` isn't present among `folders` (e.g. a stale/foreign id), the
 // subtree is just `{ folderId }` — callers naturally get zero matching files
 // rather than an error.
-function collectFolderSubtree(folders: CanvasFolder[], folderId: number): Set<number> {
-  const childrenByParent = new Map<number, number[]>()
+// String-keyed, not `Map<number, …>` / `Set<number>`: §4.1 names these as the
+// exact sites a `string | number` ID would go blind at, and `Number(id)` to make
+// a numeric key fit is what §4.4 forbids. The seed is a migrated input id and
+// the walk's values are response ids, so both are canonicalized on the way in.
+function collectFolderSubtree(folders: CanvasFolder[], folderId: CanvasId): Set<CanvasId> {
+  const childrenByParent = new Map<CanvasId, CanvasId[]>()
   for (const folder of folders) {
     if (folder.parent_folder_id == null) continue
-    const siblings = childrenByParent.get(folder.parent_folder_id) ?? []
-    siblings.push(folder.id)
-    childrenByParent.set(folder.parent_folder_id, siblings)
+    const parentKey = canvasIdFromResponse(folder.parent_folder_id)
+    const siblings = childrenByParent.get(parentKey) ?? []
+    siblings.push(canvasIdFromResponse(folder.id))
+    childrenByParent.set(parentKey, siblings)
   }
 
-  const subtree = new Set<number>([folderId])
+  const subtree = new Set<CanvasId>([folderId])
   const queue = [folderId]
   while (queue.length > 0) {
     const current = queue.shift()!
@@ -46,11 +52,12 @@ function collectFolderSubtree(folders: CanvasFolder[], folderId: number): Set<nu
 function findDuplicateFiles(
   files: CanvasFile[],
   folders: CanvasFolder[],
-  folderId?: number,
+  folderId?: CanvasId,
 ): { duplicate_groups: DuplicateGroup[]; total_redundant_copies: number } {
   const folderPathById = new Map(folders.map((f) => [f.id, f.full_name]))
   const subtree = folderId == null ? null : collectFolderSubtree(folders, folderId)
-  const scoped = subtree == null ? files : files.filter((f) => subtree.has(f.folder_id))
+  const scoped =
+    subtree == null ? files : files.filter((f) => subtree.has(canvasIdFromResponse(f.folder_id)))
 
   const groups = new Map<string, CanvasFile[]>()
   for (const file of scoped) {
@@ -87,14 +94,14 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Files',
       description: 'List all files in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.files.list(course_id)
       },
     },
@@ -103,14 +110,14 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Folders',
       description: 'List all folders in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.files.listFolders(course_id)
       },
     },
@@ -119,16 +126,16 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Get File',
       description: 'Get metadata for a single file by ID, including download URL.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        file_id: z.number().describe('The Canvas file ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        file_id: canvasIdInput().describe('The Canvas file ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const file_id = params.file_id as number
+        const course_id = params.course_id as CanvasId
+        const file_id = params.file_id as CanvasId
         return canvas.files.get(course_id, file_id)
       },
     },
@@ -139,7 +146,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         name: z.string().describe('File name including extension'),
         content: z.string().describe('Base64-encoded file content'),
         content_type: z.string().describe('MIME type, e.g. "application/pdf" or "image/png"'),
@@ -153,7 +160,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const name = params.name as string
         const content = params.content as string
         const content_type = params.content_type as string
@@ -167,14 +174,14 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Delete a file by ID. This action is permanent.',
       inputSchema: {
-        file_id: z.number().describe('The Canvas file ID'),
+        file_id: canvasIdInput().describe('The Canvas file ID'),
       },
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const file_id = params.file_id as number
+        const file_id = params.file_id as CanvasId
         return canvas.files.delete(file_id)
       },
     },
@@ -184,9 +191,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Download the content of a Canvas file by ID. Text files (plain text, HTML, JSON, XML, JavaScript) are returned as readable text. Binary files (images, PDFs, etc.) are returned as base64-encoded data. Files larger than 10 MB are refused.',
       inputSchema: {
-        file_id: z.number().describe('The Canvas file ID'),
-        course_id: z
-          .number()
+        file_id: canvasIdInput().describe('The Canvas file ID'),
+        course_id: canvasIdInput()
           .optional()
           .describe('Optional Canvas course ID to scope the file lookup'),
       },
@@ -195,8 +201,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const file_id = params.file_id as number
-        const course_id = params.course_id as number | undefined
+        const file_id = params.file_id as CanvasId
+        const course_id = params.course_id as CanvasId | undefined
         return canvas.files.download(file_id, course_id)
       },
     },
@@ -210,9 +216,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         'delete_file tool. Groups by display name + size (Canvas file listings carry no content ' +
         'hash), so same-name files of different sizes are not considered duplicates.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        folder_id: z
-          .number()
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        folder_id: canvasIdInput()
           .optional()
           .describe(
             'Optional Canvas folder ID to scope the search to that folder and its subfolders',
@@ -223,8 +228,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const folder_id = params.folder_id as number | undefined
+        const course_id = params.course_id as CanvasId
+        const folder_id = params.folder_id as CanvasId | undefined
         const [files, folders] = await Promise.all([
           canvas.files.list(course_id),
           canvas.files.listFolders(course_id),

@@ -109,8 +109,8 @@ describe('quizTools', () => {
     it('delegates to canvas.quizzes.get', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz')!
-      const result = await tool.handler({ course_id: 1, quiz_id: 1 })
-      expect(canvas.quizzes.get).toHaveBeenCalledWith(1, 1)
+      const result = await tool.handler({ course_id: '1', quiz_id: '1' })
+      expect(canvas.quizzes.get).toHaveBeenCalledWith('1', '1')
       expect(result).toEqual(mockQuiz)
     })
   })
@@ -124,8 +124,8 @@ describe('quizTools', () => {
     it('delegates to canvas.quizzes.listSubmissions', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'list_quiz_submissions')!
-      await tool.handler({ course_id: 1, quiz_id: 1 })
-      expect(canvas.quizzes.listSubmissions).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', quiz_id: '1' })
+      expect(canvas.quizzes.listSubmissions).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -138,8 +138,8 @@ describe('quizTools', () => {
     it('delegates to canvas.quizzes.listQuestions', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'list_quiz_questions')!
-      await tool.handler({ course_id: 1, quiz_id: 1 })
-      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', quiz_id: '1' })
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -152,8 +152,8 @@ describe('quizTools', () => {
     it('delegates to canvas.quizzes.list', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'list_quizzes')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.quizzes.list).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.quizzes.list).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockQuiz])
     })
   })
@@ -169,8 +169,8 @@ describe('quizTools', () => {
     it('delegates to canvas.quizzes.getSubmissionAnswers', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_answers')!
-      await tool.handler({ quiz_submission_id: 1 })
-      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith(1)
+      await tool.handler({ quiz_submission_id: '1' })
+      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith('1')
     })
   })
 
@@ -188,18 +188,18 @@ describe('quizTools', () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'score_quiz_question')!
       await tool.handler({
-        course_id: 1,
-        quiz_id: 1,
-        submission_id: 1,
-        question_id: 1,
+        course_id: '1',
+        quiz_id: '1',
+        submission_id: '1',
+        question_id: '1',
         score: 10,
         comment: 'Correct!',
       })
       expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(
-        1,
-        1,
-        1,
-        1,
+        '1',
+        '1',
+        '1',
+        '1',
         10,
         'Correct!',
         undefined,
@@ -210,10 +210,10 @@ describe('quizTools', () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'score_quiz_question')!
       const result = await tool.handler({
-        course_id: 1,
-        quiz_id: 1,
-        submission_id: 1,
-        question_id: 1,
+        course_id: '1',
+        quiz_id: '1',
+        submission_id: '1',
+        question_id: '1',
         score: 10,
       })
       expect(result).toEqual({ success: true })
@@ -223,14 +223,22 @@ describe('quizTools', () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'score_quiz_question')!
       await tool.handler({
-        course_id: 1,
-        quiz_id: 1,
-        submission_id: 1,
-        question_id: 1,
+        course_id: '1',
+        quiz_id: '1',
+        submission_id: '1',
+        question_id: '1',
         score: 10,
         attempt: 2,
       })
-      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(1, 1, 1, 1, 10, undefined, 2)
+      expect(canvas.quizzes.scoreQuestion).toHaveBeenCalledWith(
+        '1',
+        '1',
+        '1',
+        '1',
+        10,
+        undefined,
+        2,
+      )
     })
   })
 
@@ -246,22 +254,22 @@ describe('quizTools', () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.quizzes.getSubmissionEvents).mockResolvedValue(mockEvents)
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
-      const result = await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
+      const result = await tool.handler({ course_id: '1', quiz_id: '2', submission_id: '3' })
       expect(result).toEqual(mockEvents)
     })
 
     it('delegates to getSubmissionEvents with the attempt parameter', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
-      await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3, attempt: 1 })
-      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith(1, 2, 3, 1)
+      await tool.handler({ course_id: '1', quiz_id: '2', submission_id: '3', attempt: 1 })
+      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith('1', '2', '3', 1)
     })
 
     it('delegates with attempt undefined when omitted', async () => {
       const canvas = buildMockCanvas()
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
-      await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
-      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith(1, 2, 3, undefined)
+      await tool.handler({ course_id: '1', quiz_id: '2', submission_id: '3' })
+      expect(canvas.quizzes.getSubmissionEvents).toHaveBeenCalledWith('1', '2', '3', undefined)
     })
 
     it('maps a 403 Canvas error to the permission message', async () => {
@@ -271,7 +279,7 @@ describe('quizTools', () => {
       )
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
       await expect(
-        tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 }),
+        tool.handler({ course_id: '1', quiz_id: '2', submission_id: '3' }),
       ).rejects.toBeInstanceOf(CanvasApiError)
       // formatError (applied by the registry handler wrapper) maps the status:
       expect(formatError(new CanvasApiError('Forbidden', 403, '/events'))).toBe(
@@ -289,7 +297,7 @@ describe('quizTools', () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.quizzes.getSubmissionEvents).mockResolvedValue([])
       const tool = quizTools(canvas).find((t) => t.name === 'get_quiz_submission_events')!
-      const result = await tool.handler({ course_id: 1, quiz_id: 2, submission_id: 3 })
+      const result = await tool.handler({ course_id: '1', quiz_id: '2', submission_id: '3' })
       expect(result).toEqual([])
     })
   })

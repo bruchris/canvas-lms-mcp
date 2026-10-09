@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { CanvasId } from '../../src/canvas/id'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasAssignment, CanvasSubmission } from '../../src/canvas/types'
 import type { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
@@ -126,19 +127,27 @@ function buildMockCanvas(opts: {
   const filterSubmissions = opts.filterSubmissions ?? true
   return {
     assignments: {
-      list: vi.fn(async (_courseId: number, listOpts?: { assignment_ids?: number[] }) => {
+      // Canvas receives `assignment_ids[]` as query-string text, so the mock
+      // compares canonical strings rather than JS numbers — after BRU-2730 the
+      // tool passes `CanvasId`s, and a numeric `includes` would silently match
+      // nothing (the fixture would then be testing the mock, not the tool).
+      list: vi.fn(async (_courseId: CanvasId, listOpts?: { assignment_ids?: CanvasId[] }) => {
         const all = opts.assignments ?? []
         const ids = listOpts?.assignment_ids
-        return ids && ids.length > 0 ? all.filter((a) => ids.includes(a.id)) : all
+        return ids && ids.length > 0
+          ? all.filter((a) => ids.some((id) => String(id) === String(a.id)))
+          : all
       }),
     },
     submissions: {
-      listForStudents: vi.fn(async (_courseId: number, subOpts?: { assignment_ids?: number[] }) => {
-        const all = opts.submissions ?? []
-        const ids = subOpts?.assignment_ids
-        if (!filterSubmissions || !ids || ids.length === 0) return all
-        return all.filter((s) => ids.includes(s.assignment_id))
-      }),
+      listForStudents: vi.fn(
+        async (_courseId: CanvasId, subOpts?: { assignment_ids?: CanvasId[] }) => {
+          const all = opts.submissions ?? []
+          const ids = subOpts?.assignment_ids
+          if (!filterSubmissions || !ids || ids.length === 0) return all
+          return all.filter((s) => ids.some((id) => String(id) === String(s.assignment_id)))
+        },
+      ),
     },
   } as unknown as CanvasClient
 }
@@ -184,10 +193,10 @@ describe('list_submissions_awaiting_grading', () => {
     expect(result.items[1].submissions[0].has_pending_manual_questions).toBe(false)
 
     const listForStudents = canvas.submissions.listForStudents as ReturnType<typeof vi.fn>
-    const calledWith = listForStudents.mock.calls[0][1] as { assignment_ids: number[] }
-    expect(calledWith.assignment_ids).toContain(A1.id)
-    expect(calledWith.assignment_ids).toContain(A2.id)
-    expect(calledWith.assignment_ids).not.toContain(A3.id)
+    const calledWith = listForStudents.mock.calls[0][1] as { assignment_ids: CanvasId[] }
+    expect(calledWith.assignment_ids).toContain(String(A1.id))
+    expect(calledWith.assignment_ids).toContain(String(A2.id))
+    expect(calledWith.assignment_ids).not.toContain(String(A3.id))
 
     expect(result.caveats.some((c) => c.includes('New Quizzes'))).toBe(true)
   })

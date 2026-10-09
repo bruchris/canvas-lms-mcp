@@ -71,8 +71,8 @@ describe('fileTools', () => {
     it('delegates to canvas.files.list', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'list_files')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.files.list).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.files.list).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockFile])
     })
   })
@@ -86,8 +86,8 @@ describe('fileTools', () => {
     it('delegates to canvas.files.listFolders', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'list_folders')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.files.listFolders).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.files.listFolders).toHaveBeenCalledWith('1')
     })
   })
 
@@ -100,8 +100,8 @@ describe('fileTools', () => {
     it('delegates to canvas.files.get', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'get_file')!
-      await tool.handler({ course_id: 1, file_id: 1 })
-      expect(canvas.files.get).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', file_id: '1' })
+      expect(canvas.files.get).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -115,14 +115,14 @@ describe('fileTools', () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'upload_file')!
       const result = await tool.handler({
-        course_id: 1,
+        course_id: '1',
         name: 'test.txt',
         content: 'aGVsbG8=',
         content_type: 'text/plain',
         parent_folder_path: 'week1',
       })
       expect(canvas.files.upload).toHaveBeenCalledWith(
-        1,
+        '1',
         'test.txt',
         'aGVsbG8=',
         'text/plain',
@@ -135,13 +135,13 @@ describe('fileTools', () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'upload_file')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         name: 'f.pdf',
         content: 'YQ==',
         content_type: 'application/pdf',
       })
       expect(canvas.files.upload).toHaveBeenCalledWith(
-        1,
+        '1',
         'f.pdf',
         'YQ==',
         'application/pdf',
@@ -159,8 +159,8 @@ describe('fileTools', () => {
     it('delegates to canvas.files.delete and returns the deleted file', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'delete_file')!
-      const result = await tool.handler({ file_id: 99 })
-      expect(canvas.files.delete).toHaveBeenCalledWith(99)
+      const result = await tool.handler({ file_id: '99' })
+      expect(canvas.files.delete).toHaveBeenCalledWith('99')
       expect(result).toMatchObject({ id: mockFile.id })
     })
   })
@@ -174,16 +174,16 @@ describe('fileTools', () => {
     it('delegates to canvas.files.download with file_id and optional course_id', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'download_file')!
-      const result = await tool.handler({ file_id: 42, course_id: 7 })
-      expect(canvas.files.download).toHaveBeenCalledWith(42, 7)
+      const result = await tool.handler({ file_id: '42', course_id: '7' })
+      expect(canvas.files.download).toHaveBeenCalledWith('42', '7')
       expect(result).toEqual(mockDownloadedFile)
     })
 
     it('passes undefined course_id when not provided', async () => {
       const canvas = buildMockCanvas()
       const tool = fileTools(canvas).find((t) => t.name === 'download_file')!
-      await tool.handler({ file_id: 42 })
-      expect(canvas.files.download).toHaveBeenCalledWith(42, undefined)
+      await tool.handler({ file_id: '42' })
+      expect(canvas.files.download).toHaveBeenCalledWith('42', undefined)
     })
   })
 
@@ -219,7 +219,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result).toEqual({ duplicate_groups: [], total_redundant_copies: 0 })
     })
@@ -233,7 +233,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result).toEqual({ duplicate_groups: [], total_redundant_copies: 0 })
     })
@@ -264,7 +264,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result).toEqual({ duplicate_groups: [], total_redundant_copies: 0 })
     })
@@ -311,7 +311,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result).toEqual({
         duplicate_groups: [
@@ -327,8 +327,8 @@ describe('fileTools', () => {
         ],
         total_redundant_copies: 1,
       })
-      expect(canvas.files.list).toHaveBeenCalledWith(1)
-      expect(canvas.files.listFolders).toHaveBeenCalledWith(1)
+      expect(canvas.files.list).toHaveBeenCalledWith('1')
+      expect(canvas.files.listFolders).toHaveBeenCalledWith('1')
     })
 
     it('scopes to a folder subtree when folder_id is provided', async () => {
@@ -377,7 +377,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1, folder_id: 1 })
+      const result = await tool.handler({ course_id: '1', folder_id: '1' })
 
       expect(result).toEqual({
         duplicate_groups: [
@@ -442,7 +442,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1, folder_id: 1 })
+      const result = await tool.handler({ course_id: '1', folder_id: '1' })
 
       expect(result.duplicate_groups).toHaveLength(1)
       expect(result.duplicate_groups[0].count).toBe(2)
@@ -475,7 +475,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1, folder_id: 999 })
+      const result = await tool.handler({ course_id: '1', folder_id: '999' })
 
       expect(result).toEqual({ duplicate_groups: [], total_redundant_copies: 0 })
     })
@@ -506,7 +506,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result.duplicate_groups[0].files).toEqual([
         { id: 1, folder_path: '(unknown folder 77)' },
@@ -548,7 +548,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result.duplicate_groups).toHaveLength(1)
       expect(result.duplicate_groups[0].count).toBe(3)
@@ -605,7 +605,7 @@ describe('fileTools', () => {
       } as unknown as CanvasClient
       const tool = fileTools(canvas).find((t) => t.name === 'find_duplicate_files')!
 
-      const result = await tool.handler({ course_id: 1 })
+      const result = await tool.handler({ course_id: '1' })
 
       expect(result.duplicate_groups).toHaveLength(2)
       expect(

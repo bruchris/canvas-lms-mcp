@@ -9,6 +9,7 @@ import type {
 } from '../canvas/enrollments'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const ENROLLMENT_TYPE = [
   'StudentEnrollment',
@@ -92,9 +93,9 @@ export function enrollmentTools(
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<EnrollmentInclude>
         if (params.grading_period_id !== undefined)
-          opts.grading_period_id = params.grading_period_id as number
+          opts.grading_period_id = params.grading_period_id as CanvasId
         if (params.enrollment_term_id !== undefined)
-          opts.enrollment_term_id = params.enrollment_term_id as number
+          opts.enrollment_term_id = params.enrollment_term_id as CanvasId
         const enrollments = await canvas.enrollments.list(opts)
         if (!pseudonymizer?.isEnabled()) return enrollments
         return Promise.all(
@@ -109,7 +110,7 @@ export function enrollmentTools(
       description:
         'List enrollments within a specific course with Canvas filters. Use `include=grades` / `include=current_points` for richer grade data, `type[]` to limit to a role, and `user_id` to focus on a single user.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         type: z
           .array(z.enum(ENROLLMENT_TYPE))
           .optional()
@@ -120,10 +121,9 @@ export function enrollmentTools(
           .array(z.enum(ENROLLMENT_INCLUDE))
           .optional()
           .describe('Extra fields to include (Canvas include[] param)'),
-        user_id: z
-          .union([z.number(), z.string()])
+        user_id: canvasIdInput({ sentinels: ['self'] })
           .optional()
-          .describe('Filter to a specific user (may be numeric ID or "self")'),
+          .describe('Filter to a specific user. Canvas ID (pass large IDs as a string) or "self".'),
         grading_period_id: z
           .number()
           .int()
@@ -140,18 +140,18 @@ export function enrollmentTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const opts: ListCourseEnrollmentsOptions = {}
         if (params.type !== undefined) opts.type = params.type as ReadonlyArray<EnrollmentType>
         if (params.state !== undefined) opts.state = params.state as ReadonlyArray<EnrollmentState>
         if (params.role !== undefined) opts.role = params.role as ReadonlyArray<string>
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<EnrollmentInclude>
-        if (params.user_id !== undefined) opts.user_id = params.user_id as number | string
+        if (params.user_id !== undefined) opts.user_id = params.user_id as CanvasId | string
         if (params.grading_period_id !== undefined)
-          opts.grading_period_id = params.grading_period_id as number
+          opts.grading_period_id = params.grading_period_id as CanvasId
         if (params.enrollment_term_id !== undefined)
-          opts.enrollment_term_id = params.enrollment_term_id as number
+          opts.enrollment_term_id = params.enrollment_term_id as CanvasId
         const enrollments = await canvas.enrollments.listForCourse(course_id, opts)
         if (!pseudonymizer?.isEnabled()) return enrollments
         return Promise.all(enrollments.map((e) => pseudonymizer.anonymizeEnrollment(course_id, e)))
@@ -162,8 +162,8 @@ export function enrollmentTools(
       title: 'Enroll User',
       description: 'Enroll a user in a course with a specified role.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        user_id: z.number().describe('The Canvas user ID to enroll'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID to enroll'),
         type: z
           .enum([
             'StudentEnrollment',
@@ -184,8 +184,8 @@ export function enrollmentTools(
       },
       handler: async (params) => {
         return canvas.enrollments.enroll(
-          params.course_id as number,
-          params.user_id as number,
+          params.course_id as CanvasId,
+          params.user_id as CanvasId,
           params.type as string,
           params.enrollment_state as string | undefined,
         )
@@ -197,8 +197,8 @@ export function enrollmentTools(
       description:
         "Remove or conclude an enrollment from a course. The 'delete' task is permanent; 'conclude' and 'deactivate' are reversible.",
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        enrollment_id: z.number().describe('The enrollment ID to remove'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        enrollment_id: canvasIdInput().describe('The enrollment ID to remove'),
         task: z
           .enum(['conclude', 'delete', 'deactivate'])
           .describe('The action to perform on the enrollment'),
@@ -209,8 +209,8 @@ export function enrollmentTools(
       },
       handler: async (params) => {
         return canvas.enrollments.remove(
-          params.course_id as number,
-          params.enrollment_id as number,
+          params.course_id as CanvasId,
+          params.enrollment_id as CanvasId,
           params.task as string,
         )
       },

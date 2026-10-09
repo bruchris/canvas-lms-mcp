@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { CanvasId } from '../../src/canvas/id'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasQuiz,
@@ -121,9 +122,9 @@ interface MockOpts {
   questions?: CanvasQuizQuestion[]
   submissions?: CanvasQuizSubmission[]
   answersBySubmission?: Record<number, CanvasQuizSubmissionQuestion[]>
-  answersImpl?: (subId: number) => Promise<CanvasQuizSubmissionQuestion[]>
+  answersImpl?: (subId: CanvasId) => Promise<CanvasQuizSubmissionQuestion[]>
   // Questions Canvas returns for one submission attempt (listSubmissionQuestions).
-  attemptQuestionsImpl?: (subId: number, attempt: number) => Promise<CanvasQuizQuestion[]>
+  attemptQuestionsImpl?: (subId: CanvasId, attempt: number) => Promise<CanvasQuizQuestion[]>
   students?: CanvasUser[]
 }
 
@@ -143,7 +144,7 @@ function buildMockCanvas(opts: MockOpts = {}): CanvasClient {
       listSubmissionQuestions: vi
         .fn()
         .mockImplementation(
-          (_courseId: number, _quizId: number, subId: number, attempt: number) =>
+          (_courseId: CanvasId, _quizId: CanvasId, subId: CanvasId, attempt: number) =>
             opts.attemptQuestionsImpl?.(subId, attempt) ?? Promise.resolve([]),
         ),
     },
@@ -189,7 +190,7 @@ describe('quizQuestionResponseTools', () => {
     it('pivots every question with every response, ordered by position', async () => {
       const canvas = buildMockCanvas()
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.quiz_id).toBe(1)
       expect(result.quiz_title).toBe('Essay Quiz')
@@ -226,7 +227,11 @@ describe('quizQuestionResponseTools', () => {
     it('scopes to a single question when question_id is provided', async () => {
       const canvas = buildMockCanvas()
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1, question_id: 20 })) as Result
+      const result = (await tool.handler({
+        course_id: '1',
+        quiz_id: '1',
+        question_id: '20',
+      })) as Result
 
       expect(result.question_count).toBe(1)
       expect(result.questions).toHaveLength(1)
@@ -239,7 +244,7 @@ describe('quizQuestionResponseTools', () => {
       const tool = getTool(canvas)
       let message = ''
       try {
-        await tool.handler({ course_id: 1, quiz_id: 1, question_id: 999 })
+        await tool.handler({ course_id: '1', quiz_id: '1', question_id: '999' })
       } catch (err) {
         message = (err as Error).message
       }
@@ -255,7 +260,7 @@ describe('quizQuestionResponseTools', () => {
 
       let message = ''
       try {
-        await tool.handler({ course_id: 1, quiz_id: 1 })
+        await tool.handler({ course_id: '1', quiz_id: '1' })
       } catch (err) {
         message = (err as Error).message
       }
@@ -279,20 +284,20 @@ describe('quizQuestionResponseTools', () => {
       }
       const canvas = buildMockCanvas({ submissions: [subComplete, untaken] })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.submissions_scanned).toBe(1)
       expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledTimes(1)
-      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith(100)
+      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith('100')
     })
 
     it('includes pending_review submissions (essays awaiting grading)', async () => {
       const canvas = buildMockCanvas({ submissions: [subPendingReview] })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.submissions_scanned).toBe(1)
-      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith(101)
+      expect(canvas.quizzes.getSubmissionAnswers).toHaveBeenCalledWith('101')
       expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toContain(101)
     })
   })
@@ -302,10 +307,10 @@ describe('quizQuestionResponseTools', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const canvas = buildMockCanvas({
         answersImpl: (subId) =>
-          subId === 100 ? Promise.resolve(answersForSub100) : Promise.reject(new Error('boom')),
+          subId === '100' ? Promise.resolve(answersForSub100) : Promise.reject(new Error('boom')),
       })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.submissions_failed).toEqual([101])
       // The healthy submission's answers are still pivoted in.
@@ -320,7 +325,7 @@ describe('quizQuestionResponseTools', () => {
     it('surfaces correct verbatim and null when Canvas omits it', async () => {
       const canvas = buildMockCanvas()
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const mc = result.questions.find((q) => q.question_id === 20)!
       const bySub = new Map(mc.responses.map((r) => [r.quiz_submission_id, r.correct]))
@@ -338,7 +343,7 @@ describe('quizQuestionResponseTools', () => {
     it('uses raw student names when no pseudonymizer is passed', async () => {
       const canvas = buildMockCanvas()
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const names = result.questions[0].responses.map((r) => r.user_name)
       expect(names).toEqual(['Alice Anderson', 'Bob Brown'])
@@ -354,11 +359,11 @@ describe('quizQuestionResponseTools', () => {
       } as unknown as Pseudonymizer
 
       const tool = getTool(canvas, pseudonymizer)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const names = result.questions[0].responses.map((r) => r.user_name)
       expect(names).toEqual(['Student 5', 'Student 6'])
-      expect(canvas.users.listStudents).toHaveBeenCalledWith(1)
+      expect(canvas.users.listStudents).toHaveBeenCalledWith('1')
       expect(canvas.users.listCourseUsers).not.toHaveBeenCalled()
     })
 
@@ -371,7 +376,7 @@ describe('quizQuestionResponseTools', () => {
       } as unknown as Pseudonymizer
 
       const tool = getTool(canvas, pseudonymizer)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(anonymizeUsers).not.toHaveBeenCalled()
       expect(result.questions[0].responses[0].user_name).toBe('Alice Anderson')
@@ -389,7 +394,7 @@ describe('quizQuestionResponseTools', () => {
         students: [alice, bob], // user 99 absent
       })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const essay = result.questions.find((q) => q.question_id === 10)!
       expect(essay.responses).toHaveLength(1)
@@ -401,7 +406,7 @@ describe('quizQuestionResponseTools', () => {
     it('returns questions with empty responses when no submissions exist', async () => {
       const canvas = buildMockCanvas({ submissions: [] })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.submissions_scanned).toBe(0)
       expect(result.submissions_failed).toEqual([])
@@ -413,7 +418,7 @@ describe('quizQuestionResponseTools', () => {
     it('returns an empty question list when the quiz has no questions', async () => {
       const canvas = buildMockCanvas({ questions: [] })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.question_count).toBe(0)
       expect(result.questions).toEqual([])
@@ -479,7 +484,7 @@ describe('quizQuestionResponseTools', () => {
 
     it('retains responses to questions absent from listQuestions', async () => {
       const canvas = bankCanvas()
-      const result = (await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
 
       expect(result.question_count).toBe(3)
       // Fixed questions by position first, then attempt-resolved questions by id.
@@ -524,20 +529,20 @@ describe('quizQuestionResponseTools', () => {
 
     it('looks up only the attempts needed to cover the unmatched ids', async () => {
       const canvas = bankCanvas()
-      await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })
+      await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })
 
       // 102 drew the same generated row as 100, so it needs no lookup of its own.
       expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledTimes(2)
-      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 100, 1)
-      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 101, 2)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith('1', '1', '100', 1)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith('1', '1', '101', 2)
     })
 
     it('selects a bank-drawn question by question_id', async () => {
       const canvas = bankCanvas()
       const result = (await getTool(canvas).handler({
-        course_id: 1,
-        quiz_id: 1,
-        question_id: 7002,
+        course_id: '1',
+        quiz_id: '1',
+        question_id: '7002',
       })) as Result
 
       expect(result.question_count).toBe(1)
@@ -545,15 +550,15 @@ describe('quizQuestionResponseTools', () => {
       expect(result.questions[0].responses.map((r) => r.quiz_submission_id)).toEqual([100, 102])
       expect(result.unmatched_response_count).toBe(0)
       expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledTimes(1)
-      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith(1, 1, 100, 1)
+      expect(canvas.quizzes.listSubmissionQuestions).toHaveBeenCalledWith('1', '1', '100', 1)
     })
 
     it('makes no attempt lookup when question_id names a fixed question', async () => {
       const canvas = bankCanvas()
       const result = (await getTool(canvas).handler({
-        course_id: 1,
-        quiz_id: 1,
-        question_id: 10,
+        course_id: '1',
+        quiz_id: '1',
+        question_id: '10',
       })) as Result
 
       expect(result.questions.map((q) => q.question_id)).toEqual([10])
@@ -568,16 +573,16 @@ describe('quizQuestionResponseTools', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const canvas = bankCanvas({
         attemptQuestionsImpl: (subId) =>
-          subId === 100
+          subId === '100'
             ? Promise.reject(new Error('boom'))
             : Promise.resolve(attemptQuestions[subId] ?? []),
       })
-      const result = (await getTool(canvas).handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
 
       // 7002 (answered in 100 and 102) could not be resolved; 7001 still was.
       expect(result.questions.map((q) => q.question_id)).toEqual([10, 7001])
       expect(result.question_count).toBe(2)
-      expect(result.unmatched_question_ids).toEqual([7002])
+      expect(result.unmatched_question_ids).toEqual(['7002'])
       expect(result.unmatched_response_count).toBe(2)
       expect(result.submissions_scanned).toBe(3)
       expect(result.submissions_failed).toEqual([])
@@ -589,14 +594,14 @@ describe('quizQuestionResponseTools', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const canvas = bankCanvas({ attemptQuestionsImpl: () => Promise.reject(new Error('boom')) })
       const result = (await getTool(canvas).handler({
-        course_id: 1,
-        quiz_id: 1,
-        question_id: 7002,
+        course_id: '1',
+        quiz_id: '1',
+        question_id: '7002',
       })) as Result
 
       expect(result.question_count).toBe(0)
       expect(result.questions).toEqual([])
-      expect(result.unmatched_question_ids).toEqual([7002])
+      expect(result.unmatched_question_ids).toEqual(['7002'])
       expect(result.unmatched_response_count).toBe(2)
       errorSpy.mockRestore()
     })
@@ -619,12 +624,12 @@ describe('quizQuestionResponseTools', () => {
         attemptQuestionsImpl: () => Promise.resolve([q1Essay]),
       })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const essay = result.questions.find((q) => q.question_id === 10)!
       expect(essay.responses.map((r) => r.answer)).toEqual(['real essay answer'])
       expect(result.questions.some((q) => q.question_id === 999)).toBe(false)
-      expect(result.unmatched_question_ids).toEqual([999])
+      expect(result.unmatched_question_ids).toEqual(['999'])
       expect(result.unmatched_response_count).toBe(1)
     })
   })
@@ -641,7 +646,7 @@ describe('quizQuestionResponseTools', () => {
         },
       })
       const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: 1, quiz_id: 1 })) as Result
+      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const essay = result.questions.find((q) => q.question_id === 10)!
       expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual([100, 101])

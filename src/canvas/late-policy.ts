@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasLatePolicy } from './types'
+import type { CanvasId } from './id'
 
 /**
  * Canvas late/missing submission policy for a course.
@@ -12,7 +13,7 @@ import type { CanvasLatePolicy } from './types'
 export class LatePolicyModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async get(courseId: number): Promise<CanvasLatePolicy> {
+  async get(courseId: CanvasId): Promise<CanvasLatePolicy> {
     const envelope = await this.client.request<{ late_policy: CanvasLatePolicy }>(
       `/api/v1/courses/${courseId}/late_policy`,
     )

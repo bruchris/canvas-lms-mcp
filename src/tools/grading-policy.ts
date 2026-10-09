@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { CanvasLatePolicy } from '../canvas/types'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
 
 /**
  * Synthetic policy used when Canvas returns 404 for `late_policy` — i.e. the
@@ -141,7 +142,7 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
 
         // Calls 1–3 are independent. allSettled (not all) lets a 403/404 on the
         // late-policy call leave the course + groups results intact.
@@ -207,7 +208,7 @@ export function gradingPolicyTools(canvas: CanvasClient): ToolDefinition[] {
               standardTitle = found.title
             } else if (course.account_id != null) {
               const accountStandards = await canvas.gradingStandards.listForAccount(
-                course.account_id,
+                canvasIdFromResponse(course.account_id),
               )
               const foundInAccount = accountStandards.find(
                 (s) => s.id === course.grading_standard_id,

@@ -123,7 +123,7 @@ describe('assignmentSubmissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = getSubmitTool(canvas)
       await expect(
-        tool.handler({ course_id: 1, assignment_id: 20, submission_type: 'online_text_entry' }),
+        tool.handler({ course_id: '1', assignment_id: '20', submission_type: 'online_text_entry' }),
       ).rejects.toThrow("submission_type 'online_text_entry' requires 'body'")
       expect(canvas.submissions.submit).not.toHaveBeenCalled()
     })
@@ -132,7 +132,7 @@ describe('assignmentSubmissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = getSubmitTool(canvas)
       await expect(
-        tool.handler({ course_id: 1, assignment_id: 20, submission_type: 'online_url' }),
+        tool.handler({ course_id: '1', assignment_id: '20', submission_type: 'online_url' }),
       ).rejects.toThrow("submission_type 'online_url' requires 'url'")
       expect(canvas.submissions.submit).not.toHaveBeenCalled()
     })
@@ -142,8 +142,8 @@ describe('assignmentSubmissionTools', () => {
       const tool = getSubmitTool(canvas)
       await expect(
         tool.handler({
-          course_id: 1,
-          assignment_id: 20,
+          course_id: '1',
+          assignment_id: '20',
           submission_type: 'online_url',
           url: 'ftp://example.com/file',
         }),
@@ -156,8 +156,8 @@ describe('assignmentSubmissionTools', () => {
       const tool = getSubmitTool(canvas)
       await expect(
         tool.handler({
-          course_id: 1,
-          assignment_id: 20,
+          course_id: '1',
+          assignment_id: '20',
           submission_type: 'online_upload',
           file_ids: [],
         }),
@@ -170,8 +170,8 @@ describe('assignmentSubmissionTools', () => {
       const tool = getSubmitTool(canvas)
       await expect(
         tool.handler({
-          course_id: 1,
-          assignment_id: 20,
+          course_id: '1',
+          assignment_id: '20',
           submission_type: 'online_text_entry',
           body: 'my essay',
           url: 'https://example.com',
@@ -191,12 +191,12 @@ describe('assignmentSubmissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = getSubmitTool(canvas)
       await tool.handler({
-        course_id: 1,
-        assignment_id: 20,
+        course_id: '1',
+        assignment_id: '20',
         submission_type: 'online_text_entry',
         body: 'my essay text',
       })
-      expect(canvas.submissions.submit).toHaveBeenCalledWith(1, 20, {
+      expect(canvas.submissions.submit).toHaveBeenCalledWith('1', '20', {
         submission_type: 'online_text_entry',
         body: 'my essay text',
         url: undefined,
@@ -209,13 +209,13 @@ describe('assignmentSubmissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = getSubmitTool(canvas)
       await tool.handler({
-        course_id: 1,
-        assignment_id: 20,
+        course_id: '1',
+        assignment_id: '20',
         submission_type: 'online_url',
         url: 'https://my-project.example.com',
         comment: 'Here is my project',
       })
-      expect(canvas.submissions.submit).toHaveBeenCalledWith(1, 20, {
+      expect(canvas.submissions.submit).toHaveBeenCalledWith('1', '20', {
         submission_type: 'online_url',
         body: undefined,
         url: 'https://my-project.example.com',
@@ -228,16 +228,16 @@ describe('assignmentSubmissionTools', () => {
       const canvas = buildMockCanvas()
       const tool = getSubmitTool(canvas)
       await tool.handler({
-        course_id: 1,
-        assignment_id: 20,
+        course_id: '1',
+        assignment_id: '20',
         submission_type: 'online_upload',
-        file_ids: [99, 100],
+        file_ids: ['99', '100'],
       })
-      expect(canvas.submissions.submit).toHaveBeenCalledWith(1, 20, {
+      expect(canvas.submissions.submit).toHaveBeenCalledWith('1', '20', {
         submission_type: 'online_upload',
         body: undefined,
         url: undefined,
-        file_ids: [99, 100],
+        file_ids: ['99', '100'],
         comment: undefined,
       })
     })
@@ -250,15 +250,15 @@ describe('assignmentSubmissionTools', () => {
         (t) => t.name === 'upload_submission_file',
       )!
       const result = await tool.handler({
-        course_id: 1,
-        assignment_id: 20,
+        course_id: '1',
+        assignment_id: '20',
         name: 'essay.pdf',
         content_base64: btoa('pdf content'),
         content_type: 'application/pdf',
       })
       expect(canvas.files.uploadToSubmission).toHaveBeenCalledWith(
-        1,
-        20,
+        '1',
+        '20',
         'essay.pdf',
         btoa('pdf content'),
         'application/pdf',
@@ -277,8 +277,8 @@ describe('assignmentSubmissionTools', () => {
       const tool = assignmentSubmissionTools(canvas).find((t) => t.name === 'submit_assignment')!
       await expect(
         tool.handler({
-          course_id: 1,
-          assignment_id: 20,
+          course_id: '1',
+          assignment_id: '20',
           submission_type: 'online_text_entry',
           body: 'test body',
         }),
@@ -299,8 +299,8 @@ describe('assignmentSubmissionTools', () => {
       )!
       await expect(
         tool.handler({
-          course_id: 1,
-          assignment_id: 20,
+          course_id: '1',
+          assignment_id: '20',
           name: 'essay.pdf',
           content_base64: btoa('pdf content'),
           content_type: 'application/pdf',

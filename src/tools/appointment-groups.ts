@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const includeSchema = z
   .array(z.enum(['appointments', 'child_events', 'participant_count']))
@@ -62,14 +63,14 @@ export function appointmentGroupTools(
       description:
         'Get a single appointment group by ID, including its time slots and participant counts.',
       inputSchema: {
-        appointment_group_id: z.number().describe('The appointment group ID'),
+        appointment_group_id: canvasIdInput().describe('The appointment group ID'),
         include: includeSchema,
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       audience: 'shared',
       handler: async (params) => {
         const group = await canvas.appointmentGroups.get(
-          params.appointment_group_id as number,
+          params.appointment_group_id as CanvasId,
           params.include as
             Array<'appointments' | 'child_events' | 'participant_count'> | undefined,
         )
@@ -142,7 +143,7 @@ export function appointmentGroupTools(
       description:
         'Update an existing appointment group. Use publish=true to make a draft group visible to participants, or add new time slots via new_appointments.',
       inputSchema: {
-        appointment_group_id: z.number().describe('The appointment group ID'),
+        appointment_group_id: canvasIdInput().describe('The appointment group ID'),
         title: z.string().optional().describe('New title'),
         description: z.string().optional().describe('New description'),
         location_name: z.string().optional().describe('Location name'),
@@ -156,7 +157,7 @@ export function appointmentGroupTools(
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.appointmentGroups.update(params.appointment_group_id as number, {
+        canvas.appointmentGroups.update(params.appointment_group_id as CanvasId, {
           title: params.title as string | undefined,
           description: params.description as string | undefined,
           location_name: params.location_name as string | undefined,
@@ -172,7 +173,7 @@ export function appointmentGroupTools(
       description:
         'Delete an appointment group and cancel any existing reservations. Provide cancel_reason to notify participants.',
       inputSchema: {
-        appointment_group_id: z.number().describe('The appointment group ID'),
+        appointment_group_id: canvasIdInput().describe('The appointment group ID'),
         cancel_reason: z
           .string()
           .optional()
@@ -181,7 +182,7 @@ export function appointmentGroupTools(
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) =>
         canvas.appointmentGroups.delete(
-          params.appointment_group_id as number,
+          params.appointment_group_id as CanvasId,
           params.cancel_reason as string | undefined,
         ),
     },
@@ -190,16 +191,16 @@ export function appointmentGroupTools(
       title: 'List Appointment Group Users',
       description: 'List participants (users) who have reserved a slot in an appointment group.',
       inputSchema: {
-        appointment_group_id: z.number().describe('The appointment group ID'),
+        appointment_group_id: canvasIdInput().describe('The appointment group ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) => {
         const users = await canvas.appointmentGroups.listUsers(
-          params.appointment_group_id as number,
+          params.appointment_group_id as CanvasId,
         )
         if (!pseudonymizer?.isEnabled()) return users
         return pseudonymizer.anonymizeUsers(
-          `_apptgrp_${params.appointment_group_id as number}`,
+          `_apptgrp_${params.appointment_group_id as CanvasId}`,
           users,
         )
       },
@@ -210,11 +211,11 @@ export function appointmentGroupTools(
       description:
         'List student groups that have reserved a slot in an appointment group (when participant_type=Group).',
       inputSchema: {
-        appointment_group_id: z.number().describe('The appointment group ID'),
+        appointment_group_id: canvasIdInput().describe('The appointment group ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) =>
-        canvas.appointmentGroups.listGroups(params.appointment_group_id as number),
+        canvas.appointmentGroups.listGroups(params.appointment_group_id as CanvasId),
     },
     {
       name: 'next_appointment',
@@ -223,7 +224,7 @@ export function appointmentGroupTools(
         "Get the current user's next upcoming appointment across all (or specified) appointment groups.",
       inputSchema: {
         appointment_group_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Limit to specific appointment group IDs'),
       },
@@ -231,7 +232,7 @@ export function appointmentGroupTools(
       audience: 'shared',
       handler: async (params) =>
         canvas.appointmentGroups.nextAppointment(
-          params.appointment_group_ids as number[] | undefined,
+          params.appointment_group_ids as CanvasId[] | undefined,
         ),
     },
   ]

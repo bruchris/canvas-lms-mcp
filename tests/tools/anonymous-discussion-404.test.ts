@@ -51,7 +51,7 @@ function getDiscussion(canvas: CanvasClient) {
 /** What the MCP client actually sees — `buildHandler` renders every throw through this. */
 async function toolErrorText(canvas: CanvasClient): Promise<string> {
   try {
-    await getDiscussion(canvas).handler({ course_id: 1, topic_id: 7 })
+    await getDiscussion(canvas).handler({ course_id: '1', topic_id: '7' })
   } catch (error) {
     return formatError(error)
   }
@@ -141,10 +141,10 @@ describe('get_discussion — anonymous topic 404 classification', () => {
   it('does not issue the fallback list request on a successful detail read', async () => {
     const canvas = buildCanvas()
 
-    const result = await getDiscussion(canvas).handler({ course_id: 1, topic_id: 7 })
+    const result = await getDiscussion(canvas).handler({ course_id: '1', topic_id: '7' })
 
     expect(result).toEqual(baseTopic)
-    expect(canvas.discussions.get).toHaveBeenCalledWith(1, 7)
+    expect(canvas.discussions.get).toHaveBeenCalledWith('1', '7')
     expect(canvas.discussions.list).not.toHaveBeenCalled()
   })
 
@@ -167,7 +167,7 @@ describe('get_discussion — anonymous topic 404 classification', () => {
 
     const text = await toolErrorText(canvas)
 
-    expect(canvas.discussions.list).toHaveBeenCalledWith(1)
+    expect(canvas.discussions.list).toHaveBeenCalledWith('1')
     expect(text).toBe('Course/assignment/submission not found — check the ID')
   })
 

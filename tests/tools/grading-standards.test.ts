@@ -63,15 +63,15 @@ describe('gradingStandardsTools', () => {
 
     it('lists by course_id', async () => {
       const canvas = buildMockCanvas()
-      const result = await tool(canvas, 'list_grading_standards').handler({ course_id: 100 })
-      expect(canvas.gradingStandards.listForCourse).toHaveBeenCalledWith(100)
+      const result = await tool(canvas, 'list_grading_standards').handler({ course_id: '100' })
+      expect(canvas.gradingStandards.listForCourse).toHaveBeenCalledWith('100')
       expect(result).toEqual([mockStandard])
     })
 
     it('lists by account_id', async () => {
       const canvas = buildMockCanvas()
-      const result = await tool(canvas, 'list_grading_standards').handler({ account_id: 1 })
-      expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith(1)
+      const result = await tool(canvas, 'list_grading_standards').handler({ account_id: '1' })
+      expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockStandard])
     })
 
@@ -88,7 +88,7 @@ describe('gradingStandardsTools', () => {
     it('throws when both course_id and account_id are provided', async () => {
       const canvas = buildMockCanvas()
       await expect(
-        tool(canvas, 'list_grading_standards').handler({ course_id: 100, account_id: 1 }),
+        tool(canvas, 'list_grading_standards').handler({ course_id: '100', account_id: '1' }),
       ).rejects.toThrow('Provide either course_id or account_id, not both.')
       expect(canvas.gradingStandards.listForCourse).not.toHaveBeenCalled()
       expect(canvas.gradingStandards.listForAccount).not.toHaveBeenCalled()
@@ -100,7 +100,7 @@ describe('gradingStandardsTools', () => {
         new CanvasApiError('Not Found', 404, '/api/v1/courses/100/grading_standards'),
       )
       await expect(
-        tool(canvas, 'list_grading_standards').handler({ course_id: 100 }),
+        tool(canvas, 'list_grading_standards').handler({ course_id: '100' }),
       ).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
@@ -116,12 +116,12 @@ describe('gradingStandardsTools', () => {
     it('creates in a course context', async () => {
       const canvas = buildMockCanvas()
       const result = await tool(canvas, 'create_grading_standard').handler({
-        course_id: 100,
+        course_id: '100',
         title: 'GPA 4.0 Scale',
         scheme_entries: schemeEntries,
       })
       expect(canvas.gradingStandards.createForCourse).toHaveBeenCalledWith(
-        100,
+        '100',
         'GPA 4.0 Scale',
         schemeEntries,
       )
@@ -131,12 +131,12 @@ describe('gradingStandardsTools', () => {
     it('creates in an account context', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'create_grading_standard').handler({
-        account_id: 1,
+        account_id: '1',
         title: 'GPA 4.0 Scale',
         scheme_entries: schemeEntries,
       })
       expect(canvas.gradingStandards.createForAccount).toHaveBeenCalledWith(
-        1,
+        '1',
         'GPA 4.0 Scale',
         schemeEntries,
       )
@@ -156,8 +156,8 @@ describe('gradingStandardsTools', () => {
       const canvas = buildMockCanvas()
       await expect(
         tool(canvas, 'create_grading_standard').handler({
-          course_id: 100,
-          account_id: 1,
+          course_id: '100',
+          account_id: '1',
           title: 'GPA 4.0 Scale',
           scheme_entries: schemeEntries,
         }),
@@ -172,7 +172,7 @@ describe('gradingStandardsTools', () => {
         new CanvasApiError('Forbidden', 403, '/api/v1/accounts/1/grading_standards'),
       )
       const promise = tool(canvas, 'create_grading_standard').handler({
-        account_id: 1,
+        account_id: '1',
         title: 'GPA 4.0 Scale',
         scheme_entries: schemeEntries,
       })
@@ -187,7 +187,7 @@ describe('gradingStandardsTools', () => {
       )
       await expect(
         tool(canvas, 'create_grading_standard').handler({
-          account_id: 1,
+          account_id: '1',
           title: 'GPA 4.0 Scale',
           scheme_entries: schemeEntries,
         }),
@@ -201,7 +201,7 @@ describe('gradingStandardsTools', () => {
       )
       await expect(
         tool(canvas, 'create_grading_standard').handler({
-          course_id: 100,
+          course_id: '100',
           title: 'GPA 4.0 Scale',
           scheme_entries: schemeEntries,
         }),
@@ -215,7 +215,7 @@ describe('gradingStandardsTools', () => {
       )
       await expect(
         tool(canvas, 'create_grading_standard').handler({
-          course_id: 100,
+          course_id: '100',
           title: 'GPA 4.0 Scale',
           scheme_entries: schemeEntries,
         }),
@@ -253,20 +253,20 @@ describe('gradingStandardsTools', () => {
     it('applies a grading standard id to the course', async () => {
       const canvas = buildMockCanvas()
       const result = await tool(canvas, 'apply_grading_standard_to_course').handler({
-        course_id: 100,
-        grading_standard_id: 42,
+        course_id: '100',
+        grading_standard_id: '42',
       })
-      expect(canvas.courses.update).toHaveBeenCalledWith(100, { grading_standard_id: 42 })
+      expect(canvas.courses.update).toHaveBeenCalledWith('100', { grading_standard_id: '42' })
       expect(result).toEqual({ id: 100, grading_standard_id: 42 })
     })
 
     it('removes the grading standard when passed null', async () => {
       const canvas = buildMockCanvas()
       await tool(canvas, 'apply_grading_standard_to_course').handler({
-        course_id: 100,
+        course_id: '100',
         grading_standard_id: null,
       })
-      expect(canvas.courses.update).toHaveBeenCalledWith(100, { grading_standard_id: null })
+      expect(canvas.courses.update).toHaveBeenCalledWith('100', { grading_standard_id: null })
     })
 
     it('propagates a 404 CanvasApiError', async () => {
@@ -276,8 +276,8 @@ describe('gradingStandardsTools', () => {
       )
       await expect(
         tool(canvas, 'apply_grading_standard_to_course').handler({
-          course_id: 100,
-          grading_standard_id: 42,
+          course_id: '100',
+          grading_standard_id: '42',
         }),
       ).rejects.toBeInstanceOf(CanvasApiError)
     })

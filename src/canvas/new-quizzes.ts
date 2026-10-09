@@ -1,5 +1,6 @@
 import { CanvasApiError, type CanvasHttpClient } from './client'
 import type { CanvasNewQuiz, CanvasNewQuizAccommodation, CanvasNewQuizItem } from './types'
+import type { CanvasId } from './id'
 
 export interface NewQuizPayload {
   title?: string
@@ -73,7 +74,7 @@ export class NewQuizzesModule {
    * (`quiz[title]`, `quiz[published]`, …), the same shape the Classic quizzes
    * endpoint uses. A flat body is rejected with `400 quiz is missing`.
    */
-  async create(courseId: number, payload: NewQuizPayload): Promise<CanvasNewQuiz> {
+  async create(courseId: CanvasId, payload: NewQuizPayload): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(`/api/quiz/v1/courses/${courseId}/quizzes`, {
       method: 'POST',
       body: JSON.stringify({ quiz: payload }),
@@ -81,8 +82,8 @@ export class NewQuizzesModule {
   }
 
   async update(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     patch: NewQuizPayload,
   ): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(
@@ -91,21 +92,21 @@ export class NewQuizzesModule {
     )
   }
 
-  async delete(courseId: number, assignmentId: number): Promise<void> {
+  async delete(courseId: CanvasId, assignmentId: CanvasId): Promise<void> {
     await this.client.request<void>(`/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}`, {
       method: 'DELETE',
     })
   }
 
-  async listItems(courseId: number, assignmentId: number): Promise<CanvasNewQuizItem[]> {
+  async listItems(courseId: CanvasId, assignmentId: CanvasId): Promise<CanvasNewQuizItem[]> {
     return this.client.paginate<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items`,
     )
   }
 
   async getItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     itemId: string,
   ): Promise<CanvasNewQuizItem> {
     return this.client.request<CanvasNewQuizItem>(
@@ -119,8 +120,8 @@ export class NewQuizzesModule {
    * fields would not be bound to the `item` parameter.
    */
   async createItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     input: NewQuizItemCreatePayload,
   ): Promise<CanvasNewQuizItem> {
     const wireItem: Record<string, unknown> = {
@@ -136,8 +137,8 @@ export class NewQuizzesModule {
   }
 
   async updateItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     itemId: string,
     patch: NewQuizItemUpdatePayload,
   ): Promise<CanvasNewQuizItem> {
@@ -151,7 +152,7 @@ export class NewQuizzesModule {
     )
   }
 
-  async deleteItem(courseId: number, assignmentId: number, itemId: string): Promise<void> {
+  async deleteItem(courseId: CanvasId, assignmentId: CanvasId, itemId: string): Promise<void> {
     await this.client.request<void>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items/${itemId}`,
       { method: 'DELETE' },
@@ -159,8 +160,8 @@ export class NewQuizzesModule {
   }
 
   async setAccommodation(
-    courseId: number,
-    userId: number,
+    courseId: CanvasId,
+    userId: CanvasId,
     timeMultiplier?: number,
     extraAttempts?: number,
   ): Promise<CanvasNewQuizAccommodation> {
@@ -174,9 +175,9 @@ export class NewQuizzesModule {
   }
 
   async setQuizAccommodation(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
     timeMultiplier?: number,
     extraAttempts?: number,
   ): Promise<CanvasNewQuizAccommodation> {
@@ -190,8 +191,8 @@ export class NewQuizzesModule {
   }
 
   async getAccommodation(
-    courseId: number,
-    userId: number,
+    courseId: CanvasId,
+    userId: CanvasId,
   ): Promise<CanvasNewQuizAccommodation | null> {
     try {
       return await this.client.request<CanvasNewQuizAccommodation>(

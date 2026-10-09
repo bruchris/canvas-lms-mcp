@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasQuiz } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
 
 // Quiz types that the Classic Quizzes extensions API can extend. New Quizzes
 // (`quizzes.next`) use a different accommodation mechanism and are skipped.
@@ -83,12 +84,12 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
         const extraTimeMinutes = params.extra_time_minutes as number | undefined
         const timeMultiplier = params.time_multiplier as number | undefined
         const extraAttempts = params.extra_attempts as number | undefined
-        const quizIds = params.quiz_ids as number[] | undefined
+        const quizIds = params.quiz_ids as CanvasId[] | undefined
 
         if (extraTimeMinutes !== undefined && timeMultiplier !== undefined) {
           throw new Error('Provide either extra_time_minutes or time_multiplier, not both.')
@@ -104,14 +105,17 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         }
 
         let quizzes = await canvas.quizzes.list(courseId)
-        const notFound: number[] = []
+        const notFound: CanvasId[] = []
         if (quizIds && quizIds.length > 0) {
+          // String-keyed sets: a `Set<number>` keyed on an ID is where §4.1 said
+          // the representation would go blind, and coercing the response id back
+          // to a number is what §4.4 forbids.
           const requested = new Set(quizIds)
-          const present = new Set(quizzes.map((q) => q.id))
+          const present = new Set(quizzes.map((q) => canvasIdFromResponse(q.id)))
           for (const id of requested) {
             if (!present.has(id)) notFound.push(id)
           }
-          quizzes = quizzes.filter((q) => requested.has(q.id))
+          quizzes = quizzes.filter((q) => requested.has(canvasIdFromResponse(q.id)))
         }
 
         // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
@@ -163,7 +167,13 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
               }
             }
 
-            await canvas.quizzes.setExtension(courseId, quiz.id, userId, extraTime, extraAttempts)
+            await canvas.quizzes.setExtension(
+              courseId,
+              canvasIdFromResponse(quiz.id),
+              userId,
+              extraTime,
+              extraAttempts,
+            )
             return {
               status: 'applied',
               result: {
@@ -200,8 +210,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
 
         const quizzes = await canvas.quizzes.list(courseId)
         const classicQuizzes = quizzes.filter((q) => CLASSIC_QUIZ_TYPES.has(q.quiz_type))
@@ -221,8 +231,13 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           // propagates to buildHandler (isError: true) rather than being silently
           // skipped. This differs from set_student_quiz_accommodation, which
           // catches per-quiz errors so the fan-out continues.
-          const submissions = await canvas.quizzes.listSubmissions(courseId, quiz.id)
-          const mySubmission = submissions.find((s) => s.user_id === userId)
+          const submissions = await canvas.quizzes.listSubmissions(
+            courseId,
+            canvasIdFromResponse(quiz.id),
+          )
+          // Canonical-string comparison: `s.user_id` is a response value and
+          // `userId` a migrated input (BRU-2730 §4.1).
+          const mySubmission = submissions.find((s) => canvasIdFromResponse(s.user_id) === userId)
           const rawTime = mySubmission?.extra_time
           const rawAttempts = mySubmission?.extra_attempts
           const extraTimeMinutes = typeof rawTime === 'number' && rawTime > 0 ? rawTime : null

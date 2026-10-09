@@ -459,7 +459,8 @@ describe('slice 1 — student feedback (§8.1 rank 1)', () => {
       {
         'courses.list': [{ id: 1 }, { id: 2 }],
         'submissions.listMy': (courseId: unknown) => {
-          if (courseId === 2) throw new Error('Canvas said no')
+          // Canonical `CanvasId` string after BRU-2730.
+          if (courseId === '2') throw new Error('Canvas said no')
           return [submissionWithFeedback]
         },
       },

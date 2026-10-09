@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { CanvasDiscussionTopic } from '../canvas/types'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 /**
  * Canvas deliberately hides anonymous discussion topics from its topic-scoped REST
@@ -38,7 +39,7 @@ function anonymityDescription(topic: CanvasDiscussionTopic): string | undefined 
   return ANONYMITY_DESCRIPTIONS[state] ?? 'anonymous'
 }
 
-function anonymousTopicMessage(courseId: number, topicId: number, description: string): string {
+function anonymousTopicMessage(courseId: CanvasId, topicId: CanvasId, description: string): string {
   return (
     `Discussion topic ${topicId} exists in course ${courseId} — list_discussions returns it — but ` +
     'Canvas blocks the topic-scoped detail REST endpoint for anonymous discussion topics and ' +
@@ -56,8 +57,8 @@ function anonymousTopicMessage(courseId: number, topicId: number, description: s
  */
 async function describeAnonymityFromList(
   canvas: CanvasClient,
-  courseId: number,
-  topicId: number,
+  courseId: CanvasId,
+  topicId: CanvasId,
 ): Promise<string | undefined> {
   let topics: CanvasDiscussionTopic[]
   try {
@@ -65,7 +66,10 @@ async function describeAnonymityFromList(
   } catch {
     return undefined
   }
-  const listed = topics.find((topic) => topic.id === topicId)
+  // Compared as canonical strings, not by coercing `topicId` back to a number:
+  // `topic.id` is a response value (still `number` until PR 2a) and `topicId` is
+  // a migrated input, so this is one of §4.1's ID-to-ID comparisons.
+  const listed = topics.find((topic) => canvasIdFromResponse(topic.id) === topicId)
   return listed ? anonymityDescription(listed) : undefined
 }
 
@@ -95,14 +99,14 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Discussions',
       description: 'List all discussion topics in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.discussions.list(course_id)
       },
     },
@@ -114,16 +118,16 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       // edit also requires `pnpm generate:manifests`.
       description: 'Get details for a single discussion topic by ID.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        topic_id: z.number().describe('The Canvas discussion topic ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const topic_id = params.topic_id as number
+        const course_id = params.course_id as CanvasId
+        const topic_id = params.topic_id as CanvasId
         try {
           return await canvas.discussions.get(course_id, topic_id)
         } catch (error) {
@@ -143,14 +147,14 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Announcements',
       description: 'List all announcements in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.discussions.listAnnouncements(course_id)
       },
     },
@@ -159,8 +163,8 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Post Discussion Entry',
       description: 'Post a new entry (reply) to a discussion topic.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        topic_id: z.number().describe('The Canvas discussion topic ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
         message: z.string().describe('The message body (supports HTML)'),
       },
       annotations: {
@@ -168,8 +172,8 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const topic_id = params.topic_id as number
+        const course_id = params.course_id as CanvasId
+        const topic_id = params.topic_id as CanvasId
         const message = params.message as string
         return canvas.discussions.postEntry(course_id, topic_id, message)
       },
@@ -180,7 +184,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Create a new discussion topic in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().min(1).describe('Title of the discussion topic'),
         message: z.string().optional().describe('Body text of the discussion (supports HTML)'),
         discussion_type: z
@@ -212,7 +216,7 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const is_announcement = params.is_announcement as boolean | undefined
         const topic = await canvas.discussions.create(course_id, {
           title: params.title as string,
@@ -233,8 +237,8 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Update an existing discussion topic.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        topic_id: z.number().describe('The Canvas discussion topic ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
         title: z.string().optional().describe('New title for the discussion topic'),
         message: z.string().optional().describe('New body text (supports HTML)'),
         published: z.boolean().optional().describe('Publish or unpublish the topic'),
@@ -262,8 +266,8 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const topic_id = params.topic_id as number
+        const course_id = params.course_id as CanvasId
+        const topic_id = params.topic_id as CanvasId
         const is_announcement = params.is_announcement as boolean | undefined
         const updateParams = {
           title: params.title as string | undefined,
@@ -287,16 +291,16 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Delete a discussion topic from a course. This action is permanent.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        topic_id: z.number().describe('The Canvas discussion topic ID to delete'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        topic_id: canvasIdInput().describe('The Canvas discussion topic ID to delete'),
       },
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const topic_id = params.topic_id as number
+        const course_id = params.course_id as CanvasId
+        const topic_id = params.topic_id as CanvasId
         await canvas.discussions.delete(course_id, topic_id)
         return { deleted: true, topic_id }
       },

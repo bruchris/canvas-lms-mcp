@@ -44,7 +44,7 @@ describe('registerSyllabusResource', () => {
     const canvas = buildMockCanvas()
     const handler = captureHandler(canvas)
     const result = await handler(new URL('canvas://course/1/syllabus'), { courseId: '1' })
-    expect(canvas.courses.getSyllabus).toHaveBeenCalledWith(1)
+    expect(canvas.courses.getSyllabus).toHaveBeenCalledWith('1')
     expect(result.contents[0].text).toBe(
       fenceBlock('<p>Welcome to the course</p>', 'course syllabus'),
     )

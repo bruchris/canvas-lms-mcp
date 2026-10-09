@@ -11,6 +11,7 @@ import type {
 } from '../canvas/users'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput, canvasIdList } from '../canvas/id'
 
 const COURSE_USER_ENROLLMENT_TYPE = ['student', 'teacher', 'ta', 'observer', 'designer'] as const
 const COURSE_USER_ENROLLMENT_STATE = [
@@ -41,14 +42,14 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
       title: 'List Students',
       description: 'List all students enrolled in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const users = await canvas.users.listStudents(course_id)
         if (!pseudonymizer?.isEnabled()) return users
         return pseudonymizer.anonymizeUsers(course_id, users)
@@ -59,14 +60,14 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
       title: 'Get User',
       description: 'Get details for a single user by ID.',
       inputSchema: {
-        user_id: z.number().describe('The Canvas user ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const user = await canvas.users.get(params.user_id as number)
+        const user = await canvas.users.get(params.user_id as CanvasId)
         if (!pseudonymizer?.isEnabled()) return user
         // No course context — unknown role defaults to pseudonymize (conservative).
         // '_global' is the map key so pseudonyms are stable across calls.
@@ -94,7 +95,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
       description:
         'Search for users in a Canvas account by name, login, or email. Use `include` to request email, last_login, avatar_url, time_zone, or uuid in the response.',
       inputSchema: {
-        account_id: z.number().describe('The Canvas account ID'),
+        account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().describe('The search term (name, login, or email)'),
         sort: z.enum(USER_SORT).optional().describe('Sort field'),
         order: z.enum(['asc', 'desc']).optional().describe('Sort order'),
@@ -108,7 +109,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const account_id = params.account_id as number
+        const account_id = params.account_id as CanvasId
         const opts: SearchUsersOptions = {}
         if (params.sort !== undefined) opts.sort = params.sort as UserSort
         if (params.order !== undefined) opts.order = params.order as 'asc' | 'desc'
@@ -126,7 +127,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
       description:
         'List users in a course with optional Canvas filters. Use `include` to request email, enrollments, avatar_url, bio, and other fields otherwise omitted from the default response. Use `enrollment_type` / `enrollment_state` to narrow by role or status, `search_term` to filter by name/login, `user_ids` to fetch a specific subset, and `sort`/`order` to control ordering.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         enrollment_type: z
           .array(z.enum(COURSE_USER_ENROLLMENT_TYPE))
           .optional()
@@ -139,10 +140,17 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
           .array(z.enum(COURSE_USER_INCLUDE))
           .optional()
           .describe('Extra fields to include on each user (Canvas include[] param)'),
-        user_ids: z
-          .array(z.union([z.number(), z.string()]))
+        // The pre-1b schema here was `z.union([z.number(), z.string()])`, i.e. any
+        // string at all, with no documented meaning for the string arm. §4.2 rule 3
+        // forbids an ID field that accepts arbitrary strings, so this narrows to the
+        // canonical ID forms plus the one SIS prefix the rest of this repo documents
+        // (`sis_user_id:`, as in outcomes.ts). Called out in the PR as a narrowing.
+        user_ids: canvasIdList({ prefixes: ['sis_user_id'] })
           .optional()
-          .describe('Restrict the result to the given user IDs'),
+          .describe(
+            'Restrict the result to the given user IDs (pass large IDs as strings). ' +
+              'SIS user IDs may be given as "sis_user_id:<sis id>".',
+          ),
         search_term: z
           .string()
           .optional()
@@ -155,7 +163,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const opts: ListCourseUsersOptions = {}
         if (params.enrollment_type !== undefined)
           opts.enrollment_type = params.enrollment_type as ReadonlyArray<CourseUserEnrollmentType>
@@ -165,7 +173,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<CourseUserInclude>
         if (params.user_ids !== undefined)
-          opts.user_ids = params.user_ids as ReadonlyArray<number | string>
+          opts.user_ids = params.user_ids as ReadonlyArray<CanvasId>
         if (params.search_term !== undefined) opts.search_term = params.search_term as string
         if (params.sort !== undefined) opts.sort = params.sort as UserSort
         if (params.order !== undefined) opts.order = params.order as 'asc' | 'desc'

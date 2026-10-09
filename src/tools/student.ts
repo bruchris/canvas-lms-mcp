@@ -5,6 +5,7 @@ import type { SubmissionListInclude } from '../canvas/submissions'
 import type { CanvasSubmission, CanvasSubmissionComment } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 const MY_SUBMISSION_FEEDBACK_INCLUDE = [
   'submission_comments',
@@ -25,7 +26,9 @@ interface FeedbackComment {
 }
 
 interface SubmissionFeedback {
-  course_id: number
+  // `course_id` is the migrated input; `assignment_id` and `submission_id` are
+  // response values and stay `number` until PR 2a (BRU-2730 §8).
+  course_id: CanvasId
   course_name: string | null
   assignment_id: number
   assignment_name: string | null
@@ -85,14 +88,16 @@ export function studentTools(
       description:
         'Get grade data for the authenticated student. If course_id is omitted, returns grades across all enrolled courses.',
       inputSchema: {
-        course_id: z.number().optional().describe('The Canvas course ID (omit for all courses)'),
+        course_id: canvasIdInput()
+          .optional()
+          .describe('The Canvas course ID (omit for all courses)'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number | undefined
+        const course_id = params.course_id as CanvasId | undefined
         return canvas.enrollments.listMyGrades(course_id)
       },
     },
@@ -101,14 +106,14 @@ export function studentTools(
       title: 'Get My Submissions',
       description: 'List all submissions for the authenticated student in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.submissions.listMy(course_id)
       },
     },
@@ -144,8 +149,7 @@ export function studentTools(
         "non-self authors are labeled 'peer', including any staff member who comments without being " +
         'the recorded grader.',
       inputSchema: {
-        course_id: z
-          .number()
+        course_id: canvasIdInput()
           .optional()
           .describe("The Canvas course ID. Omit to scan all of the student's active courses."),
         unread_only: z
@@ -161,17 +165,22 @@ export function studentTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseIdParam = params.course_id as number | undefined
+        const courseIdParam = params.course_id as CanvasId | undefined
         const unreadOnly = (params.unread_only as boolean | undefined) ?? false
 
         const courseIds =
           courseIdParam !== undefined
             ? [courseIdParam]
-            : (await canvas.courses.list({ enrollment_state: 'active' })).map((c) => c.id)
+            : (await canvas.courses.list({ enrollment_state: 'active' })).map((c) =>
+                canvasIdFromResponse(c.id),
+              )
 
-        const perCourse: Array<{ courseId: number; submissions: CanvasSubmission[] }> = []
-        const coursesFailed: Array<{ course_id: number; status: number | null; message: string }> =
-          []
+        const perCourse: Array<{ courseId: CanvasId; submissions: CanvasSubmission[] }> = []
+        const coursesFailed: Array<{
+          course_id: CanvasId
+          status: number | null
+          message: string
+        }> = []
 
         if (courseIdParam !== undefined) {
           // Explicit single course: fail fast so an explicit request surfaces the
@@ -216,7 +225,7 @@ export function studentTools(
         }
 
         let submissionsScanned = 0
-        const candidates: Array<{ courseId: number; submission: CanvasSubmission }> = []
+        const candidates: Array<{ courseId: CanvasId; submission: CanvasSubmission }> = []
         for (const { courseId, submissions } of perCourse) {
           for (const submission of submissions) {
             submissionsScanned += 1
@@ -232,7 +241,7 @@ export function studentTools(
         }
 
         if (pseudonymizer?.isEnabled()) {
-          const peerAuthors = new Map<string, { courseId: number; id: number; name: string }>()
+          const peerAuthors = new Map<string, { courseId: CanvasId; id: number; name: string }>()
           for (const { courseId, submission } of candidates) {
             for (const comment of submission.submission_comments ?? []) {
               if (classifyCommentAuthor(comment, submission) === 'peer') {

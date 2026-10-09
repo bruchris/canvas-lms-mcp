@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CreateAssignmentOverrideParams } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdFromResponse } from '../canvas/id'
 
 interface AssignmentOverrideResult {
   assignment_id: number
@@ -32,8 +33,8 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         return canvas.assignments.listOverrides(courseId, assignmentId)
       },
     },
@@ -108,11 +109,11 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
-        const studentIds = params.student_ids as number[] | undefined
-        const sectionId = params.course_section_id as number | undefined
-        const groupId = params.group_id as number | undefined
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
+        const studentIds = params.student_ids as CanvasId[] | undefined
+        const sectionId = params.course_section_id as CanvasId | undefined
+        const groupId = params.group_id as CanvasId | undefined
 
         const targetCount = [studentIds, sectionId, groupId].filter((v) => v !== undefined).length
         if (targetCount === 0) {
@@ -198,9 +199,9 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
         const dueAt = params.due_at as string | null | undefined
         const unlockAt = params.unlock_at as string | null | undefined
         const lockAt = params.lock_at as string | null | undefined
@@ -211,14 +212,17 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         }
 
         let assignments = await canvas.assignments.list(courseId)
-        const notFound: number[] = []
+        const notFound: CanvasId[] = []
         if (assignmentIds && assignmentIds.length > 0) {
+          // Both sets are keyed by the canonical string, not by `number`: a
+          // `Set<number>` is exactly where §4.1 said the union would go blind, and
+          // `Number(a.id)` to make the key fit is what §4.4 forbids.
           const requested = new Set(assignmentIds)
-          const present = new Set(assignments.map((a) => a.id))
+          const present = new Set(assignments.map((a) => canvasIdFromResponse(a.id)))
           for (const id of requested) {
             if (!present.has(id)) notFound.push(id)
           }
-          assignments = assignments.filter((a) => requested.has(a.id))
+          assignments = assignments.filter((a) => requested.has(canvasIdFromResponse(a.id)))
         }
 
         // Shared fan-out: per-item try/catch, non-CanvasApiError logging, and
@@ -246,7 +250,7 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
 
             const override = await canvas.assignments.createOverride(
               courseId,
-              assignment.id,
+              canvasIdFromResponse(assignment.id),
               overrideParams,
             )
             return {

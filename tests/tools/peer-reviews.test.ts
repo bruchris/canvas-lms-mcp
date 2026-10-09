@@ -47,8 +47,8 @@ describe('peerReviewTools', () => {
     it('delegates to canvas.peerReviews.listForAssignment', async () => {
       const canvas = buildMockCanvas()
       const tool = peerReviewTools(canvas).find((t) => t.name === 'list_peer_reviews')!
-      await tool.handler({ course_id: 1, assignment_id: 2 })
-      expect(canvas.peerReviews.listForAssignment).toHaveBeenCalledWith(1, 2)
+      await tool.handler({ course_id: '1', assignment_id: '2' })
+      expect(canvas.peerReviews.listForAssignment).toHaveBeenCalledWith('1', '2')
     })
   })
 
@@ -63,8 +63,8 @@ describe('peerReviewTools', () => {
     it('delegates to canvas.peerReviews.listForSubmission', async () => {
       const canvas = buildMockCanvas()
       const tool = peerReviewTools(canvas).find((t) => t.name === 'get_submission_peer_reviews')!
-      await tool.handler({ course_id: 1, assignment_id: 2, submission_id: 3 })
-      expect(canvas.peerReviews.listForSubmission).toHaveBeenCalledWith(1, 2, 3)
+      await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3' })
+      expect(canvas.peerReviews.listForSubmission).toHaveBeenCalledWith('1', '2', '3')
     })
   })
 
@@ -77,8 +77,8 @@ describe('peerReviewTools', () => {
     it('delegates to canvas.peerReviews.create', async () => {
       const canvas = buildMockCanvas()
       const tool = peerReviewTools(canvas).find((t) => t.name === 'create_peer_review')!
-      await tool.handler({ course_id: 1, assignment_id: 2, submission_id: 3, user_id: 5 })
-      expect(canvas.peerReviews.create).toHaveBeenCalledWith(1, 2, 3, 5)
+      await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3', user_id: '5' })
+      expect(canvas.peerReviews.create).toHaveBeenCalledWith('1', '2', '3', '5')
     })
   })
 
@@ -91,8 +91,8 @@ describe('peerReviewTools', () => {
     it('delegates to canvas.peerReviews.delete', async () => {
       const canvas = buildMockCanvas()
       const tool = peerReviewTools(canvas).find((t) => t.name === 'delete_peer_review')!
-      await tool.handler({ course_id: 1, assignment_id: 2, submission_id: 3, user_id: 5 })
-      expect(canvas.peerReviews.delete).toHaveBeenCalledWith(1, 2, 3, 5)
+      await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3', user_id: '5' })
+      expect(canvas.peerReviews.delete).toHaveBeenCalledWith('1', '2', '3', '5')
     })
   })
 })

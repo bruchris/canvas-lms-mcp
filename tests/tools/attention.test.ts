@@ -136,7 +136,7 @@ describe('attentionTools', () => {
     it('returns empty findings when no submissions have comments', async () => {
       const canvas = buildMockCanvas([makeSubmission({ submission_comments: [] })])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         scanned_submissions: number
         findings_count: number
         findings: object[]
@@ -162,7 +162,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ reason: string; user_id: number; assignment_id: number }>
       }
       expect(result.findings).toHaveLength(1)
@@ -196,7 +196,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ reason: string; unaddressed_comment_count: number }>
       }
       expect(result.findings).toHaveLength(1)
@@ -227,7 +227,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as { findings: object[] }
+      const result = (await tool.handler({ course_id: '10' })) as { findings: object[] }
       expect(result.findings).toHaveLength(0)
     })
 
@@ -247,7 +247,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as { findings: object[] }
+      const result = (await tool.handler({ course_id: '10' })) as { findings: object[] }
       expect(result.findings).toHaveLength(0)
     })
 
@@ -284,7 +284,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([newer, older])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ assignment_id: number }>
       }
       expect(result.findings[0].assignment_id).toBe(100) // older first
@@ -326,7 +326,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([unread, alreadyRead])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10, unread_only: true })) as {
+      const result = (await tool.handler({ course_id: '10', unread_only: true })) as {
         findings: Array<{ assignment_id: number }>
       }
       expect(result.findings).toHaveLength(1)
@@ -336,10 +336,10 @@ describe('attentionTools', () => {
     it('passes assignment_ids to listForStudents when provided', async () => {
       const canvas = buildMockCanvas([])
       const tool = attentionTools(canvas)[0]
-      await tool.handler({ course_id: 10, assignment_ids: [100, 200] })
-      expect(canvas.submissions.listForStudents).toHaveBeenCalledWith(10, {
+      await tool.handler({ course_id: '10', assignment_ids: ['100', '200'] })
+      expect(canvas.submissions.listForStudents).toHaveBeenCalledWith('10', {
         student_ids: ['all'],
-        assignment_ids: [100, 200],
+        assignment_ids: ['100', '200'],
         include: ['submission_comments', 'user', 'assignment', 'read_status'],
       })
     })
@@ -374,7 +374,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ unaddressed_comment_count: number }>
       }
       expect(result.findings[0].unaddressed_comment_count).toBe(2)
@@ -398,7 +398,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas)[0]
-      const result = (await tool.handler({ course_id: 10 })) as { findings: object[] }
+      const result = (await tool.handler({ course_id: '10' })) as { findings: object[] }
       // By design: group-member comments look like instructor comments at this layer
       expect(result.findings).toHaveLength(0)
     })
@@ -437,7 +437,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas, makePseudonymizer())[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ user_name: string; user_id: number }>
       }
       expect(result.findings[0].user_name).toMatch(/^Student \d+$/)
@@ -459,7 +459,7 @@ describe('attentionTools', () => {
       })
       const canvas = buildMockCanvas([submission])
       const tool = attentionTools(canvas, makePseudonymizer(false))[0]
-      const result = (await tool.handler({ course_id: 10 })) as {
+      const result = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ user_name: string }>
       }
       expect(result.findings[0].user_name).toBe('Alice Smith')
@@ -482,10 +482,10 @@ describe('attentionTools', () => {
       const canvas = buildMockCanvas([submission])
       const pseudonymizer = makePseudonymizer()
       const tool = attentionTools(canvas, pseudonymizer)[0]
-      const result1 = (await tool.handler({ course_id: 10 })) as {
+      const result1 = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ user_id: number; user_name: string }>
       }
-      const result2 = (await tool.handler({ course_id: 10 })) as {
+      const result2 = (await tool.handler({ course_id: '10' })) as {
         findings: Array<{ user_id: number; user_name: string }>
       }
       // Numeric ID preserved
@@ -518,14 +518,17 @@ describe('attentionTools', () => {
         [atRiskEnrollment, healthyEnrollment],
         [atRiskSummary, healthySummary],
       )
-      const result = (await getTool(canvas).handler({ course_id: 101 })) as Record<string, unknown>
+      const result = (await getTool(canvas).handler({ course_id: '101' })) as Record<
+        string,
+        unknown
+      >
       expect(result.students_scanned).toBe(2)
       expect(result.analytics_available).toBe(true)
     })
 
     it('echoes default thresholds_used', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       expect(result.thresholds_used).toEqual({
         inactive_days: 7,
@@ -537,7 +540,7 @@ describe('attentionTools', () => {
 
     it('echoes overridden thresholds_used', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
         inactive_days: 14,
         min_missing: 2,
         min_late: 5,
@@ -553,13 +556,16 @@ describe('attentionTools', () => {
 
     it('omits zero-signal students', async () => {
       const canvas = buildAtRiskCanvas([healthyEnrollment], [healthySummary])
-      const result = (await getTool(canvas).handler({ course_id: 101 })) as Record<string, unknown>
+      const result = (await getTool(canvas).handler({ course_id: '101' })) as Record<
+        string,
+        unknown
+      >
       expect((result.findings as unknown[]).length).toBe(0)
     })
 
     it('flags inactive signal for student with old last_activity_at', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       const signals = findings[0].signals as Array<{ type: string }>
@@ -568,7 +574,7 @@ describe('attentionTools', () => {
 
     it('flags low_score signal for student below threshold', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       const signals = findings[0].signals as Array<{ type: string }>
@@ -577,7 +583,7 @@ describe('attentionTools', () => {
 
     it('flags missing_submissions and late_pattern from analytics', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       const types = (findings[0].signals as Array<{ type: string }>).map((s) => s.type)
@@ -587,7 +593,7 @@ describe('attentionTools', () => {
 
     it('assigns risk_level high when 4 signals fire', async () => {
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       // inactive + low_score + missing_submissions + late_pattern = 4
@@ -601,7 +607,7 @@ describe('attentionTools', () => {
         tardiness_breakdown: { total: 5, on_time: 5, late: 0, missing: 0, floating: 0 },
       }
       const result = (await getTool(buildAtRiskCanvas([atRiskEnrollment], [summary])).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       expect(findings[0].risk_level).toBe('medium')
@@ -617,7 +623,7 @@ describe('attentionTools', () => {
         tardiness_breakdown: { total: 5, on_time: 5, late: 0, missing: 0, floating: 0 },
       }
       const result = (await getTool(buildAtRiskCanvas([enrollment], [summary])).handler({
-        course_id: 101,
+        course_id: '101',
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
       expect(findings[0].risk_level).toBe('low')
@@ -626,7 +632,7 @@ describe('attentionTools', () => {
     it('respects score_threshold override — skips low_score when score is above new threshold', async () => {
       // atRiskEnrollment has score=58; raising threshold to 50 means 58>=50, so low_score should NOT fire
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
         score_threshold: 50,
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
@@ -637,7 +643,7 @@ describe('attentionTools', () => {
     it('respects min_late override — skips late_pattern when below raised threshold', async () => {
       // atRiskSummary has late=3; raising to 5 means 3<5, so late_pattern should NOT fire
       const result = (await getTool(buildAtRiskCanvas()).handler({
-        course_id: 101,
+        course_id: '101',
         min_late: 5,
       })) as Record<string, unknown>
       const findings = result.findings as Array<Record<string, unknown>>
@@ -671,7 +677,10 @@ describe('attentionTools', () => {
         tardiness_breakdown: { total: 10, on_time: 3, late: 4, missing: 3, floating: 0 },
       }
       const canvas = buildAtRiskCanvas([lowRisk, highRisk], [lowSummary, highSummary])
-      const result = (await getTool(canvas).handler({ course_id: 101 })) as Record<string, unknown>
+      const result = (await getTool(canvas).handler({ course_id: '101' })) as Record<
+        string,
+        unknown
+      >
       const findings = result.findings as Array<Record<string, unknown>>
       expect(findings[0].user_id).toBe(2) // HighRisk first
       expect(findings[1].user_id).toBe(1) // LowRisk second
@@ -683,7 +692,7 @@ describe('attentionTools', () => {
         vi.mocked(canvas.analytics.getStudentSummaries).mockRejectedValueOnce(
           new CanvasApiError('Not Found', 404, '/api/v1/courses/101/analytics/student_summaries'),
         )
-        const result = (await getTool(canvas).handler({ course_id: 101 })) as Record<
+        const result = (await getTool(canvas).handler({ course_id: '101' })) as Record<
           string,
           unknown
         >
@@ -696,7 +705,7 @@ describe('attentionTools', () => {
         vi.mocked(canvas.analytics.getStudentSummaries).mockRejectedValueOnce(
           new CanvasApiError('Not Found', 404, '/api/v1/courses/101/analytics/student_summaries'),
         )
-        const result = (await getTool(canvas).handler({ course_id: 101 })) as Record<
+        const result = (await getTool(canvas).handler({ course_id: '101' })) as Record<
           string,
           unknown
         >
@@ -713,7 +722,7 @@ describe('attentionTools', () => {
         vi.mocked(canvas.analytics.getStudentSummaries).mockRejectedValueOnce(
           new CanvasApiError('Forbidden', 403, '/api/v1/courses/101/analytics/student_summaries'),
         )
-        await expect(getTool(canvas).handler({ course_id: 101 })).rejects.toBeInstanceOf(
+        await expect(getTool(canvas).handler({ course_id: '101' })).rejects.toBeInstanceOf(
           CanvasApiError,
         )
       })
@@ -751,7 +760,7 @@ describe('attentionTools', () => {
       it('replaces user_name with pseudonym when enabled', async () => {
         const canvas = buildAtRiskCanvas([enrollmentWithPii], [atRiskSummary])
         const result = (await getTool(canvas, makePseudonymizer()).handler({
-          course_id: 101,
+          course_id: '101',
         })) as Record<string, unknown>
         const findings = result.findings as Array<Record<string, unknown>>
         expect(findings[0].user_name).toMatch(/^Student \d+$/)
@@ -760,7 +769,7 @@ describe('attentionTools', () => {
       it('preserves real user_name when pseudonymizer disabled', async () => {
         const canvas = buildAtRiskCanvas([enrollmentWithPii], [atRiskSummary])
         const result = (await getTool(canvas, makePseudonymizer(false)).handler({
-          course_id: 101,
+          course_id: '101',
         })) as Record<string, unknown>
         const findings = result.findings as Array<Record<string, unknown>>
         expect(findings[0].user_name).toBe('Alice Smith')
@@ -769,7 +778,7 @@ describe('attentionTools', () => {
       it('preserves numeric user_id under pseudonymization', async () => {
         const canvas = buildAtRiskCanvas([enrollmentWithPii], [atRiskSummary])
         const result = (await getTool(canvas, makePseudonymizer()).handler({
-          course_id: 101,
+          course_id: '101',
         })) as Record<string, unknown>
         const findings = result.findings as Array<Record<string, unknown>>
         expect(findings[0].user_id).toBe(42)

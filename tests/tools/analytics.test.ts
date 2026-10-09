@@ -68,26 +68,26 @@ describe('analyticsTools', () => {
     it('calls searchContentType for each default content type', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      await tool.handler({ course_id: 10, search_term: 'quiz' })
+      await tool.handler({ course_id: '10', search_term: 'quiz' })
       expect(canvas.analytics.searchContentType).toHaveBeenCalledTimes(4)
-      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'pages')
-      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
-      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'discussions')
-      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'announcements')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith('10', 'quiz', 'pages')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith('10', 'quiz', 'assignments')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith('10', 'quiz', 'discussions')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith('10', 'quiz', 'announcements')
     })
 
     it('calls searchContentType only for specified content_types', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      await tool.handler({ course_id: 10, search_term: 'quiz', content_types: ['assignments'] })
+      await tool.handler({ course_id: '10', search_term: 'quiz', content_types: ['assignments'] })
       expect(canvas.analytics.searchContentType).toHaveBeenCalledTimes(1)
-      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith(10, 'quiz', 'assignments')
+      expect(canvas.analytics.searchContentType).toHaveBeenCalledWith('10', 'quiz', 'assignments')
     })
 
     it('returns empty results when content_types is empty', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
-      const result = await tool.handler({ course_id: 10, search_term: 'test', content_types: [] })
+      const result = await tool.handler({ course_id: '10', search_term: 'test', content_types: [] })
       expect(result).toEqual({ results: [] })
       expect(canvas.analytics.searchContentType).not.toHaveBeenCalled()
     })
@@ -102,7 +102,7 @@ describe('analyticsTools', () => {
         ])
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = (await tool.handler({
-        course_id: 10,
+        course_id: '10',
         search_term: 'test',
         content_types: ['pages', 'assignments'],
       })) as { results: unknown[] }
@@ -117,7 +117,7 @@ describe('analyticsTools', () => {
         .mockRejectedValueOnce(new Error('Network error'))
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = (await tool.handler({
-        course_id: 10,
+        course_id: '10',
         search_term: 'test',
         content_types: ['pages', 'assignments'],
       })) as { results: unknown[]; warnings: string[] }
@@ -135,7 +135,7 @@ describe('analyticsTools', () => {
         )
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       const result = (await tool.handler({
-        course_id: 10,
+        course_id: '10',
         search_term: 'test',
         content_types: ['pages', 'assignments'],
       })) as { results: unknown[]; warnings: string[] }
@@ -153,7 +153,7 @@ describe('analyticsTools', () => {
       const tool = analyticsTools(canvas).find((t) => t.name === 'search_course_content')!
       await expect(
         tool.handler({
-          course_id: 10,
+          course_id: '10',
           search_term: 'test',
           content_types: ['pages', 'assignments'],
         }),
@@ -172,8 +172,8 @@ describe('analyticsTools', () => {
     it('delegates to canvas.analytics.getCourseActivity', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_course_analytics')!
-      await tool.handler({ course_id: 10 })
-      expect(canvas.analytics.getCourseActivity).toHaveBeenCalledWith(10)
+      await tool.handler({ course_id: '10' })
+      expect(canvas.analytics.getCourseActivity).toHaveBeenCalledWith('10')
     })
   })
 
@@ -188,8 +188,8 @@ describe('analyticsTools', () => {
     it('delegates to canvas.analytics.getStudentActivity', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_student_analytics')!
-      await tool.handler({ course_id: 10, student_id: 42 })
-      expect(canvas.analytics.getStudentActivity).toHaveBeenCalledWith(10, 42)
+      await tool.handler({ course_id: '10', student_id: '42' })
+      expect(canvas.analytics.getStudentActivity).toHaveBeenCalledWith('10', '42')
     })
   })
 
@@ -204,8 +204,8 @@ describe('analyticsTools', () => {
     it('delegates to canvas.analytics.getCourseActivityStream', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_course_activity_stream')!
-      await tool.handler({ course_id: 10 })
-      expect(canvas.analytics.getCourseActivityStream).toHaveBeenCalledWith(10)
+      await tool.handler({ course_id: '10' })
+      expect(canvas.analytics.getCourseActivityStream).toHaveBeenCalledWith('10')
     })
   })
 
@@ -220,15 +220,15 @@ describe('analyticsTools', () => {
     it('returns all assignments when no assignment_id provided', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
-      const result = await tool.handler({ course_id: 10 })
-      expect(canvas.analytics.getAssignmentAnalytics).toHaveBeenCalledWith(10)
+      const result = await tool.handler({ course_id: '10' })
+      expect(canvas.analytics.getAssignmentAnalytics).toHaveBeenCalledWith('10')
       expect(Array.isArray(result)).toBe(true)
     })
 
     it('filters to a single assignment when assignment_id is provided', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
-      const result = (await tool.handler({ course_id: 10, assignment_id: 1 })) as {
+      const result = (await tool.handler({ course_id: '10', assignment_id: '1' })) as {
         assignment_id: number
         title: string
       }
@@ -239,7 +239,7 @@ describe('analyticsTools', () => {
     it('throws when assignment_id is not found', async () => {
       const canvas = buildMockCanvas()
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
-      await expect(tool.handler({ course_id: 10, assignment_id: 999 })).rejects.toThrow(
+      await expect(tool.handler({ course_id: '10', assignment_id: '999' })).rejects.toThrow(
         'Assignment 999 not found in analytics for course 10',
       )
     })
@@ -250,7 +250,7 @@ describe('analyticsTools', () => {
         new CanvasApiError('Forbidden', 403, '/api/v1/courses/10/analytics/assignments'),
       )
       const tool = analyticsTools(canvas).find((t) => t.name === 'get_assignment_analytics')!
-      await expect(tool.handler({ course_id: 10 })).rejects.toThrow(CanvasApiError)
+      await expect(tool.handler({ course_id: '10' })).rejects.toThrow(CanvasApiError)
     })
   })
 })

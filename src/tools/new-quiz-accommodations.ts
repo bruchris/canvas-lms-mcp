@@ -2,9 +2,10 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
+import type { CanvasId } from '../canvas/id'
 
 interface NewQuizAccommodationResult {
-  assignment_id: number | null
+  assignment_id: CanvasId | null
   time_multiplier: number | null
   extra_attempts: number | null
   error?: string
@@ -64,11 +65,11 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
         const timeMultiplier = params.time_multiplier as number | undefined
         const extraAttempts = params.extra_attempts as number | undefined
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
 
         if (timeMultiplier === undefined && extraAttempts === undefined) {
           throw new Error('Provide at least one of time_multiplier or extra_attempts.')
@@ -152,8 +153,8 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
 
         const record = await canvas.newQuizzes.getAccommodation(courseId, userId)
 

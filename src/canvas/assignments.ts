@@ -8,6 +8,7 @@ import type {
   CreateAssignmentParams,
   UpdateAssignmentParams,
 } from './types'
+import type { CanvasId } from './id'
 
 export type AssignmentListInclude =
   | 'submission'
@@ -49,7 +50,7 @@ export interface ListAssignmentsOptions {
   override_assignment_dates?: boolean
   needs_grading_count_by_section?: boolean
   bucket?: AssignmentBucket
-  assignment_ids?: ReadonlyArray<number>
+  assignment_ids?: ReadonlyArray<CanvasId>
   order_by?: AssignmentOrderBy
   post_to_sis?: boolean
 }
@@ -63,10 +64,10 @@ export interface GetAssignmentOptions {
 
 export interface ListAssignmentGroupsOptions {
   include?: ReadonlyArray<AssignmentGroupInclude>
-  assignment_ids?: ReadonlyArray<number>
+  assignment_ids?: ReadonlyArray<CanvasId>
   exclude_assignment_submission_types?: ReadonlyArray<string>
   override_assignment_dates?: boolean
-  grading_period_id?: number
+  grading_period_id?: CanvasId
   scope_assignments_to_student?: boolean
 }
 
@@ -91,7 +92,7 @@ function toQuery(opts: object): CanvasQueryParams {
 export class AssignmentsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number, opts: ListAssignmentsOptions = {}): Promise<CanvasAssignment[]> {
+  async list(courseId: CanvasId, opts: ListAssignmentsOptions = {}): Promise<CanvasAssignment[]> {
     return this.client.paginate<CanvasAssignment>(
       `/api/v1/courses/${courseId}/assignments`,
       toQuery(opts),
@@ -99,8 +100,8 @@ export class AssignmentsModule {
   }
 
   async get(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     opts: GetAssignmentOptions = {},
   ): Promise<CanvasAssignment> {
     return this.client.request<CanvasAssignment>(
@@ -110,7 +111,7 @@ export class AssignmentsModule {
   }
 
   async listGroups(
-    courseId: number,
+    courseId: CanvasId,
     opts: ListAssignmentGroupsOptions = {},
   ): Promise<CanvasAssignmentGroup[]> {
     return this.client.paginate<CanvasAssignmentGroup>(
@@ -119,7 +120,7 @@ export class AssignmentsModule {
     )
   }
 
-  async create(courseId: number, params: CreateAssignmentParams): Promise<CanvasAssignment> {
+  async create(courseId: CanvasId, params: CreateAssignmentParams): Promise<CanvasAssignment> {
     return this.client.request<CanvasAssignment>(`/api/v1/courses/${courseId}/assignments`, {
       method: 'POST',
       body: JSON.stringify({ assignment: params }),
@@ -127,8 +128,8 @@ export class AssignmentsModule {
   }
 
   async update(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     params: UpdateAssignmentParams,
   ): Promise<CanvasAssignment> {
     return this.client.request<CanvasAssignment>(
@@ -140,21 +141,24 @@ export class AssignmentsModule {
     )
   }
 
-  async delete(courseId: number, assignmentId: number): Promise<void> {
+  async delete(courseId: CanvasId, assignmentId: CanvasId): Promise<void> {
     await this.client.request<void>(`/api/v1/courses/${courseId}/assignments/${assignmentId}`, {
       method: 'DELETE',
     })
   }
 
-  async listOverrides(courseId: number, assignmentId: number): Promise<CanvasAssignmentOverride[]> {
+  async listOverrides(
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+  ): Promise<CanvasAssignmentOverride[]> {
     return this.client.paginate<CanvasAssignmentOverride>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/overrides`,
     )
   }
 
   async createOverride(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     params: CreateAssignmentOverrideParams,
   ): Promise<CanvasAssignmentOverride> {
     return this.client.request<CanvasAssignmentOverride>(

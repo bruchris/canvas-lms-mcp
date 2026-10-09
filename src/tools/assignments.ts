@@ -11,6 +11,7 @@ import type {
   ListAssignmentsOptions,
 } from '../canvas/assignments'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const ASSIGNMENT_LIST_INCLUDE = [
   'submission',
@@ -65,7 +66,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'List all assignments in a course. Use fields="slim" when enumerating assignments for selection; switch to "full" once you\'ve identified the target. slim returns id, name, due_at, points_possible, published, and course_id only. "full" (default) includes all Canvas fields plus `include` extras (submission, all_dates, overrides, score_statistics, etc.). Use `bucket` to filter by past/upcoming/overdue/etc. Other filters: `search_term`, `assignment_ids`, `order_by`.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         fields: z
           .enum(['slim', 'full'])
           .optional()
@@ -87,7 +88,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Only include assignments in the given bucket'),
         assignment_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Restrict to the given list of assignment IDs'),
         order_by: z.enum(ASSIGNMENT_ORDER_BY).optional().describe('Field to sort the result by'),
@@ -118,14 +119,14 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.search_term !== undefined) opts.search_term = params.search_term as string
         if (params.bucket !== undefined) opts.bucket = params.bucket as AssignmentBucket
         if (params.assignment_ids !== undefined)
-          opts.assignment_ids = params.assignment_ids as ReadonlyArray<number>
+          opts.assignment_ids = params.assignment_ids as ReadonlyArray<CanvasId>
         if (params.order_by !== undefined) opts.order_by = params.order_by as AssignmentOrderBy
         if (params.override_assignment_dates !== undefined)
           opts.override_assignment_dates = params.override_assignment_dates as boolean
         if (params.needs_grading_count_by_section !== undefined)
           opts.needs_grading_count_by_section = params.needs_grading_count_by_section as boolean
         if (params.post_to_sis !== undefined) opts.post_to_sis = params.post_to_sis as boolean
-        const assignments = await canvas.assignments.list(params.course_id as number, opts)
+        const assignments = await canvas.assignments.list(params.course_id as CanvasId, opts)
         if (!slim) return assignments
         return assignments.map((a) => ({
           id: a.id,
@@ -144,8 +145,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
         include: z
           .array(z.enum(ASSIGNMENT_GET_INCLUDE))
           .optional()
@@ -177,8 +178,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           opts.needs_grading_count_by_section = params.needs_grading_count_by_section as boolean
         if (params.all_dates !== undefined) opts.all_dates = params.all_dates as boolean
         return canvas.assignments.get(
-          params.course_id as number,
-          params.assignment_id as number,
+          params.course_id as CanvasId,
+          params.assignment_id as CanvasId,
           opts,
         )
       },
@@ -190,13 +191,13 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'List assignment groups (categories like Homework, Exams) in a course. Use `include=assignments` to nest assignments under each group; other includes add submission, overrides, score_statistics, etc.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         include: z
           .array(z.enum(ASSIGNMENT_GROUP_INCLUDE))
           .optional()
           .describe('Extra fields to include (Canvas include[] param)'),
         assignment_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'When combined with include=assignments, restrict nested assignments to these IDs',
@@ -228,17 +229,17 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<AssignmentGroupInclude>
         if (params.assignment_ids !== undefined)
-          opts.assignment_ids = params.assignment_ids as ReadonlyArray<number>
+          opts.assignment_ids = params.assignment_ids as ReadonlyArray<CanvasId>
         if (params.exclude_assignment_submission_types !== undefined)
           opts.exclude_assignment_submission_types =
             params.exclude_assignment_submission_types as ReadonlyArray<string>
         if (params.override_assignment_dates !== undefined)
           opts.override_assignment_dates = params.override_assignment_dates as boolean
         if (params.grading_period_id !== undefined)
-          opts.grading_period_id = params.grading_period_id as number
+          opts.grading_period_id = params.grading_period_id as CanvasId
         if (params.scope_assignments_to_student !== undefined)
           opts.scope_assignments_to_student = params.scope_assignments_to_student as boolean
-        return canvas.assignments.listGroups(params.course_id as number, opts)
+        return canvas.assignments.listGroups(params.course_id as CanvasId, opts)
       },
     },
     {
@@ -246,7 +247,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Create Assignment',
       description: 'Create a new assignment in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         name: z.string().describe('Assignment name'),
         description: z.string().optional().describe('Assignment description (HTML supported)'),
         points_possible: z.number().optional().describe('Maximum points for this assignment'),
@@ -260,8 +261,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .describe(
             'Allowed submission types (e.g. ["online_upload", "online_text_entry", "none"])',
           ),
-        assignment_group_id: z
-          .number()
+        assignment_group_id: canvasIdInput()
           .optional()
           .describe('ID of the assignment group to place this assignment in'),
         published: z
@@ -285,13 +285,13 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const { course_id, ...rest } = params as {
-          course_id: number
+          course_id: CanvasId
           name: string
           description?: string
           points_possible?: number
           due_at?: string
           submission_types?: string[]
-          assignment_group_id?: number
+          assignment_group_id?: CanvasId
           published?: boolean
           omit_from_final_grade?: boolean
           grade_group_students_individually?: boolean
@@ -304,8 +304,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update Assignment',
       description: 'Update an existing assignment in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
         name: z.string().optional().describe('New assignment name'),
         description: z.string().optional().describe('New assignment description (HTML supported)'),
         points_possible: z.number().optional().describe('New maximum points'),
@@ -314,7 +314,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('New due date in ISO 8601 format (e.g. 2026-05-01T23:59:00Z)'),
         submission_types: z.array(z.string()).optional().describe('New allowed submission types'),
-        assignment_group_id: z.number().optional().describe('New assignment group ID'),
+        assignment_group_id: canvasIdInput().optional().describe('New assignment group ID'),
         published: z
           .boolean()
           .optional()
@@ -337,14 +337,14 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const { course_id, assignment_id, ...rest } = params as {
-          course_id: number
-          assignment_id: number
+          course_id: CanvasId
+          assignment_id: CanvasId
           name?: string
           description?: string
           points_possible?: number
           due_at?: string
           submission_types?: string[]
-          assignment_group_id?: number
+          assignment_group_id?: CanvasId
           published?: boolean
           omit_from_final_grade?: boolean
           grade_group_students_individually?: boolean
@@ -357,8 +357,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Delete Assignment',
       description: 'Delete an assignment from a course. This action is permanent.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID to delete'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID to delete'),
       },
       annotations: {
         destructiveHint: true,
@@ -366,8 +366,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
         await canvas.assignments.delete(course_id, assignment_id)
       },
     },

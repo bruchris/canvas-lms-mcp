@@ -5,6 +5,7 @@ import { formatError } from './errors'
 import { SEARCH_CONTENT_TYPES } from '../canvas/analytics'
 import type { SearchContentType } from '../canvas/analytics'
 import type { CourseSearchResult } from '../canvas/types'
+import { type CanvasId, canvasIdFromResponse, canvasIdInput } from '../canvas/id'
 
 export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -15,7 +16,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Search for content within a course. Searches pages, assignments, discussions, and announcements by keyword.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         search_term: z.string().describe('The keyword or phrase to search for'),
         content_types: z
           .array(z.enum(SEARCH_CONTENT_TYPES))
@@ -29,7 +30,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const searchTerm = params.search_term as string
         const types = (params.content_types as SearchContentType[] | undefined) ?? [
           ...SEARCH_CONTENT_TYPES,
@@ -72,14 +73,14 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get course-level activity analytics. Returns daily page view and participation counts.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.analytics.getCourseActivity(course_id)
       },
     },
@@ -89,16 +90,16 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get per-student activity analytics for a course. Returns page views, participations, and submission timeline for a specific student.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        student_id: z.number().describe('The Canvas user ID of the student'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        student_id: canvasIdInput().describe('The Canvas user ID of the student'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const student_id = params.student_id as number
+        const course_id = params.course_id as CanvasId
+        const student_id = params.student_id as CanvasId
         return canvas.analytics.getStudentActivity(course_id, student_id)
       },
     },
@@ -109,14 +110,14 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get a summary of recent activity in a course. Returns counts of recent events grouped by type (submissions, discussions, announcements, etc.).',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.analytics.getCourseActivityStream(course_id)
       },
     },
@@ -130,7 +131,7 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         '(on_time, late, missing) for each assignment. Provide assignment_id to scope to one ' +
         'assignment; omit to return analytics for all assignments in the course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: z
           .number()
           .int()
@@ -145,11 +146,15 @@ export function analyticsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number | undefined
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId | undefined
         const analytics = await canvas.analytics.getAssignmentAnalytics(course_id)
         if (assignment_id !== undefined) {
-          const match = analytics.find((a) => a.assignment_id === assignment_id)
+          // Response id vs migrated input id — compared as canonical strings so the
+          // join cannot silently miss on an ID above 2**53 (BRU-2730 §4.1).
+          const match = analytics.find(
+            (a) => canvasIdFromResponse(a.assignment_id) === assignment_id,
+          )
           if (!match) {
             throw new Error(
               `Assignment ${assignment_id} not found in analytics for course ${course_id}.`,

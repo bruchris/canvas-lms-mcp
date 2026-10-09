@@ -77,8 +77,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.list', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'list_modules')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.modules.list).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.modules.list).toHaveBeenCalledWith('1')
     })
   })
 
@@ -91,8 +91,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.get', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'get_module')!
-      await tool.handler({ course_id: 1, module_id: 1 })
-      expect(canvas.modules.get).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', module_id: '1' })
+      expect(canvas.modules.get).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -105,8 +105,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.listItems', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'list_module_items')!
-      await tool.handler({ course_id: 1, module_id: 1 })
-      expect(canvas.modules.listItems).toHaveBeenCalledWith(1, 1)
+      await tool.handler({ course_id: '1', module_id: '1' })
+      expect(canvas.modules.listItems).toHaveBeenCalledWith('1', '1')
     })
   })
 
@@ -119,8 +119,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.getCourseStructure with defaults', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'get_course_structure')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1' })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith('1', {
         includePublishedOnly: undefined,
         includeContentDetails: undefined,
       })
@@ -130,11 +130,11 @@ describe('moduleTools', () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'get_course_structure')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         include_published_only: true,
         include_content_details: true,
       })
-      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith('1', {
         includePublishedOnly: true,
         includeContentDetails: true,
       })
@@ -164,8 +164,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.getCourseStructure with defaults', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'view_course_structure')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1' })
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith('1', {
         includePublishedOnly: undefined,
         includeContentDetails: undefined,
       })
@@ -175,11 +175,11 @@ describe('moduleTools', () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'view_course_structure')!
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         include_published_only: true,
         include_content_details: true,
       })
-      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith(1, {
+      expect(canvas.modules.getCourseStructure).toHaveBeenCalledWith('1', {
         includePublishedOnly: true,
         includeContentDetails: true,
       })
@@ -190,8 +190,8 @@ describe('moduleTools', () => {
       const tools = moduleTools(canvas)
       const get = tools.find((t) => t.name === 'get_course_structure')!
       const view = tools.find((t) => t.name === 'view_course_structure')!
-      const getResult = await get.handler({ course_id: 1 })
-      const viewResult = await view.handler({ course_id: 1 })
+      const getResult = await get.handler({ course_id: '1' })
+      const viewResult = await view.handler({ course_id: '1' })
       expect(viewResult).toEqual(getResult)
     })
   })
@@ -205,8 +205,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.create', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'create_module')!
-      await tool.handler({ course_id: 1, name: 'Week 2', position: 2 })
-      expect(canvas.modules.create).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1', name: 'Week 2', position: 2 })
+      expect(canvas.modules.create).toHaveBeenCalledWith('1', {
         name: 'Week 2',
         position: 2,
         unlock_at: undefined,
@@ -224,8 +224,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.update', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'update_module')!
-      await tool.handler({ course_id: 1, module_id: 1, published: true })
-      expect(canvas.modules.update).toHaveBeenCalledWith(1, 1, {
+      await tool.handler({ course_id: '1', module_id: '1', published: true })
+      expect(canvas.modules.update).toHaveBeenCalledWith('1', '1', {
         name: undefined,
         position: undefined,
         published: true,
@@ -243,16 +243,16 @@ describe('moduleTools', () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'create_module_item')!
       await tool.handler({
-        course_id: 1,
-        module_id: 1,
+        course_id: '1',
+        module_id: '1',
         title: 'HW1',
         type: 'Assignment',
-        content_id: 42,
+        content_id: '42',
       })
-      expect(canvas.modules.createItem).toHaveBeenCalledWith(1, 1, {
+      expect(canvas.modules.createItem).toHaveBeenCalledWith('1', '1', {
         title: 'HW1',
         type: 'Assignment',
-        content_id: 42,
+        content_id: '42',
         page_url: undefined,
         external_url: undefined,
         position: undefined,
@@ -263,13 +263,13 @@ describe('moduleTools', () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'create_module_item')!
       await tool.handler({
-        course_id: 1,
-        module_id: 1,
+        course_id: '1',
+        module_id: '1',
         title: 'Syllabus',
         type: 'Page',
         page_url: 'syllabus',
       })
-      expect(canvas.modules.createItem).toHaveBeenCalledWith(1, 1, {
+      expect(canvas.modules.createItem).toHaveBeenCalledWith('1', '1', {
         title: 'Syllabus',
         type: 'Page',
         content_id: undefined,
@@ -294,13 +294,13 @@ describe('moduleTools', () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
       await tool.handler({
-        course_id: 1,
-        module_id: 1,
-        item_id: 5,
+        course_id: '1',
+        module_id: '1',
+        item_id: '5',
         external_url: 'https://example.com/new',
         published: true,
       })
-      expect(canvas.modules.updateItem).toHaveBeenCalledWith(1, 1, 5, {
+      expect(canvas.modules.updateItem).toHaveBeenCalledWith('1', '1', '5', {
         external_url: 'https://example.com/new',
         published: true,
       })
@@ -309,14 +309,19 @@ describe('moduleTools', () => {
     it('maps target_module_id onto the Canvas module_id field', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
-      await tool.handler({ course_id: 1, module_id: 1, item_id: 5, target_module_id: 2 })
-      expect(canvas.modules.updateItem).toHaveBeenCalledWith(1, 1, 5, { module_id: 2 })
+      await tool.handler({ course_id: '1', module_id: '1', item_id: '5', target_module_id: '2' })
+      expect(canvas.modules.updateItem).toHaveBeenCalledWith('1', '1', '5', { module_id: '2' })
     })
 
     it('returns the updated item', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'update_module_item')!
-      const result = await tool.handler({ course_id: 1, module_id: 1, item_id: 5, title: 'x' })
+      const result = await tool.handler({
+        course_id: '1',
+        module_id: '1',
+        item_id: '5',
+        title: 'x',
+      })
       expect(result).toEqual(mockItem)
     })
   })
@@ -334,8 +339,8 @@ describe('moduleTools', () => {
     it('delegates to canvas.modules.deleteItem and returns the deleted item', async () => {
       const canvas = buildMockCanvas()
       const tool = moduleTools(canvas).find((t) => t.name === 'delete_module_item')!
-      const result = await tool.handler({ course_id: 1, module_id: 1, item_id: 5 })
-      expect(canvas.modules.deleteItem).toHaveBeenCalledWith(1, 1, 5)
+      const result = await tool.handler({ course_id: '1', module_id: '1', item_id: '5' })
+      expect(canvas.modules.deleteItem).toHaveBeenCalledWith('1', '1', '5')
       expect(result).toEqual(mockItem)
     })
   })

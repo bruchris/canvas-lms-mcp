@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasCourse, CreateCourseParams, UpdateCourseParams } from './types'
+import type { CanvasId } from './id'
 
 export type CourseEnrollmentState = 'active' | 'invited_or_pending' | 'completed'
 
@@ -36,7 +37,7 @@ export type CourseGetInclude =
 export interface ListCoursesOptions {
   enrollment_state?: CourseEnrollmentState
   state?: ReadonlyArray<CourseWorkflowState>
-  enrollment_role_id?: number
+  enrollment_role_id?: CanvasId
   include?: ReadonlyArray<CourseListInclude>
   exclude_blueprint_courses?: boolean
 }
@@ -64,14 +65,14 @@ export class CoursesModule {
     return this.client.paginate<CanvasCourse>('/api/v1/courses', params)
   }
 
-  async get(courseId: number, opts: GetCourseOptions = {}): Promise<CanvasCourse> {
+  async get(courseId: CanvasId, opts: GetCourseOptions = {}): Promise<CanvasCourse> {
     const include = opts.include && opts.include.length > 0 ? opts.include : DEFAULT_GET_INCLUDE
     const query: CanvasQueryParams = { include }
     if (opts.teacher_limit !== undefined) query.teacher_limit = opts.teacher_limit
     return this.client.request<CanvasCourse>(`/api/v1/courses/${courseId}`, { query })
   }
 
-  async getSyllabus(courseId: number): Promise<string | null> {
+  async getSyllabus(courseId: CanvasId): Promise<string | null> {
     const course = await this.client.request<CanvasCourse>(`/api/v1/courses/${courseId}`, {
       query: { include: ['syllabus_body'] },
     })
@@ -86,7 +87,7 @@ export class CoursesModule {
     })
   }
 
-  async update(courseId: number, params: UpdateCourseParams): Promise<CanvasCourse> {
+  async update(courseId: CanvasId, params: UpdateCourseParams): Promise<CanvasCourse> {
     return this.client.request<CanvasCourse>(`/api/v1/courses/${courseId}`, {
       method: 'PUT',
       body: JSON.stringify({ course: params }),

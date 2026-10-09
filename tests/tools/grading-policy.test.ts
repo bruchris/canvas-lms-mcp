@@ -79,7 +79,7 @@ function buildMockCanvas(o: MockOverrides = {}): CanvasClient {
 
 async function run(
   overrides: MockOverrides,
-  params: Record<string, unknown> = { course_id: 1 },
+  params: Record<string, unknown> = { course_id: '1' },
 ): Promise<{ result: GradingPolicyOut; canvas: CanvasClient }> {
   const canvas = buildMockCanvas(overrides)
   const result = (await gradingPolicyTools(canvas)[0].handler(params)) as GradingPolicyOut
@@ -240,8 +240,8 @@ describe('explain_grading_policy — Fixture D (account-scoped standard)', () =>
     const { result, canvas } = await run(overrides)
     expect(result.grading_scheme.applied).toBe(true)
     expect(result.grading_scheme.standard_title).toBe('Institutional Scale')
-    expect(canvas.gradingStandards.listForCourse).toHaveBeenCalledWith(1)
-    expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith(10)
+    expect(canvas.gradingStandards.listForCourse).toHaveBeenCalledWith('1')
+    expect(canvas.gradingStandards.listForAccount).toHaveBeenCalledWith('10')
     expect(result.caveats).toEqual([])
   })
 })
@@ -438,7 +438,7 @@ describe('explain_grading_policy — Fixture K (call-4 CanvasApiError degrades)'
     } as unknown as CanvasClient
 
     const result = (await gradingPolicyTools(canvas)[0].handler({
-      course_id: 1,
+      course_id: '1',
     })) as GradingPolicyOut
     expect(result.grading_scheme.applied).toBe(true)
     expect(result.grading_scheme.standard_title).toBeNull()
@@ -500,7 +500,9 @@ describe('explain_grading_policy — Fixture M (call-4 non-Canvas error propagat
         listForAccount: vi.fn().mockResolvedValue([]),
       },
     } as unknown as CanvasClient
-    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(TypeError)
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toThrow(
+      TypeError,
+    )
   })
 })
 
@@ -531,7 +533,7 @@ describe('explain_grading_policy — Fixture N (call-4 5xx propagates)', () => {
           ),
       },
     } as unknown as CanvasClient
-    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toMatchObject({
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toMatchObject({
       status: 503,
     })
   })
@@ -546,7 +548,7 @@ describe('explain_grading_policy — required-call failures propagate', () => {
       latePolicyError: new CanvasApiError('Server Error', 500, '/api/v1/courses/1/late_policy'),
       groups: [{ id: 1, name: 'Assignments', group_weight: 0 }],
     })
-    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toThrow(
       CanvasApiError,
     )
   })
@@ -563,7 +565,7 @@ describe('explain_grading_policy — required-call failures propagate', () => {
         listForAccount: vi.fn().mockResolvedValue([]),
       },
     } as unknown as CanvasClient
-    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toThrow(
       CanvasApiError,
     )
   })
@@ -586,7 +588,7 @@ describe('explain_grading_policy — required-call failures propagate', () => {
         listForAccount: vi.fn().mockResolvedValue([]),
       },
     } as unknown as CanvasClient
-    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: 1 })).rejects.toThrow(
+    await expect(gradingPolicyTools(canvas)[0].handler({ course_id: '1' })).rejects.toThrow(
       CanvasApiError,
     )
   })

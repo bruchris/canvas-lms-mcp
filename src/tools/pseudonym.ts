@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 /**
  * Tools that depend on the pseudonymizer. Currently the single conditional
@@ -34,7 +35,7 @@ export function pseudonymTools(pseudonymizer: Pseudonymizer): ToolDefinition[] {
       description:
         'Resolve a stable pseudonym (e.g. "Student 7") back to a Canvas user_id within a course. Use only when a teacher has explicitly asked to identify a specific student in an artifact. Every call is audit-logged.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID the pseudonym was assigned in'),
+        course_id: canvasIdInput().describe('The Canvas course ID the pseudonym was assigned in'),
         pseudonym: z.string().describe('The pseudonym to resolve, e.g. "Student 7"'),
       },
       annotations: {
@@ -42,7 +43,7 @@ export function pseudonymTools(pseudonymizer: Pseudonymizer): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const pseudonym = params.pseudonym as string
         const result = await pseudonymizer.reverseLookup(courseId, pseudonym)
         if (!result) {

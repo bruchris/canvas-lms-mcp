@@ -320,7 +320,7 @@ describe('project_grade — Fixture F (letter target, no scheme)', () => {
       },
       groups: [],
     })
-    await expect(tool(canvas).handler({ course_id: 1, target_letter: 'A' })).rejects.toThrow(
+    await expect(tool(canvas).handler({ course_id: '1', target_letter: 'A' })).rejects.toThrow(
       'no grading standard configured',
     )
   })
@@ -346,7 +346,7 @@ describe('project_grade — Fixture G (letter target, letter not in scheme)', ()
         },
       ],
     })
-    await expect(tool(canvas).handler({ course_id: 1, target_letter: 'B' })).rejects.toThrow(
+    await expect(tool(canvas).handler({ course_id: '1', target_letter: 'B' })).rejects.toThrow(
       /Letter grade 'B' is not in the course grading scheme.*A, F/,
     )
   })
@@ -595,13 +595,13 @@ describe('project_grade — input validation', () => {
   it('rejects when both target_percentage and target_letter are provided', async () => {
     const canvas = buildMockCanvas()
     await expect(
-      tool(canvas).handler({ course_id: 1, target_percentage: 90, target_letter: 'A' }),
+      tool(canvas).handler({ course_id: '1', target_percentage: 90, target_letter: 'A' }),
     ).rejects.toThrow('Provide either target_percentage or target_letter, not both.')
   })
 
   it('rejects when neither target_percentage nor target_letter are provided', async () => {
     const canvas = buildMockCanvas()
-    await expect(tool(canvas).handler({ course_id: 1 })).rejects.toThrow(
+    await expect(tool(canvas).handler({ course_id: '1' })).rejects.toThrow(
       'Provide one of target_percentage or target_letter.',
     )
   })
@@ -624,7 +624,7 @@ describe('project_grade — tool metadata', () => {
     ;(canvas.courses.get as ReturnType<typeof vi.fn>).mockRejectedValue(
       new CanvasApiError('Not Found', 404, '/api/v1/courses/1'),
     )
-    await expect(tool(canvas).handler({ course_id: 1, target_percentage: 90 })).rejects.toThrow(
+    await expect(tool(canvas).handler({ course_id: '1', target_percentage: 90 })).rejects.toThrow(
       CanvasApiError,
     )
   })

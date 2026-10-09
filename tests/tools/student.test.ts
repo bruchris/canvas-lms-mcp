@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from 'node:fs/promises'
+import type { CanvasId } from '../../src/canvas/id'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
@@ -221,8 +222,8 @@ describe('studentTools', () => {
     it('delegates to canvas.enrollments.listMyGrades with courseId', async () => {
       const canvas = buildMockCanvas()
       const tool = studentTools(canvas).find((t) => t.name === 'get_my_grades')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.enrollments.listMyGrades).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.enrollments.listMyGrades).toHaveBeenCalledWith('1')
     })
 
     it('propagates CanvasApiError', async () => {
@@ -239,8 +240,8 @@ describe('studentTools', () => {
     it('delegates to canvas.submissions.listMy', async () => {
       const canvas = buildMockCanvas()
       const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.submissions.listMy).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.submissions.listMy).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockSubmission])
     })
 
@@ -250,7 +251,7 @@ describe('studentTools', () => {
         new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/students/submissions'),
       )
       const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
-      await expect(tool.handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
+      await expect(tool.handler({ course_id: '1' })).rejects.toThrow(CanvasApiError)
     })
   })
 
@@ -287,7 +288,7 @@ describe('studentTools', () => {
         noFeedbackSubmission,
         noCommentsSubmission,
       ])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings_count: number
         submissions_scanned: number
         findings: Array<{ submission_id: number }>
@@ -300,7 +301,7 @@ describe('studentTools', () => {
     it('classifies self / peer / teacher comment authors', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{
           feedback_author_roles: string[]
           comments: Array<{ id: number; author_role: string }>
@@ -326,7 +327,7 @@ describe('studentTools', () => {
         submission_comments: [teacherComment, peerComment, selfNewest],
       }
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([submission])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{ latest_feedback_comment: { id: number } }>
       }
       expect(result.findings[0].latest_feedback_comment.id).toBe(900) // teacher (06-30), not self (07-05)
@@ -338,7 +339,7 @@ describe('studentTools', () => {
         feedbackSubmission,
         readFeedbackSubmission,
       ])
-      const result = (await getTool(canvas).handler({ course_id: 1, unread_only: true })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1', unread_only: true })) as {
         findings_count: number
         findings: Array<{ submission_id: number }>
       }
@@ -358,10 +359,10 @@ describe('studentTools', () => {
       const result = (await getTool(canvas).handler({})) as { courses_scanned: number }
       expect(canvas.courses.list).toHaveBeenCalledWith({ enrollment_state: 'active' })
       expect(canvas.submissions.listMy).toHaveBeenCalledTimes(2)
-      expect(canvas.submissions.listMy).toHaveBeenCalledWith(1, {
+      expect(canvas.submissions.listMy).toHaveBeenCalledWith('1', {
         include: ['submission_comments', 'user', 'assignment', 'course', 'read_status'],
       })
-      expect(canvas.submissions.listMy).toHaveBeenCalledWith(2, {
+      expect(canvas.submissions.listMy).toHaveBeenCalledWith('2', {
         include: ['submission_comments', 'user', 'assignment', 'course', 'read_status'],
       })
       expect(result.courses_scanned).toBe(2)
@@ -378,7 +379,7 @@ describe('studentTools', () => {
     it('passes through course/assignment/score/url metadata', async () => {
       const canvas = buildMockCanvas()
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{
           course_name: string | null
           assignment_name: string | null
@@ -411,7 +412,7 @@ describe('studentTools', () => {
         submission_comments: [teacherComment], // author_id 7, but no grader_id to match
       }
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([ungraded])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{ comments: Array<{ id: number; author_role: string }> }>
       }
       expect(result.findings[0].comments.find((c) => c.id === 900)!.author_role).toBe('peer')
@@ -422,7 +423,7 @@ describe('studentTools', () => {
       vi.mocked(canvas.submissions.listMy).mockRejectedValue(
         new CanvasApiError('Forbidden', 403, '/api/v1/courses/1/students/submissions'),
       )
-      await expect(getTool(canvas).handler({ course_id: 1 })).rejects.toThrow(CanvasApiError)
+      await expect(getTool(canvas).handler({ course_id: '1' })).rejects.toThrow(CanvasApiError)
     })
 
     it('sorts findings most-recent-feedback-first', async () => {
@@ -447,7 +448,7 @@ describe('studentTools', () => {
         feedbackSubmission,
         newerFeedbackSubmission,
       ])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{ submission_id: number }>
       }
       expect(result.findings.map((f) => f.submission_id)).toEqual([200, 100])
@@ -473,7 +474,7 @@ describe('studentTools', () => {
         submission_comments: [tiedComment(961)],
       }
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([first, second])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings_count: number
         findings: Array<{ submission_id: number }>
       }
@@ -488,20 +489,20 @@ describe('studentTools', () => {
         { id: 1, name: 'Intro to CS', course_code: 'CS101', workflow_state: 'available' },
         { id: 2, name: 'Concluded', course_code: 'HIST101', workflow_state: 'available' },
       ])
-      vi.mocked(canvas.submissions.listMy).mockImplementation(async (courseId: number) => {
-        if (courseId === 2) {
+      vi.mocked(canvas.submissions.listMy).mockImplementation(async (courseId: CanvasId) => {
+        if (courseId === '2') {
           throw new CanvasApiError('Forbidden', 403, '/api/v1/courses/2/students/submissions')
         }
         return [feedbackSubmission]
       })
       const result = (await getTool(canvas).handler({})) as {
         courses_scanned: number
-        courses_failed: Array<{ course_id: number; status: number | null }>
+        courses_failed: Array<{ course_id: string; status: number | null }>
         findings_count: number
       }
       expect(result.courses_scanned).toBe(2)
       expect(result.findings_count).toBe(1) // course 1's feedback still returned
-      expect(result.courses_failed).toEqual([{ course_id: 2, status: 403, message: 'Forbidden' }])
+      expect(result.courses_failed).toEqual([{ course_id: '2', status: 403, message: 'Forbidden' }])
     })
 
     it('reports read_status as null when Canvas omits it', async () => {
@@ -512,7 +513,7 @@ describe('studentTools', () => {
         read_status: undefined,
       }
       vi.mocked(canvas.submissions.listMy).mockResolvedValue([noReadStatus])
-      const result = (await getTool(canvas).handler({ course_id: 1 })) as {
+      const result = (await getTool(canvas).handler({ course_id: '1' })) as {
         findings: Array<{ read_status: string | null }>
       }
       expect(result.findings[0].read_status).toBeNull()
@@ -539,7 +540,7 @@ describe('studentTools', () => {
         const canvas = buildMockCanvas()
         vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
         const result = (await getTool(canvas, makePseudonymizer(false)).handler({
-          course_id: 1,
+          course_id: '1',
         })) as { findings: Array<{ comments: Array<{ id: number; author_name: string }> }> }
         const nameById = (id: number) =>
           result.findings[0].comments.find((c) => c.id === id)!.author_name
@@ -552,7 +553,7 @@ describe('studentTools', () => {
         const canvas = buildMockCanvas()
         vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
         const result = (await getTool(canvas, makePseudonymizer()).handler({
-          course_id: 1,
+          course_id: '1',
         })) as { findings: Array<{ comments: Array<{ id: number; author_name: string }> }> }
         const nameById = (id: number) =>
           result.findings[0].comments.find((c) => c.id === id)!.author_name
@@ -575,8 +576,8 @@ describe('studentTools', () => {
           (
             r as { findings: Array<{ comments: Array<{ id: number; author_name: string }> }> }
           ).findings[0].comments.find((c) => c.id === 901)!.author_name
-        const first = peerName(await tool.handler({ course_id: 1 }))
-        const second = peerName(await tool.handler({ course_id: 1 }))
+        const first = peerName(await tool.handler({ course_id: '1' }))
+        const second = peerName(await tool.handler({ course_id: '1' }))
         expect(first).toMatch(/^Student \d+$/)
         expect(second).toBe(first)
       })
@@ -617,7 +618,7 @@ describe('studentTools', () => {
         }
         vi.mocked(canvas.submissions.listMy).mockResolvedValue([subA, subB])
         const result = (await getTool(canvas, makePseudonymizer()).handler({
-          course_id: 1,
+          course_id: '1',
         })) as {
           findings: Array<{
             submission_id: number

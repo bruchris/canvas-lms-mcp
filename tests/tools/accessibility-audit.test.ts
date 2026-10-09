@@ -187,7 +187,7 @@ async function runScan(
     })
   }
   const [tool] = accessibilityAuditTools(canvas)
-  return (await tool.handler({ course_id: 100, include: [source] })) as AuditResult
+  return (await tool.handler({ course_id: '100', include: [source] })) as AuditResult
 }
 
 describe('accessibilityAuditTools', () => {
@@ -423,7 +423,7 @@ describe('accessibilityAuditTools', () => {
     it('31: sources_scanned uses stable CONTENT_SOURCES order', async () => {
       const canvas = buildMockCanvas()
       const [tool] = accessibilityAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100 })) as AuditResult
+      const result = (await tool.handler({ course_id: '100' })) as AuditResult
       expect(result.summary.sources_scanned).toEqual([
         'pages',
         'assignments',
@@ -437,7 +437,7 @@ describe('accessibilityAuditTools', () => {
         pages: [{ page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: null }],
       })
       const [tool] = accessibilityAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
       expect(result.findings).toHaveLength(0)
     })
 
@@ -459,7 +459,7 @@ describe('accessibilityAuditTools', () => {
       })
       const [tool] = accessibilityAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['assignments'],
       })) as AuditResult
       expect(result.findings).toHaveLength(0)
@@ -468,7 +468,10 @@ describe('accessibilityAuditTools', () => {
     it('32c: null syllabus → no findings and no error', async () => {
       const canvas = makeCanvas({ syllabus: null })
       const [tool] = accessibilityAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['syllabus'] })) as AuditResult
+      const result = (await tool.handler({
+        course_id: '100',
+        include: ['syllabus'],
+      })) as AuditResult
       expect(result.findings).toHaveLength(0)
     })
   })
@@ -478,7 +481,7 @@ describe('accessibilityAuditTools', () => {
     it('33: include:["syllabus"] only → only getSyllabus called', async () => {
       const canvas = buildMockCanvas()
       const [tool] = accessibilityAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['syllabus'] })
+      await tool.handler({ course_id: '100', include: ['syllabus'] })
 
       expect(canvas.pages.listWithBodies).not.toHaveBeenCalled()
       expect(canvas.assignments.list).not.toHaveBeenCalled()
@@ -489,7 +492,7 @@ describe('accessibilityAuditTools', () => {
     it('34: omitting include does not scan quizzes', async () => {
       const canvas = buildMockCanvas()
       const [tool] = accessibilityAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100 })) as AuditResult
+      const result = (await tool.handler({ course_id: '100' })) as AuditResult
 
       expect(canvas.quizzes.list).not.toHaveBeenCalled()
       expect(result.summary.sources_scanned).toEqual([
@@ -565,7 +568,7 @@ describe('accessibilityAuditTools', () => {
 
       const [tool] = accessibilityAuditTools(quizCanvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -612,12 +615,12 @@ describe('accessibilityAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = accessibilityAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
       expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(1)
-      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith(100, 30)
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith('100', '30')
       expect(result.findings.some((f) => f.location.id === 31)).toBe(false)
     })
 
@@ -625,7 +628,7 @@ describe('accessibilityAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = accessibilityAuditTools(canvas)
       // item-3 in the mock has no entry field — should not throw
-      await expect(tool.handler({ course_id: 100, include: ['quizzes'] })).resolves.toBeDefined()
+      await expect(tool.handler({ course_id: '100', include: ['quizzes'] })).resolves.toBeDefined()
     })
 
     // BRU-2072: caps concurrent per-quiz Canvas requests instead of firing them
@@ -663,7 +666,7 @@ describe('accessibilityAuditTools', () => {
       } as unknown as CanvasClient
 
       const [tool] = accessibilityAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['quizzes'] })
+      await tool.handler({ course_id: '100', include: ['quizzes'] })
 
       expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(25)
       expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)
@@ -706,7 +709,7 @@ describe('accessibilityAuditTools', () => {
       } as unknown as CanvasClient
 
       const [tool] = accessibilityAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['quizzes'] })
+      await tool.handler({ course_id: '100', include: ['quizzes'] })
 
       expect(canvas.newQuizzes.listItems).toHaveBeenCalledTimes(25)
       expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)

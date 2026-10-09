@@ -1,6 +1,6 @@
-import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -9,16 +9,16 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List Peer Reviews',
       description: 'List all peer reviews for an assignment in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
         return canvas.peerReviews.listForAssignment(course_id, assignment_id)
       },
     },
@@ -27,18 +27,18 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Get Submission Peer Reviews',
       description: 'List peer reviews assigned to a specific submission.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        submission_id: z.number().describe('The Canvas submission ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        submission_id: canvasIdInput().describe('The Canvas submission ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        const submission_id = params.submission_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
+        const submission_id = params.submission_id as CanvasId
         return canvas.peerReviews.listForSubmission(course_id, assignment_id, submission_id)
       },
     },
@@ -48,20 +48,20 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Assign a user to peer-review a submission.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        submission_id: z.number().describe('The Canvas submission ID'),
-        user_id: z.number().describe('The Canvas user ID of the reviewer to assign'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        submission_id: canvasIdInput().describe('The Canvas submission ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID of the reviewer to assign'),
       },
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        const submission_id = params.submission_id as number
-        const user_id = params.user_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
+        const submission_id = params.submission_id as CanvasId
+        const user_id = params.user_id as CanvasId
         return canvas.peerReviews.create(course_id, assignment_id, submission_id, user_id)
       },
     },
@@ -71,20 +71,20 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'educator',
       description: 'Remove a peer review assignment from a submission. This action is permanent.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        submission_id: z.number().describe('The Canvas submission ID'),
-        user_id: z.number().describe('The Canvas user ID of the reviewer to remove'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        submission_id: canvasIdInput().describe('The Canvas submission ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID of the reviewer to remove'),
       },
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        const submission_id = params.submission_id as number
-        const user_id = params.user_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
+        const submission_id = params.submission_id as CanvasId
+        const user_id = params.user_id as CanvasId
         await canvas.peerReviews.delete(course_id, assignment_id, submission_id, user_id)
       },
     },

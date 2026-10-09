@@ -55,8 +55,8 @@ describe('groupTools', () => {
     it('delegates to canvas.groups.list', async () => {
       const canvas = buildMockCanvas()
       const tool = groupTools(canvas).find((t) => t.name === 'list_groups')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.groups.list).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.groups.list).toHaveBeenCalledWith('1')
     })
   })
 
@@ -69,8 +69,8 @@ describe('groupTools', () => {
     it('delegates to canvas.groups.listMembers', async () => {
       const canvas = buildMockCanvas()
       const tool = groupTools(canvas).find((t) => t.name === 'list_group_members')!
-      await tool.handler({ group_id: 1 })
-      expect(canvas.groups.listMembers).toHaveBeenCalledWith(1)
+      await tool.handler({ group_id: '1' })
+      expect(canvas.groups.listMembers).toHaveBeenCalledWith('1')
     })
   })
 
@@ -97,7 +97,7 @@ describe('groupTools', () => {
         const tool = groupTools(canvas, makePseudonymizer()).find(
           (t) => t.name === 'list_group_members',
         )!
-        const result = (await tool.handler({ group_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ group_id: '1' })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
       })
 
@@ -106,7 +106,7 @@ describe('groupTools', () => {
         const tool = groupTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'list_group_members',
         )!
-        const result = (await tool.handler({ group_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ group_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })

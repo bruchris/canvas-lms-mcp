@@ -6,11 +6,12 @@ import type {
   CanvasCourse,
   CanvasUser,
 } from './types'
+import type { CanvasId } from './id'
 
 export class AccountsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async get(accountId: number): Promise<CanvasAccount> {
+  async get(accountId: CanvasId): Promise<CanvasAccount> {
     return this.client.request<CanvasAccount>(`/api/v1/accounts/${accountId}`)
   }
 
@@ -18,11 +19,14 @@ export class AccountsModule {
     return this.client.paginate<CanvasAccount>('/api/v1/accounts')
   }
 
-  async listSubAccounts(accountId: number): Promise<CanvasAccount[]> {
+  async listSubAccounts(accountId: CanvasId): Promise<CanvasAccount[]> {
     return this.client.paginate<CanvasAccount>(`/api/v1/accounts/${accountId}/sub_accounts`)
   }
 
-  async listCourses(accountId: number, params?: { search_term?: string }): Promise<CanvasCourse[]> {
+  async listCourses(
+    accountId: CanvasId,
+    params?: { search_term?: string },
+  ): Promise<CanvasCourse[]> {
     const query: Record<string, string> = {}
     if (params?.search_term) query.search_term = params.search_term
     return this.client.paginate<CanvasCourse>(
@@ -31,7 +35,7 @@ export class AccountsModule {
     )
   }
 
-  async listUsers(accountId: number, params?: { search_term?: string }): Promise<CanvasUser[]> {
+  async listUsers(accountId: CanvasId, params?: { search_term?: string }): Promise<CanvasUser[]> {
     const query: Record<string, string> = {}
     if (params?.search_term) query.search_term = params.search_term
     return this.client.paginate<CanvasUser>(
@@ -40,7 +44,7 @@ export class AccountsModule {
     )
   }
 
-  async getReports(accountId: number): Promise<CanvasAccountReport[]> {
+  async getReports(accountId: CanvasId): Promise<CanvasAccountReport[]> {
     return this.client.request<CanvasAccountReport[]>(`/api/v1/accounts/${accountId}/reports`)
   }
 

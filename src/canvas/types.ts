@@ -1,3 +1,5 @@
+import type { CanvasId } from './id'
+
 // --- Config ---
 
 export interface CanvasClientConfig {
@@ -136,8 +138,12 @@ export interface CanvasEnrollment {
   uuid?: string
 }
 
+// The `*Params` interfaces below are REQUEST bodies, not response shapes, so
+// their ID-named properties migrate with the input side in PR 1b. They live in
+// `types.ts`, which §3.6's declaration walk excludes wholesale — correct for
+// response types, which are PR 2a's, and a gap for these six. Noted in the PR.
 export interface CreateCourseParams {
-  account_id: number
+  account_id: CanvasId
   name: string
   course_code?: string
   start_at?: string
@@ -151,7 +157,7 @@ export interface UpdateCourseParams {
   end_at?: string
   default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
   syllabus_body?: string
-  grading_standard_id?: number | null
+  grading_standard_id?: CanvasId | null
 }
 
 // --- Assignments ---
@@ -960,7 +966,7 @@ export interface CreateAssignmentParams {
   points_possible?: number
   due_at?: string
   submission_types?: string[]
-  assignment_group_id?: number
+  assignment_group_id?: CanvasId
   published?: boolean
   omit_from_final_grade?: boolean
   grade_group_students_individually?: boolean
@@ -970,9 +976,9 @@ export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
 
 export interface CreateAssignmentOverrideParams {
   title?: string
-  student_ids?: number[]
-  group_id?: number
-  course_section_id?: number
+  student_ids?: CanvasId[]
+  group_id?: CanvasId
+  course_section_id?: CanvasId
   due_at?: string | null
   unlock_at?: string | null
   lock_at?: string | null
@@ -1023,12 +1029,18 @@ export interface CanvasStudentSummary {
   }
 }
 
+/**
+ * The one response type PR 1b widens (BRU-2730 §8). It is the sink for the
+ * four `analytics.ts` inline response-shape sites, so Phase 1 cannot leave it
+ * `number`; §8's ordering constraint exists because of this — **PR 2a must not
+ * widen `CourseSearchResult` again.**
+ */
 export interface CourseSearchResult {
-  id: number
+  id: CanvasId
   title: string
   type: 'page' | 'assignment' | 'discussion' | 'announcement'
   url?: string
-  course_id: number
+  course_id: CanvasId
 }
 
 export interface CanvasAssignmentAnalytics {

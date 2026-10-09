@@ -10,6 +10,7 @@ import type {
   CanvasOutcomeResultsResponse,
   CanvasOutcomeRollupsResponse,
 } from './types'
+import type { CanvasId } from './id'
 
 export const OUTCOME_CONTEXT_TYPES = ['account', 'course'] as const
 export const OUTCOME_DETAIL_LEVELS = ['abbrev', 'full'] as const
@@ -25,14 +26,14 @@ export class OutcomesModule {
 
   async getRootOutcomeGroup(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
+    contextId: CanvasId,
   ): Promise<CanvasOutcomeGroup> {
     return this.client.request<CanvasOutcomeGroup>(this.buildContextPath(contextType, contextId))
   }
 
   async listOutcomeGroups(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
+    contextId: CanvasId,
   ): Promise<CanvasOutcomeGroup[]> {
     return this.client.paginate<CanvasOutcomeGroup>(
       this.buildContextPath(contextType, contextId, 'outcome_groups'),
@@ -41,7 +42,7 @@ export class OutcomesModule {
 
   async listOutcomeGroupLinks(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
+    contextId: CanvasId,
     options?: { outcome_style?: 'abbrev' | 'full'; outcome_group_style?: 'abbrev' | 'full' },
   ): Promise<CanvasOutcomeLink[]> {
     return this.client.paginate<CanvasOutcomeLink>(
@@ -54,8 +55,8 @@ export class OutcomesModule {
 
   async getOutcomeGroup(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
-    groupId: number,
+    contextId: CanvasId,
+    groupId: CanvasId,
   ): Promise<CanvasOutcomeGroup> {
     return this.client.request<CanvasOutcomeGroup>(
       `${this.buildContextPath(contextType, contextId, 'outcome_groups')}/${groupId}`,
@@ -64,8 +65,8 @@ export class OutcomesModule {
 
   async listGroupOutcomes(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
-    groupId: number,
+    contextId: CanvasId,
+    groupId: CanvasId,
     options?: { outcome_style?: 'abbrev' | 'full' },
   ): Promise<CanvasOutcomeLink[]> {
     return this.client.paginate<CanvasOutcomeLink>(
@@ -78,8 +79,8 @@ export class OutcomesModule {
 
   async listGroupSubgroups(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
-    groupId: number,
+    contextId: CanvasId,
+    groupId: CanvasId,
   ): Promise<CanvasOutcomeGroup[]> {
     return this.client.paginate<CanvasOutcomeGroup>(
       `${this.buildContextPath(contextType, contextId, 'outcome_groups')}/${groupId}/subgroups`,
@@ -87,7 +88,7 @@ export class OutcomesModule {
   }
 
   async getOutcome(
-    outcomeId: number,
+    outcomeId: CanvasId,
     options?: { add_defaults?: boolean },
   ): Promise<CanvasOutcome> {
     return this.client.request<CanvasOutcome>(
@@ -98,8 +99,8 @@ export class OutcomesModule {
   }
 
   async getOutcomeAlignments(
-    courseId: number,
-    options?: { student_id?: number; assignment_id?: number },
+    courseId: CanvasId,
+    options?: { student_id?: CanvasId; assignment_id?: CanvasId },
   ): Promise<CanvasOutcomeAlignment[]> {
     return this.client.request<CanvasOutcomeAlignment[]>(
       this.withQuery(`/api/v1/courses/${courseId}/outcome_alignments`, {
@@ -110,10 +111,10 @@ export class OutcomesModule {
   }
 
   async getOutcomeResults(
-    courseId: number,
+    courseId: CanvasId,
     options?: {
-      user_ids?: Array<number | string>
-      outcome_ids?: number[]
+      user_ids?: Array<CanvasId>
+      outcome_ids?: CanvasId[]
       include_alignments?: boolean
       include_hidden?: boolean
     },
@@ -129,16 +130,16 @@ export class OutcomesModule {
   }
 
   async getOutcomeRollups(
-    courseId: number,
+    courseId: CanvasId,
     options?: {
       aggregate?: 'course'
       aggregate_stat?: 'mean' | 'median'
-      user_ids?: Array<number | string>
-      outcome_ids?: number[]
+      user_ids?: Array<CanvasId>
+      outcome_ids?: CanvasId[]
       include_courses?: boolean
       exclude?: Array<'missing_user_rollups' | 'missing_outcome_results'>
       sort_by?: 'student' | 'outcome'
-      sort_outcome_id?: number
+      sort_outcome_id?: CanvasId
       sort_order?: 'asc' | 'desc'
       add_defaults?: boolean
     },
@@ -160,10 +161,10 @@ export class OutcomesModule {
   }
 
   async getOutcomeContributingScores(
-    courseId: number,
-    outcomeId: number,
+    courseId: CanvasId,
+    outcomeId: CanvasId,
     options?: {
-      user_ids?: Array<number | string>
+      user_ids?: Array<CanvasId>
       only_assignment_alignments?: boolean
       show_unpublished_assignments?: boolean
     },
@@ -178,11 +179,11 @@ export class OutcomesModule {
   }
 
   async getOutcomeMasteryDistribution(
-    courseId: number,
+    courseId: CanvasId,
     options?: {
       exclude?: Array<'missing_user_rollups' | 'missing_outcome_results'>
-      outcome_ids?: number[]
-      student_ids?: Array<number | string>
+      outcome_ids?: CanvasId[]
+      student_ids?: Array<CanvasId>
       include_alignment_distributions?: boolean
       only_assignment_alignments?: boolean
       show_unpublished_assignments?: boolean
@@ -206,7 +207,7 @@ export class OutcomesModule {
 
   private buildContextPath(
     contextType: CanvasOutcomeContextType,
-    contextId: number,
+    contextId: CanvasId,
     suffix: ContextPathSuffix = 'root_outcome_group',
   ): string {
     const segment = contextType === 'account' ? 'accounts' : 'courses'

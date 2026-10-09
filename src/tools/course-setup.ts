@@ -8,6 +8,7 @@ import type {
   CanvasModuleItem,
 } from '../canvas/types'
 import type { ToolDefinition } from './types'
+import type { CanvasId } from '../canvas/id'
 
 const ALL_CHECKS = [
   'missing_due_dates',
@@ -21,7 +22,7 @@ type CheckName = (typeof ALL_CHECKS)[number]
 
 interface SetupFinding {
   type: string
-  id: number
+  id: CanvasId | number
   name: string
   detail: string
   parent_module_name?: string
@@ -155,7 +156,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const requestedChecks = (params.checks as CheckName[] | undefined) ?? [...ALL_CHECKS]
         const activeChecks = new Set<CheckName>(requestedChecks)
 

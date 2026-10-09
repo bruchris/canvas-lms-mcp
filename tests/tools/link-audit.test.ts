@@ -209,7 +209,7 @@ describe('linkAuditTools', () => {
   describe('full scan (all sources)', () => {
     async function runFullScan(): Promise<AuditResult> {
       const [tool] = linkAuditTools(buildMockCanvas())
-      return (await tool.handler({ course_id: 100 })) as AuditResult
+      return (await tool.handler({ course_id: '100' })) as AuditResult
     }
 
     it('flags a cross-course image reference in a page', async () => {
@@ -219,7 +219,7 @@ describe('linkAuditTools', () => {
           location: { type: 'pages', id: 2, title: 'Week 1' },
           kind: 'image',
           reason: 'cross_course_reference',
-          cross_course_id: 999,
+          cross_course_id: '999',
         }),
       )
     })
@@ -247,10 +247,13 @@ describe('linkAuditTools', () => {
       const result = await runFullScan()
       expect(result.findings).toContainEqual(
         expect.objectContaining({
-          location: { type: 'syllabus', id: 100, title: 'Syllabus' },
+          // The syllabus row's id IS the migrated course_id input, so it is the
+          // canonical string; the page / assignment / quiz rows keep their response
+          // numbers until PR 2a.
+          location: { type: 'syllabus', id: '100', title: 'Syllabus' },
           kind: 'link',
           reason: 'cross_course_reference',
-          cross_course_id: 50,
+          cross_course_id: '50',
         }),
       )
     })
@@ -298,7 +301,7 @@ describe('linkAuditTools', () => {
       const [tool] = linkAuditTools(canvas)
 
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['syllabus'],
       })) as AuditResult
 
@@ -314,7 +317,7 @@ describe('linkAuditTools', () => {
       const [tool] = linkAuditTools(canvas)
 
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['pages', 'announcements'],
       })) as AuditResult
 
@@ -345,7 +348,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
@@ -379,7 +382,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       if (shouldFlag) {
         expect(result.findings).toHaveLength(1)
@@ -403,7 +406,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
@@ -423,7 +426,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
@@ -443,7 +446,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
@@ -463,12 +466,12 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({
         reason: 'cross_course_reference',
-        cross_course_id: 999,
+        cross_course_id: '999',
       })
       // href reports the RAW, un-decoded attribute value; decoding is applied only
       // to the value used for classification, not to what is surfaced.
@@ -493,7 +496,7 @@ describe('linkAuditTools', () => {
       })
       const [tool] = linkAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['assignments'],
       })) as AuditResult
 
@@ -501,7 +504,7 @@ describe('linkAuditTools', () => {
       expect(result.findings[0]).toMatchObject({
         kind: 'video',
         reason: 'cross_course_reference',
-        cross_course_id: 999,
+        cross_course_id: '999',
       })
     })
 
@@ -519,13 +522,13 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({
         kind: 'video',
         reason: 'cross_course_reference',
-        cross_course_id: 999,
+        cross_course_id: '999',
       })
     })
 
@@ -543,7 +546,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(0)
     })
@@ -553,7 +556,7 @@ describe('linkAuditTools', () => {
         pages: [{ page_id: 1, url: 'p', title: 'P', published: true, updated_at: '', body: '' }],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(0)
     })
@@ -561,7 +564,10 @@ describe('linkAuditTools', () => {
     it('emits no syllabus findings and does not throw when the syllabus is null', async () => {
       const canvas = makeCanvas({ syllabus: null })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['syllabus'] })) as AuditResult
+      const result = (await tool.handler({
+        course_id: '100',
+        include: ['syllabus'],
+      })) as AuditResult
 
       expect(result.findings.some((f) => f.location.type === 'syllabus')).toBe(false)
     })
@@ -571,7 +577,7 @@ describe('linkAuditTools', () => {
         pages: [{ page_id: 1, url: 'p', title: 'P', published: true, updated_at: '' }],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(0)
     })
@@ -590,10 +596,10 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(2)
-      expect(result.findings.map((f) => f.cross_course_id).sort()).toEqual([2, 3])
+      expect(result.findings.map((f) => f.cross_course_id).sort()).toEqual(['2', '3'])
     })
 
     it('classifies an empty href on a link as empty_or_malformed', async () => {
@@ -610,7 +616,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(1)
       expect(result.findings[0]).toMatchObject({ kind: 'link', reason: 'empty_or_malformed' })
@@ -632,7 +638,7 @@ describe('linkAuditTools', () => {
         ],
       })
       const [tool] = linkAuditTools(canvas)
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: ['pages'] })) as AuditResult
 
       expect(result.findings).toHaveLength(0)
     })
@@ -644,7 +650,7 @@ describe('linkAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
 
-      const result = (await tool.handler({ course_id: 100 })) as AuditResult
+      const result = (await tool.handler({ course_id: '100' })) as AuditResult
 
       expect(canvas.quizzes.list).not.toHaveBeenCalled()
       expect(canvas.newQuizzes.listItems).not.toHaveBeenCalled()
@@ -660,7 +666,7 @@ describe('linkAuditTools', () => {
     it('flags a cross-course link in a Classic quiz description without a question_id', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -675,14 +681,14 @@ describe('linkAuditTools', () => {
         quiz_engine: 'classic',
       })
       expect(finding?.location).not.toHaveProperty('question_id')
-      expect(finding).toMatchObject({ reason: 'cross_course_reference', cross_course_id: 999 })
+      expect(finding).toMatchObject({ reason: 'cross_course_reference', cross_course_id: '999' })
     })
 
     // 29
     it('flags a cross-course image in a Classic quiz question with a question_id', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -697,7 +703,7 @@ describe('linkAuditTools', () => {
           },
           kind: 'image',
           reason: 'cross_course_reference',
-          cross_course_id: 999,
+          cross_course_id: '999',
         }),
       )
     })
@@ -706,7 +712,7 @@ describe('linkAuditTools', () => {
     it('emits no finding for a Classic quiz question with no links', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -718,12 +724,12 @@ describe('linkAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
       expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(1)
-      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith(100, 30)
+      expect(canvas.quizzes.listQuestions).toHaveBeenCalledWith('100', '30')
       expect(result.findings.some((f) => f.location.id === 31)).toBe(false)
     })
 
@@ -731,7 +737,7 @@ describe('linkAuditTools', () => {
     it('flags a cross-course image in a New Quiz item', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -746,7 +752,7 @@ describe('linkAuditTools', () => {
           },
           kind: 'image',
           reason: 'cross_course_reference',
-          cross_course_id: 999,
+          cross_course_id: '999',
         }),
       )
     })
@@ -755,10 +761,10 @@ describe('linkAuditTools', () => {
     it('scans items only for the New-Quiz-flagged assignment', async () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['quizzes'] })
+      await tool.handler({ course_id: '100', include: ['quizzes'] })
 
       expect(canvas.newQuizzes.listItems).toHaveBeenCalledTimes(1)
-      expect(canvas.newQuizzes.listItems).toHaveBeenCalledWith(100, 40)
+      expect(canvas.newQuizzes.listItems).toHaveBeenCalledWith('100', '40')
     })
 
     // 34
@@ -766,7 +772,7 @@ describe('linkAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -783,7 +789,7 @@ describe('linkAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['assignments', 'quizzes'],
       })) as AuditResult
 
@@ -798,7 +804,7 @@ describe('linkAuditTools', () => {
     it('emits exactly the three expected quiz findings (no over- or under-counting)', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -811,7 +817,7 @@ describe('linkAuditTools', () => {
     it('does not flag a same-course image in a New Quiz item', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -826,7 +832,7 @@ describe('linkAuditTools', () => {
     it('skips an entry-less New Quiz item without throwing', async () => {
       const [tool] = linkAuditTools(buildMockCanvas())
       const result = (await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['quizzes'],
       })) as AuditResult
 
@@ -870,7 +876,7 @@ describe('linkAuditTools', () => {
       } as unknown as CanvasClient
 
       const [tool] = linkAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['quizzes'] })
+      await tool.handler({ course_id: '100', include: ['quizzes'] })
 
       expect(canvas.quizzes.listQuestions).toHaveBeenCalledTimes(25)
       expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)
@@ -913,7 +919,7 @@ describe('linkAuditTools', () => {
       } as unknown as CanvasClient
 
       const [tool] = linkAuditTools(canvas)
-      await tool.handler({ course_id: 100, include: ['quizzes'] })
+      await tool.handler({ course_id: '100', include: ['quizzes'] })
 
       expect(canvas.newQuizzes.listItems).toHaveBeenCalledTimes(25)
       expect(peak).toBeLessThanOrEqual(QUIZ_SCAN_CONCURRENCY_LIMIT)
@@ -929,7 +935,7 @@ describe('linkAuditTools', () => {
       const canvas = buildMockCanvas()
       const [tool] = linkAuditTools(canvas)
 
-      const result = (await tool.handler({ course_id: 100, include: [] })) as AuditResult
+      const result = (await tool.handler({ course_id: '100', include: [] })) as AuditResult
 
       expect(canvas.pages.listWithBodies).not.toHaveBeenCalled()
       expect(canvas.assignments.list).not.toHaveBeenCalled()
@@ -956,7 +962,7 @@ describe('linkAuditTools', () => {
       const [tool] = linkAuditTools(canvas)
 
       const start = process.hrtime.bigint()
-      await tool.handler({ course_id: 100, include: ['pages'] })
+      await tool.handler({ course_id: '100', include: ['pages'] })
       const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
 
       // Generous CI-safe ceiling: the fix runs this in ~tens of ms; the old
@@ -976,7 +982,10 @@ describe('linkAuditTools', () => {
       })
       const [tool] = linkAuditTools(canvas)
 
-      const result = (await tool.handler({ course_id: 100, include: ['pages'] })) as AuditResult & {
+      const result = (await tool.handler({
+        course_id: '100',
+        include: ['pages'],
+      })) as AuditResult & {
         warnings: Array<{ location: unknown; reason: string; detail: string }>
       }
 

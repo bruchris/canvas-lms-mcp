@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { ListStudentSubmissionsOptions, SubmissionWorkflowState } from '../canvas/submissions'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import type { CanvasId } from '../canvas/id'
 
 const WORKFLOW_STATE = ['submitted', 'graded', 'pending_review', 'unsubmitted'] as const
 
@@ -92,16 +93,16 @@ export function submissionFileTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const maxFiles = (params.max_files as number | undefined) ?? DEFAULT_MAX_FILES
         const attachmentsOnly = (params.attachments_only as boolean | undefined) ?? true
 
         const listOpts: ListStudentSubmissionsOptions = {
-          student_ids: (params.student_ids as number[] | undefined) ?? (['all'] as const),
+          student_ids: (params.student_ids as CanvasId[] | undefined) ?? (['all'] as const),
           include: ['user', 'assignment'] as const,
         }
         if (params.assignment_ids !== undefined)
-          listOpts.assignment_ids = params.assignment_ids as number[]
+          listOpts.assignment_ids = params.assignment_ids as CanvasId[]
         if (params.workflow_state !== undefined)
           listOpts.workflow_state = params.workflow_state as SubmissionWorkflowState
 
