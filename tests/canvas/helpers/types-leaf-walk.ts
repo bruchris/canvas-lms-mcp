@@ -3,10 +3,15 @@
  *
  * `docs/superpowers/specs/2026-10-05-bru-2730-canvas-64bit-identifiers.md` §3.0.
  * The walk exists here rather than as a hand-maintained list of field names
- * because the list it produces is the subject of two assertions that must not
- * go stale: that every identifier field is either converted by Canvas's own
- * key regexes or named in `ID_FIELD_EXCEPTIONS`, and that the remaining
- * numeric fields — the quantities — are left alone.
+ * because the list it produces is the subject of assertions that must not go
+ * stale: that no numeric leaf is one Canvas's own key regexes would convert
+ * (the `converts` field below), and that the remaining numeric fields — the
+ * quantities — are left alone. `converts` encodes only Canvas's two key
+ * regexes; it says nothing about `ID_FIELD_EXCEPTIONS` membership, which is a
+ * declared-type property (`CanvasId` vs `number`) rather than a name-pattern
+ * one, and is checked separately via `canvasIdLeaves()` below and the
+ * `tests/canvas/normalize-ids.test.ts` suite that cross-references it against
+ * `ID_FIELD_EXCEPTIONS`.
  *
  * A hand list would rot the moment a new Canvas field lands. Deriving the
  * subject from the artifact is what makes the gate self-policing.
@@ -97,10 +102,19 @@ function strip(node: ts.TypeNode, sf: ts.SourceFile, state: StripState): StripSt
   return state
 }
 
-/** Every numeric leaf in `src/canvas/types.ts`, per §3.0's strict leaf rule. */
-export function numericLeaves(): NumericLeaf[] {
-  const text = readFileSync(TYPES_FILE, 'utf8')
-  const sf = ts.createSourceFile(TYPES_FILE, text, ts.ScriptTarget.Latest, true)
+/**
+ * Shared recursive walk behind both `numericLeaves()` and `canvasIdLeaves()`.
+ * `isTarget` decides which stripped constituents count as a match for the
+ * leaf kind being collected — `NumberKeyword` for the numeric walk, a
+ * `CanvasId` type reference for the ID walk. Everything else (container
+ * descent, array/parent tracking, the `converts` computation) is identical
+ * between the two, which is what makes the two leaf sets comparable by
+ * `name` + `arrayed` in the cross-check assertions.
+ */
+function walkLeaves(
+  sf: ts.SourceFile,
+  isTarget: (constituents: ts.TypeNode[]) => boolean,
+): NumericLeaf[] {
   const leaves: NumericLeaf[] = []
 
   const visitProperty = (
@@ -122,7 +136,7 @@ export function numericLeaves(): NumericLeaf[] {
       }
       return
     }
-    if (!state.constituents.some((c) => c.kind === ts.SyntaxKind.NumberKeyword)) return
+    if (!isTarget(state.constituents)) return
     leaves.push({
       path: full,
       name,
@@ -141,4 +155,37 @@ export function numericLeaves(): NumericLeaf[] {
     }
   }
   return leaves
+}
+
+/**
+ * Parses `src/canvas/types.ts`, or — for the negative control in
+ * `normalize-ids.test.ts` — a synthetic snippet standing in for it.
+ * `sourceOverride` only ever carries a hand-written fixture string in tests;
+ * production callers always take the default and read the real file.
+ */
+function parseTypesSource(sourceOverride?: string): ts.SourceFile {
+  const text = sourceOverride ?? readFileSync(TYPES_FILE, 'utf8')
+  return ts.createSourceFile(TYPES_FILE, text, ts.ScriptTarget.Latest, true)
+}
+
+/** Every numeric leaf in `src/canvas/types.ts`, per §3.0's strict leaf rule. */
+export function numericLeaves(sourceOverride?: string): NumericLeaf[] {
+  const sf = parseTypesSource(sourceOverride)
+  return walkLeaves(sf, (constituents) =>
+    constituents.some((c) => c.kind === ts.SyntaxKind.NumberKeyword),
+  )
+}
+
+/**
+ * Every leaf in `src/canvas/types.ts` declared as the `CanvasId` type
+ * (scalar) or `CanvasId[]` (array) — the declared-type half of the
+ * `ID_FIELD_EXCEPTIONS` cross-check: each exception entry names a field this
+ * module normalizes at the wire, and `src/canvas/types.ts` is expected to
+ * declare that same field as `CanvasId`/`CanvasId[]`, never `number`/`number[]`.
+ */
+export function canvasIdLeaves(sourceOverride?: string): NumericLeaf[] {
+  const sf = parseTypesSource(sourceOverride)
+  return walkLeaves(sf, (constituents) =>
+    constituents.some((c) => ts.isTypeReferenceNode(c) && c.typeName.getText(sf) === 'CanvasId'),
+  )
 }

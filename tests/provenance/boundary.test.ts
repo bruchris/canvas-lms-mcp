@@ -67,7 +67,24 @@ function buildCanvas(overrides: Record<string, unknown> = {}): {
   return { canvas, calls }
 }
 
-/** Registers every tool on a mock server and returns the wrapped handlers by name. */
+/**
+ * Registers every tool on a mock server and returns the wrapped handlers by
+ * name.
+ *
+ * The stub below captures the handler `registerAllTools` hands to
+ * `registerTool` — i.e. `buildHandler(tool, pseudonymizer)` from
+ * `src/tools/index.ts` — and calls it directly with plain JS objects. That
+ * handler is exactly where provenance fencing and write-side rejection live
+ * (§4, §6), which is what this file exists to exercise. It is **not** the
+ * real `McpServer.registerTool`, so none of the SDK's own Zod
+ * validation/transform ever runs here: a test in this file can hand the
+ * handler a value the real wire could never produce (e.g. a raw `number`
+ * where `canvasIdInput()` would already have transformed it to a string),
+ * and a regression that depends on that transform having run will not show
+ * up through this stub. `tests/canvas/id-input-wire.test.ts` and
+ * `tests/tools/grade-privacy-wire.test.ts` cover that boundary instead, via a
+ * real `McpServer` connected to a real `Client` over `InMemoryTransport`.
+ */
 function captureHandlers(
   canvas: CanvasClient,
 ): Map<string, (params: Record<string, unknown>) => Promise<ToolResponse>> {

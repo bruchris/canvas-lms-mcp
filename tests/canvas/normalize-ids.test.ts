@@ -14,10 +14,16 @@ import {
   ID_FIELD_EXCEPTIONS,
   normalizeCanvasIds,
   RESPONSE_ROOT,
+  type IdFieldException,
 } from '../../src/canvas/normalize-ids'
 import { computeGroupGrade, percentageOf } from '../../src/tools/grade-engine'
 import type { CanvasAssignmentGroup, CanvasSubmission } from '../../src/canvas/types'
-import { CANVAS_ARRAY_ID_KEY, CANVAS_SCALAR_ID_KEY, numericLeaves } from './helpers/types-leaf-walk'
+import {
+  CANVAS_ARRAY_ID_KEY,
+  CANVAS_SCALAR_ID_KEY,
+  canvasIdLeaves,
+  numericLeaves,
+} from './helpers/types-leaf-walk'
 
 /**
  * A faithful port of `StringifyIds.recursively_stringify_ids` at the pinned
@@ -242,6 +248,85 @@ describe('normalizeCanvasIds: the §3.2 misses Canvas does not convert', () => {
     // `CanvasOutcomeResult.links.user` and `CanvasOutcomeRollup.links.user`.
     expect(ID_FIELD_EXCEPTIONS).toHaveLength(11)
     expect(new Set(ID_FIELD_EXCEPTIONS.map((e) => e.name)).size).toBe(11)
+  })
+})
+
+describe('normalizeCanvasIds: ID_FIELD_EXCEPTIONS cross-checked against declared leaf types', () => {
+  // Independent of the `converts` soundness gate above, which only encodes
+  // Canvas's own two key regexes and says nothing about this module's own
+  // exception list. These assertions instead check the exceptions against
+  // `src/canvas/types.ts`'s declared types directly: each entry should name a
+  // field actually declared `CanvasId`/`CanvasId[]` there (not a stale or
+  // mistyped entry matching nothing), and no field matching an exception name
+  // should still be declared `number`/`number[]` (a declared-type regression
+  // that would make this module's conversion silently redundant, or worse,
+  // paper over a type that lied about what the wire actually carries).
+  const idLeaves = canvasIdLeaves()
+  const numLeaves = numericLeaves()
+
+  // `answer` is excluded from the ID-shaped check below: it is the one
+  // exception whose field is polymorphic by Canvas question type (see the
+  // comment above `ID_FIELD_EXCEPTIONS` in normalize-ids.ts) and is declared
+  // as `string | number | string[] | Record<string, unknown> | null` rather
+  // than `CanvasId` — it already admits `string` directly, which is the
+  // property that actually matters and is asserted on its own below.
+  const ID_SHAPED_EXCEPTIONS = ID_FIELD_EXCEPTIONS.filter((e) => e.name !== 'answer')
+
+  const matchesException =
+    (leaf: { name: string; arrayed: boolean }) =>
+    (exception: IdFieldException): boolean =>
+      exception.name === leaf.name && leaf.arrayed === (exception.kind === 'array')
+
+  it('every ID-shaped exception entry matches at least one declared CanvasId leaf (name + array/scalar kind)', () => {
+    const unmatched = ID_SHAPED_EXCEPTIONS.filter(
+      (exception) =>
+        !idLeaves.some(
+          (leaf) => leaf.name === exception.name && leaf.arrayed === (exception.kind === 'array'),
+        ),
+    )
+    expect(unmatched.map((e) => e.name)).toEqual([])
+  })
+
+  it('declares `answer` as a union that already admits string, not a lying number-only type', () => {
+    const answerLeaf = numLeaves.find((l) => l.name === 'answer')
+    expect(answerLeaf).toBeDefined()
+    expect(answerLeaf?.declared).toContain('string')
+    expect(answerLeaf?.declared).not.toBe('number')
+  })
+
+  it('no field matching an exception name still carries a numeric declaration in types.ts', () => {
+    const regressed = numLeaves.filter((leaf) => ID_FIELD_EXCEPTIONS.some(matchesException(leaf)))
+    expect(regressed.map((l) => l.path)).toEqual([])
+  })
+
+  it('negative control: the numeric-declaration check catches a reverted exception field', () => {
+    // A minimal synthetic types.ts snippet where `never_drop` — a real
+    // ID_FIELD_EXCEPTIONS entry — regresses from `CanvasId[]` back to the
+    // pre-migration `number[]`. This is exactly the drift the assertion above
+    // exists to catch; without it, a declared-type regression on an
+    // exception field would pass silently because the `converts` soundness
+    // gate only checks Canvas's name regexes, which `never_drop` never
+    // matches either way.
+    const regressedSource = `
+      export interface CanvasAssignmentGroup {
+        id: CanvasId
+        rules?: {
+          drop_lowest?: number
+          never_drop?: number[]
+        }
+      }
+    `
+    const regressedLeaves = numericLeaves(regressedSource)
+    const caught = regressedLeaves.filter((leaf) =>
+      ID_FIELD_EXCEPTIONS.some(matchesException(leaf)),
+    )
+    expect(caught.map((l) => l.name)).toEqual(['never_drop'])
+
+    // Control: `drop_lowest` is a genuine quantity (not in ID_FIELD_EXCEPTIONS)
+    // and must NOT be flagged by the same check, or the check would be
+    // over-broad rather than targeted at the exception list.
+    expect(regressedLeaves.some((l) => l.name === 'drop_lowest')).toBe(true)
+    expect(caught.map((l) => l.name)).not.toContain('drop_lowest')
   })
 })
 
