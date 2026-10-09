@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.33.0...canvas-lms-mcp-v2.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **canvas:** the 122 identifier fields Canvas's key regexes convert and 11 of the 12 fields they miss change from number to CanvasId (string) in src/canvas/types.ts, so consumers of the independently importable CanvasClient see a type change on every response identifier, and tool text payloads carry "id": "123" rather than "id": 123. The transitional helper canvasIdFromResponse, added by PR 1b and documented there as PR 2a's to delete, is removed from the canvas-lms-mcp/canvas export.
+* **canvas:** adopt canonical Canvas IDs across inputs, signatures and handlers (BRU-2827) ([#396](https://github.com/bruchris/canvas-lms-mcp/issues/396))
+
+### Features
+
+* **canvas:** adopt canonical Canvas IDs across inputs, signatures and handlers (BRU-2827) ([#396](https://github.com/bruchris/canvas-lms-mcp/issues/396)) ([8effa9d](https://github.com/bruchris/canvas-lms-mcp/commit/8effa9dc9ea073cb02f77aac7ca126b6ffd00458))
+* **canvas:** normalize response identifiers to canonical Canvas IDs (BRU-2828) ([#399](https://github.com/bruchris/canvas-lms-mcp/issues/399)) ([7dc3a3f](https://github.com/bruchris/canvas-lms-mcp/commit/7dc3a3f3e787dba55308e5f287036d277eefc857))
+* **canvas:** opt-in Canvas string-ID Accept header on all client paths (BRU-2828) ([#402](https://github.com/bruchris/canvas-lms-mcp/issues/402)) ([1760407](https://github.com/bruchris/canvas-lms-mcp/commit/176040766301ef5d72584ea01080c8031b91cb45))
+* **quizzes:** add delete_quiz and delete_quiz_question for Classic Quizzes ([#369](https://github.com/bruchris/canvas-lms-mcp/issues/369)) ([cdfe6e2](https://github.com/bruchris/canvas-lms-mcp/commit/cdfe6e233f32cf4630e5100b467f4c01fed0b774))
+
+
+### Documentation
+
+* **canvas:** correct PR [#396](https://github.com/bruchris/canvas-lms-mcp/issues/396) review documentation findings (BRU-2838) ([#398](https://github.com/bruchris/canvas-lms-mcp/issues/398)) ([83dc8ca](https://github.com/bruchris/canvas-lms-mcp/commit/83dc8ca27a569724fce57238cfd472f682bf851d))
+
 ## [1.33.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.1...canvas-lms-mcp-v1.33.0) (2026-10-09)
 
 
