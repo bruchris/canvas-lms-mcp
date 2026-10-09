@@ -334,7 +334,7 @@ All errors returned as structured MCP content, never thrown:
 | `grade_submission` | write | Post a grade to a submission |
 | `comment_on_submission` | write | Post a comment, optionally with a file attachment (uses Canvas's comment file upload workflow — not general file uploads) |
 
-#### Rubrics (5 tools)
+#### Rubrics (7 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -343,6 +343,8 @@ All errors returned as structured MCP content, never thrown:
 | `get_rubric_assessment` | read | Existing assessment for a submission |
 | `submit_rubric_assessment` | write | Grade via rubric criteria |
 | `create_rubric` | write | Create a new rubric in a course with criteria and rating levels |
+| `attach_rubric` | write | Attach an existing course rubric to an assignment (share one rubric across many assignments) |
+| `delete_rubric` | write | Permanently delete a rubric and every assignment association on it |
 
 #### Quizzes (9 tools)
 
@@ -679,7 +681,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `upload_submission_file` | write | Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called. |
 | `submit_assignment` | write | Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids. |
 
-**Totals: 169 tools (117 read, 52 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 170th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 169.
+**Totals: 171 tools (117 read, 54 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 172nd tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 171.
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand. After updating the base count, also update the conditional-tool ordinal in the FERPA Mode section below: it must always equal **base + 1** (the `resolve_pseudonym` tool is never included in the base total).
 
@@ -1082,7 +1084,7 @@ as the un-annotated part of each line. Two caveats on reading it as a historical
 - OAuth 2.0 flow — **shipped in 1.30.0** as the `oauth_brokered` profile
 
 ### Deliberate constraints
-- Destructive write operations are opt-out, not opt-in: 52 write tools ship, including 11 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 9 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
+- Destructive write operations are opt-out, not opt-in: 54 write tools ship, including 12 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 10 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
 - ~~No account-level admin tools~~ — **false since 0.5.0**: `list_accounts`, `get_account`, `list_account_users`, `list_account_courses` and `list_account_notifications` all ship. Unlike the exclusions above, this list is written in the present tense, so the line is struck rather than annotated (BRU-2695)
 - Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 

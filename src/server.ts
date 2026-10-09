@@ -70,7 +70,7 @@ export interface CanvasMCPServerConfig {
    * Destructive-tool policy (BRU-2444, design BRU-2390 §7).
    *
    * - `allow` (default) — today's behaviour, byte-for-byte.
-   * - `block` — the nine irreversible delete tools are not registered at all.
+   * - `block` — the ten irreversible delete tools are not registered at all.
    *
    * When omitted, `CANVAS_DESTRUCTIVE_TOOLS` from the environment is used, so a
    * library embedder that never goes through `parseArgs` still honours the

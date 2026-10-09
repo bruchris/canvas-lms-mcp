@@ -122,7 +122,7 @@ describe('resolveDestructiveToolsMode', () => {
 })
 
 describe('destructive tool registry', () => {
-  it('gates exactly the nine irreversible deletes selected by the design', () => {
+  it('gates exactly the ten irreversible deletes selected by the design', () => {
     expect([...GATED_DESTRUCTIVE_TOOLS].sort()).toEqual([
       'delete_appointment_group',
       'delete_assignment',
@@ -133,6 +133,7 @@ describe('destructive tool registry', () => {
       'delete_page',
       'delete_quiz',
       'delete_quiz_question',
+      'delete_rubric',
     ])
   })
 

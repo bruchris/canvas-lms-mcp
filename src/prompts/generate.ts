@@ -129,9 +129,9 @@ export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
  * move when a deployer, or a future default, changes policy:
  *
  * - `assignmentSubmission: true` includes the two opt-in submission tools.
- * - `destructiveTools: 'allow'` keeps the nine irreversible deletes in the
+ * - `destructiveTools: 'allow'` keeps the ten irreversible deletes in the
  *   registry. Left unset this follows `DEFAULT_DESTRUCTIVE_TOOLS_MODE`, and if
- *   that default ever flips to `block` the set drops from 52 names to 43 —
+ *   that default ever flips to `block` the set drops from 54 names to 44 —
  *   silently un-marking `canvas-office-hours` as a workflow that deletes.
  */
 export function collectWriteToolNames(): Set<string> {

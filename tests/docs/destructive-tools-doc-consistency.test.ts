@@ -7,7 +7,7 @@ import { GATED_DESTRUCTIVE_TOOLS, UNGATED_DELETE_TOOLS } from '../../src/tools/d
 //
 // The README's "Destructive tool policy" table is a *safety* list: a reader
 // decides whether `block` covers their risk by reading it. A table that lists
-// eight of the nine blocked tools is worse than no table, because it reads as
+// ten of the ten blocked tools is worse than no table, because it reads as
 // complete. Partial documentation of a write-tool list has already shipped in
 // this repo once, so this asserts completeness in both directions rather than
 // merely that the section exists.
@@ -27,7 +27,7 @@ describe('README destructive-tools documentation', () => {
   it('documents every gated tool by name', () => {
     const section = destructiveSection()
     // Anti-vacuity: an empty registry would satisfy the loop below trivially.
-    expect(GATED_DESTRUCTIVE_TOOLS.size).toBe(9)
+    expect(GATED_DESTRUCTIVE_TOOLS.size).toBe(10)
 
     const undocumented = [...GATED_DESTRUCTIVE_TOOLS].filter(
       (name) => !section.includes(`\`${name}\``),

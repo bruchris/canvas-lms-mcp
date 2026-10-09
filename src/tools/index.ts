@@ -31,7 +31,7 @@ const PSEUDONYM_META_NOTE =
  *
  * This is also the single choke point for the destructive-tools policy
  * (BRU-2444): `registerAllTools` builds its registration list from here, so
- * `features.destructiveTools === 'block'` removes the nine irreversible
+ * `features.destructiveTools === 'block'` removes the ten irreversible
  * deletes from every consumer of the tool set at once — no caller can route
  * around it by assembling tools from the catalog directly.
  */
