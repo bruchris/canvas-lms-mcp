@@ -1,6 +1,7 @@
 import { version } from '../../package.json'
 import { normalizeCanvasIds } from './normalize-ids'
 import { appendCanvasQuery, type CanvasQueryParams } from './query'
+import { stringIdsAcceptHeader } from './string-ids'
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
 export class CanvasApiError extends Error {
@@ -63,10 +64,7 @@ export class CanvasHttpClient {
       )
     }
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
-      'User-Agent': USER_AGENT,
-    }
+    const headers: Record<string, string> = this.canvasHeaders(url)
     if (init.body) {
       headers['Content-Type'] = 'application/json'
     }
@@ -105,12 +103,9 @@ export class CanvasHttpClient {
     let pages = 0
 
     while (nextUrl && pages < this.maxPaginationPages) {
-      const response = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          'User-Agent': USER_AGENT,
-        },
-      })
+      // Inside the loop, keyed on `nextUrl`: a followed `Link` rel="next" URL
+      // must get the same header block, and is judged on its own pathname.
+      const response = await fetch(nextUrl, { headers: this.canvasHeaders(nextUrl) })
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
@@ -146,12 +141,9 @@ export class CanvasHttpClient {
     let pages = 0
 
     while (nextUrl && pages < this.maxPaginationPages) {
-      const response = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          'User-Agent': USER_AGENT,
-        },
-      })
+      // Inside the loop, keyed on `nextUrl`: a followed `Link` rel="next" URL
+      // must get the same header block, and is judged on its own pathname.
+      const response = await fetch(nextUrl, { headers: this.canvasHeaders(nextUrl) })
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
@@ -173,6 +165,22 @@ export class CanvasHttpClient {
 
     this.assertNotTruncated(nextUrl, endpoint)
     return results
+  }
+
+  /**
+   * The header block every Canvas request shares. Defining it in one place is
+   * what makes "the string-ID Accept header is on all three response paths"
+   * (BRU-2730 §5) structural rather than three coincidences.
+   *
+   * Takes the fully-resolved URL because the negotiation decision is per URL:
+   * `/api/quiz/v1` is excluded by pathname prefix.
+   */
+  private canvasHeaders(url: string): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.token}`,
+      'User-Agent': USER_AGENT,
+      ...stringIdsAcceptHeader(url),
+    }
   }
 
   /**
