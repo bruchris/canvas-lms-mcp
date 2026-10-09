@@ -212,6 +212,7 @@ function buildFullMockCanvas(): CanvasClient {
     },
     activityStream: {
       getSummary: async () => [],
+      getStream: async () => [],
     },
   } as unknown as CanvasClient
 }
@@ -222,7 +223,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 168 default tools across all domains (170 with assignmentSubmission)', () => {
+  it('returns all 169 default tools across all domains (171 with assignmentSubmission)', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -357,13 +358,14 @@ describe('getAllTools', () => {
     expect(names).toContain('get_outcome_rollups')
     expect(names).toContain('get_outcome_contributing_scores')
     expect(names).toContain('get_outcome_mastery_distribution')
-    // Student (6)
+    // Student (7)
     expect(names).toContain('get_my_courses')
     expect(names).toContain('get_my_grades')
     expect(names).toContain('get_my_submissions')
     expect(names).toContain('get_my_upcoming_assignments')
     expect(names).toContain('get_my_submission_feedback')
     expect(names).toContain('get_my_activity_stream_summary')
+    expect(names).toContain('get_my_activity_stream')
     // Dashboard (4)
     expect(names).toContain('get_dashboard_cards')
     expect(names).toContain('get_todo_items')
@@ -427,14 +429,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(168)
+    expect(tools).toHaveLength(169)
   })
 
-  it('returns 170 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 171 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(170)
+    expect(tools).toHaveLength(171)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })

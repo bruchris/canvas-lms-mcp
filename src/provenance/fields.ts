@@ -32,6 +32,27 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
   // today and exists so a widened projection is covered the day it lands.
   list_submissions_awaiting_grading: { body: 'submission body', comment: 'submission comment' },
   get_my_submission_feedback: { comment: 'submission comment' },
+  // The cross-course activity stream. `message` covers the DiscussionTopic /
+  // Announcement arm, each `root_discussion_entries[].message`, and each
+  // `latest_messages[].message` on a Conversation item; `body` and `comment`
+  // cover the Submission arm, whose merged `submission_json` carries the
+  // submission body and `submission_comments[]` (Canvas sets each comment's
+  // `body` from its `comment`, so both keys hold the same text).
+  //
+  // Three deliberate omissions. `title` is NOT fenced, following
+  // list_discussions / get_discussion — and here it would also hit the Message
+  // arm's Canvas-generated notification subject and the AssessmentRequest
+  // arm's synthesised "Peer Review for …" string, both server-authored.
+  // `name` is NOT fenced: the Submission arm merges `includes = %w[… assignment
+  // course …]`, so it would fence course and assignment names — the exact
+  // over-match this header warns about. `author_name` is NOT fenced because it
+  // is a name, and names are the pseudonymizer's job; the two layers must not
+  // both rewrite one value.
+  get_my_activity_stream: {
+    message: 'activity stream message',
+    body: 'submission body',
+    comment: 'submission comment',
+  },
 
   // Rank 2 — any enrolled student can author a discussion message, and
   // `post_discussion_entry` / `update_discussion` publish as the operator.

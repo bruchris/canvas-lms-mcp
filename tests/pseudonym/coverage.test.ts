@@ -32,6 +32,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'explain_grade',
   'project_grade',
   'get_my_submission_feedback',
+  'get_my_activity_stream',
   'get_quiz_question_responses',
   'find_student_across_courses',
   'list_appointment_group_users',

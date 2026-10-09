@@ -1026,6 +1026,131 @@ export interface CanvasActivityStreamSummaryEntry {
   unread_count: number
 }
 
+/**
+ * One `root_discussion_entries[]` entry on a `DiscussionTopic` / `Announcement`
+ * activity-stream item. Canvas caps the array at `StreamItem::LATEST_ENTRY_LIMIT`
+ * (3) at write time, and the nested `user` is the only place the stream spells a
+ * discussion author with an identifier beside the name.
+ */
+export interface CanvasActivityStreamRootEntry {
+  user: { user_id: CanvasId; user_name: string }
+  message: string | null
+}
+
+/**
+ * One `latest_messages[]` entry on a `Conversation` activity-stream item, built
+ * by `StreamItem#prepare_conversation`: `{id, created_at, author_id, message,
+ * participating_user_ids}`.
+ *
+ * Note what is NOT here: no name of any kind. The stream's conversation arm
+ * carries identifiers and message text only, which is why
+ * `Pseudonymizer.anonymizeActivityStream` has nothing to rewrite on it (the
+ * pseudonymizer rewrites names, never ids — `applyPseudonymToUser` preserves
+ * `user.id`). The message body is handled by provenance fencing instead.
+ */
+export interface CanvasActivityStreamConversationMessage {
+  id: CanvasId
+  created_at: string
+  author_id: CanvasId
+  message: string
+  participating_user_ids: CanvasId[]
+}
+
+/**
+ * One entry from `GET /users/self/activity_stream`.
+ *
+ * `context_type` is `"Course"` | `"Group"` and EXACTLY ONE of `course_id` /
+ * `group_id` is present — the key name is derived from the context type by
+ * Canvas's `Api::V1::Context#context_data`, so the other key is ABSENT, not
+ * null. Canvas's own doc block shows both keys with `group_id: null`; it is
+ * wrong. Every optional field is therefore `?` and never `| null`: a
+ * `null`-checking consumer cannot detect an absent key.
+ *
+ * The index signature is deliberate, not laziness. The `Submission` arm merges a
+ * whole `submission_json(submission, assignment, …, includes = %w[submission_comments
+ * assignment course html_url user])` into the item, so the key set of that one arm
+ * is as wide as Canvas's submission serializer and grows with it. The fields named
+ * below are the ones this server reads, pseudonymizes or fences; everything else
+ * passes through untyped rather than being silently dropped from the declaration.
+ */
+export interface CanvasActivityStreamEntry {
+  /** The stream item's own id, not the underlying object's. */
+  id: CanvasId
+  created_at: string
+  updated_at: string
+  title: string | null
+  message: string | null
+  /**
+   * A Ruby class name (`stream_item.data.class.name`), overwritten to
+   * `"WebConference"` / `"Collaboration"` for those arms. Not a closed set —
+   * `(string & {})` keeps it open, because the value is computed at runtime and
+   * the serializer's `else` arm raises rather than enumerating.
+   */
+  type:
+    | 'DiscussionTopic'
+    | 'Announcement'
+    | 'Conversation'
+    | 'Message'
+    | 'Submission'
+    | 'WebConference'
+    | 'Collaboration'
+    | 'AssessmentRequest'
+    | 'DiscussionEntry'
+    | (string & {})
+  /** Re-derived from `conversation_participants` on the `Conversation` arm, where it may be null. */
+  read_state: boolean | null
+  context_type?: 'Course' | 'Group' | (string & {})
+  course_id?: CanvasId
+  group_id?: CanvasId
+  html_url?: string
+  /** `Message` items set `url` alongside `html_url`, both from `data.url`. */
+  url?: string
+
+  // DiscussionTopic / Announcement
+  discussion_topic_id?: CanvasId
+  announcement_id?: CanvasId
+  total_root_discussion_entries?: number
+  require_initial_post?: boolean | null
+  user_has_posted?: boolean | null
+  root_discussion_entries?: CanvasActivityStreamRootEntry[]
+
+  // Conversation
+  conversation_id?: CanvasId
+  private?: boolean
+  participant_count?: number
+  latest_messages?: CanvasActivityStreamConversationMessage[]
+
+  // Message (a notification, not user-authored text)
+  message_id?: CanvasId
+  notification_category?: string | null
+
+  // Submission — plus everything else `submission_json` merges in.
+  submission_id?: CanvasId
+  assignment_id?: CanvasId
+  user_id?: CanvasId
+  grader_id?: CanvasId | null
+  body?: string | null
+  user?: CanvasUser
+  submission_comments?: CanvasSubmissionComment[]
+
+  // WebConference / Collaboration
+  web_conference_id?: CanvasId
+  collaboration_id?: CanvasId
+
+  // AssessmentRequest
+  assessment_request_id?: CanvasId
+
+  /**
+   * `DiscussionEntry` only. The serializer emits this name with NO accompanying
+   * identifier (`hash["author_name"] = discussion_entry.author_name` is the whole
+   * arm beside `message`), so a stable pseudonym is not derivable for it — see
+   * `Pseudonymizer.anonymizeActivityStream`.
+   */
+  author_name?: string
+
+  [key: string]: unknown
+}
+
 export interface CanvasStudentSummary {
   id: CanvasId
   page_views: number

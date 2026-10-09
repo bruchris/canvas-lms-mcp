@@ -12,6 +12,8 @@
 
 import type { CanvasId } from '../canvas/id'
 import type {
+  CanvasActivityStreamEntry,
+  CanvasActivityStreamRootEntry,
   CanvasAppointmentGroup,
   CanvasCalendarEvent,
   CanvasConversation,
@@ -35,6 +37,27 @@ import {
   type CourseMap,
   type StudentEntry,
 } from './store'
+
+/**
+ * Pseudonym scope for an activity-stream item that carries neither `course_id`
+ * nor `group_id`. Unreachable on a well-formed response — every name-bearing
+ * arm of `stream_item_json` has a context — and it exists so that an
+ * unexpected shape fails CLOSED (a pseudonym from an isolated bucket) rather
+ * than open (a real name). Distinct from any course and from any
+ * `_group_<id>` / `_apptgrp_<id>` scope, so no identity map is ever merged.
+ */
+const STREAM_NO_CONTEXT_SCOPE = '_stream_nocontext'
+
+/**
+ * Replacement for `author_name` on a `DiscussionEntry` activity-stream item.
+ *
+ * The serializer emits that name with no identifier anywhere in the item, so
+ * there is nothing to key a stable pseudonym on — and inventing one keyed by
+ * the name itself would write real names into the on-disk map as keys. A fixed
+ * literal is the honest encoding: it says the name was withheld rather than
+ * implying a `Student N` the caller could correlate.
+ */
+export const WITHHELD_AUTHOR_NAME = 'Author name withheld'
 
 export interface PseudonymizerConfig {
   /** Canvas base URL — used to key the per-host map directory. */
@@ -287,6 +310,49 @@ export class Pseudonymizer {
   }
 
   /**
+   * Pseudonymize the PII arms of a `GET /users/self/activity_stream` response.
+   *
+   * **Scope.** The stream is cross-course by construction, so there is no single
+   * course to key the pseudonym map on. Each item is scoped individually by its
+   * own `course_id`, which is what every other wrapped tool already does — so
+   * the stream agrees with `list_submissions` on the same student in the same
+   * course. A group-context item carries no `course_id` at all (Canvas emits one
+   * key, named after the context type), and gets the isolated synthetic scope
+   * `_group_<group_id>`, following the `_apptgrp_<id>` precedent above. Course
+   * and group identity maps are never merged.
+   *
+   * **Three arms carry a name; the fourth does not.** Measured against
+   * `lib/api/v1/stream_item.rb#stream_item_json`:
+   *
+   * - `root_discussion_entries[].user.user_name` — a name WITH an id, so it gets
+   *   an ordinary scope-stable pseudonym.
+   * - the `Submission` arm's `user` + `submission_comments[].author_name` —
+   *   delegated to `anonymizeSubmission`, after pre-warming the non-grader
+   *   comment authors so a peer reviewer's name cannot survive on a
+   *   single-submission payload (see the inline note below).
+   * - `author_name` on a `DiscussionEntry` item — a name with NO identifier
+   *   anywhere in the item, so no stable pseudonym is derivable. Withheld
+   *   outright rather than left in place: failing closed is the only safe
+   *   reading, and `html_url` still reaches the pseudonymized entry through
+   *   `get_discussion`.
+   * - the `Conversation` arm's `latest_messages[]` is `{id, created_at,
+   *   author_id, message, participating_user_ids}` — identifiers and text, no
+   *   name. Nothing to rewrite; ids are preserved by every existing
+   *   `anonymize*` method too (`applyPseudonymToUser` keeps `user.id`), and the
+   *   message text is provenance-fenced rather than pseudonymized.
+   */
+  async anonymizeActivityStream(
+    items: ReadonlyArray<CanvasActivityStreamEntry>,
+  ): Promise<CanvasActivityStreamEntry[]> {
+    if (!this.isEnabled() || !this.host) return [...items]
+    const out: CanvasActivityStreamEntry[] = []
+    for (const item of items) {
+      out.push(await this.anonymizeActivityStreamEntry(item))
+    }
+    return out
+  }
+
+  /**
    * Look up the real user_id behind a pseudonym. Returns `null` when reverse
    * lookup is disabled, the host is invalid, or the pseudonym is unknown.
    * Audit-logs every successful and failed lookup.
@@ -329,6 +395,85 @@ export class Pseudonymizer {
   }
 
   // --- Internals --------------------------------------------------------------
+
+  /**
+   * The pseudonym scope for one activity-stream item. Exactly one of
+   * `course_id` / `group_id` is present on a real item; `STREAM_NO_CONTEXT_SCOPE`
+   * is the fail-closed backstop for neither, so an unexpected shape still gets
+   * a pseudonym rather than passing a real name through.
+   */
+  private activityStreamScope(item: CanvasActivityStreamEntry): CanvasId | string {
+    if (item.course_id !== undefined) return item.course_id
+    if (item.group_id !== undefined) return `_group_${item.group_id}`
+    return STREAM_NO_CONTEXT_SCOPE
+  }
+
+  private async anonymizeActivityStreamEntry(
+    item: CanvasActivityStreamEntry,
+  ): Promise<CanvasActivityStreamEntry> {
+    const scope = this.activityStreamScope(item)
+    let out = item
+
+    if (item.root_discussion_entries && item.root_discussion_entries.length > 0) {
+      const entries: CanvasActivityStreamRootEntry[] = []
+      for (const entry of item.root_discussion_entries) {
+        if (!entry.user) {
+          entries.push(entry)
+          continue
+        }
+        // Routed through anonymizeUser so role classification stays in one
+        // place, then only the resolved name is read back — the stream's
+        // `{user_id, user_name}` pair is not a CanvasUser and must keep its
+        // own key names.
+        const resolved = await this.anonymizeUser(scope, {
+          id: entry.user.user_id,
+          name: entry.user.user_name,
+        } as CanvasUser)
+        entries.push({ ...entry, user: { ...entry.user, user_name: resolved.name } })
+      }
+      out = { ...out, root_discussion_entries: entries }
+    }
+
+    if (typeof item.author_name === 'string' && item.author_name.length > 0) {
+      out = { ...out, author_name: WITHHELD_AUTHOR_NAME }
+    }
+
+    if (item.user !== undefined || item.submission_comments !== undefined) {
+      // Pre-warm the comment authors. `anonymizeSubmission` rewrites an
+      // `author_name` only when that author is ALREADY in the scope's map, so
+      // on a single submission a peer reviewer's real name survives otherwise.
+      // `list_submissions` gets away with it because listing the course warms
+      // the map; a stream item is one submission, so it does not.
+      //
+      // The recorded grader is excluded, so staff feedback stays attributable —
+      // the same call `get_my_submission_feedback` makes on this exact payload
+      // shape. When `grader_id` is absent the loop warms every author, which
+      // fails closed (a masked teacher name) rather than open (a leaked peer).
+      //
+      // The submitting student first, so pseudonym indices are allocated in the
+      // order a reader of the payload would expect (the submitter, then their
+      // commenters) rather than in comment order.
+      if (item.user !== undefined) await this.anonymizeUser(scope, item.user)
+
+      const graderKey = item.grader_id == null ? null : String(item.grader_id)
+      for (const comment of item.submission_comments ?? []) {
+        if (graderKey !== null && String(comment.author_id) === graderKey) continue
+        await this.anonymizeUser(scope, {
+          id: comment.author_id,
+          name: comment.author_name,
+        } as CanvasUser)
+      }
+
+      const anonymized = await this.anonymizeSubmission(scope, item as unknown as CanvasSubmission)
+      out = { ...out }
+      if (anonymized.user !== undefined) out.user = anonymized.user
+      if (anonymized.submission_comments !== undefined) {
+        out.submission_comments = anonymized.submission_comments
+      }
+    }
+
+    return out
+  }
 
   private async anonymizeCalendarEventUser(
     apptGroupId: CanvasId,

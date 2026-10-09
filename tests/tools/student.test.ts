@@ -4,6 +4,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
+import type { CanvasActivityStreamEntry } from '../../src/canvas/types'
+import {
+  CANVAS_MESSAGE_CHARACTER_CAP,
+  FIXTURE_CONTEXT_MESSAGE,
+  FIXTURE_GROUP_DISCUSSION,
+  FIXTURE_MESSAGE_AT_CAP,
+} from '../fixtures/activity-stream'
 import { CanvasApiError } from '../../src/canvas'
 import type {
   CanvasCourse,
@@ -169,12 +176,13 @@ describe('studentTools', () => {
       },
       activityStream: {
         getSummary: vi.fn().mockResolvedValue([{ type: 'Submission', count: 5, unread_count: 2 }]),
+        getStream: vi.fn().mockResolvedValue([]),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 6 tool definitions', () => {
-    expect(studentTools(buildMockCanvas())).toHaveLength(6)
+  it('returns an array with 7 tool definitions', () => {
+    expect(studentTools(buildMockCanvas())).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -186,6 +194,7 @@ describe('studentTools', () => {
       'get_my_upcoming_assignments',
       'get_my_submission_feedback',
       'get_my_activity_stream_summary',
+      'get_my_activity_stream',
     ])
   })
 
@@ -665,6 +674,140 @@ describe('studentTools', () => {
       )
       const tool = studentTools(canvas).find((t) => t.name === 'get_my_activity_stream_summary')!
       await expect(tool.handler({})).rejects.toThrow(CanvasApiError)
+    })
+  })
+
+  describe('get_my_activity_stream', () => {
+    function streamCanvas(items: CanvasActivityStreamEntry[]): CanvasClient {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.activityStream.getStream).mockResolvedValue(items)
+      return canvas
+    }
+
+    function streamTool(canvas: CanvasClient) {
+      return studentTools(canvas).find((t) => t.name === 'get_my_activity_stream')!
+    }
+
+    /** `n` plausible common-prefix-only items — enough to exercise the cap. */
+    function manyItems(n: number): CanvasActivityStreamEntry[] {
+      return Array.from({ length: n }, (_, i) => ({
+        ...FIXTURE_CONTEXT_MESSAGE,
+        id: String(10_000 + i),
+      }))
+    }
+
+    type StreamEnvelope = {
+      items: CanvasActivityStreamEntry[]
+      total_items: number
+      truncated: boolean
+      truncation_note: string | null
+      retention_note: string
+    }
+
+    it('reports truncation and caps the items at max_items (AC-11)', async () => {
+      const canvas = streamCanvas(manyItems(250))
+      const result = (await streamTool(canvas).handler({ max_items: 100 })) as StreamEnvelope
+
+      expect(result.items).toHaveLength(100)
+      expect(result.total_items).toBe(100)
+      expect(result.truncated).toBe(true)
+      expect(result.truncation_note).not.toBeNull()
+      expect(result.truncation_note).toContain('max_items')
+      expect(result.retention_note).toBeTruthy()
+    })
+
+    it('asks the client for one item past the limit, so truncation is knowable at all (AC-11)', async () => {
+      // paginate() reports what it accumulated, never whether more was waiting.
+      // Asking for exactly `max_items` makes "exactly 100 exist" and "more
+      // exist" indistinguishable, and `truncated` would be a guess.
+      const canvas = streamCanvas(manyItems(250))
+      await streamTool(canvas).handler({ max_items: 100 })
+
+      expect(canvas.activityStream.getStream).toHaveBeenCalledWith({
+        onlyActiveCourses: undefined,
+        maxItems: 101,
+      })
+    })
+
+    it('reports no truncation on a short stream, and still carries retention_note (AC-11)', async () => {
+      const canvas = streamCanvas(manyItems(10))
+      const result = (await streamTool(canvas).handler({})) as StreamEnvelope
+
+      expect(result.items).toHaveLength(10)
+      expect(result.total_items).toBe(10)
+      expect(result.truncated).toBe(false)
+      expect(result.truncation_note).toBeNull()
+      // Unconditional: `truncated` answers "did we stop early?", never "did
+      // Canvas already forget?" — and the retention horizon is an instance
+      // Setting with no API surface, so there is no condition under which a
+      // nullable retention note could be set correctly.
+      expect(result.retention_note).toContain('stream_items_ttl')
+    })
+
+    it('defaults the cap to 100 when max_items is omitted', async () => {
+      const canvas = streamCanvas(manyItems(5))
+      await streamTool(canvas).handler({})
+
+      expect(canvas.activityStream.getStream).toHaveBeenCalledWith({
+        onlyActiveCourses: undefined,
+        maxItems: 101,
+      })
+    })
+
+    it('forwards only_active_courses', async () => {
+      const canvas = streamCanvas([])
+      await streamTool(canvas).handler({ only_active_courses: true })
+
+      expect(canvas.activityStream.getStream).toHaveBeenCalledWith({
+        onlyActiveCourses: true,
+        maxItems: 101,
+      })
+    })
+
+    it('round-trips a group-context item without inventing a course_id (AC-7)', async () => {
+      const canvas = streamCanvas([FIXTURE_GROUP_DISCUSSION])
+      const result = (await streamTool(canvas).handler({})) as StreamEnvelope
+
+      const item = result.items[0]!
+      // Absent, not null: Canvas emits one id key, named after the context type.
+      expect(Object.keys(item)).not.toContain('course_id')
+      expect(item.course_id).toBeUndefined()
+      expect(item.group_id).toBe('7')
+      expect(item.context_type).toBe('Group')
+    })
+
+    it('round-trips a common-prefix-only ContextMessage item (fixture 1)', async () => {
+      const canvas = streamCanvas([FIXTURE_CONTEXT_MESSAGE])
+      const result = (await streamTool(canvas).handler({})) as StreamEnvelope
+
+      expect(result.items[0]).toEqual(FIXTURE_CONTEXT_MESSAGE)
+      expect(result.truncated).toBe(false)
+    })
+
+    it('adds no truncation flag to a message of exactly 4096 characters (fixture 6)', async () => {
+      // Canvas cuts `message` at 4096 characters at store time with NO marker,
+      // so a cut message and a message that happens to be 4096 characters are
+      // indistinguishable. A `message_truncated` heuristic would be a
+      // false-positive generator; this test fails the day one is added.
+      const canvas = streamCanvas([FIXTURE_MESSAGE_AT_CAP])
+      const result = (await streamTool(canvas).handler({})) as StreamEnvelope
+
+      const item = result.items[0]!
+      expect((item.message as string).length).toBe(CANVAS_MESSAGE_CHARACTER_CAP)
+      expect(Object.keys(item)).toEqual(Object.keys(FIXTURE_MESSAGE_AT_CAP))
+      for (const invented of ['message_truncated', 'truncated', 'message_length']) {
+        expect(Object.keys(item)).not.toContain(invented)
+      }
+      // Envelope truncation is about max_items only, never about Canvas's cut.
+      expect(result.truncated).toBe(false)
+    })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.activityStream.getStream).mockRejectedValue(
+        new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/activity_stream'),
+      )
+      await expect(streamTool(canvas).handler({})).rejects.toThrow(CanvasApiError)
     })
   })
 })
