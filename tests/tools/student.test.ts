@@ -167,11 +167,14 @@ describe('studentTools', () => {
       users: {
         getUpcomingAssignments: vi.fn().mockResolvedValue([mockUpcomingEvent]),
       },
+      activityStream: {
+        getSummary: vi.fn().mockResolvedValue([{ type: 'Submission', count: 5, unread_count: 2 }]),
+      },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
-    expect(studentTools(buildMockCanvas())).toHaveLength(5)
+  it('returns an array with 6 tool definitions', () => {
+    expect(studentTools(buildMockCanvas())).toHaveLength(6)
   })
 
   it('exports tools with correct names', () => {
@@ -182,6 +185,7 @@ describe('studentTools', () => {
       'get_my_submissions',
       'get_my_upcoming_assignments',
       'get_my_submission_feedback',
+      'get_my_activity_stream_summary',
     ])
   })
 
@@ -635,6 +639,32 @@ describe('studentTools', () => {
         expect(peerOnB.author_role).toBe('peer')
         expect(peerOnB.author_name).toMatch(/^Student \d+$/) // same user, masked as a peer here
       })
+    })
+  })
+
+  describe('get_my_activity_stream_summary', () => {
+    it('delegates to canvas.activityStream.getSummary without only_active_courses', async () => {
+      const canvas = buildMockCanvas()
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_activity_stream_summary')!
+      const result = await tool.handler({})
+      expect(canvas.activityStream.getSummary).toHaveBeenCalledWith(undefined)
+      expect(result).toEqual([{ type: 'Submission', count: 5, unread_count: 2 }])
+    })
+
+    it('delegates to canvas.activityStream.getSummary with only_active_courses', async () => {
+      const canvas = buildMockCanvas()
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_activity_stream_summary')!
+      await tool.handler({ only_active_courses: true })
+      expect(canvas.activityStream.getSummary).toHaveBeenCalledWith(true)
+    })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.activityStream.getSummary).mockRejectedValue(
+        new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/activity_stream/summary'),
+      )
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_activity_stream_summary')!
+      await expect(tool.handler({})).rejects.toThrow(CanvasApiError)
     })
   })
 })
