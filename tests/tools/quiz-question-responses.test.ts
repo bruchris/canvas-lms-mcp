@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import type { CanvasId } from '../../src/canvas/id'
+import { type CanvasId, compareCanvasIds } from '../../src/canvas/id'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasQuiz,
@@ -631,6 +631,45 @@ describe('quizQuestionResponseTools', () => {
       expect(result.questions.some((q) => q.question_id === 999)).toBe(false)
       expect(result.unmatched_question_ids).toEqual(['999'])
       expect(result.unmatched_response_count).toBe(1)
+    })
+
+    it('orders unmatched_question_ids by magnitude, not lexicographically', () => {
+      // The ordering of this field was previously unasserted, which made the
+      // call site's use of `compareCanvasIds` (BRU-2730 §4.4 - an ID sort must
+      // not use `a - b`) invisible to the suite: reverting it to a plain
+      // `.sort()` changed nothing any test looked at.
+      //
+      // The two ids below are chosen so the two orderings disagree: numerically
+      // 999 < 7002, lexicographically '7002' < '999'. The magnitude case that
+      // only `compareCanvasIds` gets right - two ids differing above 2**53 -
+      // cannot be built from a `number`-typed response fixture at all, because
+      // both literals collapse to the same double. That case becomes testable
+      // when PR 2a widens the response ids to `CanvasId`.
+      expect(['7002', '999'].sort(compareCanvasIds)).toEqual(['999', '7002'])
+      expect(['7002', '999'].sort()).toEqual(['7002', '999'])
+    })
+
+    it('surfaces two unmatched answers in ascending numeric order', async () => {
+      const canvas = buildMockCanvas({
+        submissions: [subComplete],
+        answersBySubmission: {
+          100: [
+            { id: 7002, quiz_id: 1, answer: 'orphan A', flagged: false },
+            { id: 999, quiz_id: 1, answer: 'orphan B', flagged: false },
+          ],
+        },
+        attemptQuestionsImpl: () => Promise.resolve([]),
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const result = (await getTool(canvas).handler({
+        course_id: '1',
+        quiz_id: '1',
+      })) as Result
+
+      // Input order is descending, so a comparator-less `.sort()` would leave
+      // '7002' first. This is the end-to-end half of the assertion above.
+      expect(result.unmatched_question_ids).toEqual(['999', '7002'])
+      errorSpy.mockRestore()
     })
   })
 
