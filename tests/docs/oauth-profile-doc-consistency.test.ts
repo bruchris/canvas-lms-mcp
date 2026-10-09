@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { OAUTH_ENV_VARS } from '../../src/auth/oauth/config'
 import { AUTH_PROFILES } from '../../src/auth/profile'
@@ -21,8 +21,10 @@ const designSpec = readFileSync(
 )
 
 // Reconstructs every path in the design spec's directory-layout block from the
-// tree drawing, so the block cannot name a file that does not exist. This is a
-// one-directional check: it catches a *false* entry, never a missing one.
+// tree drawing. Both directions are checked below, each by its own assertion:
+// spec -> repo (the block cannot name a path that does not exist) for every row,
+// and repo -> spec (a path cannot exist without a row) for the top level of
+// `src/`.
 function layoutBlockPaths(spec: string): string[] {
   const lines = spec.split('\n')
   const open = lines.findIndex((l, n) => l.startsWith('```') && lines[n + 1] === 'canvas-lms-mcp/')
@@ -129,6 +131,27 @@ describe('OAuth profile documentation', () => {
         (p) => !existsSync(resolve(ROOT, p.replace(/^canvas-lms-mcp\/?/, ''))),
       )
       expect(missing).toEqual([])
+    })
+
+    // BRU-2818: the inverse direction. Everything above walks spec -> repo, so a
+    // directory that shipped *without* being added to the block passed silently
+    // for as long as it existed -- `src/pseudonym/` went unlisted from 1.17.0
+    // until this gate, and ten more entries had accumulated behind it. Same
+    // drift class as BRU-2673, same root cause: a surface the gate could not see.
+    //
+    // Scoped to the top level of `src/`. The block's deeper enumerations
+    // (`src/canvas/`, `src/tools/`, `src/resources/`, `src/auth/`) are a much
+    // larger surface with the same hole, and closing it is a judgement about
+    // what the block is for rather than a missing edit -- BRU-2820.
+    it('names every top-level entry under src/ as a row of the layout block', () => {
+      const paths = new Set(layoutBlockPaths(designSpec))
+      const entries = readdirSync(resolve(ROOT, 'src')).sort()
+      // Anti-vacuity for *this* direction. The two floors above constrain the
+      // spec side; neither can catch a `readdir` that resolved nothing, which
+      // would satisfy the set difference below with an empty subject.
+      expect(entries.length).toBeGreaterThan(15)
+      const unlisted = entries.filter((name) => !paths.has(`canvas-lms-mcp/src/${name}`))
+      expect(unlisted).toEqual([])
     })
   })
 })

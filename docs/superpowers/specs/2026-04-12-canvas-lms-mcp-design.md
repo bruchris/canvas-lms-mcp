@@ -68,12 +68,23 @@ canvas-lms-mcp/
 │   │   ├── syllabus.ts
 │   │   ├── assignment-description.ts
 │   │   └── index.ts
-│   ├── auth/                      # Auth profile resolution (profile.ts) + `doctor` diagnostics (doctor.ts)
+│   ├── prompts/                   # Agent Skills advertised to clients as MCP prompts
+│   ├── ui/                        # MCP Apps UI resources — HTML widgets and their sanitizers
+│   ├── provenance/                # Untrusted-content fencing applied to tool output
+│   ├── pseudonym/                 # FERPA pseudonymization — Pseudonymizer, alias store, coverage gate
+│   ├── discovery/                 # Generated manifests; getPrimaryAudience(), the tool-audience oracle
+│   ├── auth/                      # Auth profile resolution (profile.ts) + `doctor` diagnostics (auth/doctor.ts)
 │   │   └── oauth/                 # oauth_brokered: OAuth 2.1 authorization + resource server, grant/token store, Canvas Developer Key client
+│   ├── init/                      # `init` wizard internals: client discovery, config writers, JSON/TOML merges
 │   ├── server.ts                  # MCP server factory
+│   ├── mcp-apps.ts                # MCP Apps wiring: UI resources bound to tool results
+│   ├── schema-dialect.ts          # JSON Schema draft-07 / 2020-12 compatibility shim
+│   ├── env.ts                     # Environment-variable reading
 │   ├── cli.ts                     # CLI argument parsing
-│   ├── stdio.ts                   # Entry: stdio transport
-│   └── http.ts                    # Entry: HTTP transport
+│   ├── stdio.ts                   # Entry: stdio transport (bin default)
+│   ├── http.ts                    # Entry: HTTP transport (bin `serve`)
+│   ├── init.ts                    # Entry: `init` wizard (bin `init`)
+│   └── doctor.ts                  # Entry: `doctor` / `auth status` (bin `doctor`)
 ├── tests/
 │   ├── canvas/                    # Canvas client unit tests
 │   └── tools/                     # MCP tool handler tests
@@ -113,6 +124,15 @@ canvas-lms-mcp/
 ├── CHANGELOG.md
 └── README.md
 ```
+
+The block above is a present-tense claim about the repo, and CI gates it in both
+directions (`tests/docs/oauth-profile-doc-consistency.test.ts`): no row may name a
+path that does not exist, and every top-level entry under `src/` must appear as a
+row. Add a top-level module to the block in the same change that adds it to `src/`.
+Do not annotate a row that has gone stale — an annotated row still parses as a tree
+row, so the only corrections available here are adding and removing rows. Do not
+write a count into the rows or the surrounding prose; state the rule and point at
+the oracle, as the skill count does under [Agent Skills](#agent-skills).
 
 ## Transport & Deployment Modes
 
@@ -897,7 +917,7 @@ The skills this repo actually ships live in the top-level `skills/` tree — one
 
 The skill count is derived, never hand-maintained: `tests/docs/skill-count-consistency.test.ts` counts the directories under `skills/` that contain a `SKILL.md` and fails CI if `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md` or `docs/index.html` disagrees. **Do not write a skill count into this spec.**
 
-> **Never built (BRU-2681).** This section originally planned two _dev-team_ skills — `canvas-lms-api` (a Canvas REST API reference copied from the Fjordbyte repo as a blueprint) and `mcp-sdk-patterns` (`@modelcontextprotocol/sdk` usage patterns) — installed in `.claude/skills/` and mirrored from a canonical `.agents/skills/`. Neither directory was ever committed: `git log --diff-filter=D -- .claude/skills .agents` is empty, so they were planned and never built rather than built and removed. The dev team has worked from `.claude/CLAUDE.md`, `AGENTS.md` and `.claude/agents/` instead. The plan is recorded here; the two directories are gone from the layout block above, because that block is a claim about what the repo contains and is now gated end-to-end by `tests/docs/oauth-profile-doc-consistency.test.ts`.
+> **Never built (BRU-2681).** This section originally planned two _dev-team_ skills — `canvas-lms-api` (a Canvas REST API reference copied from the Fjordbyte repo as a blueprint) and `mcp-sdk-patterns` (`@modelcontextprotocol/sdk` usage patterns) — installed in `.claude/skills/` and mirrored from a canonical `.agents/skills/`. Neither directory was ever committed: `git log --diff-filter=D -- .claude/skills .agents` is empty, so they were planned and never built rather than built and removed. The dev team has worked from `.claude/CLAUDE.md`, `AGENTS.md` and `.claude/agents/` instead. The plan is recorded here; the two directories are gone from the layout block above, because that block is a claim about what the repo contains and is ~~now gated end-to-end~~ gated by `tests/docs/oauth-profile-doc-consistency.test.ts`. **Corrected 2026-10-09 (BRU-2818):** "end-to-end" overstated it. The gate was one-directional when this paragraph was written — spec → repo only — so it caught a row naming a path that does not exist but never a path that shipped without a row, and a backlog of unlisted top-level `src/` entries had accumulated behind the gap, `src/pseudonym/` since 1.17.0. The repo → spec direction is now asserted as well, for the top level of `src/`; the block's deeper enumerations stay one-directional until BRU-2820 settles what they are for.
 
 ### CLAUDE.md
 
