@@ -315,5 +315,31 @@ export function studentTools(
         }
       },
     },
+    {
+      name: 'get_my_activity_stream_summary',
+      title: 'Get My Activity Stream Summary',
+      description:
+        "Count unread and total items in the authenticated student's cross-course activity " +
+        'stream, grouped by Canvas item type (e.g. DiscussionTopic, Announcement, Submission, ' +
+        'Conversation). No item content — counts only. A good first call in a daily workflow ' +
+        'to check "is there anything to look at?" before fetching the full stream.',
+      inputSchema: {
+        only_active_courses: z
+          .boolean()
+          .optional()
+          .describe(
+            'Only count activity in courses the student is actively participating in. ' +
+              'Omit to count across all courses, including concluded ones.',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const onlyActiveCourses = params.only_active_courses as boolean | undefined
+        return canvas.activityStream.getSummary(onlyActiveCourses)
+      },
+    },
   ]
 }

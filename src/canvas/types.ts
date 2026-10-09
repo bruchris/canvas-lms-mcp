@@ -1012,6 +1012,20 @@ export interface CanvasActivityStreamItem {
   unread_count: number
 }
 
+/**
+ * One entry from GET /users/self/activity_stream/summary — `{type, count,
+ * unread_count}`. `CanvasActivityStreamItem` above already models this exact
+ * shape under a misleading name (it is used for the *course* activity stream
+ * summary, not a stream item); this is the correctly-named declaration for the
+ * cross-course summary endpoint. Renaming the existing type is tracked
+ * separately (BRU-2797 §1 C2, §11 Q4) and is not bundled here.
+ */
+export interface CanvasActivityStreamSummaryEntry {
+  type: string
+  count: number
+  unread_count: number
+}
+
 export interface CanvasStudentSummary {
   id: CanvasId
   page_views: number
