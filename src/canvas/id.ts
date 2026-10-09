@@ -1,10 +1,11 @@
 /**
  * The canonical Canvas identifier input type.
  *
- * Phase 1, PR 1a of the 64-bit identifier design
+ * Phase 1 of the 64-bit identifier design
  * (`docs/superpowers/specs/2026-10-05-bru-2730-canvas-64bit-identifiers.md`,
- * BRU-2730 / BRU-2816). This module adds the type and nothing else: no call
- * site adopts it yet, which is PR 1b.
+ * BRU-2730). PR 1a (BRU-2816) added this module as the type alone, with no
+ * call site adopting it; PR 1b (BRU-2827) then adopted it across every
+ * Canvas-module input, signature, and handler.
  *
  * The defect it exists to fix is that a Canvas object whose global ID exceeds
  * `Number.MAX_SAFE_INTEGER` — every object on shard >= 901 — cannot be
@@ -263,8 +264,15 @@ export function canvasIdList(options?: CanvasIdInputOptions): z.ZodType<CanvasId
  * smaller, same length compares lexicographically" is total and exact at any
  * magnitude — no `BigInt` allocation per comparison.
  *
- * Sentinel and SIS-prefixed values are not decimal and sort after the numeric
- * ones by the same rule; no call site mixes them into a sort today.
+ * The contract is exactly "shorter string sorts first, equal-length strings
+ * sort lexicographically" — nothing more. That is a total, exact numeric
+ * order over two canonical `CanvasId` decimal strings, but it is not a
+ * numeric order at all once one operand is non-decimal (a sentinel like
+ * `"self"`, or a SIS-prefixed string): such a value sorts purely by its own
+ * length and characters, which can place it before, after, or between
+ * numeric IDs depending on how long those IDs happen to be. No call site
+ * mixes sentinel/prefixed values into a sort today; this function is not
+ * safe to use if one starts.
  */
 export function compareCanvasIds(a: CanvasId, b: CanvasId): number {
   if (a.length !== b.length) return a.length - b.length

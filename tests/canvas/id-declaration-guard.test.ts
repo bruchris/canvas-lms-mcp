@@ -7,12 +7,24 @@ import ts from 'typescript'
 /**
  * BRU-2730 §8 PR 1b, the two source-level guards.
  *
- * They are source-level because nothing else can see this change. `tsc` cannot
- * (§1 correction 7: `ToolDefinition.handler` takes `Record<string, unknown>`,
- * so every cast operand is `unknown` and `unknown as number` compiles), and no
- * behavioural test can fail on the signature half either, because a string ID
- * already reached the URL byte-exact through the old casts. A partially-done
- * migration is otherwise indistinguishable from a finished one.
+ * They are source-level for two different reasons.
+ *
+ * The cast-operand guard has no `tsc` or behavioural substitute at all (§1
+ * correction 7): `ToolDefinition.handler` takes `Record<string, unknown>`, so
+ * every cast operand is `unknown` and `unknown as number` compiles no matter
+ * what it casts away, and a string ID that already reached the URL byte-exact
+ * through the old cast leaves no behavioural trace either.
+ *
+ * The declaration-site guard is weaker ground to claim the same absolute for:
+ * `tsc` *does* catch a reverted signature when a typed call site still feeds
+ * it a `CanvasId` — reverting `Courses.get`'s `courseId` back to `number`,
+ * for example, produces 5 `TS2345` errors against its typed caller. What
+ * `tsc` cannot guarantee is that *every* declaration is reached by such a
+ * caller — an unmigrated or removed call site, or one still routed through an
+ * `as` cast, leaves `tsc` silent. This guard protects the declaration
+ * directly, independent of whether some caller happens to exercise it, which
+ * is why a partially-done migration can still be indistinguishable from a
+ * finished one to a test that only exercises behaviour.
  *
  * Both walks take their input as `{ fileName, text }` pairs rather than reading
  * the tree themselves, so the same code that polices `src/` also runs over
