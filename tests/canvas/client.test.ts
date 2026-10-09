@@ -327,6 +327,44 @@ describe('CanvasHttpClient', () => {
       const result = await client.paginate('/api/v1/courses')
       expect(result).toEqual([])
     })
+
+    it('stops at maxItems without throwing, even though a further page remains', async () => {
+      const makePage = (startId: number) =>
+        Array.from({ length: 100 }, (_, i) => ({ id: startId + i }))
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(1)), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              Link: '<https://canvas.example.com/api/v1/courses?page=2&per_page=100>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(101)), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              Link: '<https://canvas.example.com/api/v1/courses?page=3&per_page=100>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(201)), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+      const result = await client.paginate<{ id: number }>('/api/v1/courses', undefined, {
+        maxItems: 150,
+      })
+
+      expect(result).toHaveLength(150)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('paginateEnvelope', () => {

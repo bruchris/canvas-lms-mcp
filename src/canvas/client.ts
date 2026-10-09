@@ -91,7 +91,12 @@ export class CanvasHttpClient {
     return normalizeCanvasIds((await response.json()) as T)
   }
 
-  async paginate<T>(endpoint: string, params?: CanvasQueryParams): Promise<T[]> {
+  async paginate<T>(
+    endpoint: string,
+    params?: CanvasQueryParams,
+    options?: { maxItems?: number },
+  ): Promise<T[]> {
+    const maxItems = options?.maxItems
     const url = new URL(`${this._baseUrl}${endpoint}`)
     if (!url.searchParams.has('per_page')) {
       url.searchParams.set('per_page', '100')
@@ -101,6 +106,7 @@ export class CanvasHttpClient {
     const results: T[] = []
     let nextUrl: string | null = url.toString()
     let pages = 0
+    let stoppedAtMaxItems = false
 
     while (nextUrl && pages < this.maxPaginationPages) {
       // Inside the loop, keyed on `nextUrl`: a followed `Link` rel="next" URL
@@ -118,11 +124,20 @@ export class CanvasHttpClient {
       results.push(...data)
       pages++
 
+      if (maxItems !== undefined && results.length >= maxItems) {
+        stoppedAtMaxItems = true
+        break
+      }
+
       nextUrl = this.parseNextLink(response.headers.get('Link'))
     }
 
-    this.assertNotTruncated(nextUrl, endpoint)
-    return results
+    // A deliberate maxItems stop leaves `nextUrl` non-null on purpose — that
+    // is not the page-cap truncation assertNotTruncated exists to catch.
+    if (!stoppedAtMaxItems) {
+      this.assertNotTruncated(nextUrl, endpoint)
+    }
+    return stoppedAtMaxItems ? results.slice(0, maxItems) : results
   }
 
   async paginateEnvelope<T>(
