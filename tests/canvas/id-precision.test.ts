@@ -33,9 +33,6 @@ async function connectArmedClient() {
   const client = new Client({ name: 'id-precision-test', version: '0.0.0' })
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
-  // Load-bearing: the SDK populates its validator cache from `tools/list`.
-  // Skipping this call makes the input-validation assertions below vacuous.
-  await client.listTools()
   return client
 }
 
