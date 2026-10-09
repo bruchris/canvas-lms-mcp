@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.0.0...canvas-lms-mcp-v2.1.0) (2026-10-09)
+
+
+### Features
+
+* **canvas:** add bounded maxItems support to client.paginate() (BRU-2801) ([#404](https://github.com/bruchris/canvas-lms-mcp/issues/404)) ([81c7702](https://github.com/bruchris/canvas-lms-mcp/commit/81c77024f389b5ab48fc1470c320a1dc588bd56d))
+* **student:** add get_my_activity_stream_summary tool (BRU-2800) ([#405](https://github.com/bruchris/canvas-lms-mcp/issues/405)) ([30ba58f](https://github.com/bruchris/canvas-lms-mcp/commit/30ba58fd3531143e5f30ac6b5dd6ec3904363735))
+
+
+### Documentation
+
+* **spec:** cross-course student activity and planner tools design (BRU-2797) ([#401](https://github.com/bruchris/canvas-lms-mcp/issues/401)) ([790350a](https://github.com/bruchris/canvas-lms-mcp/commit/790350a3930d4d1bb594c94b56ac80a34e88fffb))
+
 ## [2.0.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.33.0...canvas-lms-mcp-v2.0.0) (2026-10-09)
 
 
