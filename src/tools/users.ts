@@ -141,7 +141,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
           .optional()
           .describe('Extra fields to include on each user (Canvas include[] param)'),
         // The pre-1b schema here was `z.union([z.number(), z.string()])`, i.e. any
-        // string at all, with no documented meaning for the string arm. §4.2 rule 3
+        // string at all, with no documented meaning for the string arm. §4.2 rule 2
         // forbids an ID field that accepts arbitrary strings, so this narrows to the
         // canonical ID forms plus the one SIS prefix the rest of this repo documents
         // (`sis_user_id:`, as in outcomes.ts). Called out in the PR as a narrowing.

@@ -16,9 +16,11 @@ import { CanvasClient } from '../../src/canvas'
  *
  * Two structural rules, both from §8 and both load-bearing:
  *
- * - **`listTools()` is called before any `callTool`.** The MCP client validates
- *   only after `listTools()` populates its validator cache, so a probe that
- *   skips it goes green while the payload is broken for every real client.
+ * - **`listTools()` is called before any `callTool`**, matching how a real
+ *   client is used. It does not gate anything these tests assert: Canvas
+ *   input validation runs unconditionally server-side, and removing the call
+ *   leaves all 7 outcomes below unchanged. `listTools()` only populates the
+ *   SDK's *output*-validator cache, which this file does not exercise.
  * - **Every "no request was made" assertion is paired with a control** that
  *   makes the same call in a configuration where the request *is* attempted.
  *   Otherwise the safety assertion passes on a server broken for an unrelated
@@ -42,7 +44,9 @@ async function armedClient(): Promise<Client> {
   const client = new Client({ name: 'id-compat-test', version: '0.0.0' })
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)])
-  // Arms the SDK's validator cache. Without it the assertions below are vacuous.
+  // Matches real client usage; the assertions below hold identically without
+  // this call too — server-side input validation is unconditional, not
+  // gated by it.
   await client.listTools()
   return client
 }
