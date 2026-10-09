@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.33.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.1...canvas-lms-mcp-v1.33.0) (2026-10-09)
+
+
+### Features
+
+* **canvas:** add the canonical Canvas identifier input type (BRU-2816) ([#395](https://github.com/bruchris/canvas-lms-mcp/issues/395)) ([7be1eb4](https://github.com/bruchris/canvas-lms-mcp/commit/7be1eb4318d0ab7a4ffab7fcb2fdca2e64dacf6c))
+
+
+### Documentation
+
+* **spec:** close the layout-block drift gate in both directions (BRU-2818) ([#392](https://github.com/bruchris/canvas-lms-mcp/issues/392)) ([cbc1c49](https://github.com/bruchris/canvas-lms-mcp/commit/cbc1c4922a8523dbb51037e291c8c530468e4228))
+* **spec:** make depth-2 layout rows representative, not exhaustive (BRU-2822) ([#394](https://github.com/bruchris/canvas-lms-mcp/issues/394)) ([6e8d8ef](https://github.com/bruchris/canvas-lms-mcp/commit/6e8d8ef53a4549c910ebd7722c5b13067c9ee7ba))
+
 ## [1.32.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.0...canvas-lms-mcp-v1.32.1) (2026-10-06)
 
 
