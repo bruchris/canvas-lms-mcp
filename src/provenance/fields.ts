@@ -53,6 +53,24 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
     body: 'submission body',
     comment: 'submission comment',
   },
+  // The cross-course planner. Despite carrying a `discussion_topic` /
+  // `announcement` plannable type, NEITHER arm's actual message text reaches
+  // this response: `lib/api/v1/planner_item.rb#plannable_json` slices every
+  // plannable down to `API_PLANNABLE_FIELDS` (+ a small per-type extra-field
+  // list), and `message`/`body` are in neither — a discussion's real message
+  // is dropped entirely at the planner layer (read at pinned SHA
+  // 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c, verified by re-deriving the
+  // slice from source rather than assuming the activity-stream registry
+  // entry carries over). The one free-text field that DOES survive the slice
+  // is a calendar event's `description` (`CALENDAR_PLANNABLE_FIELDS`), which
+  // can be course-wide and teacher-authored. `planner_note`'s own `details`
+  // field is excluded on purpose: it is the CALLER'S OWN note text, not
+  // third-party Canvas content, matching the authorship test this fencing
+  // design is built on. `title`, `location_name` and `location_address` are
+  // short metadata, not prose, and follow the existing title precedent.
+  list_my_planner_items: {
+    description: 'calendar event description',
+  },
 
   // Rank 2 — any enrolled student can author a discussion message, and
   // `post_discussion_entry` / `update_discussion` publish as the operator.

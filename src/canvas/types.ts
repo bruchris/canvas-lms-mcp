@@ -1269,6 +1269,113 @@ export interface CanvasActivityStreamEntry {
   [key: string]: unknown
 }
 
+/**
+ * `PlannerOverride` json from `planner_override_json` — present only when the
+ * student has toggled an item's planner visibility ("mark as done" /
+ * "dismiss"). It is `api_json` on the AR record plus a re-derived
+ * `plannable_type` and `assignment_id`. None of its fields identify anyone
+ * but the authenticated caller — it is their own planner override.
+ */
+export interface CanvasPlannerOverride {
+  id: CanvasId
+  plannable_id: CanvasId
+  plannable_type: string
+  user_id: CanvasId
+  assignment_id: CanvasId | null
+  marked_complete: boolean
+  dismissed: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  [key: string]: unknown
+}
+
+/**
+ * The caller's own submission status on a planner item's underlying
+ * Assignment / SubAssignment / PeerReviewSubAssignment, from
+ * `submission_statuses_for` → `submission_statuses`.
+ */
+export interface CanvasPlannerSubmissionStatus {
+  submitted?: boolean
+  excused?: boolean
+  graded?: boolean
+  posted_at?: string | null
+  late?: boolean
+  missing?: boolean
+  needs_grading?: boolean
+  has_feedback?: boolean
+  redo_request?: boolean
+  feedback?: {
+    comment: string
+    is_media: boolean
+    author_name?: string
+    author_avatar_url?: string | null
+  }
+  [key: string]: unknown
+}
+
+/**
+ * One entry from `GET /planner/items`.
+ *
+ * `context_type` / `course_id` / `group_id` share the exact derivation and
+ * absent-not-null caveat as {@link CanvasActivityStreamEntry}
+ * (`Api::V1::Context#context_data`, BRU-2797 §1 C7) — a group-context item
+ * has no `course_id` key at all, not a null one.
+ *
+ * `plannable` is the polymorphic underlying object; its shape is keyed by
+ * `plannable_type` and varies per arm (`lib/api/v1/planner_item.rb`
+ * `planner_item_json`, pinned SHA 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+ * No arm carries a third-party user record — the richest is `planner_note`,
+ * whose own `user_id` is the authenticated caller's own id, never another
+ * student's (BRU-2797 §6.1) — so this is declared as a loose object rather
+ * than a per-arm union.
+ */
+export interface CanvasPlannerItem {
+  context_type?: 'Course' | 'Group' | (string & {})
+  course_id?: CanvasId
+  group_id?: CanvasId
+  /** The caller's own course nickname when set, else the course name — join on `course_id`, never this. */
+  context_name?: string
+  context_image?: string | null
+  plannable_id: CanvasId
+  /**
+   * A `PlannerHelper::PLANNABLE_TYPES` key — snake_case, NOT the Ruby class
+   * name, unlike the activity stream's `type`. Not a closed set — kept open
+   * with `(string & {})` for the same reason as the activity stream's `type`.
+   */
+  plannable_type:
+    | 'assignment'
+    | 'quiz'
+    | 'planner_note'
+    | 'wiki_page'
+    | 'discussion_topic'
+    | 'announcement'
+    | 'calendar_event'
+    | 'assessment_request'
+    | 'sub_assignment'
+    | 'peer_review_sub_assignment'
+    | (string & {})
+  /** `null` unless the student has toggled this item's planner visibility. */
+  planner_override: CanvasPlannerOverride | null
+  /**
+   * `false` or an object — a union, not a nullable object. Canvas initialises
+   * `submission_status = { submissions: false }` and only replaces it with a
+   * hash for a submittable plannable; a consumer writing
+   * `item.submissions?.graded` would silently read `undefined` on the
+   * boolean arm if this were declared `CanvasPlannerSubmissionStatus | null`.
+   */
+  submissions: false | CanvasPlannerSubmissionStatus
+  new_activity: boolean
+  plannable_date: string
+  /** The polymorphic underlying object. Shape varies by `plannable_type`; no arm carries a third-party user record. */
+  plannable: Record<string, unknown>
+  /** Absent for `planner_note` items — Canvas has no html_url for individual planner notes. */
+  html_url?: string
+  /** `sub_assignment` discussion-checkpoint items only. */
+  details?: { reply_to_entry_required_count: number }
+  [key: string]: unknown
+}
+
 export interface CanvasStudentSummary {
   id: CanvasId
   page_views: number

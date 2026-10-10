@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 171,
+  "toolCount": 172,
   "tools": [
     {
       "name": "health_check",
@@ -1824,6 +1824,20 @@
       "title": "Get My Activity Stream",
       "domain": "student",
       "description": "The authenticated student's cross-course activity stream: new discussion posts, announcements, conversation messages, graded submissions, peer-review requests and conference invitations from every course at once, newest first. Four caveats, none of them visible in the response: (1) RECENT ACTIVITY ONLY — typically the last ~4 weeks; the retention window is a per-Canvas-instance setting and cannot be read through the API, so \"nothing found\" is not evidence that nothing happened. (2) Each item's `message` was truncated to 4096 characters when Canvas stored it, with no marker — follow the item's `html_url` object with get_discussion or get_conversation for the full text. (3) At most 3 `root_discussion_entries` per discussion item and 3 `latest_messages` per conversation item. (4) Exactly one of `course_id` / `group_id` is present on each item and the other key is ABSENT, not null — join on `course_id`, and read `context_type` to tell which you have.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "list_my_planner_items",
+      "title": "List My Planner Items",
+      "domain": "student",
+      "description": "The authenticated student's planner: assignments, ungraded quizzes, planner notes, wiki pages, ungraded discussions, calendar events, peer reviews, sub-assignments and peer-review sub-assignments — everything with a due or to-do date, across every course and group at once. Strictly richer than get_todo_items, which covers only assignments needing submitting or grading. Four caveats: (1) start_date and end_date must be given TOGETHER or OMITTED TOGETHER — supplying only one makes Canvas silently default the other side to a ten-year window, so a half-specified range is rejected outright; omitting both resolves to Canvas's own ~2-week default, echoed back as the response's `start_date`/`end_date`. (2) `context_codes` (e.g. \"course_123\", \"group_7\") restricts to those contexts; omit it for every context the student belongs to — an empty array is rejected rather than silently meaning \"all\". (3) `submissions` is `false` when the item has no gradable submission, or an object when it does — never null. (4) a planner note has no `html_url` (Canvas exposes none for individual planner notes).",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

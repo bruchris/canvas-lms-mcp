@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-171 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+172 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -45,7 +45,7 @@ Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#ag
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 171 | 80+ | 54 |
+| Tools | 172 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -152,7 +152,7 @@ Once configured, try these prompts with your AI client:
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — stdio only, registered when `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` |
 
-119 tools are read-only and 52 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 172nd tool overall (120th read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
+120 tools are read-only and 52 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 173rd tool overall (121st read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -545,8 +545,8 @@ Three roles, plus the default of "unset = every tool":
 
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
-| _(unset)_ | all (~171) | default; backwards-compatible |
-| `student` | ~60 | a student's own courses, grades, submissions, and read-only course content |
+| _(unset)_ | all (~172) | default; backwards-compatible |
+| `student` | ~61 | a student's own courses, grades, submissions, and read-only course content |
 | `teacher` | ~149 | grading, roster, content authoring, analytics |
 | `admin` | ~161 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 
