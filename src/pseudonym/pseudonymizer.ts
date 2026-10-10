@@ -469,8 +469,9 @@ export class Pseudonymizer {
         // Canvas's own "Anonymous User" byline. `CanvasSubmissionComment`
         // declares `author_id` non-null, which that branch contradicts; the
         // guard follows the serializer, not the declaration.
-        if (comment.author_id == null) continue
-        if (graderKey !== null && String(comment.author_id) === graderKey) continue
+        const authorKey = submissionCommentAuthorKey(comment)
+        if (authorKey === null) continue
+        if (graderKey !== null && authorKey === graderKey) continue
         await this.anonymizeUser(scope, {
           id: comment.author_id,
           name: comment.author_name,
@@ -607,7 +608,8 @@ export class Pseudonymizer {
     const map = this.host ? ((await this.loadCourseMap(this.host, courseId)) ?? null) : null
     const out: CanvasSubmissionComment[] = []
     for (const c of comments) {
-      const pseudonym = map?.students[String(c.author_id)]?.pseudonym
+      const authorKey = submissionCommentAuthorKey(c)
+      const pseudonym = authorKey === null ? undefined : map?.students[authorKey]?.pseudonym
       const next: CanvasSubmissionComment = { ...c }
       if (pseudonym) {
         next.author_name = pseudonym
@@ -772,6 +774,31 @@ export class Pseudonymizer {
       void appendAuditFile(filePath, stamped)
     }
   }
+}
+
+/**
+ * The single expression that turns a submission comment into a course-map key,
+ * used by BOTH the pre-warm that writes the map and the read that looks a
+ * pseudonym up. `null` means "this comment carries no identity at all", which
+ * is what `submission_comment_json` emits when the viewer lacks `:read_author`:
+ * `author_id: nil` together with `author: {}` and `author_name: "Anonymous
+ * User"` (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas SHA
+ * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+ *
+ * Both sides must refuse that comment, not just the write side. The course map
+ * is shared per (host, course) and persisted, so a `"null"` key written by any
+ * other caller — `get_my_submission_feedback` warms one, because
+ * `classifyCommentAuthor` (src/tools/student.ts:62-68) reads a nil `author_id`
+ * as a 'peer' — would otherwise be found by an unguarded
+ * `String(c.author_id)`, renaming Canvas's own "Anonymous User" byline to a
+ * pseudonym and inventing a `display_name` on the object the serializer
+ * deliberately emptied. Deriving both keys here is also what stops the two
+ * sites drifting apart again (BRU-2864 was exactly that drift).
+ */
+function submissionCommentAuthorKey(
+  comment: Pick<CanvasSubmissionComment, 'author_id'>,
+): string | null {
+  return comment.author_id == null ? null : String(comment.author_id)
 }
 
 function classifyRoleFromEnrollment(enrollment: CanvasEnrollment): Role {

@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
+import type { CanvasUser } from '../../src/canvas/types'
 import { applyFencing } from '../../src/provenance/apply'
 import { MARKER_CLOSE, MARKER_OPEN_PREFIX } from '../../src/provenance/markers'
 import {
@@ -549,6 +550,50 @@ describe('anonymizeActivityStream — Submission arm: an author the viewer may n
     const [plain] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION])
 
     expect(plain!.submission_comments![1]!.author_name).toBe('Student 2')
+  })
+})
+
+describe('anonymizeActivityStream — Submission arm: a "null" key written by another tool', () => {
+  // BRU-2863. The pre-warm guard above stops THIS path from writing a `"null"`
+  // key, but it is only one of two writers. The course map is shared per
+  // (host, course) and persisted to disk, and the read side keyed on
+  // `String(c.author_id)` unguarded — so `String(null) === 'null'` found any
+  // `"null"` entry another caller had left there.
+  //
+  // `get_my_submission_feedback` is such a caller: `classifyCommentAuthor`
+  // (src/tools/student.ts:62-68) returns 'peer' for a comment whose
+  // `author_id` is nil, because nil matches neither `submission.user_id` nor
+  // `grader_id`, and the warm call at :271-276 passes that nil straight into
+  // `anonymizeUser`. The stream's output must not depend on another tool's
+  // hygiene, so the guard belongs on the read as well as the write.
+  it('keeps Canvas’s “Anonymous User” byline when the map already holds a "null" key', async () => {
+    const p = make()
+    // Exactly the call student.ts:271-276 makes for an unreadable author.
+    await p.anonymizeUser('101', {
+      id: null,
+      name: 'Anonymous User',
+    } as unknown as CanvasUser)
+
+    const [item] = await p.anonymizeActivityStream([FIXTURE_SUBMISSION_UNREADABLE_AUTHOR])
+
+    const unreadable = item!.submission_comments![1]!
+    expect(unreadable.author_name).toBe('Anonymous User')
+    expect(unreadable.author_name).not.toMatch(/^Student \d+$/)
+    expect(unreadable.author).toEqual({})
+  })
+
+  it('still rewrites a readable peer author while a "null" key is present (control)', async () => {
+    // Not a blanket “stop reading the map”: the same run, same poisoned map,
+    // and an ordinary readable author is still pseudonymized.
+    const p = make()
+    await p.anonymizeUser('101', {
+      id: null,
+      name: 'Anonymous User',
+    } as unknown as CanvasUser)
+
+    const [item] = await p.anonymizeActivityStream([FIXTURE_SUBMISSION])
+
+    expect(item!.submission_comments![1]!.author_name).toMatch(/^Student \d+$/)
   })
 })
 
