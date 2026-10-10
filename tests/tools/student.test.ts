@@ -3,14 +3,20 @@ import type { CanvasId } from '../../src/canvas/id'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { z } from 'zod'
 import type { CanvasClient } from '../../src/canvas'
-import type { CanvasActivityStreamEntry } from '../../src/canvas/types'
+import type { CanvasActivityStreamEntry, CanvasPlannerItem } from '../../src/canvas/types'
 import {
   CANVAS_MESSAGE_CHARACTER_CAP,
   FIXTURE_CONTEXT_MESSAGE,
   FIXTURE_GROUP_DISCUSSION,
   FIXTURE_MESSAGE_AT_CAP,
 } from '../fixtures/activity-stream'
+import {
+  FIXTURE_PLANNER_ALL_TYPES,
+  FIXTURE_PLANNER_ASSIGNMENT,
+  FIXTURE_PLANNER_NOTE,
+} from '../fixtures/planner'
 import { CanvasApiError } from '../../src/canvas'
 import type {
   CanvasCourse,
@@ -19,7 +25,7 @@ import type {
   CanvasSubmissionComment,
   CanvasUpcomingEvent,
 } from '../../src/canvas/types'
-import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
 import { studentTools } from '../../src/tools/student'
 
 describe('studentTools', () => {
@@ -178,11 +184,14 @@ describe('studentTools', () => {
         getSummary: vi.fn().mockResolvedValue([{ type: 'Submission', count: 5, unread_count: 2 }]),
         getStream: vi.fn().mockResolvedValue([]),
       },
+      planner: {
+        listItems: vi.fn().mockResolvedValue([]),
+      },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 7 tool definitions', () => {
-    expect(studentTools(buildMockCanvas())).toHaveLength(7)
+  it('returns an array with 8 tool definitions', () => {
+    expect(studentTools(buildMockCanvas())).toHaveLength(8)
   })
 
   it('exports tools with correct names', () => {
@@ -195,6 +204,7 @@ describe('studentTools', () => {
       'get_my_submission_feedback',
       'get_my_activity_stream_summary',
       'get_my_activity_stream',
+      'list_my_planner_items',
     ])
   })
 
@@ -937,6 +947,253 @@ describe('studentTools', () => {
         new CanvasApiError('Unauthorized', 401, '/api/v1/users/self/activity_stream'),
       )
       await expect(streamTool(canvas).handler({})).rejects.toThrow(CanvasApiError)
+    })
+  })
+
+  describe('list_my_planner_items', () => {
+    function plannerCanvas(items: CanvasPlannerItem[]): CanvasClient {
+      const canvas = buildMockCanvas()
+      vi.mocked(canvas.planner.listItems).mockResolvedValue(items)
+      return canvas
+    }
+
+    function plannerTool(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
+      return studentTools(canvas, pseudonymizer).find((t) => t.name === 'list_my_planner_items')!
+    }
+
+    type PlannerEnvelope = {
+      items: CanvasPlannerItem[]
+      total_items: number
+      truncated: boolean
+      truncation_note: string | null
+      start_date: string
+      end_date: string
+    }
+
+    // AC-12 — both-or-neither dates reject with a reason.
+    it('rejects start_date given alone, naming the ten-year default (AC-12)', async () => {
+      const canvas = plannerCanvas([])
+      await expect(plannerTool(canvas).handler({ start_date: '2026-10-01' })).rejects.toThrow(
+        /10-year|ten-year/i,
+      )
+      expect(canvas.planner.listItems).not.toHaveBeenCalled()
+    })
+
+    it('rejects end_date given alone, naming the ten-year default (AC-12)', async () => {
+      const canvas = plannerCanvas([])
+      await expect(plannerTool(canvas).handler({ end_date: '2026-10-15' })).rejects.toThrow(
+        /10-year|ten-year/i,
+      )
+      expect(canvas.planner.listItems).not.toHaveBeenCalled()
+    })
+
+    it('accepts both dates together and forwards them unchanged (AC-12)', async () => {
+      const canvas = plannerCanvas([])
+      const result = (await plannerTool(canvas).handler({
+        start_date: '2026-10-01',
+        end_date: '2026-10-15',
+      })) as PlannerEnvelope
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ startDate: '2026-10-01', endDate: '2026-10-15' }),
+      )
+      expect(result.start_date).toBe('2026-10-01')
+      expect(result.end_date).toBe('2026-10-15')
+    })
+
+    it('accepts neither date and echoes a resolved window (AC-12)', async () => {
+      const canvas = plannerCanvas([])
+      const result = (await plannerTool(canvas).handler({})) as PlannerEnvelope
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ startDate: undefined, endDate: undefined }),
+      )
+      // Our own ±2-week approximation, not a value read off Canvas's response
+      // (it never echoes one) — only that some resolved window is reported.
+      expect(result.start_date).toBeTruthy()
+      expect(result.end_date).toBeTruthy()
+      expect(new Date(result.start_date).getTime()).toBeLessThan(
+        new Date(result.end_date).getTime(),
+      )
+    })
+
+    // AC-13 — context_codes: [] is rejected at the Zod layer; omission is the
+    // documented all-contexts behaviour, asserted as a control so the
+    // rejection test cannot pass on a tool that is also broken for the valid
+    // case. These are schema-level checks (`.min(1)`, `.regex(...)`), so they
+    // are exercised through the schema directly rather than the raw handler
+    // — calling `tool.handler()` bypasses Zod entirely, following the
+    // `appointment-groups.test.ts` "validates scope enum" precedent.
+    it('rejects an empty context_codes array at the schema level (AC-13)', () => {
+      const schema = z.object(plannerTool(buildMockCanvas()).inputSchema)
+      expect(schema.safeParse({ context_codes: [] }).success).toBe(false)
+    })
+
+    it('accepts a non-empty, well-formed context_codes array at the schema level (AC-13 control)', () => {
+      const schema = z.object(plannerTool(buildMockCanvas()).inputSchema)
+      expect(schema.safeParse({ context_codes: ['course_123', 'group_7'] }).success).toBe(true)
+    })
+
+    it('rejects a malformed context code at the schema level', () => {
+      const schema = z.object(plannerTool(buildMockCanvas()).inputSchema)
+      expect(schema.safeParse({ context_codes: ['course_0'] }).success).toBe(false)
+    })
+
+    it('sends no context_codes param when the field is omitted — the documented all-contexts case (AC-13 control)', async () => {
+      const canvas = plannerCanvas([])
+      await plannerTool(canvas).handler({})
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ contextCodes: undefined }),
+      )
+    })
+
+    it('forwards a non-empty context_codes array', async () => {
+      const canvas = plannerCanvas([])
+      await plannerTool(canvas).handler({ context_codes: ['course_123', 'group_7'] })
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ contextCodes: ['course_123', 'group_7'] }),
+      )
+    })
+
+    it('forwards filter', async () => {
+      const canvas = plannerCanvas([])
+      await plannerTool(canvas).handler({ filter: 'incomplete_items' })
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ filter: 'incomplete_items' }),
+      )
+    })
+
+    // AC-14 — submissions: false and submissions: {…} both round-trip with no
+    // `undefined` reads.
+    it('round-trips an item with submissions: false (AC-14)', async () => {
+      const canvas = plannerCanvas([FIXTURE_PLANNER_NOTE])
+      const result = (await plannerTool(canvas).handler({})) as PlannerEnvelope
+
+      expect(result.items[0]!.submissions).toBe(false)
+    })
+
+    it('round-trips an item with submissions as an object (AC-14)', async () => {
+      const graded = FIXTURE_PLANNER_ALL_TYPES[0]! // assignment, submissions is an object
+      const canvas = plannerCanvas([graded])
+      const result = (await plannerTool(canvas).handler({})) as PlannerEnvelope
+
+      const submissions = result.items[0]!.submissions
+      expect(submissions).not.toBe(false)
+      expect((submissions as { graded?: boolean }).graded).toBe(true)
+    })
+
+    // Fixture 5 — a planner note with no html_url key at all.
+    it('round-trips a planner note with no html_url key', async () => {
+      const canvas = plannerCanvas([FIXTURE_PLANNER_NOTE])
+      const result = (await plannerTool(canvas).handler({})) as PlannerEnvelope
+
+      expect(Object.keys(result.items[0]!)).not.toContain('html_url')
+    })
+
+    // AC-15 — the nine-plannable-type fixture contains no user/user_name key,
+    // and the anti-vacuity check proves all nine plannable_type values appear.
+    it('carries no user or user_name key across all nine plannable types (AC-15)', async () => {
+      const canvas = plannerCanvas(FIXTURE_PLANNER_ALL_TYPES)
+      const result = (await plannerTool(canvas).handler({})) as PlannerEnvelope
+
+      const types = new Set(result.items.map((item) => item.plannable_type))
+      expect(types.size).toBe(9)
+
+      const serialized = JSON.stringify(result.items)
+      expect(serialized).not.toContain('"user"')
+      expect(serialized).not.toContain('"user_name"')
+    })
+
+    // BRU-2878 — the AC-15 guard above only checked `"user"`/`"user_name"`
+    // substrings, so it passed clean while `submissions.feedback.author_name`
+    // (present on FIXTURE_PLANNER_ASSIGNMENT) shipped a real third-party name
+    // unmasked. Assert on the actual field and the actual fixture value, not a
+    // generic substring, so a future respelling of the leak cannot hide again.
+    describe('feedback author pseudonymization (BRU-2878)', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'student-planner-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      it('passes the real feedback author name through when disabled', async () => {
+        const canvas = plannerCanvas([FIXTURE_PLANNER_ASSIGNMENT])
+        const result = (await plannerTool(canvas, makePseudonymizer(false)).handler(
+          {},
+        )) as PlannerEnvelope
+
+        const submissions = result.items[0]!.submissions as { feedback?: { author_name?: string } }
+        expect(submissions.feedback?.author_name).toBe('Dr. Lin')
+      })
+
+      it('withholds the feedback author name and avatar when enabled', async () => {
+        const canvas = plannerCanvas(FIXTURE_PLANNER_ALL_TYPES)
+        const result = (await plannerTool(canvas, makePseudonymizer()).handler(
+          {},
+        )) as PlannerEnvelope
+
+        const assignmentItem = result.items.find((item) => item.plannable_type === 'assignment')!
+        const submissions = assignmentItem.submissions as {
+          feedback?: { author_name?: string; author_avatar_url?: string | null }
+        }
+        expect(submissions.feedback?.author_name).toBe(WITHHELD_AUTHOR_NAME)
+        expect(submissions.feedback?.author_avatar_url ?? null).toBeNull()
+
+        const serialized = JSON.stringify(result.items)
+        expect(serialized).not.toContain('Dr. Lin')
+      })
+    })
+
+    it('reports truncation and caps items at max_items', async () => {
+      const many = Array.from({ length: 150 }, (_, i) => ({
+        ...FIXTURE_PLANNER_NOTE,
+        plannable_id: String(5000 + i),
+      }))
+      const canvas = plannerCanvas(many)
+      const result = (await plannerTool(canvas).handler({ max_items: 100 })) as PlannerEnvelope
+
+      expect(result.items).toHaveLength(100)
+      expect(result.truncated).toBe(true)
+      expect(result.truncation_note).toContain('max_items')
+    })
+
+    it('asks the client for one item past the limit, so truncation is knowable at all', async () => {
+      const canvas = plannerCanvas([])
+      await plannerTool(canvas).handler({ max_items: 100 })
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ maxItems: 101 }),
+      )
+    })
+
+    it('defaults the cap to 100 when max_items is omitted', async () => {
+      const canvas = plannerCanvas([])
+      await plannerTool(canvas).handler({})
+
+      expect(canvas.planner.listItems).toHaveBeenCalledWith(
+        expect.objectContaining({ maxItems: 101 }),
+      )
+    })
+
+    it('propagates CanvasApiError', async () => {
+      const canvas = plannerCanvas([])
+      vi.mocked(canvas.planner.listItems).mockRejectedValue(
+        new CanvasApiError('Unauthorized', 401, '/api/v1/planner/items'),
+      )
+      await expect(plannerTool(canvas).handler({})).rejects.toThrow(CanvasApiError)
     })
   })
 })

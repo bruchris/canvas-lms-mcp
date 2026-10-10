@@ -35,6 +35,29 @@ const ACTIVITY_STREAM_RETENTION_NOTE =
   'that window are gone from this endpoint even though the underlying courses, discussions and ' +
   'submissions still exist, so an empty or short result is not evidence that nothing happened.'
 
+/** Default cap on `list_my_planner_items`, matching the activity stream's convention. */
+const PLANNER_ITEMS_DEFAULT_MAX_ITEMS = 100
+
+/** Canvas's own default planner window when neither date is supplied (`planner_controller.rb#set_date_range`). */
+const PLANNER_DEFAULT_WINDOW_DAYS = 14
+
+/** A context-code regex matching Canvas's `course_<id>` / `group_<id>` form, canonical-id only (no leading zeros). */
+const PLANNER_CONTEXT_CODE_PATTERN = /^(course|group)_[1-9][0-9]{0,18}$/
+
+/**
+ * UTC midnight `daysFromNow` days from today, as an ISO 8601 string. Mirrors
+ * Canvas's `N.weeks.ago.beginning_of_day` / `N.weeks.from_now.beginning_of_day`
+ * default closely enough to give the caller SOME visibility into the window
+ * actually queried — Canvas's own response never echoes back the dates it
+ * resolved to (BRU-2797 §1 C9, §7.1).
+ */
+function isoDateAtUtcMidnight(daysFromNow: number): string {
+  const date = new Date()
+  date.setUTCHours(0, 0, 0, 0)
+  date.setUTCDate(date.getUTCDate() + daysFromNow)
+  return date.toISOString()
+}
+
 type CommentAuthorRole = 'self' | 'teacher' | 'peer'
 
 interface FeedbackComment {
@@ -456,6 +479,129 @@ export function studentTools(
           // correctly. A nullable note would read as "not truncated by
           // retention", which this server can never assert.
           retention_note: ACTIVITY_STREAM_RETENTION_NOTE,
+        }
+      },
+    },
+    {
+      name: 'list_my_planner_items',
+      title: 'List My Planner Items',
+      description:
+        "The authenticated student's planner: assignments, ungraded quizzes, planner notes, " +
+        'wiki pages, ungraded discussions, calendar events, peer reviews, sub-assignments and ' +
+        'peer-review sub-assignments — everything with a due or to-do date, across every course ' +
+        'and group at once. Strictly richer than get_todo_items, which covers only assignments ' +
+        'needing submitting or grading. Four caveats: (1) start_date and end_date must be given ' +
+        'TOGETHER or OMITTED TOGETHER — supplying only one makes Canvas silently default the ' +
+        'other side to a ten-year window, so a half-specified range is rejected outright; ' +
+        "omitting both resolves to Canvas's own ~2-week default, echoed back as the response's " +
+        '`start_date`/`end_date`. (2) `context_codes` (e.g. "course_123", "group_7") restricts ' +
+        'to those contexts; omit it for every context the student belongs to — an empty array ' +
+        'is rejected rather than silently meaning "all". (3) `submissions` is `false` when the ' +
+        'item has no gradable submission, or an object when it does — never null. (4) a planner ' +
+        'note has no `html_url` (Canvas exposes none for individual planner notes).',
+      inputSchema: {
+        start_date: z
+          .string()
+          .optional()
+          .describe(
+            'Inclusive start, YYYY-MM-DD or ISO 8601. Must be given together with end_date.',
+          ),
+        end_date: z
+          .string()
+          .optional()
+          .describe(
+            'Inclusive end, YYYY-MM-DD or ISO 8601. Must be given together with start_date.',
+          ),
+        context_codes: z
+          .array(
+            z
+              .string()
+              .regex(
+                PLANNER_CONTEXT_CODE_PATTERN,
+                'Each context code must be "course_<id>" or "group_<id>" (no leading zeros)',
+              ),
+          )
+          .min(
+            1,
+            'context_codes must not be empty — omit the field for every context the student ' +
+              'belongs to, rather than sending an empty list.',
+          )
+          .optional()
+          .describe(
+            'Restrict to these contexts, e.g. ["course_123","group_7"]. Defaults to every ' +
+              'context the student belongs to.',
+          ),
+        filter: z
+          .enum(['new_activity', 'incomplete_items', 'complete_items'])
+          .optional()
+          .describe(
+            'new_activity = unread/new only; incomplete_items / complete_items filter on ' +
+              'planner-override completion and submission state.',
+          ),
+        max_items: z
+          .number()
+          .int()
+          .positive()
+          .max(500)
+          .optional()
+          .describe(
+            `Maximum items to return (default ${PLANNER_ITEMS_DEFAULT_MAX_ITEMS}). When the ` +
+              'limit is reached, `truncated` is true and `truncation_note` explains how to ' +
+              'narrow the query.',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const startDate = params.start_date as string | undefined
+        const endDate = params.end_date as string | undefined
+        if ((startDate === undefined) !== (endDate === undefined)) {
+          throw new Error(
+            'start_date and end_date must be given together, or neither. Canvas fills a ' +
+              'missing side with its own 10-year default (10 years ago or 10 years from now), ' +
+              'silently producing a window up to a decade wide — supply both explicitly, or ' +
+              "omit both to use Canvas's ~2-week default.",
+          )
+        }
+
+        const contextCodes = params.context_codes as string[] | undefined
+        const filter = params.filter as
+          'new_activity' | 'incomplete_items' | 'complete_items' | undefined
+        const limit = (params.max_items as number | undefined) ?? PLANNER_ITEMS_DEFAULT_MAX_ITEMS
+
+        // One item past the limit, deliberately — see the identical comment on
+        // get_my_activity_stream above: paginate() reports what it
+        // accumulated, never whether more was waiting.
+        const fetched = await canvas.planner.listItems({
+          startDate,
+          endDate,
+          contextCodes,
+          filter,
+          maxItems: limit + 1,
+        })
+        const truncated = fetched.length > limit
+        const capped = truncated ? fetched.slice(0, limit) : fetched
+        const items = pseudonymizer?.isEnabled()
+          ? await pseudonymizer.anonymizePlannerItems(capped)
+          : capped
+
+        return {
+          items,
+          total_items: items.length,
+          truncated,
+          truncation_note: truncated
+            ? `Stopped after max_items (${limit}) items; more planner items exist in this ` +
+              'window. Raise max_items (maximum 500), or narrow start_date/end_date or context_codes.'
+            : null,
+          // Resolved window: when the caller passed neither date, Canvas
+          // applies its own ±2-week default server-side and never echoes it
+          // back. This is computed independently rather than read off the
+          // response, so it is an approximation of what Canvas used, not a
+          // read of it (BRU-2797 §7.1).
+          start_date: startDate ?? isoDateAtUtcMidnight(-PLANNER_DEFAULT_WINDOW_DAYS),
+          end_date: endDate ?? isoDateAtUtcMidnight(PLANNER_DEFAULT_WINDOW_DAYS),
         }
       },
     },

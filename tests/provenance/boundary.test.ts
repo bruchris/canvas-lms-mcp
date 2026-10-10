@@ -7,6 +7,7 @@ import {
   FIXTURE_DISCUSSION_ENTRY,
   FIXTURE_SUBMISSION,
 } from '../fixtures/activity-stream'
+import { FIXTURE_PLANNER_CALENDAR_EVENT, FIXTURE_PLANNER_NOTE } from '../fixtures/planner'
 import { UNTRUSTED_FIELDS } from '../../src/provenance/fields'
 import { MARKER_CLOSE, MARKER_OPEN_PREFIX } from '../../src/provenance/markers'
 import { getAllTools, registerAllTools } from '../../src/tools'
@@ -651,6 +652,74 @@ describe('the cross-course activity stream (§6.3)', () => {
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BRU-2803 — the cross-course planner.
+//
+// The registry entry is `{description}` ONLY — narrower than the activity
+// stream's — because `lib/api/v1/planner_item.rb#plannable_json` slices every
+// plannable down to `API_PLANNABLE_FIELDS` (+ a small per-type extra list),
+// and neither `message` nor `body` is in that list: a discussion/announcement
+// plannable's real text never reaches this response. Only a calendar event's
+// `description` (`CALENDAR_PLANNABLE_FIELDS`) survives the slice as free
+// text. `details` on a `planner_note` plannable is deliberately unfenced —
+// it is the CALLER'S OWN note, not third-party Canvas content.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('the cross-course planner (BRU-2803)', () => {
+  it('fences a calendar event description end to end', async () => {
+    const parsed = (await callToolJson(
+      'list_my_planner_items',
+      {},
+      { 'planner.listItems': [FIXTURE_PLANNER_CALENDAR_EVENT] },
+    )) as { items: Record<string, unknown>[] }
+    const item = parsed.items[0]!
+    const plannable = item.plannable as Record<string, unknown>
+
+    expect(plannable.description as string).toBe(
+      fencedWith(
+        'calendar event description',
+        FIXTURE_PLANNER_CALENDAR_EVENT.plannable.description as string,
+      ),
+    )
+  })
+
+  it("does NOT fence a planner note's own details — it is the caller's own text", async () => {
+    const parsed = (await callToolJson(
+      'list_my_planner_items',
+      {},
+      { 'planner.listItems': [FIXTURE_PLANNER_NOTE] },
+    )) as { items: Record<string, unknown>[] }
+    const item = parsed.items[0]!
+    const plannable = item.plannable as Record<string, unknown>
+
+    expect(plannable.details).toBe(FIXTURE_PLANNER_NOTE.plannable.details)
+    expect(JSON.stringify(plannable)).not.toContain(MARKER_OPEN_PREFIX)
+  })
+
+  it('leaves title and location_name unfenced on the calendar event item', async () => {
+    const parsed = (await callToolJson(
+      'list_my_planner_items',
+      {},
+      { 'planner.listItems': [FIXTURE_PLANNER_CALENDAR_EVENT] },
+    )) as { items: Record<string, unknown>[] }
+    const plannable = parsed.items[0]!.plannable as Record<string, unknown>
+
+    expect(plannable.title).toBe(FIXTURE_PLANNER_CALENDAR_EVENT.plannable.title)
+    expect(plannable.location_name).toBe(FIXTURE_PLANNER_CALENDAR_EVENT.plannable.location_name)
+  })
+
+  it('leaves our own envelope notes unfenced', async () => {
+    const envelope = (await callToolJson(
+      'list_my_planner_items',
+      { max_items: 1 },
+      { 'planner.listItems': [FIXTURE_PLANNER_CALENDAR_EVENT, FIXTURE_PLANNER_NOTE] },
+    )) as { truncation_note: string | null; start_date: string; end_date: string }
+
+    expect(envelope.truncation_note).not.toContain(MARKER_OPEN_PREFIX)
+    expect(envelope.start_date).not.toContain(MARKER_OPEN_PREFIX)
+    expect(envelope.end_date).not.toContain(MARKER_OPEN_PREFIX)
+  })
+})
+
 describe('forgery inside a Canvas payload', () => {
   it('neutralises a forged close marker and leaves exactly one real fence', async () => {
     const parsed = (await callToolJson(
@@ -864,6 +933,7 @@ describe('field registry coverage', () => {
     'get_page',
     'list_pages',
     'get_syllabus',
+    'list_my_planner_items',
     // The UI-bound surfaces §8.3 deferred, graduated by BRU-2183 once the
     // widgets learned to strip markers.
     'get_course_structure',
@@ -872,9 +942,9 @@ describe('field registry coverage', () => {
     'view_account_notifications',
   ])
 
-  it('matches the canonical list — 16 read tools', () => {
+  it('matches the canonical list — 17 read tools', () => {
     expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_FENCED_TOOLS)
-    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(16)
+    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(17)
   })
 
   // A `view_*` tool is a separate definition with its own handler that returns

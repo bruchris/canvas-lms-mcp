@@ -21,6 +21,7 @@ import type {
   CanvasEnrollment,
   CanvasOutcomeResultsResponse,
   CanvasOutcomeRollupsResponse,
+  CanvasPlannerItem,
   CanvasSubmission,
   CanvasSubmissionComment,
   CanvasSubmissionDiscussionEntry,
@@ -352,6 +353,47 @@ export class Pseudonymizer {
       out.push(await this.anonymizeActivityStreamEntry(item))
     }
     return out
+  }
+
+  /**
+   * Pseudonymize the PII arm of a `GET /planner/items` response (BRU-2878).
+   *
+   * `submissions.feedback` (from `submission_statuses_for`) carries an
+   * `author_name` with NO identifier anywhere on the item — the plannable set
+   * includes `assessment_request` / `peer_review_sub_assignment`, where this
+   * feedback can originate from a peer reviewer rather than the grader, and
+   * there is no `author_id` sibling to classify against like
+   * `anonymizeSubmission` does. This is the exact shape already handled for
+   * `author_name` on a `DiscussionEntry` activity-stream item above: nothing
+   * to key a stable pseudonym on, so it is withheld outright rather than left
+   * in place — failing closed is the only safe reading. `author_avatar_url` is
+   * cleared alongside it, matching `applyPseudonymToUser`'s treatment of
+   * `avatar_url`: a masked name next to the real author's photo would defeat
+   * the point. No other arm of a planner item carries a third-party name.
+   */
+  async anonymizePlannerItems(
+    items: ReadonlyArray<CanvasPlannerItem>,
+  ): Promise<CanvasPlannerItem[]> {
+    if (!this.isEnabled()) return [...items]
+    return items.map((item) => {
+      if (item.submissions === false) return item
+      const feedback = item.submissions.feedback
+      if (typeof feedback?.author_name !== 'string' || feedback.author_name.length === 0) {
+        return item
+      }
+      return {
+        ...item,
+        submissions: {
+          ...item.submissions,
+          feedback: {
+            ...feedback,
+            author_name: WITHHELD_AUTHOR_NAME,
+            author_avatar_url:
+              feedback.author_avatar_url == null ? feedback.author_avatar_url : null,
+          },
+        },
+      }
+    })
   }
 
   /**

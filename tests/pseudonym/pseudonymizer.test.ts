@@ -2,10 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
 import { mapFilePath } from '../../src/pseudonym/paths'
 import type { CourseMap } from '../../src/pseudonym/store'
 import type { CanvasEnrollment, CanvasSubmission, CanvasUser } from '../../src/canvas/types'
+import {
+  FIXTURE_PLANNER_ASSIGNMENT,
+  FIXTURE_PLANNER_NOTE,
+  FIXTURE_PLANNER_PEER_REVIEW_SUB_ASSIGNMENT,
+} from '../fixtures/planner'
 
 const BASE_URL = 'https://school.instructure.com/api/v1'
 const HOST = 'school.instructure.com'
@@ -349,6 +354,40 @@ describe('anonymizeSubmission', () => {
     expect(out.submission_comments?.[0]?.author_name).toBe('Student 1')
     // Author 99 has no pseudonym in the map — pass through unchanged.
     expect(out.submission_comments?.[1]?.author_name).toBe('Prof Jones')
+  })
+})
+
+describe('anonymizePlannerItems', () => {
+  it('withholds feedback.author_name and clears author_avatar_url (BRU-2878)', async () => {
+    const p = make()
+    const [out] = await p.anonymizePlannerItems([FIXTURE_PLANNER_ASSIGNMENT])
+    const submissions = out!.submissions
+    expect(submissions).not.toBe(false)
+    if (submissions === false) throw new Error('unreachable')
+    expect(submissions.feedback?.author_name).toBe(WITHHELD_AUTHOR_NAME)
+    expect(submissions.feedback?.author_name).not.toBe('Dr. Lin')
+    expect(submissions.feedback?.author_avatar_url).toBeFalsy()
+    // The comment text itself is not a name and is left alone.
+    expect(submissions.feedback?.comment).toBe('Nice work.')
+  })
+
+  it('leaves items with submissions: false or no feedback untouched', async () => {
+    const p = make()
+    const [note, peerReview] = await p.anonymizePlannerItems([
+      FIXTURE_PLANNER_NOTE,
+      FIXTURE_PLANNER_PEER_REVIEW_SUB_ASSIGNMENT,
+    ])
+    expect(note).toBe(FIXTURE_PLANNER_NOTE)
+    expect(peerReview).toBe(FIXTURE_PLANNER_PEER_REVIEW_SUB_ASSIGNMENT)
+  })
+
+  it('passes the real author name through when disabled', async () => {
+    const p = make({ env: {} })
+    const [out] = await p.anonymizePlannerItems([FIXTURE_PLANNER_ASSIGNMENT])
+    const submissions = out!.submissions
+    expect(submissions).not.toBe(false)
+    if (submissions === false) throw new Error('unreachable')
+    expect(submissions.feedback?.author_name).toBe('Dr. Lin')
   })
 })
 

@@ -66,6 +66,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
   // src/tools/student.ts
   'get_my_submission_feedback',
   'get_my_activity_stream',
+  'list_my_planner_items',
 
   // src/tools/quiz-question-responses.ts
   'get_quiz_question_responses',
