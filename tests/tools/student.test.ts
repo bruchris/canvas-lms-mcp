@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import type { CanvasId } from '../../src/canvas/id'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -647,6 +647,135 @@ describe('studentTools', () => {
         expect(teacherOnA.author_name).toBe('Dr. Chen') // grader name preserved
         expect(peerOnB.author_role).toBe('peer')
         expect(peerOnB.author_name).toMatch(/^Student \d+$/) // same user, masked as a peer here
+      })
+
+      describe('a comment author Canvas has already anonymized (BRU-2865)', () => {
+        // `submission_comment_json` sets `author_id: nil`, `author: {}` and
+        // `author_name: "Anonymous User"` TOGETHER in its non-`:read_author`
+        // branch (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas
+        // SHA 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c). Canvas has already
+        // anonymized that comment: there is no identity to key a pseudonym on,
+        // and no name to mask.
+        //
+        // `classifyCommentAuthor` reads it as 'peer' — a nil `author_id`
+        // matches neither `submission.user_id` nor `grader_id` — so the peer
+        // pre-warm used to pass that nil into `anonymizeUser`, which keys the
+        // course map on `String(null)`.
+        const anonymousComment: CanvasSubmissionComment = {
+          id: '903',
+          author_id: null,
+          author_name: 'Anonymous User',
+          comment: 'A review from someone you may not see.',
+          created_at: '2026-06-29T12:00:00Z',
+          author: {},
+        }
+        // One unreadable author and one ordinary readable peer on the same
+        // submission, so every assertion below carries its own control: the
+        // readable peer must still be warmed, keyed and masked.
+        const submissionWithAnonymousAuthor: CanvasSubmission = {
+          ...feedbackSubmission,
+          submission_comments: [selfComment, anonymousComment, peerComment, teacherComment],
+        }
+
+        async function readCourseMap() {
+          const { mapFilePath } = await import('../../src/pseudonym/paths')
+          return JSON.parse(
+            await readFile(mapFilePath(tmpDir, 'school.instructure.com', '1'), 'utf8'),
+          ) as { students: Record<string, unknown>; next_pseudonym_index: number }
+        }
+
+        function runTool() {
+          const canvas = buildMockCanvas()
+          vi.mocked(canvas.submissions.listMy).mockResolvedValue([submissionWithAnonymousAuthor])
+          return getTool(canvas, makePseudonymizer()).handler({ course_id: '1' }) as Promise<{
+            findings: Array<{
+              comments: Array<{ id: string; author_role: string; author_name: string }>
+            }>
+          }>
+        }
+
+        it('writes no "null" key to the persisted course map', async () => {
+          await runTool()
+
+          const map = await readCourseMap()
+
+          // The readable peer (55) and the submitting student (5), and nobody
+          // else. A `"null"` key here means the pre-warm keyed the map on
+          // `String(comment.author_id)` regardless of whether the comment
+          // carries an author at all. The readable peer being present is the
+          // control: this is not a blanket "stop warming comment authors".
+          expect(Object.keys(map.students).sort()).toEqual(['5', '55'])
+        })
+
+        it('spends no pseudonym index on it, so real students keep their numbering', async () => {
+          const result = await runTool()
+
+          const map = await readCourseMap()
+          const nameById = (id: string) =>
+            result.findings[0].comments.find((c) => c.id === id)!.author_name
+
+          // Allocation order: the peer pre-warm runs first (readable peers, in
+          // comment order), then `anonymizeSubmission` warms the submitter.
+          // With the unreadable author warmed as if it were a person it took
+          // index 1 and shifted both real students by one.
+          expect(nameById('901')).toBe('Student 1') // readable peer
+          expect(nameById('902')).toBe('Student 2') // the submitting student
+          expect(map.next_pseudonym_index).toBe(3)
+        })
+
+        it('leaves Canvas’s own byline alone (characterization — passes without the fix)', async () => {
+          // Deliberately not load-bearing: with the write side closed there is
+          // no `"null"` key for a read to find, so this holds whether or not
+          // either guard exists. It is here to pin the user-visible half of
+          // "hygiene, not a name leak", and the test below is the armed
+          // version of it.
+          const result = await runTool()
+          const anonymous = result.findings[0].comments.find((c) => c.id === '903')!
+
+          expect(anonymous.author_name).toBe('Anonymous User')
+          expect(anonymous.author_name).not.toMatch(/^Student \d+$/)
+          // Canvas emits no author id for this comment, so there is no role to
+          // infer: 'peer' is what "not you, not your grader" resolves to. Left
+          // as-is rather than given a role of its own — `author_role` is a
+          // published output field, so a new value is an output-contract
+          // change, and nothing downstream reads 'peer' as "a classmate".
+          expect(anonymous.author_role).toBe('peer')
+        })
+
+        it('keeps that byline even when the map already holds a "null" key (read-side guard, BRU-2863)', async () => {
+          // The armed counterpart. The course map is persisted and never
+          // migrated, so a map written by <= 2.1.0 — when this tool still
+          // warmed the key — can already hold a `"null"` entry. BRU-2863's own
+          // test covers the read guard through `get_my_activity_stream`; this
+          // one covers it through the second tool that shares the method.
+          const pseudonymizer = makePseudonymizer()
+          await pseudonymizer.anonymizeUser('1', {
+            id: null,
+            name: 'Anonymous User',
+          } as unknown as Parameters<typeof pseudonymizer.anonymizeUser>[1])
+
+          const canvas = buildMockCanvas()
+          vi.mocked(canvas.submissions.listMy).mockResolvedValue([submissionWithAnonymousAuthor])
+          const result = (await getTool(canvas, pseudonymizer).handler({
+            course_id: '1',
+          })) as { findings: Array<{ comments: Array<{ id: string; author_name: string }> }> }
+          const commentById = (id: string) => result.findings[0].comments.find((c) => c.id === id)!
+
+          expect(commentById('903').author_name).toBe('Anonymous User')
+          // Control: same run, same poisoned map, and the readable peer is
+          // still masked — the guard refuses one comment, not the map.
+          expect(commentById('901').author_name).toMatch(/^Student \d+$/)
+        })
+
+        it('does not accumulate a junk key across repeated calls', async () => {
+          await runTool()
+          await runTool()
+
+          const map = await readCourseMap()
+
+          expect(Object.keys(map.students).sort()).toEqual(['5', '55'])
+          expect(map.next_pseudonym_index).toBe(3)
+        })
       })
     })
   })

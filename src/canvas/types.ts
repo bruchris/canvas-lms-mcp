@@ -338,7 +338,22 @@ export interface CanvasUserDisplay {
 
 export interface CanvasSubmissionComment {
   id: CanvasId
-  author_id: CanvasId
+  /**
+   * `null` when the viewer lacks `:read_author` on the comment:
+   * `submission_comment_json`'s `else` branch sets `author_id: nil` together
+   * with `author: {}` and `author_name: "Anonymous User"`
+   * (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas SHA
+   * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+   *
+   * ~~Declared non-null.~~ Widened 2026-10-10 (BRU-2865): the declaration had
+   * contradicted that branch since the branch was first cited, and the two
+   * sites that key a pseudonym off this field were written against the
+   * declaration rather than the serializer. Derive the key with
+   * `submissionCommentAuthorKey` rather than `String(author_id)` — `null`
+   * means "this comment carries no identity at all", not "key the map on the
+   * string `null`".
+   */
+  author_id: CanvasId | null
   author_name: string
   comment: string
   created_at: string
