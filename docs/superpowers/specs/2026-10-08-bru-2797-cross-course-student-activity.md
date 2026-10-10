@@ -590,7 +590,38 @@ values returned and detect the silent drop.
 | Tool | PII in the response | Trigger |
 | --- | --- | --- |
 | `get_my_activity_stream_summary` | none — `{type, count, unread_count}` `[S]` | no |
-| `get_my_activity_stream` | `root_discussion_entries[].user.{user_id, user_name}`; `author_name` on `DiscussionEntry` items; a full `submission_json` with `includes = %w[… user]` plus `submission_comments[]` on `Submission` items; `latest_messages` on `Conversation` items `[S]` | **yes, four ways** |
+| `get_my_activity_stream` | `root_discussion_entries[].user.{user_id, user_name}`; `author_name` on `DiscussionEntry` items; a full `submission_json` with `includes = %w[… user]` plus `submission_comments[]` on `Submission` items; `latest_messages` on `Conversation` items `[S]` | ~~**yes, four ways**~~ **yes, seven ways — see the correction below** |
+
+> **Corrected 2026-10-10 (BRU-2863).** "Four ways" was wrong, and the undercount
+> is why the first implementation shipped a leak: it treated "the `Submission`
+> arm" as `user` + `submission_comments[].author_name`, which is the subset of
+> the merged serializer this row happens to name. The arm is as wide as
+> `submission_json` and is admitted through an open index signature, so every key
+> it emits is privacy-relevant. Re-audited key by key at the pinned SHA, three
+> further name-bearing surfaces reach the stream:
+>
+> - **`discussion_entries[]`** — emitted for any `discussion_topic` submission,
+>   because `discussion_entries` is in the default-on `SUBMISSION_OTHER_FIELDS`
+>   and the stream narrows nothing. Each entry carries `user_name`, `user_id`
+>   **and** `user` = `user_display_json(…)`; the first two are dropped when the
+>   entry is deleted while `user` survives, so the three do not co-occur. It
+>   recurses through `recent_replies[]` `[S]`.
+> - **`proxy_submitter`** — `attempt.proxy_submitter.short_name`, a bare string
+>   with a `proxy_submitter_id` sibling, also from `SUBMISSION_OTHER_FIELDS`
+>   `[S]`.
+> - **`submission_comments[].author.display_name`** — `submission_comment_json`
+>   sets `sc_hash["author"] = user_display_json(comment.author, …)` whenever the
+>   viewer holds `:read_author`, so the author's real name sits one key over from
+>   the `author_name` this row did name `[S]`.
+>
+> `user_display_json` spells the name **`display_name`**, not `name` or
+> `user_name`. That is the mechanical reason all three were missed: `CLAUDE.md`
+> step 6 triggers on "a `CanvasUser`, a `participants` array, or a `user_name`
+> field", and none of these three matches any of those three patterns. The audit
+> also cleared `attachments[]` (the `user` key is gated on
+> `includes.include?("user")`, which is not passed), `group` (gated on
+> `include=group`, absent), and `assignment` / `course` (metadata; `course_json`
+> emits teachers only under `include=teachers`).
 | `list_my_planner_items` | none in the planner item itself; `plannable` is the underlying object, and for `discussion_topic` / `assignment` plannables that is course content, not a user record `[S]` | **no — but see below** |
 
 **`list_my_planner_items` is the interesting row.** It is the student's *own*
@@ -849,8 +880,23 @@ is not "one of each documented type"; it is the arms that break naive code:
 2. A **group-context** item with `group_id` and **no `course_id` key** (§1 C7) —
    the single most likely source of a production crash, since every consumer will
    reach for `course_id`.
-3. A `Submission` item with the full merged `submission_json` including `user`
-   and `submission_comments` (§3.1) — the PII and fencing worst case.
+3. A `Submission` item with ~~the full merged `submission_json` including~~ the
+   merged `submission_json`'s `user` and `submission_comments` (§3.1) — the PII
+   and fencing worst case.
+
+   > **Corrected 2026-10-10 (BRU-2863).** No single `Submission` item carries
+   > "the full merged `submission_json`", so one fixture cannot be it and
+   > claiming otherwise is what made the gap invisible. `SUBMISSION_OTHER_FIELDS
+   > = %w[attachments discussion_entries proxy_submitter]` is default-on, and
+   > which of those keys appear depends on the submission: a text entry has no
+   > `discussion_entries`, and only a submission made on a student's behalf has
+   > `proxy_submitter`. **Three** `Submission` fixtures are required — text
+   > entry, discussion (with a nested `recent_replies[]` and a deleted entry),
+   > and proxy — plus a guard fixture for a `proxy_submitter` with no
+   > `proxy_submitter_id`. Each comment in the text-entry fixture must also
+   > carry the nested `author` object, because `submission_comment_json` emits
+   > it beside `author_name`; without it the fixture understates the arm and a
+   > pseudonymizer that masks only `author_name` reads as correct.
 4. A planner item with `submissions: false` **and** one with `submissions: {…}`
    (§7.2).
 5. A planner note with **no `html_url`** (§3.2).
@@ -921,6 +967,28 @@ registry entry and its test mirror, and the six fixtures from §8.
   **individually**: removing each arm's dispatch must fail exactly its own test
   and nothing else. A single "no names in the output" assertion would pass with
   three of the four arms unimplemented.
+
+  > **Amended 2026-10-10 (BRU-2863).** The parenthesised list is the §6.1
+  > undercount and must not be read as the scope of this criterion. Per-arm
+  > attribution is necessary but was **not sufficient**: the first
+  > implementation satisfied all four bullets above and still shipped three real
+  > names, because the enumeration — not the attribution — was the defect. The
+  > criterion now also requires a test per surface for
+  > `discussion_entries[].user_name`, `discussion_entries[].user.display_name`,
+  > the `recent_replies[]` recursion, the deleted-entry case (`user` with no
+  > `user_name`), `proxy_submitter` with and without its id, and
+  > `submission_comments[].author.display_name`; plus a **negative sweep** over
+  > every fixture asserting that no real name survives, paired with a
+  > flag-off control proving the sweep can fail. The sweep is what covers a
+  > surface nobody thought to enumerate — which is the failure mode this
+  > criterion, as originally written, did not have an answer for.
+  >
+  > Where a name cannot be keyed to an id, the rule is **withhold, never pass
+  > through**: a `proxy_submitter` with no `proxy_submitter_id`, or a
+  > `user_display_json` object with no `id`, gets `WITHHELD_AUTHOR_NAME`. And
+  > where a name IS rewritten, the sibling `avatar_image_url` / `pronouns` are
+  > nulled, for parity with `applyPseudonymToUser`, which already does this for
+  > `avatar_url` / `pronouns` on a full `CanvasUser`.
 - **AC-9 — fencing hits exactly the intended fields.** Assert the fenced-field
   set returned by the walk equals `['comment','body','message']` on fixture 3,
   and that `assignment.name`, `course.name` and `title` are **unfenced** — the

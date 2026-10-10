@@ -6,6 +6,8 @@ import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudon
 import { applyFencing } from '../../src/provenance/apply'
 import { MARKER_CLOSE, MARKER_OPEN_PREFIX } from '../../src/provenance/markers'
 import {
+  ACTIVITY_STREAM_FIXTURES,
+  ACTIVITY_STREAM_REAL_NAMES,
   FIXTURE_CONTEXT_MESSAGE,
   FIXTURE_CONVERSATION,
   FIXTURE_COURSE_DISCUSSION,
@@ -13,6 +15,10 @@ import {
   FIXTURE_GROUP_DISCUSSION,
   FIXTURE_NO_CONTEXT_WITH_NAME,
   FIXTURE_SUBMISSION,
+  FIXTURE_SUBMISSION_DISCUSSION,
+  FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
+  FIXTURE_SUBMISSION_PROXY,
+  FIXTURE_SUBMISSION_PROXY_NO_ID,
 } from '../fixtures/activity-stream'
 
 // BRU-2797 §6.2 / §9 AC-8, AC-10. Every assertion here is per-ARM: a single
@@ -276,6 +282,328 @@ describe('pseudonymizer and fence do not both rewrite a name (AC-10)', () => {
       'Student 1',
       'Prof. Amara Okoro',
       'Student 2',
+    ])
+    for (const name of names) {
+      expect(name).not.toContain(MARKER_OPEN_PREFIX)
+      expect(name).not.toContain(MARKER_CLOSE)
+    }
+  })
+})
+
+// --- BRU-2863: the Submission arm's remaining name-bearing fields -----------
+//
+// `CanvasActivityStreamEntry` accepts the whole merged `submission_json` through
+// an open index signature, so "the Submission arm" is as wide as Canvas's
+// submission serializer. Audited key by key at the pinned SHA
+// 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c, three name-bearing surfaces reach
+// the stream beyond `user` and `submission_comments[].author_name`:
+//
+//   - `discussion_entries[]`     — `user_name`, `user.display_name`, recursive
+//   - `proxy_submitter`          — a bare string, with a `proxy_submitter_id`
+//   - `submission_comments[].author.display_name` — NOT in the original report
+//
+// Every assertion below is per-SURFACE for the same reason the arm tests above
+// are per-arm: one "no real names anywhere" test passes with two of the three
+// unimplemented.
+
+type DiscussionEntry = {
+  user_id?: string
+  user_name?: string
+  user?: { id?: string; display_name?: string; avatar_image_url?: unknown; pronouns?: unknown }
+  recent_replies?: DiscussionEntry[]
+  message?: string
+  attachment?: unknown
+  attachments?: unknown
+}
+
+function entriesOf(item: unknown): DiscussionEntry[] {
+  return (item as { discussion_entries: DiscussionEntry[] }).discussion_entries
+}
+
+describe('anonymizeActivityStream — Submission arm: discussion_entries[]', () => {
+  it('pseudonymizes user_name on a live entry and keeps the user_id', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const [root] = entriesOf(item)
+    expect(root!.user_name).toBe('Student 1')
+    expect(root!.user_id).toBe('42')
+  })
+
+  it('pseudonymizes the nested user.display_name, which spells the name under another key', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const [root] = entriesOf(item)
+    expect(root!.user!.display_name).toBe('Student 1')
+    expect(root!.user!.id).toBe('42')
+  })
+
+  it('nulls the avatar and pronouns beside a rewritten display_name', async () => {
+    // Parity with `applyPseudonymToUser`, which already does `avatar_url =
+    // undefined` / `pronouns = null`. A photograph and a pronoun set sitting
+    // next to "Student 1" re-identify the student as surely as the name did.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const [root] = entriesOf(item)
+    expect(root!.user!.avatar_image_url).toBeNull()
+    expect(root!.user!.pronouns).toBeNull()
+  })
+
+  it('gives user_name and user.display_name the SAME pseudonym for one user_id', async () => {
+    // They are two spellings of one person. Two different labels would imply
+    // two participants in the thread, which is a correctness bug on top of a
+    // privacy one.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const [root] = entriesOf(item)
+    expect(root!.user_name).toBe(root!.user!.display_name)
+  })
+
+  it('recurses into recent_replies and pseudonymizes a different reply author distinctly', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const reply = entriesOf(item)[0]!.recent_replies![0]!
+    expect(reply.user_name).toBe('Student 2')
+    expect(reply.user!.display_name).toBe('Student 2')
+    expect(reply.user_id).toBe('44')
+    // Distinct from the root author: the reply is a different student, and the
+    // reader must be able to tell them apart.
+    expect(reply.user_name).not.toBe(entriesOf(item)[0]!.user_name)
+  })
+
+  it('masks a DELETED entry, whose only identity is user.display_name with no user_name', async () => {
+    // `serialize_entry` drops `user_id` and `user_name` for a deleted entry but
+    // emits `user` regardless — the `:display_user` guard has no `deleted?`
+    // check. An implementation keyed on `user_name` leaves this name in place.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const deleted = entriesOf(item)[1]!
+    expect(deleted.user_name).toBeUndefined()
+    expect(deleted.user!.display_name).toBe('Student 1')
+    // Same person as the live entry, so the same label — the deleted entry
+    // resolves through `user.id` rather than the absent `user_id`.
+    expect(deleted.user!.display_name).toBe(entriesOf(item)[0]!.user_name)
+  })
+
+  it('leaves the entry message text alone (the fence owns it, not the pseudonymizer)', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const fixtureEntries = FIXTURE_SUBMISSION_DISCUSSION.discussion_entries as DiscussionEntry[]
+    expect(entriesOf(item)[0]!.message).toBe(fixtureEntries[0]!.message)
+    expect(entriesOf(item)[0]!.recent_replies![0]!.message).toBe(
+      fixtureEntries[0]!.recent_replies![0]!.message,
+    )
+  })
+
+  it('withholds a display name that has no id at all (fails closed)', async () => {
+    // This test exists because the injection matrix for this change scored the
+    // branch it covers at ZERO failing tests: every fixture happened to carry
+    // an `id`, so the fail-closed path was unreachable and the guard was
+    // decoration. A guard with no reachable test is not a guard.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION_NO_ID])
+
+    const entry = entriesOf(item)[0]!
+    expect(entry.user!.display_name).toBe(WITHHELD_AUTHOR_NAME)
+    // Not a Student N: a pseudonym would imply this author can be correlated
+    // with the same person elsewhere in the response, and without an id they
+    // cannot be.
+    expect(entry.user!.display_name).not.toMatch(/^Student \d+$/)
+    expect(JSON.stringify(item)).not.toContain('Sasha Virk')
+  })
+
+  it('passes the entry attachments through untouched — the audit found no identity key', async () => {
+    // `discussion_entry_attachment` calls `attachment_json(entry.attachment,
+    // user, url_options)` with NO `include`, and `attachment_json` gates its
+    // `user` key on `includes.include?("user")`. This asserts that audit
+    // conclusion instead of leaving it in a comment: the day an attachment
+    // starts carrying a user, this test stops matching the fixture.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+
+    const fixtureEntries = FIXTURE_SUBMISSION_DISCUSSION.discussion_entries as DiscussionEntry[]
+    expect(entriesOf(item)[0]!.attachment).toEqual(fixtureEntries[0]!.attachment)
+    expect(entriesOf(item)[0]!.attachments).toEqual(fixtureEntries[0]!.attachments)
+  })
+})
+
+describe('anonymizeActivityStream — Submission arm: proxy_submitter', () => {
+  it('pseudonymizes the proxy submitter keyed by proxy_submitter_id and keeps the id', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_PROXY])
+
+    // A proxy submitter is staff, but `classifyRole({id, name})` with no
+    // enrollments is `'unknown'` and `shouldPseudonymize('unknown')` is true,
+    // so the name is masked. Failing closed on an identity we cannot classify
+    // is the rule; the alternative leaks a name on the strength of a guess.
+    expect(item!.proxy_submitter).toBe('Student 2')
+    expect(item!.proxy_submitter_id).toBe('12')
+  })
+
+  it('withholds the name outright when there is no proxy_submitter_id (fails closed)', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_PROXY_NO_ID])
+
+    expect(item!.proxy_submitter).toBe(WITHHELD_AUTHOR_NAME)
+    expect(item!.proxy_submitter).not.toMatch(/^Student \d+$/)
+  })
+
+  it('resolves the proxy submitter in the item’s own scope, not a shared one', async () => {
+    // Same architecture as every other surface: per-item scope, so a group
+    // item's proxy submitter lands in `_group_<id>` and never the course map.
+    const inGroup: Record<string, unknown> = {
+      ...FIXTURE_SUBMISSION_PROXY,
+      context_type: 'Group',
+      group_id: '7',
+    }
+    delete inGroup.course_id
+
+    await make().anonymizeActivityStream([inGroup as unknown as typeof FIXTURE_SUBMISSION_PROXY])
+
+    const { mapFilePath } = await import('../../src/pseudonym/paths')
+    const { readFile } = await import('node:fs/promises')
+    const groupMap = JSON.parse(
+      await readFile(mapFilePath(tmpRoot, 'school.instructure.com', '_group_7'), 'utf8'),
+    ) as { students: Record<string, unknown> }
+
+    expect(Object.keys(groupMap.students).sort()).toEqual(['12', '42'])
+    await expect(
+      readFile(mapFilePath(tmpRoot, 'school.instructure.com', '101'), 'utf8'),
+    ).rejects.toThrow()
+  })
+})
+
+describe('anonymizeActivityStream — Submission arm: submission_comments[].author', () => {
+  it('rewrites a peer reviewer’s nested author.display_name, not only author_name', async () => {
+    // The leak the original report did not name. `submission_comment_json`
+    // emits `author` = `user_display_json(...)` beside `author_name`, so
+    // masking `author_name` alone leaves the real name one key over on the one
+    // arm PR #406 claimed to cover.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION])
+
+    const peer = item!.submission_comments![1]!
+    expect(peer.author_name).toBe('Student 2')
+    expect(peer.author!.display_name).toBe('Student 2')
+    expect(peer.author!.display_name).toBe(peer.author_name)
+    expect(peer.author!.id).toBe('43')
+  })
+
+  it('nulls the peer reviewer’s avatar and pronouns too', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION])
+
+    const peer = item!.submission_comments![1]!
+    expect(peer.author!.avatar_image_url).toBeNull()
+    expect(peer.author!.pronouns).toBeNull()
+  })
+
+  it('leaves the recorded grader’s nested author object intact (AC-9 parity)', async () => {
+    // grader_id is 9, so staff feedback stays attributable — and the nested
+    // object must follow the SAME rule as `author_name`, or the two keys
+    // disagree about who wrote the comment.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION])
+
+    const grader = item!.submission_comments![0]!
+    expect(grader.author_name).toBe('Prof. Amara Okoro')
+    expect(grader.author).toEqual(FIXTURE_SUBMISSION.submission_comments![0]!.author)
+  })
+})
+
+describe('anonymizeActivityStream — negative sweep over every fixture (AC-8)', () => {
+  it('leaves no real student name anywhere in the serialized output', async () => {
+    const items = await make().anonymizeActivityStream([
+      ...ACTIVITY_STREAM_FIXTURES,
+      FIXTURE_SUBMISSION_PROXY_NO_ID,
+      FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
+      FIXTURE_NO_CONTEXT_WITH_NAME,
+    ])
+    const json = JSON.stringify(items)
+
+    // Anti-vacuity, two ways. The sweep must be searching a payload that still
+    // contains the deliberately-preserved staff name, or an empty/undefined
+    // result would pass every assertion below.
+    expect(json).toContain('Prof. Amara Okoro')
+    expect(items).toHaveLength(ACTIVITY_STREAM_FIXTURES.length + 3)
+
+    for (const name of ACTIVITY_STREAM_REAL_NAMES) {
+      expect(json).not.toContain(name)
+    }
+  })
+
+  it('still leaks every one of those names when the flag is off, proving the sweep can fail', async () => {
+    // The control for the test above: same sweep, same fixtures, flag off. If
+    // this does not find the names, the sweep is not looking where it claims.
+    const items = await make({}).anonymizeActivityStream([
+      ...ACTIVITY_STREAM_FIXTURES,
+      FIXTURE_SUBMISSION_PROXY_NO_ID,
+      FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
+      FIXTURE_NO_CONTEXT_WITH_NAME,
+    ])
+    const json = JSON.stringify(items)
+
+    for (const name of ACTIVITY_STREAM_REAL_NAMES) {
+      expect(json).toContain(name)
+    }
+  })
+})
+
+describe('fencing reaches the Submission arm’s nested discussion_entries (AC-9 / AC-10)', () => {
+  // The audit concluded that `src/provenance/fields.ts` needs NO change for the
+  // three newly-covered surfaces: fencing is a deep by-name walk and
+  // `get_my_activity_stream` already registers `message`, so
+  // `discussion_entries[].message` and `recent_replies[].message` are already
+  // in scope; and `user_name` / `display_name` / `proxy_submitter` are names,
+  // which are the pseudonymizer's job alone. Both halves of that conclusion are
+  // asserted here rather than left in a comment — "no change needed" is a
+  // claim about behaviour, so it owes a test.
+  it('fences the nested entry messages at BOTH depths', async () => {
+    const pseudonymized = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_DISCUSSION])
+    const { value, fencedFields } = applyFencing('get_my_activity_stream', {
+      items: pseudonymized,
+    })
+    const entries = entriesOf((value as { items: unknown[] }).items[0])
+
+    expect(fencedFields).toContain('message')
+    // Depth 1: discussion_entries[].message
+    expect(entries[0]!.message).toContain(MARKER_OPEN_PREFIX)
+    expect(entries[0]!.message).toContain(MARKER_CLOSE)
+    // Depth 2: recent_replies[].message — the recursion the fence had never
+    // been exercised against, because no fixture reached this deep before.
+    expect(entries[0]!.recent_replies![0]!.message).toContain(MARKER_OPEN_PREFIX)
+    expect(entries[0]!.recent_replies![0]!.message).toContain(MARKER_CLOSE)
+  })
+
+  it('leaves no provenance marker inside any name the pseudonymizer rewrote', async () => {
+    const pseudonymized = await make().anonymizeActivityStream([
+      FIXTURE_SUBMISSION_DISCUSSION,
+      FIXTURE_SUBMISSION_PROXY,
+      FIXTURE_SUBMISSION_PROXY_NO_ID,
+    ])
+    const { value } = applyFencing('get_my_activity_stream', { items: pseudonymized })
+    const items = (value as { items: Record<string, unknown>[] }).items
+    const entries = entriesOf(items[0])
+
+    const names = [
+      entries[0]!.user_name!,
+      entries[0]!.user!.display_name!,
+      entries[0]!.recent_replies![0]!.user_name!,
+      entries[0]!.recent_replies![0]!.user!.display_name!,
+      entries[1]!.user!.display_name!,
+      items[1]!.proxy_submitter as string,
+      items[2]!.proxy_submitter as string,
+    ]
+
+    // Anti-vacuity: the names really were resolved, so this is not seven
+    // undefineds trivially satisfying the loop below.
+    //
+    // The proxy submitter is `Student 3`, not `Student 2`, and that is the
+    // correct answer rather than an off-by-one: both items are in course 101,
+    // so they share one scope and one counter, and the discussion item has
+    // already taken 1 (user 42) and 2 (user 44) by the time user 12 is
+    // resolved. Indices are allocated per scope in first-seen order across the
+    // whole response, not per item.
+    expect(names).toEqual([
+      'Student 1',
+      'Student 1',
+      'Student 2',
+      'Student 2',
+      'Student 1',
+      'Student 3',
+      WITHHELD_AUTHOR_NAME,
     ])
     for (const name of names) {
       expect(name).not.toContain(MARKER_OPEN_PREFIX)

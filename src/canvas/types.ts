@@ -312,12 +312,44 @@ export interface CanvasAttachment {
   size: number
 }
 
+/**
+ * Canvas's `user_display_json` (`lib/api/v1/user.rb`): `{id, anonymous_id,
+ * display_name, avatar_image_url, html_url, pronouns}`, where `display_name` is
+ * `user.short_name` — a REAL NAME. It is returned `{}` when the user is nil, so
+ * every field is optional.
+ *
+ * This shape shows up wherever Canvas wants "enough to render a byline", and it
+ * is easy to miss because it spells the name `display_name` rather than `name`:
+ * a wrapper that looks for `name` / `user_name` / `author_name` walks straight
+ * past it. The pseudonymizer rewrites `display_name` and nulls the sibling
+ * `avatar_image_url` / `pronouns` — a face and a pronoun set beside a masked
+ * name are the same leak — but never `id` / `anonymous_id` / `html_url`, which
+ * are identifiers, and identifiers are preserved everywhere in this layer.
+ */
+export interface CanvasUserDisplay {
+  id?: CanvasId
+  anonymous_id?: string
+  display_name?: string
+  avatar_image_url?: string | null
+  html_url?: string
+  pronouns?: string | null
+  [key: string]: unknown
+}
+
 export interface CanvasSubmissionComment {
   id: CanvasId
   author_id: CanvasId
   author_name: string
   comment: string
   created_at: string
+  /**
+   * `submission_comment_json` sets this to `user_display_json(comment.author,
+   * …)` whenever the viewer holds `:read_author` — so a comment normally
+   * carries the author's `display_name` BESIDE `author_name`, and masking only
+   * `author_name` leaves the real name one key over. Optional because the
+   * anonymous-moderated branch replaces it with `{}`.
+   */
+  author?: CanvasUserDisplay
 }
 
 export interface CanvasGradebookHistoryGrader {
@@ -1057,6 +1089,48 @@ export interface CanvasActivityStreamConversationMessage {
 }
 
 /**
+ * One `discussion_entries[]` entry on the activity stream's `Submission` arm.
+ *
+ * `submission_attempt_json` emits `discussion_entries` for any submission to a
+ * `discussion_topic` assignment — it is in the default-on
+ * `SUBMISSION_OTHER_FIELDS`, and the stream narrows nothing — by calling
+ * `discussion_entry_api_json(entries, topic.context, user, session)` with four
+ * arguments, i.e. under the default `includes = %i[user_name subentries
+ * display_user]`.
+ *
+ * All three identity surfaces below can carry a real name, and they do NOT
+ * appear together. Per `serialize_entry`, `user_name` and `user_id` are both
+ * omitted when the entry is deleted, while `user` is emitted whenever
+ * `:display_user` is in includes — that guard has no `deleted?` check. So a
+ * deleted entry is `{user: {id, display_name, …}}` with no `user_id` and no
+ * `user_name`: keying off `user_name` alone silently passes that name through.
+ *
+ * `recent_replies` is the recursion and the only subentry key upstream emits
+ * (`discussion_entry_subentries`, capped at 10 with `has_more_replies`).
+ * Upstream nests exactly one level — the method returns `{}` unless
+ * `entry.root_entry_id.nil?` — but this type and its pseudonymizer are
+ * recursive regardless, because a depth assumption is not worth a leak.
+ */
+export interface CanvasSubmissionDiscussionEntry {
+  id?: CanvasId
+  created_at?: string
+  updated_at?: string
+  parent_id?: CanvasId | null
+  /** Omitted when the entry is deleted. */
+  user_id?: CanvasId
+  /** Omitted when the entry is deleted. */
+  user_name?: string
+  /** Present even on a deleted entry — see the note above. */
+  user?: CanvasUserDisplay
+  editor_id?: CanvasId
+  message?: string
+  deleted?: boolean
+  recent_replies?: CanvasSubmissionDiscussionEntry[]
+  has_more_replies?: boolean
+  [key: string]: unknown
+}
+
+/**
  * One entry from `GET /users/self/activity_stream`.
  *
  * `context_type` is `"Course"` | `"Group"` and EXACTLY ONE of `course_id` /
@@ -1132,6 +1206,19 @@ export interface CanvasActivityStreamEntry {
   body?: string | null
   user?: CanvasUser
   submission_comments?: CanvasSubmissionComment[]
+  /**
+   * Discussion-topic submissions only, but default-on when they occur — see
+   * {@link CanvasSubmissionDiscussionEntry}. Name-bearing and recursive.
+   */
+  discussion_entries?: CanvasSubmissionDiscussionEntry[]
+  /**
+   * `attempt.proxy_submitter.short_name` — a BARE STRING, not a user object,
+   * emitted with its `proxy_submitter_id` sibling whenever
+   * `attempt.proxy_submission?`. Because it is a naked string there is no
+   * `user`-shaped container for a generic walker to find.
+   */
+  proxy_submitter?: string
+  proxy_submitter_id?: CanvasId
 
   // WebConference / Collaboration
   web_conference_id?: CanvasId

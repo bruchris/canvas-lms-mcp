@@ -23,7 +23,9 @@ import type {
   CanvasOutcomeRollupsResponse,
   CanvasSubmission,
   CanvasSubmissionComment,
+  CanvasSubmissionDiscussionEntry,
   CanvasUser,
+  CanvasUserDisplay,
 } from '../canvas/types'
 import { isEnvTruthy } from '../env'
 import { conversationsFilePath, mapFilePath, normalizeHost, resolvePseudonymDir } from './paths'
@@ -472,6 +474,45 @@ export class Pseudonymizer {
       }
     }
 
+    // The two remaining default-on `SUBMISSION_OTHER_FIELDS` that carry a name.
+    // Both are reached through the merged `submission_json` and so are present
+    // only on a `Submission` item, but neither is gated on `user` /
+    // `submission_comments` being present — a discussion submission with no
+    // comments still has `discussion_entries` — so they are resolved
+    // unconditionally rather than inside the block above.
+    if (item.discussion_entries && item.discussion_entries.length > 0) {
+      out = {
+        ...out,
+        discussion_entries: await this.anonymizeSubmissionDiscussionEntries(
+          scope,
+          item.discussion_entries,
+        ),
+      }
+    }
+
+    // `proxy_submitter` is `attempt.proxy_submitter.short_name` — a BARE
+    // STRING, with its id in the sibling `proxy_submitter_id`. A proxy
+    // submitter is staff in practice, but the stream gives us no enrollments to
+    // prove it: `classifyRole({id, name})` returns `'unknown'`, which
+    // `shouldPseudonymize` treats as needing a pseudonym. That is the intended
+    // direction — masking a teacher who submitted on a student's behalf costs
+    // attribution, whereas preserving an identity we could not classify costs a
+    // real name. With no id there is nothing to key a stable pseudonym on, so
+    // the name is withheld outright.
+    if (typeof item.proxy_submitter === 'string' && item.proxy_submitter.length > 0) {
+      const id = item.proxy_submitter_id
+      const resolved =
+        id === undefined || id === null
+          ? WITHHELD_AUTHOR_NAME
+          : (
+              await this.anonymizeUser(scope, {
+                id,
+                name: item.proxy_submitter,
+              } as CanvasUser)
+            ).name
+      out = { ...out, proxy_submitter: resolved }
+    }
+
     return out
   }
 
@@ -555,12 +596,103 @@ export class Pseudonymizer {
     const map = this.host ? ((await this.loadCourseMap(this.host, courseId)) ?? null) : null
     const out: CanvasSubmissionComment[] = []
     for (const c of comments) {
-      const pseudonym = map?.students[String(c.author_id)]?.pseudonym
+      // `author_id` is the key, falling back to the nested `author.id` for the
+      // anonymous-moderated branch, which deletes `author_id` from the hash.
+      const authorKey = c.author_id ?? c.author?.id
+      const pseudonym = authorKey == null ? undefined : map?.students[String(authorKey)]?.pseudonym
+      const next: CanvasSubmissionComment = { ...c }
       if (pseudonym) {
-        out.push({ ...c, author_name: pseudonym })
-      } else {
-        out.push({ ...c })
+        next.author_name = pseudonym
+        // `submission_comment_json` also emits `author` =
+        // `user_display_json(comment.author, …)` whenever the viewer holds
+        // `:read_author`, which spells the same person's name as
+        // `display_name`. Rewriting only `author_name` leaves the real name one
+        // key over. Gated on the SAME map hit as `author_name` deliberately, so
+        // the two keys can never disagree about who wrote the comment — a miss
+        // means the recorded grader, whose name stays attributable.
+        if (c.author) next.author = applyPseudonymToDisplay(c.author, pseudonym)
       }
+      out.push(next)
+    }
+    return out
+  }
+
+  /**
+   * Pseudonymize a Canvas `user_display_json` object, which spells the name
+   * `display_name` rather than `name`.
+   *
+   * Role classification runs through {@link anonymizeUser}, so staff keep their
+   * name here exactly as they do everywhere else. A display object with a name
+   * but NO `id` has nothing to key a stable pseudonym on, so the name is
+   * withheld rather than passed through — the same fail-closed reading as the
+   * `DiscussionEntry` arm's bare `author_name`.
+   */
+  private async anonymizeDisplayUser(
+    scope: CanvasId | string,
+    display: CanvasUserDisplay,
+  ): Promise<CanvasUserDisplay> {
+    const name = display.display_name
+    if (typeof name !== 'string' || name.length === 0) return display
+
+    if (display.id === undefined || display.id === null) {
+      return applyPseudonymToDisplay(display, WITHHELD_AUTHOR_NAME)
+    }
+    const resolved = await this.anonymizeUser(scope, {
+      id: display.id,
+      name,
+    } as CanvasUser)
+    // Unchanged means staff: leave the avatar and pronouns alone too, so a
+    // teacher's byline stays whole rather than half-scrubbed.
+    if (resolved.name === name) return display
+    return applyPseudonymToDisplay(display, resolved.name)
+  }
+
+  /**
+   * Pseudonymize a `discussion_entries[]` array from the Submission arm,
+   * recursing through `recent_replies`.
+   *
+   * Three identity surfaces per entry and they do not co-occur — `user_name`
+   * and `user_id` are dropped on a deleted entry while the `user` display
+   * object survives it — so each is resolved independently. Both resolve
+   * through the same per-user map entry, so one person gets one label however
+   * many keys spell their name.
+   */
+  private async anonymizeSubmissionDiscussionEntries(
+    scope: CanvasId | string,
+    entries: ReadonlyArray<CanvasSubmissionDiscussionEntry>,
+  ): Promise<CanvasSubmissionDiscussionEntry[]> {
+    const out: CanvasSubmissionDiscussionEntry[] = []
+    for (const entry of entries) {
+      let next = entry
+
+      if (typeof entry.user_name === 'string' && entry.user_name.length > 0) {
+        const resolved =
+          entry.user_id === undefined || entry.user_id === null
+            ? WITHHELD_AUTHOR_NAME
+            : (
+                await this.anonymizeUser(scope, {
+                  id: entry.user_id,
+                  name: entry.user_name,
+                } as CanvasUser)
+              ).name
+        next = { ...next, user_name: resolved }
+      }
+
+      if (entry.user) {
+        next = { ...next, user: await this.anonymizeDisplayUser(scope, entry.user) }
+      }
+
+      if (entry.recent_replies && entry.recent_replies.length > 0) {
+        next = {
+          ...next,
+          recent_replies: await this.anonymizeSubmissionDiscussionEntries(
+            scope,
+            entry.recent_replies,
+          ),
+        }
+      }
+
+      out.push(next)
     }
     return out
   }
@@ -636,6 +768,25 @@ export class Pseudonymizer {
 
 function classifyRoleFromEnrollment(enrollment: CanvasEnrollment): Role {
   return classifyRole({}, [enrollment])
+}
+
+/**
+ * The `user_display_json` counterpart of {@link applyPseudonymToUser}.
+ *
+ * Rewrites `display_name` and nulls the two sibling fields that re-identify the
+ * person beside a masked name — `avatar_image_url` (their face) and `pronouns`
+ * — exactly as `applyPseudonymToUser` already does for `avatar_url` / `pronouns`
+ * on a full `CanvasUser`. `id`, `anonymous_id` and `html_url` are identifiers
+ * and are preserved, because nothing in this layer ever rewrites an id.
+ *
+ * Only ever called with a non-empty `display_name`; callers decide whether the
+ * replacement is a pseudonym or {@link WITHHELD_AUTHOR_NAME}.
+ */
+function applyPseudonymToDisplay(display: CanvasUserDisplay, pseudonym: string): CanvasUserDisplay {
+  const out: CanvasUserDisplay = { ...display, display_name: pseudonym }
+  if (display.avatar_image_url !== undefined) out.avatar_image_url = null
+  if (display.pronouns !== undefined) out.pronouns = null
+  return out
 }
 
 function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
