@@ -3,6 +3,7 @@ import { CanvasApiError } from '../canvas'
 import type { CanvasClient } from '../canvas'
 import type { SubmissionListInclude } from '../canvas/submissions'
 import type { CanvasSubmission, CanvasSubmissionComment } from '../canvas/types'
+import { submissionCommentAuthorKey } from '../pseudonym/pseudonymizer'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
@@ -259,10 +260,27 @@ export function studentTools(
           const peerAuthors = new Map<string, { courseId: CanvasId; id: CanvasId; name: string }>()
           for (const { courseId, submission } of candidates) {
             for (const comment of submission.submission_comments ?? []) {
+              // A comment whose author the viewer may not read carries no
+              // identity to key a pseudonym on, and needs none: Canvas has
+              // already anonymized it — `submission_comment_json` sets
+              // `author_id: nil` together with `author: {}` and `author_name:
+              // "Anonymous User"` (lib/api/v1/submission_comment.rb:68-72 at
+              // Canvas 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+              // `classifyCommentAuthor` reads that nil as 'peer', since it
+              // matches neither `user_id` nor `grader_id`, so the guard is
+              // here rather than in the classification: warming it would key
+              // the shared course map on the string `"null"` and spend a
+              // pseudonym index on a non-person, shifting `Student N` for
+              // every real student warmed after it (BRU-2865). The key comes
+              // from the pseudonymizer so this site and the read side in
+              // `anonymizeSubmissionComments` can never disagree about which
+              // comments have an author (BRU-2864 was exactly that drift).
+              const authorKey = submissionCommentAuthorKey(comment)
+              if (authorKey === null) continue
               if (classifyCommentAuthor(comment, submission) === 'peer') {
-                peerAuthors.set(`${courseId}:${comment.author_id}`, {
+                peerAuthors.set(`${courseId}:${authorKey}`, {
                   courseId,
-                  id: comment.author_id,
+                  id: authorKey,
                   name: comment.author_name,
                 })
               }

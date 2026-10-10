@@ -641,12 +641,15 @@ describe('anonymizeActivityStream — Submission arm: a "null" key written by an
   // `String(c.author_id)` unguarded — so `String(null) === 'null'` found any
   // `"null"` entry another caller had left there.
   //
-  // `get_my_submission_feedback` is such a caller: `classifyCommentAuthor`
-  // (src/tools/student.ts:62-68) returns 'peer' for a comment whose
-  // `author_id` is nil, because nil matches neither `submission.user_id` nor
-  // `grader_id`, and the warm call at :271-276 passes that nil straight into
-  // `anonymizeUser`. The stream's output must not depend on another tool's
-  // hygiene, so the guard belongs on the read as well as the write.
+  // `get_my_submission_feedback` was such a caller: `classifyCommentAuthor`
+  // (src/tools/student.ts) returns 'peer' for a comment whose `author_id` is
+  // nil, because nil matches neither `submission.user_id` nor `grader_id`, and
+  // its peer pre-warm passed that nil straight into `anonymizeUser`. BRU-2865
+  // closed that write side, but this read guard is not thereby redundant: the
+  // course map is persisted and never migrated, so a map written by ≤ 2.1.0
+  // can still hold a `"null"` key, and the stream's output must not depend on
+  // another tool's hygiene. The direct `anonymizeUser` call below is what arms
+  // these two tests now that no tool produces the key.
   it('keeps Canvas’s “Anonymous User” byline when the map already holds a "null" key', async () => {
     const p = make()
     // Exactly the call student.ts:271-276 makes for an unreadable author.

@@ -800,15 +800,22 @@ export class Pseudonymizer {
  *
  * Both sides must refuse that comment, not just the write side. The course map
  * is shared per (host, course) and persisted, so a `"null"` key written by any
- * other caller — `get_my_submission_feedback` warms one, because
- * `classifyCommentAuthor` (src/tools/student.ts:62-68) reads a nil `author_id`
- * as a 'peer' — would otherwise be found by an unguarded
+ * other caller — `get_my_submission_feedback` warmed one until BRU-2865,
+ * because `classifyCommentAuthor` (src/tools/student.ts) reads a nil
+ * `author_id` as a 'peer' — would otherwise be found by an unguarded
  * `String(c.author_id)`, renaming Canvas's own "Anonymous User" byline to a
  * pseudonym and inventing a `display_name` on the object the serializer
- * deliberately emptied. Deriving both keys here is also what stops the two
- * sites drifting apart again (BRU-2864 was exactly that drift).
+ * deliberately emptied. The read guard stays load-bearing now that both
+ * writers refuse the shape: maps on disk from ≤ 2.1.0 can already hold a
+ * `"null"` key, and nothing migrates them. Deriving every key here is also
+ * what stops the sites drifting apart again (BRU-2864 was exactly that drift).
+ *
+ * Exported for the same reason (BRU-2865): `get_my_submission_feedback` warms
+ * comment authors itself, and that warm has to refuse exactly the comments the
+ * read refuses. Every caller derives the key here rather than spelling
+ * `String(c.author_id)` again — a third copy is a third chance to drift.
  */
-function submissionCommentAuthorKey(
+export function submissionCommentAuthorKey(
   comment: Pick<CanvasSubmissionComment, 'author_id'>,
 ): string | null {
   return comment.author_id == null ? null : String(comment.author_id)
