@@ -12,7 +12,11 @@ import {
   FIXTURE_GROUP_DISCUSSION,
   FIXTURE_MESSAGE_AT_CAP,
 } from '../fixtures/activity-stream'
-import { FIXTURE_PLANNER_ALL_TYPES, FIXTURE_PLANNER_NOTE } from '../fixtures/planner'
+import {
+  FIXTURE_PLANNER_ALL_TYPES,
+  FIXTURE_PLANNER_ASSIGNMENT,
+  FIXTURE_PLANNER_NOTE,
+} from '../fixtures/planner'
 import { CanvasApiError } from '../../src/canvas'
 import type {
   CanvasCourse,
@@ -21,7 +25,7 @@ import type {
   CanvasSubmissionComment,
   CanvasUpcomingEvent,
 } from '../../src/canvas/types'
-import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
 import { studentTools } from '../../src/tools/student'
 
 describe('studentTools', () => {
@@ -953,8 +957,8 @@ describe('studentTools', () => {
       return canvas
     }
 
-    function plannerTool(canvas: CanvasClient) {
-      return studentTools(canvas).find((t) => t.name === 'list_my_planner_items')!
+    function plannerTool(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
+      return studentTools(canvas, pseudonymizer).find((t) => t.name === 'list_my_planner_items')!
     }
 
     type PlannerEnvelope = {
@@ -1101,6 +1105,56 @@ describe('studentTools', () => {
       const serialized = JSON.stringify(result.items)
       expect(serialized).not.toContain('"user"')
       expect(serialized).not.toContain('"user_name"')
+    })
+
+    // BRU-2878 — the AC-15 guard above only checked `"user"`/`"user_name"`
+    // substrings, so it passed clean while `submissions.feedback.author_name`
+    // (present on FIXTURE_PLANNER_ASSIGNMENT) shipped a real third-party name
+    // unmasked. Assert on the actual field and the actual fixture value, not a
+    // generic substring, so a future respelling of the leak cannot hide again.
+    describe('feedback author pseudonymization (BRU-2878)', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'student-planner-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      it('passes the real feedback author name through when disabled', async () => {
+        const canvas = plannerCanvas([FIXTURE_PLANNER_ASSIGNMENT])
+        const result = (await plannerTool(canvas, makePseudonymizer(false)).handler(
+          {},
+        )) as PlannerEnvelope
+
+        const submissions = result.items[0]!.submissions as { feedback?: { author_name?: string } }
+        expect(submissions.feedback?.author_name).toBe('Dr. Lin')
+      })
+
+      it('withholds the feedback author name and avatar when enabled', async () => {
+        const canvas = plannerCanvas(FIXTURE_PLANNER_ALL_TYPES)
+        const result = (await plannerTool(canvas, makePseudonymizer()).handler(
+          {},
+        )) as PlannerEnvelope
+
+        const assignmentItem = result.items.find((item) => item.plannable_type === 'assignment')!
+        const submissions = assignmentItem.submissions as {
+          feedback?: { author_name?: string; author_avatar_url?: string | null }
+        }
+        expect(submissions.feedback?.author_name).toBe(WITHHELD_AUTHOR_NAME)
+        expect(submissions.feedback?.author_avatar_url ?? null).toBeNull()
+
+        const serialized = JSON.stringify(result.items)
+        expect(serialized).not.toContain('Dr. Lin')
+      })
     })
 
     it('reports truncation and caps items at max_items', async () => {

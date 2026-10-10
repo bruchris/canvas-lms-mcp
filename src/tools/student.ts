@@ -582,7 +582,10 @@ export function studentTools(
           maxItems: limit + 1,
         })
         const truncated = fetched.length > limit
-        const items = truncated ? fetched.slice(0, limit) : fetched
+        const capped = truncated ? fetched.slice(0, limit) : fetched
+        const items = pseudonymizer?.isEnabled()
+          ? await pseudonymizer.anonymizePlannerItems(capped)
+          : capped
 
         return {
           items,
