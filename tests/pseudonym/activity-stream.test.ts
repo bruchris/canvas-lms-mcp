@@ -12,6 +12,8 @@ import {
   FIXTURE_CONTEXT_MESSAGE,
   FIXTURE_CONVERSATION,
   FIXTURE_COURSE_DISCUSSION,
+  FIXTURE_COURSE_DISCUSSION_MISSING_ID,
+  FIXTURE_COURSE_DISCUSSION_NULL_ID,
   FIXTURE_DISCUSSION_ENTRY,
   FIXTURE_GROUP_DISCUSSION,
   FIXTURE_NO_CONTEXT_WITH_NAME,
@@ -66,6 +68,85 @@ describe('anonymizeActivityStream — arm 1: root_discussion_entries[].user.user
     expect(item!.root_discussion_entries![0]!.message).toBe(
       FIXTURE_COURSE_DISCUSSION.root_discussion_entries![0]!.message,
     )
+  })
+})
+
+describe('anonymizeActivityStream — arm 1: root_discussion_entries[].user with no usable id (BRU-2868)', () => {
+  // The pinned serializer SHA (1c9f0bb8013ed69c4f2efe11fd483025469b7e6c) can
+  // emit the nested `user` object with no identity at all. Before the fix,
+  // both shapes below routed straight into `anonymizeUser`, which stringified
+  // the invalid id into a `"undefined"` / `"null"` key on the shared,
+  // persisted course map and handed back a fabricated `Student N`.
+  it('withholds the name rather than fabricating a pseudonym when user_id is MISSING', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_COURSE_DISCUSSION_MISSING_ID])
+
+    const entry = item!.root_discussion_entries![0]!
+    expect(entry.user.user_name).toBe(WITHHELD_AUTHOR_NAME)
+    expect(entry.user.user_name).not.toMatch(/^Student \d+$/)
+    expect(JSON.stringify(item)).not.toContain('Alex Osei')
+  })
+
+  it('withholds the name rather than fabricating a pseudonym when user_id is NULL', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_COURSE_DISCUSSION_NULL_ID])
+
+    const entry = item!.root_discussion_entries![0]!
+    expect(entry.user.user_name).toBe(WITHHELD_AUTHOR_NAME)
+    expect(entry.user.user_name).not.toMatch(/^Student \d+$/)
+    expect(JSON.stringify(item)).not.toContain('Priya Nair')
+  })
+
+  it('persists no course map at all when every entry lacks an id', async () => {
+    await make().anonymizeActivityStream([
+      FIXTURE_COURSE_DISCUSSION_MISSING_ID,
+      FIXTURE_COURSE_DISCUSSION_NULL_ID,
+    ])
+
+    const { mapFilePath } = await import('../../src/pseudonym/paths')
+    const { access } = await import('node:fs/promises')
+
+    // No map file at all — not even an empty one — because
+    // `assignPseudonym`/`persistCourseMap` is never reached for either shape.
+    for (const courseId of ['102', '103']) {
+      await expect(
+        access(mapFilePath(tmpRoot, 'school.instructure.com', courseId)),
+      ).rejects.toThrow()
+    }
+  })
+
+  it('writes no "undefined" or "null" key alongside a real entry in the same course map', async () => {
+    // Stronger than the no-file case above: force the map to exist (via a
+    // readable entry on the same course scope) and prove the invalid-id entry
+    // still contributes nothing to it, rather than merely "nothing happened
+    // to write a file".
+    const mixedMissingId: typeof FIXTURE_COURSE_DISCUSSION_MISSING_ID = {
+      ...FIXTURE_COURSE_DISCUSSION_MISSING_ID,
+      course_id: '101',
+    }
+    const mixedNullId: typeof FIXTURE_COURSE_DISCUSSION_NULL_ID = {
+      ...FIXTURE_COURSE_DISCUSSION_NULL_ID,
+      course_id: '101',
+    }
+
+    await make().anonymizeActivityStream([FIXTURE_COURSE_DISCUSSION, mixedMissingId, mixedNullId])
+
+    const { mapFilePath } = await import('../../src/pseudonym/paths')
+    const { readFile } = await import('node:fs/promises')
+    const map = JSON.parse(
+      await readFile(mapFilePath(tmpRoot, 'school.instructure.com', '101'), 'utf8'),
+    ) as { students: Record<string, unknown>; next_pseudonym_index: number }
+
+    // Only the real student (42) — no "undefined"/"null" key, and no index
+    // spent on either invalid-id entry.
+    expect(Object.keys(map.students).sort()).toEqual(['42'])
+    expect(map.next_pseudonym_index).toBe(2)
+  })
+
+  it('still assigns an ordinary scope-stable pseudonym on the same course when the id IS present (control)', async () => {
+    // Not a blanket "this course never gets pseudonyms": the ordinary fixture
+    // for course 101 is unaffected by the guard added for courses 102/103.
+    const [item] = await make().anonymizeActivityStream([FIXTURE_COURSE_DISCUSSION])
+
+    expect(item!.root_discussion_entries![0]!.user.user_name).toBe('Student 1')
   })
 })
 

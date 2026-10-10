@@ -94,6 +94,45 @@ export const FIXTURE_COURSE_DISCUSSION: CanvasActivityStreamEntry = {
 }
 
 /**
+ * Fixture 2b — a root discussion entry whose nested `user.user_id` is MISSING
+ * entirely (BRU-2868). The pinned serializer SHA
+ * (1c9f0bb8013ed69c4f2efe11fd483025469b7e6c) can emit this `{user: {user_name}}`
+ * shape with no identifier at all. Before the fix this routed straight through
+ * `anonymizeUser`, which stringified the missing id into the literal key
+ * `"undefined"` on the shared, persisted course map and handed back a
+ * fabricated `Student N` — a stable-looking identity for an entry with no
+ * actual identity. There is nothing to key a stable pseudonym on, so the name
+ * must be WITHHELD, the same fail-closed reading as
+ * {@link FIXTURE_SUBMISSION_PROXY_NO_ID}.
+ */
+export const FIXTURE_COURSE_DISCUSSION_MISSING_ID: CanvasActivityStreamEntry = {
+  ...FIXTURE_COURSE_DISCUSSION,
+  id: '9013',
+  course_id: '102',
+  root_discussion_entries: [
+    { user: { user_name: 'Alex Osei' }, message: '<p>Does the rubric cover citations?</p>' },
+  ],
+}
+
+/**
+ * Fixture 2c — the NULL counterpart of {@link FIXTURE_COURSE_DISCUSSION_MISSING_ID}:
+ * `user.user_id` is present but explicitly `null` rather than omitted. Both
+ * shapes must fail closed identically; a guard that checks `=== undefined` but
+ * not `=== null` (or vice versa) would pass one of these and fail the other.
+ */
+export const FIXTURE_COURSE_DISCUSSION_NULL_ID: CanvasActivityStreamEntry = {
+  ...FIXTURE_COURSE_DISCUSSION,
+  id: '9014',
+  course_id: '103',
+  root_discussion_entries: [
+    {
+      user: { user_id: null, user_name: 'Priya Nair' },
+      message: '<p>Can we cite lecture slides directly?</p>',
+    },
+  ],
+}
+
+/**
  * Fixture 3 — a TEXT-ENTRY `Submission` item: the merged `submission_json` with
  * `includes = %w[submission_comments assignment course html_url user]`, `id`
  * deleted and `submission_id` added, `assignment.title` back-filled from
@@ -641,6 +680,8 @@ export const ACTIVITY_STREAM_FIXTURES: CanvasActivityStreamEntry[] = [
   FIXTURE_CONTEXT_MESSAGE,
   FIXTURE_GROUP_DISCUSSION,
   FIXTURE_COURSE_DISCUSSION,
+  FIXTURE_COURSE_DISCUSSION_MISSING_ID,
+  FIXTURE_COURSE_DISCUSSION_NULL_ID,
   FIXTURE_SUBMISSION,
   FIXTURE_SUBMISSION_DISCUSSION,
   FIXTURE_SUBMISSION_PROXY,
@@ -667,4 +708,6 @@ export const ACTIVITY_STREAM_REAL_NAMES = [
   'Sasha Virk',
   'Noor',
   'Tomas Reyes',
+  'Alex Osei',
+  'Priya Nair',
 ] as const

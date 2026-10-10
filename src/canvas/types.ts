@@ -1074,9 +1074,14 @@ export interface CanvasActivityStreamSummaryEntry {
  * activity-stream item. Canvas caps the array at `StreamItem::LATEST_ENTRY_LIMIT`
  * (3) at write time, and the nested `user` is the only place the stream spells a
  * discussion author with an identifier beside the name.
+ *
+ * `user_id` can be missing or `null` — the pinned serializer SHA
+ * (1c9f0bb8013ed69c4f2efe11fd483025469b7e6c) can emit this nested `user`
+ * object with no usable identity (BRU-2868). There is nothing to key a stable
+ * pseudonym on in that case; see `anonymizeActivityStreamEntry`.
  */
 export interface CanvasActivityStreamRootEntry {
-  user: { user_id: CanvasId; user_name: string }
+  user: { user_id?: CanvasId | null; user_name: string }
   message: string | null
 }
 

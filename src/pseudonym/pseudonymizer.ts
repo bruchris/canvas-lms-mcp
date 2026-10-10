@@ -426,12 +426,25 @@ export class Pseudonymizer {
         // Routed through anonymizeUser so role classification stays in one
         // place, then only the resolved name is read back — the stream's
         // `{user_id, user_name}` pair is not a CanvasUser and must keep its
-        // own key names.
-        const resolved = await this.anonymizeUser(scope, {
-          id: entry.user.user_id,
-          name: entry.user.user_name,
-        } as CanvasUser)
-        entries.push({ ...entry, user: { ...entry.user, user_name: resolved.name } })
+        // own key names. A missing/null `user_id` (BRU-2868: the pinned
+        // serializer can emit this nested `user` object with no usable
+        // identity) has nothing to key a stable pseudonym on, so it is
+        // withheld outright rather than passed to `anonymizeUser` — doing so
+        // would stringify the invalid id into a `"null"`/`"undefined"` key on
+        // the shared, persisted course map and fabricate a `Student N` for no
+        // one, the same fail-closed reading already used for
+        // `recent_replies[].user_name` below.
+        const rootUserId = entry.user.user_id
+        const resolvedName =
+          rootUserId === undefined || rootUserId === null
+            ? WITHHELD_AUTHOR_NAME
+            : (
+                await this.anonymizeUser(scope, {
+                  id: rootUserId,
+                  name: entry.user.user_name,
+                } as CanvasUser)
+              ).name
+        entries.push({ ...entry, user: { ...entry.user, user_name: resolvedName } })
       }
       out = { ...out, root_discussion_entries: entries }
     }
