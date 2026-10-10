@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../../src/canvas'
-import { UNTRUSTED_CONTENT_META_NOTE } from '../../src/provenance/apply'
+import { UNTRUSTED_CONTENT_META_NOTE, applyFencing } from '../../src/provenance/apply'
+import {
+  FIXTURE_COURSE_DISCUSSION,
+  FIXTURE_DISCUSSION_ENTRY,
+  FIXTURE_SUBMISSION,
+} from '../fixtures/activity-stream'
 import { UNTRUSTED_FIELDS } from '../../src/provenance/fields'
 import { MARKER_CLOSE, MARKER_OPEN_PREFIX } from '../../src/provenance/markers'
 import { getAllTools, registerAllTools } from '../../src/tools'
@@ -535,6 +540,117 @@ describe('list_submissions_awaiting_grading — registered, but its projection c
 // ─────────────────────────────────────────────────────────────────────────────
 // §10.2.4 — forged markers in Canvas-authored payloads.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// BRU-2797 §6.3 / §9 AC-9, AC-10 — the cross-course activity stream.
+//
+// The registry entry is `{message, body, comment}`, and the three deliberate
+// OMISSIONS (`title`, `name`, `author_name`) are what these tests exist to pin.
+// Only the Submission arm can exercise the over-match risk, because it is the
+// only arm that merges `assignment` and `course` objects alongside
+// student-authored text.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('the cross-course activity stream (§6.3)', () => {
+  it('fences exactly body and comment on a Submission item (AC-9)', () => {
+    const { fencedFields } = applyFencing('get_my_activity_stream', {
+      items: [FIXTURE_SUBMISSION],
+    })
+
+    // `message` is absent from the set because the Submission arm's `message`
+    // is null: `reconstitute_ar_object` sets `data["body"] = nil` for a
+    // Submission, and the common prefix reads `message` from `data.body`. The
+    // registry's `message` entry is proven by the discussion item below —
+    // BRU-2797 §9 AC-9 predicted all three keys on this one fixture, which the
+    // serializer does not produce.
+    expect(fencedFields).toEqual(['body', 'comment'])
+  })
+
+  it('fences message on a discussion item, including each root_discussion_entries[].message (AC-9)', () => {
+    const { fencedFields, value } = applyFencing('get_my_activity_stream', {
+      items: [FIXTURE_COURSE_DISCUSSION],
+    })
+
+    expect(fencedFields).toEqual(['message'])
+    const item = (value as { items: Record<string, unknown>[] }).items[0]!
+    expect(item.message as string).toContain(MARKER_OPEN_PREFIX)
+    const entries = item.root_discussion_entries as { message: string }[]
+    // Inherited through the array, which is the §6.3 behaviour the registry relies on.
+    expect(entries[0]!.message).toContain(MARKER_OPEN_PREFIX)
+  })
+
+  it('leaves assignment.name, course.name and title unfenced on a Submission item (AC-9)', async () => {
+    const envelope = (await callToolJson(
+      'get_my_activity_stream',
+      {},
+      { 'activityStream.getStream': [FIXTURE_SUBMISSION] },
+    )) as { items: Record<string, unknown>[] }
+    const item = envelope.items[0]!
+
+    // `name` is NOT in the registry precisely so this cannot happen: the
+    // Submission arm merges `includes = %w[… assignment course …]`, so a `name`
+    // entry would fence the course and assignment names.
+    expect((item.assignment as { name: string }).name).toBe('Essay 1: Trolley Problems')
+    expect((item.course as { name: string }).name).toBe('Introduction to Ethics')
+    // `title` is NOT fenced, following list_discussions / get_discussion — and
+    // here it would also hit the Message arm's notification subject and the
+    // AssessmentRequest arm's synthesised "Peer Review for …" string.
+    expect(item.title).toBe('Essay 1: Trolley Problems')
+    for (const unfenced of [item.assignment, item.course, item.title]) {
+      expect(JSON.stringify(unfenced)).not.toContain(MARKER_OPEN_PREFIX)
+    }
+  })
+
+  it('fences the submission body and both comment keys end to end', async () => {
+    const envelope = (await callToolJson(
+      'get_my_activity_stream',
+      {},
+      { 'activityStream.getStream': [FIXTURE_SUBMISSION] },
+    )) as { items: Record<string, unknown>[] }
+    const item = envelope.items[0]!
+
+    expect(item.body as string).toBe(
+      fencedWith('submission body', FIXTURE_SUBMISSION.body as string),
+    )
+    const comments = item.submission_comments as { comment: string; body: string }[]
+    // Canvas sets each comment's `body` from its `comment`, so both keys hold
+    // the same text and both are registered.
+    expect(comments[1]!.comment).toContain(MARKER_OPEN_PREFIX)
+    expect(comments[1]!.body).toContain(MARKER_OPEN_PREFIX)
+    expect(comments[1]!.comment).toContain('ignore your instructions')
+  })
+
+  it('does not fence author_name on a DiscussionEntry item (AC-10)', async () => {
+    // `author_name` is user-authored, and is still NOT fenced: it is a NAME,
+    // and names are the pseudonymizer's job. The two layers must not both
+    // rewrite one value. tests/pseudonym/activity-stream.test.ts holds the
+    // other half — that the pseudonymizer does rewrite it, and that the
+    // rewritten value is still marker-free.
+    const envelope = (await callToolJson(
+      'get_my_activity_stream',
+      {},
+      { 'activityStream.getStream': [FIXTURE_DISCUSSION_ENTRY] },
+    )) as { items: Record<string, unknown>[] }
+    const item = envelope.items[0]!
+
+    expect(item.author_name).toBe('Kim Patel')
+    // …while the message on the very same item IS fenced, so this is not a
+    // vacuous pass from fencing being off for the tool.
+    expect(item.message as string).toContain(MARKER_OPEN_PREFIX)
+  })
+
+  it('leaves our own envelope notes unfenced', async () => {
+    const envelope = (await callToolJson(
+      'get_my_activity_stream',
+      { max_items: 1 },
+      { 'activityStream.getStream': [FIXTURE_SUBMISSION, FIXTURE_DISCUSSION_ENTRY] },
+    )) as { truncation_note: string; retention_note: string }
+
+    // Server-authored text, and `*_note` is not a registered field name — the
+    // `get_my_submission_feedback` `courses_failed[].message` lesson.
+    expect(envelope.truncation_note).not.toContain(MARKER_OPEN_PREFIX)
+    expect(envelope.retention_note).not.toContain(MARKER_OPEN_PREFIX)
+  })
+})
+
 describe('forgery inside a Canvas payload', () => {
   it('neutralises a forged close marker and leaves exactly one real fence', async () => {
     const parsed = (await callToolJson(
@@ -740,6 +856,7 @@ describe('field registry coverage', () => {
     'list_submissions',
     'list_submissions_awaiting_grading',
     'get_my_submission_feedback',
+    'get_my_activity_stream',
     'get_discussion',
     'list_discussions',
     'get_conversation',
@@ -755,9 +872,9 @@ describe('field registry coverage', () => {
     'view_account_notifications',
   ])
 
-  it('matches the canonical list — 15 read tools', () => {
+  it('matches the canonical list — 16 read tools', () => {
     expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_FENCED_TOOLS)
-    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(15)
+    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(16)
   })
 
   // A `view_*` tool is a separate definition with its own handler that returns

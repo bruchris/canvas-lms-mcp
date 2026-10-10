@@ -15,6 +15,25 @@ const MY_SUBMISSION_FEEDBACK_INCLUDE = [
   'read_status',
 ] as const satisfies ReadonlyArray<SubmissionListInclude>
 
+/**
+ * Default cap on `get_my_activity_stream`. Canvas serves the endpoint at
+ * `per_page=100`, so this is one page: enough for a daily "what changed"
+ * question without following the whole retention window.
+ */
+const ACTIVITY_STREAM_DEFAULT_MAX_ITEMS = 100
+
+/**
+ * Always returned by `get_my_activity_stream`, never computed. Canvas expires
+ * stream items with `Setting.get("stream_items_ttl", 4.weeks)`, an instance
+ * setting with no API surface — so the horizon is real, unknowable from here,
+ * and must be stated rather than inferred.
+ */
+const ACTIVITY_STREAM_RETENTION_NOTE =
+  'Canvas keeps activity-stream items for a limited window — typically the last ~4 weeks, set ' +
+  'per Canvas instance (stream_items_ttl) and not readable through the API. Items older than ' +
+  'that window are gone from this endpoint even though the underlying courses, discussions and ' +
+  'submissions still exist, so an empty or short result is not evidence that nothing happened.'
+
 type CommentAuthorRole = 'self' | 'teacher' | 'peer'
 
 interface FeedbackComment {
@@ -339,6 +358,87 @@ export function studentTools(
       handler: async (params) => {
         const onlyActiveCourses = params.only_active_courses as boolean | undefined
         return canvas.activityStream.getSummary(onlyActiveCourses)
+      },
+    },
+    {
+      name: 'get_my_activity_stream',
+      title: 'Get My Activity Stream',
+      description:
+        "The authenticated student's cross-course activity stream: new discussion posts, " +
+        'announcements, conversation messages, graded submissions, peer-review requests and ' +
+        'conference invitations from every course at once, newest first. Four caveats, none of ' +
+        'them visible in the response: (1) RECENT ACTIVITY ONLY — typically the last ~4 weeks; ' +
+        'the retention window is a per-Canvas-instance setting and cannot be read through the ' +
+        'API, so "nothing found" is not evidence that nothing happened. (2) Each item\'s ' +
+        '`message` was truncated to 4096 characters when Canvas stored it, with no marker — ' +
+        "follow the item's `html_url` object with get_discussion or get_conversation for the " +
+        'full text. (3) At most 3 `root_discussion_entries` per discussion item and 3 ' +
+        '`latest_messages` per conversation item. (4) Exactly one of `course_id` / `group_id` ' +
+        'is present on each item and the other key is ABSENT, not null — join on `course_id`, ' +
+        'and read `context_type` to tell which you have.',
+      inputSchema: {
+        only_active_courses: z
+          .boolean()
+          .optional()
+          .describe(
+            'Only return activity in courses the student is actively participating in. ' +
+              'Omit to include all courses, including concluded ones.',
+          ),
+        max_items: z
+          .number()
+          .int()
+          .positive()
+          .max(500)
+          .optional()
+          .describe(
+            `Maximum items to return (default ${ACTIVITY_STREAM_DEFAULT_MAX_ITEMS}). When the ` +
+              'limit is reached, `truncated` is true and `truncation_note` explains how to ' +
+              'narrow the query.',
+          ),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const onlyActiveCourses = params.only_active_courses as boolean | undefined
+        const limit = (params.max_items as number | undefined) ?? ACTIVITY_STREAM_DEFAULT_MAX_ITEMS
+
+        // One item past the limit, deliberately: `paginate()` reports how many
+        // items it accumulated, never whether more were waiting. Asking for
+        // exactly `limit` makes "there are exactly `limit` items" and "there
+        // are more" indistinguishable, so `truncated` would be unknowable.
+        // The probe costs no extra request in the common case — the extra item
+        // comes out of a page we were already going to fetch.
+        const fetched = await canvas.activityStream.getStream({
+          onlyActiveCourses,
+          maxItems: limit + 1,
+        })
+        const truncated = fetched.length > limit
+        const page = truncated ? fetched.slice(0, limit) : fetched
+
+        const items = pseudonymizer?.isEnabled()
+          ? await pseudonymizer.anonymizeActivityStream(page)
+          : page
+
+        return {
+          items,
+          total_items: items.length,
+          truncated,
+          truncation_note: truncated
+            ? `Stopped after max_items (${limit}) items; more recent activity exists. ` +
+              'Raise max_items (maximum 500), or set only_active_courses to true to drop ' +
+              'concluded courses. get_my_activity_stream_summary gives per-type counts for ' +
+              'the whole window without fetching items.'
+            : null,
+          // Unconditional on purpose. `truncated` answers "did WE stop early?";
+          // it cannot answer "did Canvas already forget?", and that horizon is
+          // an instance Setting invisible to the API — there is no value to
+          // compute and no condition under which the flag could be set
+          // correctly. A nullable note would read as "not truncated by
+          // retention", which this server can never assert.
+          retention_note: ACTIVITY_STREAM_RETENTION_NOTE,
+        }
       },
     },
   ]
