@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.1.0...canvas-lms-mcp-v2.2.0) (2026-10-10)
+
+
+### Features
+
+* **student:** add get_my_activity_stream with bounded pagination and PII handling (BRU-2802) ([#406](https://github.com/bruchris/canvas-lms-mcp/issues/406)) ([9234c9c](https://github.com/bruchris/canvas-lms-mcp/commit/9234c9c5b809f460ac335fd24ed2fcf794cb9486))
+* **student:** add list_my_planner_items cross-course tool (BRU-2803) ([#409](https://github.com/bruchris/canvas-lms-mcp/issues/409)) ([c579311](https://github.com/bruchris/canvas-lms-mcp/commit/c5793118d72dc3ea55a0d93d9ec95712ec73bb48))
+
+
+### Bug Fixes
+
+* **pseudonym:** skip the pseudonym warm for comment authors Canvas anonymized (BRU-2865) ([#408](https://github.com/bruchris/canvas-lms-mcp/issues/408)) ([14cc6ff](https://github.com/bruchris/canvas-lms-mcp/commit/14cc6ff166013e25a9ff21c97fe96aa80946cc23))
+
 ## [2.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.0.0...canvas-lms-mcp-v2.1.0) (2026-10-09)
 
 
