@@ -459,6 +459,17 @@ export class Pseudonymizer {
 
       const graderKey = item.grader_id == null ? null : String(item.grader_id)
       for (const comment of item.submission_comments ?? []) {
+        // A comment whose author the viewer may not read carries no identity to
+        // key a pseudonym on, and needs none: `submission_comment_json` sets
+        // `author: {}`, `author_id: nil` and `author_name: "Anonymous User"`
+        // TOGETHER in that branch (lib/api/v1/submission_comment.rb:68-72 at
+        // Canvas 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c), so Canvas has
+        // already anonymized it. Warming it would key the course map on the
+        // string `"null"`, spend a pseudonym index on a non-person, and rename
+        // Canvas's own "Anonymous User" byline. `CanvasSubmissionComment`
+        // declares `author_id` non-null, which that branch contradicts; the
+        // guard follows the serializer, not the declaration.
+        if (comment.author_id == null) continue
         if (graderKey !== null && String(comment.author_id) === graderKey) continue
         await this.anonymizeUser(scope, {
           id: comment.author_id,
@@ -596,10 +607,7 @@ export class Pseudonymizer {
     const map = this.host ? ((await this.loadCourseMap(this.host, courseId)) ?? null) : null
     const out: CanvasSubmissionComment[] = []
     for (const c of comments) {
-      // `author_id` is the key, falling back to the nested `author.id` for the
-      // anonymous-moderated branch, which deletes `author_id` from the hash.
-      const authorKey = c.author_id ?? c.author?.id
-      const pseudonym = authorKey == null ? undefined : map?.students[String(authorKey)]?.pseudonym
+      const pseudonym = map?.students[String(c.author_id)]?.pseudonym
       const next: CanvasSubmissionComment = { ...c }
       if (pseudonym) {
         next.author_name = pseudonym

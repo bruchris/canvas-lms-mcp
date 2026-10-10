@@ -16,7 +16,7 @@
 // production code never sees, and a test built on it certifies our belief
 // rather than the server's behaviour.
 
-import type { CanvasActivityStreamEntry } from '../../src/canvas/types'
+import type { CanvasActivityStreamEntry, CanvasSubmissionComment } from '../../src/canvas/types'
 
 /**
  * Fixture 1 — a `ContextMessage` item: the COMMON PREFIX AND NOTHING ELSE.
@@ -579,6 +579,61 @@ export const FIXTURE_NO_CONTEXT_WITH_NAME: CanvasActivityStreamEntry = {
   type: 'DiscussionEntry',
   read_state: false,
   author_name: 'Robin Shaw',
+}
+
+/**
+ * `submission_comment_json`'s `else` branch: the comment author the viewer may
+ * NOT read. A Canvas-observed shape, not a guard fixture.
+ *
+ * Taken whenever `@current_user` lacks `:read_author` on the comment — an
+ * anonymous peer review on an assignment with `anonymize_students?`, per
+ * `SubmissionComment#can_read_author?` (app/models/submission_comment.rb:334-336
+ * at the pinned SHA). That branch sets all three identity keys TOGETHER
+ * (lib/api/v1/submission_comment.rb:68-72):
+ *
+ *     sc_hash.merge!({ author: {}, author_id: nil, author_name: I18n.t("Anonymous User") })
+ *
+ * Two consequences this fixture exists to pin:
+ *
+ *  1. Canvas has already anonymized the comment, so the correct output is the
+ *     input: a pseudonym here would rename Canvas's own "Anonymous User" and
+ *     fabricate a `display_name` on an object Canvas deliberately emptied.
+ *  2. `author` is an EMPTY hash, so the nested `author.id` is absent too, not
+ *     merely the flat `author_id`. There is no shape in either serializer where
+ *     `author_id` is missing while `author.id` still carries a real identity:
+ *     `submission_comment_json` emits both or neither, and
+ *     `anonymous_moderated_submission_comments_json` — the one that does
+ *     `json.delete(:author_id)` (lines 105, 110) — restricts its `as_json` to
+ *     `ANONYMOUS_MODERATED_JSON_ATTRIBUTES` (lines 24-36), which has no `author`
+ *     key at all, and deletes `author_name` alongside it.
+ *
+ * `author_id: null` contradicts `CanvasSubmissionComment`, which declares it
+ * non-null. The serializer is the authority; the declaration is stale, so the
+ * divergence is spelled out in a local type rather than cast away silently.
+ */
+type UnreadableAuthorComment = Omit<CanvasSubmissionComment, 'author_id'> & { author_id: null }
+
+const UNREADABLE_AUTHOR_COMMENT: UnreadableAuthorComment = {
+  id: '13',
+  author: {},
+  author_id: null,
+  author_name: 'Anonymous User',
+  comment: 'Clear thesis, weak counterexample.',
+  body: 'Clear thesis, weak counterexample.',
+  created_at: '2026-10-04T15:05:00Z',
+}
+
+export const FIXTURE_SUBMISSION_UNREADABLE_AUTHOR: CanvasActivityStreamEntry = {
+  ...FIXTURE_SUBMISSION,
+  id: '9009',
+  submission_id: '3009',
+  submission_comments: [
+    FIXTURE_SUBMISSION.submission_comments![0]!,
+    // The `author_id: null` the serializer emits is not representable in
+    // `CanvasSubmissionComment`; `UnreadableAuthorComment` above states the
+    // intent so this cast is narrowing a known divergence, not hiding one.
+    UNREADABLE_AUTHOR_COMMENT as unknown as CanvasSubmissionComment,
+  ],
 }
 
 /** Every fixture above, in the order a stream would plausibly return them. */

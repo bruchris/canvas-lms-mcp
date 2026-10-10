@@ -346,8 +346,19 @@ export interface CanvasSubmissionComment {
    * `submission_comment_json` sets this to `user_display_json(comment.author,
    * …)` whenever the viewer holds `:read_author` — so a comment normally
    * carries the author's `display_name` BESIDE `author_name`, and masking only
-   * `author_name` leaves the real name one key over. Optional because the
-   * anonymous-moderated branch replaces it with `{}`.
+   * `author_name` leaves the real name one key over.
+   *
+   * ~~Optional because the anonymous-moderated branch replaces it with `{}`.~~
+   * Corrected 2026-10-10 (BRU-2864): it is `submission_comment_json`'s OWN
+   * `else` branch that sets `author: {}`, together with `author_id: nil` and
+   * `author_name: "Anonymous User"`, when the viewer lacks `:read_author`
+   * (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas SHA
+   * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+   * `anonymous_moderated_submission_comments_json` — the serializer that does
+   * `json.delete(:author_id)` — never emits this key at all, because
+   * `ANONYMOUS_MODERATED_JSON_ATTRIBUTES` (lines 24-36) has no `author` entry.
+   * So there is no shape in either serializer where `author.id` survives an
+   * absent `author_id`, and this key is never a fallback source for it.
    */
   author?: CanvasUserDisplay
 }

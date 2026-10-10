@@ -19,6 +19,7 @@ import {
   FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
   FIXTURE_SUBMISSION_PROXY,
   FIXTURE_SUBMISSION_PROXY_NO_ID,
+  FIXTURE_SUBMISSION_UNREADABLE_AUTHOR,
 } from '../fixtures/activity-stream'
 
 // BRU-2797 §6.2 / §9 AC-8, AC-10. Every assertion here is per-ARM: a single
@@ -503,6 +504,54 @@ describe('anonymizeActivityStream — Submission arm: submission_comments[].auth
   })
 })
 
+describe('anonymizeActivityStream — Submission arm: an author the viewer may not read', () => {
+  // BRU-2864. `submission_comment_json` takes its `else` branch when
+  // `:read_author` is not granted and sets `author: {}`, `author_id: nil` and
+  // `author_name: "Anonymous User"` TOGETHER
+  // (lib/api/v1/submission_comment.rb:68-72 at the pinned SHA
+  // 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c), so Canvas has already
+  // anonymized the comment and leaves no id anywhere on it — not a flat
+  // `author_id`, and not a nested `author.id` either.
+  it('keeps Canvas’s own “Anonymous User” byline and invents no display name', async () => {
+    const [item] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION_UNREADABLE_AUTHOR])
+
+    const unreadable = item!.submission_comments![1]!
+    expect(unreadable.author_name).toBe('Anonymous User')
+    expect(unreadable.author_name).not.toMatch(/^Student \d+$/)
+    // `applyPseudonymToDisplay` ADDS a `display_name` to whatever it is given,
+    // so a pseudonym reaching here would invent an author byline on an object
+    // the serializer deliberately emptied.
+    expect(unreadable.author).toEqual({})
+  })
+
+  it('spends no pseudonym on it and writes no junk key to the course map', async () => {
+    await make().anonymizeActivityStream([FIXTURE_SUBMISSION_UNREADABLE_AUTHOR])
+
+    const { mapFilePath } = await import('../../src/pseudonym/paths')
+    const { readFile } = await import('node:fs/promises')
+    const map = JSON.parse(
+      await readFile(mapFilePath(tmpRoot, 'school.instructure.com', '101'), 'utf8'),
+    ) as { students: Record<string, unknown>; next_pseudonym_index: number }
+
+    // The submitting student and nobody else: the recorded grader (9) is
+    // excluded by `grader_id`, and an author with no id contributes nothing. A
+    // `"null"` key here would mean the pre-warm loop keyed the map on
+    // `String(comment.author_id)` regardless — which both spends an index on a
+    // non-person and makes the byline above rewritable.
+    expect(Object.keys(map.students).sort()).toEqual(['42'])
+    expect(map.next_pseudonym_index).toBe(2)
+  })
+
+  it('still rewrites a readable peer author on the same payload shape (control)', async () => {
+    // Not a blanket “comments are left alone”: the ordinary `:read_author`
+    // shape differs from the fixture above only in carrying an id, and it is
+    // still pseudonymized.
+    const [plain] = await make().anonymizeActivityStream([FIXTURE_SUBMISSION])
+
+    expect(plain!.submission_comments![1]!.author_name).toBe('Student 2')
+  })
+})
+
 describe('anonymizeActivityStream — negative sweep over every fixture (AC-8)', () => {
   it('leaves no real student name anywhere in the serialized output', async () => {
     const items = await make().anonymizeActivityStream([
@@ -510,6 +559,7 @@ describe('anonymizeActivityStream — negative sweep over every fixture (AC-8)',
       FIXTURE_SUBMISSION_PROXY_NO_ID,
       FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
       FIXTURE_NO_CONTEXT_WITH_NAME,
+      FIXTURE_SUBMISSION_UNREADABLE_AUTHOR,
     ])
     const json = JSON.stringify(items)
 
@@ -517,7 +567,7 @@ describe('anonymizeActivityStream — negative sweep over every fixture (AC-8)',
     // contains the deliberately-preserved staff name, or an empty/undefined
     // result would pass every assertion below.
     expect(json).toContain('Prof. Amara Okoro')
-    expect(items).toHaveLength(ACTIVITY_STREAM_FIXTURES.length + 3)
+    expect(items).toHaveLength(ACTIVITY_STREAM_FIXTURES.length + 4)
 
     for (const name of ACTIVITY_STREAM_REAL_NAMES) {
       expect(json).not.toContain(name)
@@ -532,6 +582,7 @@ describe('anonymizeActivityStream — negative sweep over every fixture (AC-8)',
       FIXTURE_SUBMISSION_PROXY_NO_ID,
       FIXTURE_SUBMISSION_DISCUSSION_NO_ID,
       FIXTURE_NO_CONTEXT_WITH_NAME,
+      FIXTURE_SUBMISSION_UNREADABLE_AUTHOR,
     ])
     const json = JSON.stringify(items)
 
