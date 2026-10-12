@@ -427,12 +427,14 @@ All errors returned as structured MCP content, never thrown:
 | `update_page` | write | Update a wiki page |
 | `delete_page` | write | Delete a wiki page |
 
-#### Discussions (7 tools)
+#### Discussions (9 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_discussions` | read | Discussion topics in a course |
 | `get_discussion` | read | Discussion topic with entries |
+| `list_group_discussions` | read | Discussion topics in a group |
+| `get_group_discussion` | read | Group discussion topic with entries |
 | `list_announcements` | read | Course announcements |
 | `post_discussion_entry` | write | Post to a discussion topic |
 | `create_discussion` | write | Create a discussion topic |
@@ -682,7 +684,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `upload_submission_file` | write | Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called. |
 | `submit_assignment` | write | Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids. |
 
-**Totals: 172 tools (120 read, 52 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 173rd tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 172.
+**Totals: 174 tools (122 read, 52 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 175th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 174.
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand. After updating the base count, also update the conditional-tool ordinal in the FERPA Mode section below: it must always equal **base + 1** (the `resolve_pseudonym` tool is never included in the base total).
 
