@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.2.0...canvas-lms-mcp-v2.3.0) (2026-10-12)
+
+
+### Features
+
+* **discussions:** add read-only group discussion tools (BRU-2897) ([#412](https://github.com/bruchris/canvas-lms-mcp/issues/412)) ([deab955](https://github.com/bruchris/canvas-lms-mcp/commit/deab955180704d83a491566fc3185838029a7ec1))
+
 ## [2.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.1.0...canvas-lms-mcp-v2.2.0) (2026-10-10)
 
 
