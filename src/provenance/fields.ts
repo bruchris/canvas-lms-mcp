@@ -76,6 +76,8 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
   // `post_discussion_entry` / `update_discussion` publish as the operator.
   get_discussion: { message: 'discussion message' },
   list_discussions: { message: 'discussion message' },
+  get_group_discussion: { message: 'discussion message' },
+  list_group_discussions: { message: 'discussion message' },
 
   // Rank 3 — arbitrary sender; `send_conversation` sends as the operator.
   // `last_message` is Canvas's preview string on the conversation itself;

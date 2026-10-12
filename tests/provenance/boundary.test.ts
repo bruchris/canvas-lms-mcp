@@ -928,6 +928,8 @@ describe('field registry coverage', () => {
     'get_my_activity_stream',
     'get_discussion',
     'list_discussions',
+    'get_group_discussion',
+    'list_group_discussions',
     'get_conversation',
     'list_conversations',
     'get_page',
@@ -942,9 +944,9 @@ describe('field registry coverage', () => {
     'view_account_notifications',
   ])
 
-  it('matches the canonical list — 17 read tools', () => {
+  it('matches the canonical list — 19 read tools', () => {
     expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_FENCED_TOOLS)
-    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(17)
+    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(19)
   })
 
   // A `view_*` tool is a separate definition with its own handler that returns
