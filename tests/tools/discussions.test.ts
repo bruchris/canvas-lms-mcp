@@ -39,6 +39,8 @@ describe('discussionTools', () => {
       discussions: {
         list: vi.fn().mockResolvedValue([mockTopic]),
         get: vi.fn().mockResolvedValue(mockTopic),
+        listForGroup: vi.fn().mockResolvedValue([mockTopic]),
+        getForGroup: vi.fn().mockResolvedValue(mockTopic),
         listAnnouncements: vi.fn().mockResolvedValue([mockAnnouncement]),
         postEntry: vi.fn().mockResolvedValue(mockEntry),
         create: vi.fn().mockResolvedValue(mockTopic),
@@ -48,8 +50,8 @@ describe('discussionTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 7 tool definitions', () => {
-    expect(discussionTools(buildMockCanvas())).toHaveLength(7)
+  it('returns an array with 9 tool definitions', () => {
+    expect(discussionTools(buildMockCanvas())).toHaveLength(9)
   })
 
   it('exports tools with correct names', () => {
@@ -57,6 +59,8 @@ describe('discussionTools', () => {
     expect(names).toEqual([
       'list_discussions',
       'get_discussion',
+      'list_group_discussions',
+      'get_group_discussion',
       'list_announcements',
       'post_discussion_entry',
       'create_discussion',
@@ -90,6 +94,38 @@ describe('discussionTools', () => {
       const tool = discussionTools(canvas).find((t) => t.name === 'get_discussion')!
       await tool.handler({ course_id: '1', topic_id: '1' })
       expect(canvas.discussions.get).toHaveBeenCalledWith('1', '1')
+    })
+  })
+
+  describe('list_group_discussions', () => {
+    it('has read-only annotations', () => {
+      const tool = discussionTools(buildMockCanvas()).find(
+        (t) => t.name === 'list_group_discussions',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.discussions.listForGroup', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'list_group_discussions')!
+      await tool.handler({ group_id: '9' })
+      expect(canvas.discussions.listForGroup).toHaveBeenCalledWith('9')
+    })
+  })
+
+  describe('get_group_discussion', () => {
+    it('has read-only annotations', () => {
+      const tool = discussionTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_group_discussion',
+      )!
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.discussions.getForGroup', async () => {
+      const canvas = buildMockCanvas()
+      const tool = discussionTools(canvas).find((t) => t.name === 'get_group_discussion')!
+      await tool.handler({ group_id: '9', topic_id: '1' })
+      expect(canvas.discussions.getForGroup).toHaveBeenCalledWith('9', '1')
     })
   })
 

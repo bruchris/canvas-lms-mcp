@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 172,
+  "toolCount": 174,
   "tools": [
     {
       "name": "health_check",
@@ -934,6 +934,34 @@
       "title": "Get Discussion",
       "domain": "discussions",
       "description": "Get details for a single discussion topic by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "list_group_discussions",
+      "title": "List Group Discussions",
+      "domain": "discussions",
+      "description": "List all discussion topics in a group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "get_group_discussion",
+      "title": "Get Group Discussion",
+      "domain": "discussions",
+      "description": "Get details for a single discussion topic in a group by ID.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

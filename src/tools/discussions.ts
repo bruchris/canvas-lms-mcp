@@ -50,6 +50,29 @@ function anonymousTopicMessage(courseId: CanvasId, topicId: CanvasId, descriptio
 }
 
 /**
+ * Group-scoped counterpart of `anonymousTopicMessage`. `DiscussionTopicsController`
+ * (and its `is_not_anonymous` before_action) is shared between the `/courses/:course_id`
+ * and `/groups/:group_id` route scopes in Canvas's routes.rb — group and course both
+ * delegate to the same controller actions rather than having separate group-only logic
+ * — so the same 404-on-anonymous-topic behavior applies here. There is no group-scoped
+ * reply tool in this server yet, so the message omits the course variant's trailing
+ * note about `post_discussion_entry`.
+ */
+function anonymousGroupTopicMessage(
+  groupId: CanvasId,
+  topicId: CanvasId,
+  description: string,
+): string {
+  return (
+    `Discussion topic ${topicId} exists in group ${groupId} — list_group_discussions returns it — but ` +
+    'Canvas blocks the topic-scoped detail REST endpoint for anonymous discussion topics and ' +
+    `answers it with HTTP 404. This topic is ${description}. The topic ID is correct; no other ID ` +
+    "will work. Read the topic's listed attributes from list_group_discussions, or open the topic in " +
+    'the Canvas web UI.'
+  )
+}
+
+/**
  * Resolve how an already-404ing topic is anonymous, or `undefined` when the 404 should
  * keep its ordinary not-found meaning. A failure of the fallback request itself also
  * yields `undefined`: the detail failure is the one the caller asked about, and
@@ -69,6 +92,22 @@ async function describeAnonymityFromList(
   // Compared as canonical strings, not by coercing `topicId` back to a number:
   // `topic.id` is a response value (still `number` until PR 2a) and `topicId` is
   // a migrated input, so this is one of §4.1's ID-to-ID comparisons.
+  const listed = topics.find((topic) => topic.id === topicId)
+  return listed ? anonymityDescription(listed) : undefined
+}
+
+/** Group-scoped counterpart of `describeAnonymityFromList`. */
+async function describeGroupAnonymityFromList(
+  canvas: CanvasClient,
+  groupId: CanvasId,
+  topicId: CanvasId,
+): Promise<string | undefined> {
+  let topics: CanvasDiscussionTopic[]
+  try {
+    topics = await canvas.discussions.listForGroup(groupId)
+  } catch {
+    return undefined
+  }
   const listed = topics.find((topic) => topic.id === topicId)
   return listed ? anonymityDescription(listed) : undefined
 }
@@ -137,6 +176,52 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
           const description = await describeAnonymityFromList(canvas, course_id, topic_id)
           if (description === undefined) throw error
           throw new Error(anonymousTopicMessage(course_id, topic_id, description), {
+            cause: error,
+          })
+        }
+      },
+    },
+    {
+      name: 'list_group_discussions',
+      title: 'List Group Discussions',
+      description: 'List all discussion topics in a group.',
+      inputSchema: {
+        group_id: canvasIdInput().describe('The Canvas group ID'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const group_id = params.group_id as CanvasId
+        return canvas.discussions.listForGroup(group_id)
+      },
+    },
+    {
+      name: 'get_group_discussion',
+      title: 'Get Group Discussion',
+      // As with get_discussion, the anonymous-topic case is reported by the handler's
+      // error below rather than advertised here — `docs/generated/tool-manifest.json`
+      // embeds this string, so any edit also requires `pnpm generate:manifests`.
+      description: 'Get details for a single discussion topic in a group by ID.',
+      inputSchema: {
+        group_id: canvasIdInput().describe('The Canvas group ID'),
+        topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const group_id = params.group_id as CanvasId
+        const topic_id = params.topic_id as CanvasId
+        try {
+          return await canvas.discussions.getForGroup(group_id, topic_id)
+        } catch (error) {
+          if (!(error instanceof CanvasApiError) || error.status !== 404) throw error
+          const description = await describeGroupAnonymityFromList(canvas, group_id, topic_id)
+          if (description === undefined) throw error
+          throw new Error(anonymousGroupTopicMessage(group_id, topic_id, description), {
             cause: error,
           })
         }

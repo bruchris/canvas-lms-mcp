@@ -30,6 +30,18 @@ export class DiscussionsModule {
     )
   }
 
+  async listForGroup(groupId: CanvasId): Promise<CanvasDiscussionTopic[]> {
+    return this.client.paginate<CanvasDiscussionTopic>(
+      `/api/v1/groups/${groupId}/discussion_topics`,
+    )
+  }
+
+  async getForGroup(groupId: CanvasId, topicId: CanvasId): Promise<CanvasDiscussionTopic> {
+    return this.client.request<CanvasDiscussionTopic>(
+      `/api/v1/groups/${groupId}/discussion_topics/${topicId}?include[]=all_dates`,
+    )
+  }
+
   async postEntry(
     courseId: CanvasId,
     topicId: CanvasId,
