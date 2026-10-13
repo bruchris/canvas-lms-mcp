@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.1...canvas-lms-mcp-v2.4.0) (2026-10-13)
+
+
+### Features
+
+* **rubrics:** add attach_rubric and delete_rubric ([#370](https://github.com/bruchris/canvas-lms-mcp/issues/370)) ([1624ffa](https://github.com/bruchris/canvas-lms-mcp/commit/1624ffa733e158aebc53ab38368f2c465d47e36e))
+
+
+### Bug Fixes
+
+* **rubrics:** expose rubric assignment associations on get_rubric ([#327](https://github.com/bruchris/canvas-lms-mcp/issues/327)) ([81b7da8](https://github.com/bruchris/canvas-lms-mcp/commit/81b7da869bddea3354376ba9a76790f387dc68b3))
+
 ## [2.3.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.0...canvas-lms-mcp-v2.3.1) (2026-10-13)
 
 
