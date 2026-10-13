@@ -1,5 +1,6 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasFile, CanvasFileUploadInfo, CanvasFolder, DownloadedFile } from './types'
+import type { CanvasId } from './id'
 
 const MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024 // 10 MB
 
@@ -18,20 +19,20 @@ function isTextContentType(contentType: string): boolean {
 export class FilesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasFile[]> {
+  async list(courseId: CanvasId): Promise<CanvasFile[]> {
     return this.client.paginate<CanvasFile>(`/api/v1/courses/${courseId}/files`)
   }
 
-  async listFolders(courseId: number): Promise<CanvasFolder[]> {
+  async listFolders(courseId: CanvasId): Promise<CanvasFolder[]> {
     return this.client.paginate<CanvasFolder>(`/api/v1/courses/${courseId}/folders`)
   }
 
-  async get(courseId: number, fileId: number): Promise<CanvasFile> {
+  async get(courseId: CanvasId, fileId: CanvasId): Promise<CanvasFile> {
     return this.client.request<CanvasFile>(`/api/v1/courses/${courseId}/files/${fileId}`)
   }
 
   async upload(
-    courseId: number,
+    courseId: CanvasId,
     name: string,
     contentBase64: string,
     contentType: string,
@@ -61,8 +62,8 @@ export class FilesModule {
   }
 
   async uploadToSubmission(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     name: string,
     contentBase64: string,
     contentType: string,
@@ -166,7 +167,7 @@ export class FilesModule {
     return parsed as CanvasFile
   }
 
-  async download(fileId: number, courseId?: number): Promise<DownloadedFile> {
+  async download(fileId: CanvasId, courseId?: CanvasId): Promise<DownloadedFile> {
     const endpoint =
       courseId != null ? `/api/v1/courses/${courseId}/files/${fileId}` : `/api/v1/files/${fileId}`
     const meta = await this.client.request<CanvasFile>(endpoint)
@@ -223,7 +224,7 @@ export class FilesModule {
     }
   }
 
-  async delete(fileId: number): Promise<CanvasFile> {
+  async delete(fileId: CanvasId): Promise<CanvasFile> {
     return this.client.request<CanvasFile>(`/api/v1/files/${fileId}`, { method: 'DELETE' })
   }
 }

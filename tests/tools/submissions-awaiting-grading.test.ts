@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { CanvasId } from '../../src/canvas/id'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasAssignment, CanvasSubmission } from '../../src/canvas/types'
 import type { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
@@ -84,35 +85,35 @@ function mkSubmission(props: {
 }
 
 // A1: regular assignment, 2 awaiting; A2: Classic Quiz, 1 awaiting; A3: nothing.
-const A1 = mkAssignment({ id: 1, name: 'Essay', needs_grading_count: 2 })
+const A1 = mkAssignment({ id: '1', name: 'Essay', needs_grading_count: 2 })
 const A2 = mkAssignment({
-  id: 2,
+  id: '2',
   name: 'Midterm Quiz',
   needs_grading_count: 1,
   is_quiz_assignment: true,
-  quiz_id: 10,
+  quiz_id: '10',
   due_at: '2026-07-01T00:00:00Z',
 })
-const A3 = mkAssignment({ id: 3, name: 'Graded already', needs_grading_count: 0 })
+const A3 = mkAssignment({ id: '3', name: 'Graded already', needs_grading_count: 0 })
 
 const S1 = mkSubmission({
-  id: 1001,
+  id: '1001',
   assignment_id: A1.id,
-  user: { id: 101, name: 'Alice' },
+  user: { id: '101', name: 'Alice' },
   workflow_state: 'submitted',
   submitted_at: '2026-06-20T10:00:00Z',
 })
 const S2 = mkSubmission({
-  id: 1002,
+  id: '1002',
   assignment_id: A1.id,
-  user: { id: 102, name: 'Bob' },
+  user: { id: '102', name: 'Bob' },
   workflow_state: 'submitted',
   submitted_at: '2026-06-21T10:00:00Z',
 })
 const S3 = mkSubmission({
-  id: 1003,
+  id: '1003',
   assignment_id: A2.id,
-  user: { id: 103, name: 'Carol' },
+  user: { id: '103', name: 'Carol' },
   workflow_state: 'pending_review',
   submitted_at: '2026-06-19T10:00:00Z',
 })
@@ -126,19 +127,27 @@ function buildMockCanvas(opts: {
   const filterSubmissions = opts.filterSubmissions ?? true
   return {
     assignments: {
-      list: vi.fn(async (_courseId: number, listOpts?: { assignment_ids?: number[] }) => {
+      // Canvas receives `assignment_ids[]` as query-string text, so the mock
+      // compares canonical strings rather than JS numbers — after BRU-2730 the
+      // tool passes `CanvasId`s, and a numeric `includes` would silently match
+      // nothing (the fixture would then be testing the mock, not the tool).
+      list: vi.fn(async (_courseId: CanvasId, listOpts?: { assignment_ids?: CanvasId[] }) => {
         const all = opts.assignments ?? []
         const ids = listOpts?.assignment_ids
-        return ids && ids.length > 0 ? all.filter((a) => ids.includes(a.id)) : all
+        return ids && ids.length > 0
+          ? all.filter((a) => ids.some((id) => String(id) === String(a.id)))
+          : all
       }),
     },
     submissions: {
-      listForStudents: vi.fn(async (_courseId: number, subOpts?: { assignment_ids?: number[] }) => {
-        const all = opts.submissions ?? []
-        const ids = subOpts?.assignment_ids
-        if (!filterSubmissions || !ids || ids.length === 0) return all
-        return all.filter((s) => ids.includes(s.assignment_id))
-      }),
+      listForStudents: vi.fn(
+        async (_courseId: CanvasId, subOpts?: { assignment_ids?: CanvasId[] }) => {
+          const all = opts.submissions ?? []
+          const ids = subOpts?.assignment_ids
+          if (!filterSubmissions || !ids || ids.length === 0) return all
+          return all.filter((s) => ids.some((id) => String(id) === String(s.assignment_id)))
+        },
+      ),
     },
   } as unknown as CanvasClient
 }
@@ -184,10 +193,10 @@ describe('list_submissions_awaiting_grading', () => {
     expect(result.items[1].submissions[0].has_pending_manual_questions).toBe(false)
 
     const listForStudents = canvas.submissions.listForStudents as ReturnType<typeof vi.fn>
-    const calledWith = listForStudents.mock.calls[0][1] as { assignment_ids: number[] }
-    expect(calledWith.assignment_ids).toContain(A1.id)
-    expect(calledWith.assignment_ids).toContain(A2.id)
-    expect(calledWith.assignment_ids).not.toContain(A3.id)
+    const calledWith = listForStudents.mock.calls[0][1] as { assignment_ids: CanvasId[] }
+    expect(calledWith.assignment_ids).toContain(String(A1.id))
+    expect(calledWith.assignment_ids).toContain(String(A2.id))
+    expect(calledWith.assignment_ids).not.toContain(String(A3.id))
 
     expect(result.caveats.some((c) => c.includes('New Quizzes'))).toBe(true)
   })
@@ -246,7 +255,7 @@ describe('list_submissions_awaiting_grading', () => {
 
   it('Fixture G — no submissions awaiting (all graded): early-return, no fetch', async () => {
     const canvas = buildMockCanvas({
-      assignments: [mkAssignment({ id: 1, needs_grading_count: 0 })],
+      assignments: [mkAssignment({ id: '1', needs_grading_count: 0 })],
       submissions: [],
     })
     const result = await run(canvas)
@@ -263,7 +272,7 @@ describe('list_submissions_awaiting_grading', () => {
 
   it('Fixture G2 — needs_grading_count absent (undefined) on all assignments', async () => {
     const canvas = buildMockCanvas({
-      assignments: [mkAssignment({ id: 1 }), mkAssignment({ id: 2 })],
+      assignments: [mkAssignment({ id: '1' }), mkAssignment({ id: '2' })],
       submissions: [],
     })
     const result = await run(canvas)
@@ -277,16 +286,16 @@ describe('list_submissions_awaiting_grading', () => {
   })
 
   it('Fixture G3 — mixed counts: caveat survives the non-early-return path, counts exactly 1', async () => {
-    const withCount = mkAssignment({ id: 1, needs_grading_count: 2 })
-    const undefinedCount = mkAssignment({ id: 2 }) // needs_grading_count absent
+    const withCount = mkAssignment({ id: '1', needs_grading_count: 2 })
+    const undefinedCount = mkAssignment({ id: '2' }) // needs_grading_count absent
     const canvas = buildMockCanvas({
       assignments: [withCount, undefinedCount],
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: withCount.id,
           workflow_state: 'submitted',
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
       ],
     })
@@ -302,18 +311,18 @@ describe('list_submissions_awaiting_grading', () => {
   })
 
   it('Fixture G4 — missing-count caveat counts eligible (post-toggle) assignments, not all', async () => {
-    const withCount = mkAssignment({ id: 1, needs_grading_count: 2 })
+    const withCount = mkAssignment({ id: '1', needs_grading_count: 2 })
     // An undefined-count Classic Quiz that is excluded by include_quizzes:false must
     // NOT be named in the caveat — the count is over eligibleAssignments, not allAssignments.
-    const undefinedQuiz = mkAssignment({ id: 3, is_quiz_assignment: true, quiz_id: 30 })
+    const undefinedQuiz = mkAssignment({ id: '3', is_quiz_assignment: true, quiz_id: '30' })
     const canvas = buildMockCanvas({
       assignments: [withCount, undefinedQuiz],
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: withCount.id,
           workflow_state: 'submitted',
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
       ],
     })
@@ -333,15 +342,15 @@ describe('list_submissions_awaiting_grading', () => {
     const result = await run(canvas, { course_id: COURSE_ID }, ps)
 
     expect(result.items[0].submissions[0].user_name).toBe('Student 0')
-    expect(result.items[0].submissions[0].user_id).toBe(101)
+    expect(result.items[0].submissions[0].user_id).toBe('101')
   })
 
   it('Fixture H2 — FERPA: user absent → null name, anonymizeSubmission not called', async () => {
     const subNoUser = mkSubmission({
-      id: 1001,
+      id: '1001',
       assignment_id: A1.id,
       user: null,
-      user_id: 101,
+      user_id: '101',
       workflow_state: 'submitted',
       submitted_at: '2026-06-20T10:00:00Z',
     })
@@ -368,24 +377,24 @@ describe('list_submissions_awaiting_grading', () => {
   })
 
   it('Fixture I — sorting correctness: older item first', async () => {
-    const a1 = mkAssignment({ id: 1, needs_grading_count: 1 })
-    const a2 = mkAssignment({ id: 2, needs_grading_count: 1 })
+    const a1 = mkAssignment({ id: '1', needs_grading_count: 1 })
+    const a2 = mkAssignment({ id: '2', needs_grading_count: 1 })
     const canvas = buildMockCanvas({
       assignments: [a1, a2],
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: a1.id,
           workflow_state: 'submitted',
           submitted_at: '2026-06-25T10:00:00Z',
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
         mkSubmission({
-          id: 2,
+          id: '2',
           assignment_id: a2.id,
           workflow_state: 'submitted',
           submitted_at: '2026-06-23T10:00:00Z',
-          user: { id: 2, name: 'B' },
+          user: { id: '2', name: 'B' },
         }),
       ],
     })
@@ -396,24 +405,24 @@ describe('list_submissions_awaiting_grading', () => {
   })
 
   it('Fixture I2 — null submitted_at: no NaN corruption in items sort', async () => {
-    const a1 = mkAssignment({ id: 1, needs_grading_count: 1 })
-    const a2 = mkAssignment({ id: 2, needs_grading_count: 1 })
+    const a1 = mkAssignment({ id: '1', needs_grading_count: 1 })
+    const a2 = mkAssignment({ id: '2', needs_grading_count: 1 })
     const canvas = buildMockCanvas({
       assignments: [a1, a2],
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: a1.id,
           workflow_state: 'submitted',
           submitted_at: null,
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
         mkSubmission({
-          id: 2,
+          id: '2',
           assignment_id: a2.id,
           workflow_state: 'submitted',
           submitted_at: null,
-          user: { id: 2, name: 'B' },
+          user: { id: '2', name: 'B' },
         }),
       ],
     })
@@ -424,7 +433,7 @@ describe('list_submissions_awaiting_grading', () => {
 
   it('Fixture J — external-tool (LTI) assignment included, labeled assignment', async () => {
     const aLti = mkAssignment({
-      id: 1,
+      id: '1',
       needs_grading_count: 2,
       submission_types: ['external_tool'],
       is_quiz_assignment: false,
@@ -434,16 +443,16 @@ describe('list_submissions_awaiting_grading', () => {
       assignments: [aLti],
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: aLti.id,
           workflow_state: 'submitted',
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
         mkSubmission({
-          id: 2,
+          id: '2',
           assignment_id: aLti.id,
           workflow_state: 'submitted',
-          user: { id: 2, name: 'B' },
+          user: { id: '2', name: 'B' },
         }),
       ],
     })
@@ -456,22 +465,22 @@ describe('list_submissions_awaiting_grading', () => {
   })
 
   it('Fixture K — stray submission defensively skipped with caveat', async () => {
-    const a1 = mkAssignment({ id: 1, needs_grading_count: 2 })
+    const a1 = mkAssignment({ id: '1', needs_grading_count: 2 })
     const canvas = buildMockCanvas({
       assignments: [a1],
       filterSubmissions: false,
       submissions: [
         mkSubmission({
-          id: 1,
+          id: '1',
           assignment_id: a1.id,
           workflow_state: 'submitted',
-          user: { id: 1, name: 'A' },
+          user: { id: '1', name: 'A' },
         }),
         mkSubmission({
-          id: 2,
-          assignment_id: 9999,
+          id: '2',
+          assignment_id: '9999',
           workflow_state: 'submitted',
-          user: { id: 2, name: 'B' },
+          user: { id: '2', name: 'B' },
         }),
       ],
     })

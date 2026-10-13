@@ -1,6 +1,9 @@
 ---
 name: canvas-quiz-review
 description: Educator skill for reviewing Canvas quiz performance and regrading individual question scores. Surfaces struggling questions, low-scoring students, and per-student answer breakdowns — then lets you adjust scores for specific questions without leaving your agent session. Unique to canvas-lms-mcp (no other Canvas MCP server exposes quiz tools). Trigger phrases include "quiz review", "quiz results", "struggling quiz questions", "quiz scores", "regrade a quiz question", "quiz performance", or "student quiz answers".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id quiz_id student_id
 ---
 
 # Canvas Quiz Review

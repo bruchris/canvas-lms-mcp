@@ -36,7 +36,12 @@ Layer 2: src/tools/        MCP tool definitions
 
 Layer 3: src/server.ts     MCP server factory
          src/stdio.ts      stdio transport (Claude Desktop, Cursor, VS Code)
-         src/http.ts       HTTP transport (ChatGPT, hosted service)
+         src/http.ts       HTTP transport: remote_static_token (X-Canvas-Token)
+                           or oauth_brokered (MCP OAuth login for Codex/ChatGPT/Claude)
+         src/auth/         Auth profiles; src/auth/oauth/ is the OAuth 2.1
+                           authorization/resource server + Canvas Developer Key
+                           client (docs/oauth-profile.md)
+         src/doctor.ts     `canvas-lms-mcp doctor` setup diagnostics
 ```
 
 ### Data Flow

@@ -275,6 +275,81 @@ describe('createHttpHandler', () => {
     })
   })
 
+  describe('destructive-tools policy', () => {
+    const blockedHandler = createHttpHandler({
+      token: 'test-token',
+      baseUrl: 'https://canvas.example.com/api/v1',
+      destructiveTools: 'block',
+    })
+
+    it('passes the configured policy through to the server factory', async () => {
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      await blockedHandler(createMockReq({ method: 'POST', url: '/mcp' }), createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ destructiveTools: 'block' }),
+      )
+    })
+
+    it('ignores a client-supplied header — unlike role, the policy is server-only', async () => {
+      // `X-Canvas-Role` is deliberately client-overridable; this must not be.
+      // The gate exists to bound what a client can do, so a header override
+      // would let the caller switch it off. Asserted rather than left to a
+      // comment, because "there is no header" is exactly the kind of property
+      // a later copy-paste of the role block would quietly break.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const req = createMockReq({
+        method: 'POST',
+        url: '/mcp',
+        headers: { 'x-canvas-destructive-tools': 'allow' },
+      })
+      await blockedHandler(req, createMockRes())
+      expect(createCanvasMCPServer).toHaveBeenCalledWith(
+        expect.objectContaining({ destructiveTools: 'block' }),
+      )
+    })
+  })
+
+  describe('pseudonymizer wiring (BRU-2511)', () => {
+    it('hands every request the same shared-across-callers pseudonymizer', async () => {
+      // The arrangement assertion. `tests/pseudonym/http-cross-caller-isolation.test.ts`
+      // proves the resulting behaviour end-to-end against the real registry;
+      // this proves the wiring here, where a future edit would break it.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { 'x-canvas-token': 'a' } }),
+        createMockRes(),
+      )
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { 'x-canvas-token': 'b' } }),
+        createMockRes(),
+      )
+
+      const calls = vi.mocked(createCanvasMCPServer).mock.calls
+      expect(calls).toHaveLength(2)
+      const [first, second] = calls.map((c) => c[0].pseudonymizer)
+      expect(first).toBeDefined()
+      expect(first).toBe(second)
+      expect(first?.sharedAcrossCallers).toBe(true)
+      expect(first?.isReverseLookupEnabled()).toBe(false)
+    })
+
+    it('returns 400 rather than letting the factory build its own pseudonymizer', async () => {
+      // With no base URL there is no shared instance to hand over, and
+      // `createCanvasMCPServer` would otherwise construct a non-shared default.
+      const { createCanvasMCPServer } = await import('../src/server')
+      vi.mocked(createCanvasMCPServer).mockClear()
+      const noBaseUrl = createHttpHandler({ token: 'tok' })
+      const res = createMockRes()
+      await noBaseUrl(createMockReq({ method: 'POST', url: '/mcp' }), res)
+      expect(res._status).toBe(400)
+      expect(createCanvasMCPServer).not.toHaveBeenCalled()
+    })
+  })
+
   describe('MCP request handling', () => {
     it('creates fresh MCP server per POST /mcp request', async () => {
       const { createCanvasMCPServer } = await import('../src/server')
@@ -353,6 +428,44 @@ describe('createHttpHandler', () => {
       expect(errorSpy).toHaveBeenCalledWith('Error during MCP cleanup:', cleanupError)
 
       closeSpy.mockRestore()
+    })
+  })
+  describe('Origin validation (#302 §7, both HTTP profiles)', () => {
+    it('refuses a request whose Origin is not the configured allowed origin', async () => {
+      const res = createMockRes()
+      await handler(
+        createMockReq({ url: '/health', headers: { origin: 'https://evil.example' } }),
+        res,
+      )
+      expect(res._status).toBe(403)
+      expect(JSON.parse(res._body)).toEqual({
+        error: 'forbidden',
+        error_description: 'Origin not allowed',
+      })
+      const mcp = createMockRes()
+      await handler(
+        createMockReq({ method: 'POST', url: '/mcp', headers: { origin: 'https://evil.example' } }),
+        mcp,
+      )
+      expect(mcp._status).toBe(403)
+    })
+
+    it('accepts the configured origin and requests with no Origin at all', async () => {
+      const ok = createMockRes()
+      await handler(
+        createMockReq({ url: '/health', headers: { origin: 'https://myapp.example.com' } }),
+        ok,
+      )
+      expect(ok._status).toBe(200)
+      const none = createMockRes()
+      await handler(createMockReq({ url: '/health' }), none)
+      expect(none._status).toBe(200)
+    })
+
+    it('still advertises Authorization for browser-based OAuth clients', async () => {
+      const res = createMockRes()
+      await handler(createMockReq({ method: 'OPTIONS', url: '/mcp' }), res)
+      expect(res._headers['access-control-allow-headers']).toContain('Authorization')
     })
   })
 })

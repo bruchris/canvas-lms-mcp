@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -13,8 +14,8 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
         'CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads ' +
         'only — nothing is submitted until submit_assignment is called.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
         name: z.string().describe('The filename, including extension'),
         content_base64: z.string().describe('The file content, base64-encoded'),
         content_type: z.string().describe('The MIME type, e.g. application/pdf'),
@@ -22,8 +23,8 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) => {
         return canvas.files.uploadToSubmission(
-          params.course_id as number,
-          params.assignment_id as number,
+          params.course_id as CanvasId,
+          params.assignment_id as CanvasId,
           params.name as string,
           params.content_base64 as string,
           params.content_type as string,
@@ -42,8 +43,8 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
         'supported. For online_upload, first upload each file with upload_submission_file ' +
         'and pass the returned file ids.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
         submission_type: z
           .enum(['online_text_entry', 'online_url', 'online_upload'])
           .describe("Must be one of the assignment's allowed submission_types"),
@@ -56,7 +57,7 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
           .optional()
           .describe('The submission URL (http/https). Required iff submission_type is online_url'),
         file_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'File IDs from prior upload_submission_file calls. Required (non-empty) iff submission_type is online_upload',
@@ -72,7 +73,7 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
           'online_text_entry' | 'online_url' | 'online_upload'
         const body = params.body as string | undefined
         const url = params.url as string | undefined
-        const fileIds = params.file_ids as number[] | undefined
+        const fileIds = params.file_ids as CanvasId[] | undefined
         const comment = params.comment as string | undefined
 
         if (submissionType === 'online_text_entry') {
@@ -124,8 +125,8 @@ export function assignmentSubmissionTools(canvas: CanvasClient): ToolDefinition[
         }
 
         return canvas.submissions.submit(
-          params.course_id as number,
-          params.assignment_id as number,
+          params.course_id as CanvasId,
+          params.assignment_id as CanvasId,
           {
             submission_type: submissionType,
             body,

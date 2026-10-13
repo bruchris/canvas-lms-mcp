@@ -46,6 +46,38 @@ describe('DiscussionsModule', () => {
     )
   })
 
+  it('lists discussion topics for a group', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+      {
+        id: 1,
+        title: 'Group Discussion',
+        message: 'Discuss this.',
+        posted_at: '2026-04-01T00:00:00Z',
+        discussion_type: 'threaded',
+        published: true,
+      },
+    ])
+    const result = await discussions.listForGroup(200)
+    expect(result).toHaveLength(1)
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/groups/200/discussion_topics')
+  })
+
+  it('gets a single group discussion topic with all_dates include', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({
+      id: 1,
+      title: 'Group Discussion',
+      message: 'Discuss this.',
+      posted_at: '2026-04-01T00:00:00Z',
+      discussion_type: 'threaded',
+      published: true,
+    })
+    const result = await discussions.getForGroup(200, 1)
+    expect(result).toMatchObject({ id: 1, title: 'Group Discussion' })
+    expect(client.request).toHaveBeenCalledWith(
+      '/api/v1/groups/200/discussion_topics/1?include[]=all_dates',
+    )
+  })
+
   it('lists announcements with only_announcements filter', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
       {

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const choiceItemSchema = z.object({
   interaction_type_slug: z.literal('choice'),
@@ -79,7 +80,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Create a New Quiz (LTI) in a Canvas course. New Quizzes is the modern quiz engine; for Classic quizzes use create_quiz.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().describe('Title of the quiz'),
         instructions: z
           .string()
@@ -97,7 +98,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         return canvas.newQuizzes.create(courseId, {
           title: params.title as string,
           instructions: params.instructions as string | null | undefined,
@@ -114,8 +115,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update New Quiz',
       description: 'Update an existing New Quiz (LTI) in a Canvas course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
         title: z.string().optional().describe('Title of the quiz'),
         instructions: z
           .string()
@@ -134,8 +135,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         return canvas.newQuizzes.update(courseId, assignmentId, {
           title: params.title as string | undefined,
           instructions: params.instructions as string | null | undefined,
@@ -153,13 +154,13 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Delete a New Quiz (LTI) from a Canvas course. This action is permanent. Use assignment_id (not quiz_id).',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         await canvas.newQuizzes.delete(courseId, assignmentId)
         return { success: true }
       },
@@ -169,13 +170,13 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'List New Quiz Items',
       description: 'List all items (questions) in a New Quiz (LTI).',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         return canvas.newQuizzes.listItems(courseId, assignmentId)
       },
     },
@@ -184,14 +185,14 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Get New Quiz Item',
       description: 'Get a single item (question) from a New Quiz (LTI) by item ID.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
         item_id: z.string().describe('The New Quiz item ID (string, not numeric)'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         const itemId = params.item_id as string
         return canvas.newQuizzes.getItem(courseId, assignmentId, itemId)
       },
@@ -202,8 +203,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Create an item (question) in a New Quiz (LTI). Supports 5 types: choice (MCQ), true-false, essay, matching, numeric. Canvas may rate-limit rapid sequential creates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
         points_possible: z.number().describe('Points awarded for a fully correct answer'),
         position: z
           .number()
@@ -214,8 +215,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         return canvas.newQuizzes.createItem(courseId, assignmentId, {
           points_possible: params.points_possible as number,
           position: params.position as number | undefined,
@@ -229,8 +230,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Update an existing item (question) in a New Quiz (LTI). All fields are optional; supply only what changes. Canvas may rate-limit rapid sequential updates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
         item_id: z.string().describe('The New Quiz item ID (string, not numeric)'),
         points_possible: z.number().optional().describe('Updated point value'),
         position: z.number().int().optional().describe('Updated 1-based position'),
@@ -238,8 +239,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         const itemId = params.item_id as string
         return canvas.newQuizzes.updateItem(courseId, assignmentId, itemId, {
           points_possible: params.points_possible as number | undefined,
@@ -256,14 +257,14 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Delete New Quiz Item',
       description: 'Delete an item (question) from a New Quiz (LTI). This action is permanent.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The assignment ID of the New Quiz'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
         item_id: z.string().describe('The New Quiz item ID (string, not numeric)'),
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         const itemId = params.item_id as string
         await canvas.newQuizzes.deleteItem(courseId, assignmentId, itemId)
         return { success: true }

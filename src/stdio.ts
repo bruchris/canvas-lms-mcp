@@ -12,6 +12,11 @@ async function main() {
     baseUrl: config.baseUrl,
     role: config.role,
     enableAssignmentSubmission: config.enableAssignmentSubmission,
+    destructiveTools: config.destructiveTools,
+    // One process, one user, one token: the pseudonym map belongs to the same
+    // person who can read the roster anyway, so reverse lookup stays available
+    // here. Stated explicitly because the factory refuses to guess (BRU-2515).
+    sharedAcrossCallers: false,
   })
 
   const transport = new StdioServerTransport()

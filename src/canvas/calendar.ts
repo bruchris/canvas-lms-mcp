@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasCalendarEvent } from './types'
+import type { CanvasId } from './id'
 
 export type CalendarEventType = 'event' | 'assignment' | 'sub_assignment'
 
@@ -14,7 +15,7 @@ export class CalendarModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(
-    courseId: number,
+    courseId: CanvasId,
     opts: ListCalendarEventsOptions = {},
   ): Promise<CanvasCalendarEvent[]> {
     const params: CanvasQueryParams = {
@@ -41,7 +42,7 @@ export class CalendarModule {
   }
 
   async updateEvent(
-    eventId: number,
+    eventId: CanvasId,
     params: {
       title?: string
       start_at?: string

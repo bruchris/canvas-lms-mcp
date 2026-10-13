@@ -37,6 +37,8 @@ function buildFullMockCanvas(): CanvasClient {
       getAssessment: async () => ({}),
       submitAssessment: async () => ({}),
       create: async () => ({}),
+      associate: async () => ({}),
+      delete: async () => ({}),
     },
     quizzes: {
       list: async () => [],
@@ -47,6 +49,8 @@ function buildFullMockCanvas(): CanvasClient {
       scoreQuestion: async () => {},
       getSubmissionEvents: async () => [],
       setExtension: async () => [],
+      delete: async () => ({}),
+      deleteQuestion: async () => undefined,
     },
     files: {
       list: async () => [],
@@ -100,6 +104,8 @@ function buildFullMockCanvas(): CanvasClient {
       create: async () => ({}),
       update: async () => ({}),
       createItem: async () => ({}),
+      updateItem: async () => ({}),
+      deleteItem: async () => ({}),
     },
     pages: {
       list: async () => [],
@@ -206,6 +212,13 @@ function buildFullMockCanvas(): CanvasClient {
       listGroups: async () => [],
       nextAppointment: async () => [],
     },
+    activityStream: {
+      getSummary: async () => [],
+      getStream: async () => [],
+    },
+    planner: {
+      listItems: async () => [],
+    },
   } as unknown as CanvasClient
 }
 
@@ -215,7 +228,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 155 tools across all domains', () => {
+  it('returns all 174 default tools across all domains (176 with assignmentSubmission)', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -241,18 +254,22 @@ describe('getAllTools', () => {
     expect(names).toContain('comment_on_submission')
     // Submission Files (1)
     expect(names).toContain('list_course_submission_files')
-    // Rubrics (5)
+    // Rubrics (7)
     expect(names).toContain('list_rubrics')
     expect(names).toContain('get_rubric')
     expect(names).toContain('get_rubric_assessment')
     expect(names).toContain('submit_rubric_assessment')
     expect(names).toContain('create_rubric')
+    expect(names).toContain('attach_rubric')
+    expect(names).toContain('delete_rubric')
     // Quizzes (7)
     expect(names).toContain('list_quizzes')
     expect(names).toContain('get_quiz')
     expect(names).toContain('list_quiz_submissions')
     expect(names).toContain('list_quiz_questions')
     expect(names).toContain('get_quiz_submission_answers')
+    expect(names).toContain('delete_quiz')
+    expect(names).toContain('delete_quiz_question')
     expect(names).toContain('score_quiz_question')
     expect(names).toContain('get_quiz_submission_events')
     // Files (6)
@@ -281,9 +298,11 @@ describe('getAllTools', () => {
     expect(names).toContain('list_course_enrollments')
     expect(names).toContain('enroll_user')
     expect(names).toContain('remove_enrollment')
-    // Discussions (7)
+    // Discussions (9)
     expect(names).toContain('list_discussions')
     expect(names).toContain('get_discussion')
+    expect(names).toContain('list_group_discussions')
+    expect(names).toContain('get_group_discussion')
     expect(names).toContain('list_announcements')
     expect(names).toContain('post_discussion_entry')
     expect(names).toContain('create_discussion')
@@ -298,6 +317,8 @@ describe('getAllTools', () => {
     expect(names).toContain('create_module')
     expect(names).toContain('update_module')
     expect(names).toContain('create_module_item')
+    expect(names).toContain('update_module_item')
+    expect(names).toContain('delete_module_item')
     // Pages (5)
     expect(names).toContain('list_pages')
     expect(names).toContain('get_page')
@@ -346,12 +367,15 @@ describe('getAllTools', () => {
     expect(names).toContain('get_outcome_rollups')
     expect(names).toContain('get_outcome_contributing_scores')
     expect(names).toContain('get_outcome_mastery_distribution')
-    // Student (5)
+    // Student (8)
     expect(names).toContain('get_my_courses')
     expect(names).toContain('get_my_grades')
     expect(names).toContain('get_my_submissions')
     expect(names).toContain('get_my_upcoming_assignments')
     expect(names).toContain('get_my_submission_feedback')
+    expect(names).toContain('get_my_activity_stream_summary')
+    expect(names).toContain('get_my_activity_stream')
+    expect(names).toContain('list_my_planner_items')
     // Dashboard (4)
     expect(names).toContain('get_dashboard_cards')
     expect(names).toContain('get_todo_items')
@@ -415,14 +439,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(163)
+    expect(tools).toHaveLength(174)
   })
 
-  it('returns 165 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 176 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(165)
+    expect(tools).toHaveLength(176)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
@@ -443,7 +467,11 @@ describe('getAllTools', () => {
       'comment_on_submission',
       'submit_rubric_assessment',
       'create_rubric',
+      'attach_rubric',
+      'delete_rubric',
       'score_quiz_question',
+      'delete_quiz',
+      'delete_quiz_question',
       'post_discussion_entry',
       'create_discussion',
       'update_discussion',
@@ -454,6 +482,8 @@ describe('getAllTools', () => {
       'create_module',
       'update_module',
       'create_module_item',
+      'update_module_item',
+      'delete_module_item',
       'create_page',
       'update_page',
       'delete_page',
@@ -508,7 +538,11 @@ describe('getAllTools', () => {
       'comment_on_submission',
       'submit_rubric_assessment',
       'create_rubric',
+      'attach_rubric',
+      'delete_rubric',
       'score_quiz_question',
+      'delete_quiz',
+      'delete_quiz_question',
       'post_discussion_entry',
       'create_discussion',
       'update_discussion',
@@ -519,6 +553,8 @@ describe('getAllTools', () => {
       'create_module',
       'update_module',
       'create_module_item',
+      'update_module_item',
+      'delete_module_item',
       'create_page',
       'update_page',
       'delete_page',

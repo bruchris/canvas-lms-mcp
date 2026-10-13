@@ -1,6 +1,9 @@
 ---
 name: canvas-course-qc
 description: Learning designer quality-control checklist for Canvas courses. Walks modules, pages, assignments, and rubrics to surface structural issues — broken item sequences, missing rubrics, empty modules, unpublished content — before a course goes live. Trigger phrases include "course QC", "course quality check", "review course structure", "pre-launch audit", "check course content", or "canvas course review".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Course QC

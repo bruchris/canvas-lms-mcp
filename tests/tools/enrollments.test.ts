@@ -85,13 +85,13 @@ describe('enrollmentTools', () => {
       const canvas = buildMockCanvas()
       const tool = enrollmentTools(canvas).find((t) => t.name === 'list_course_enrollments')!
       await tool.handler({
-        course_id: 100,
+        course_id: '100',
         type: ['StudentEnrollment'],
         state: ['active'],
         include: ['grades', 'current_points'],
         user_id: 'self',
       })
-      expect(canvas.enrollments.listForCourse).toHaveBeenCalledWith(100, {
+      expect(canvas.enrollments.listForCourse).toHaveBeenCalledWith('100', {
         type: ['StudentEnrollment'],
         state: ['active'],
         include: ['grades', 'current_points'],
@@ -109,20 +109,30 @@ describe('enrollmentTools', () => {
     it('delegates to canvas.enrollments.enroll', async () => {
       const canvas = buildMockCanvas()
       const tool = enrollmentTools(canvas).find((t) => t.name === 'enroll_user')!
-      await tool.handler({ course_id: 1, user_id: 5, type: 'StudentEnrollment' })
-      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(1, 5, 'StudentEnrollment', undefined)
+      await tool.handler({ course_id: '1', user_id: '5', type: 'StudentEnrollment' })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(
+        '1',
+        '5',
+        'StudentEnrollment',
+        undefined,
+      )
     })
 
     it('passes optional enrollment_state', async () => {
       const canvas = buildMockCanvas()
       const tool = enrollmentTools(canvas).find((t) => t.name === 'enroll_user')!
       await tool.handler({
-        course_id: 1,
-        user_id: 5,
+        course_id: '1',
+        user_id: '5',
         type: 'TeacherEnrollment',
         enrollment_state: 'active',
       })
-      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(1, 5, 'TeacherEnrollment', 'active')
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(
+        '1',
+        '5',
+        'TeacherEnrollment',
+        'active',
+      )
     })
   })
 
@@ -135,8 +145,8 @@ describe('enrollmentTools', () => {
     it('delegates to canvas.enrollments.remove', async () => {
       const canvas = buildMockCanvas()
       const tool = enrollmentTools(canvas).find((t) => t.name === 'remove_enrollment')!
-      await tool.handler({ course_id: 1, enrollment_id: 10, task: 'conclude' })
-      expect(canvas.enrollments.remove).toHaveBeenCalledWith(1, 10, 'conclude')
+      await tool.handler({ course_id: '1', enrollment_id: '10', task: 'conclude' })
+      expect(canvas.enrollments.remove).toHaveBeenCalledWith('1', '10', 'conclude')
     })
   })
 
@@ -210,7 +220,7 @@ describe('enrollmentTools', () => {
         const tool = enrollmentTools(buildCanvasWithUser(), makePseudonymizer()).find(
           (t) => t.name === 'list_course_enrollments',
         )!
-        const result = (await tool.handler({ course_id: 10 })) as CanvasEnrollment[]
+        const result = (await tool.handler({ course_id: '10' })) as CanvasEnrollment[]
         expect(result[0].user?.name).toMatch(/^Student \d+$/)
       })
 
@@ -218,7 +228,7 @@ describe('enrollmentTools', () => {
         const tool = enrollmentTools(buildCanvasWithUser(), makePseudonymizer(false)).find(
           (t) => t.name === 'list_course_enrollments',
         )!
-        const result = (await tool.handler({ course_id: 10 })) as CanvasEnrollment[]
+        const result = (await tool.handler({ course_id: '10' })) as CanvasEnrollment[]
         expect(result[0].user?.name).toBe('Alice')
       })
     })

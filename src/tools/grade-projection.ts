@@ -11,6 +11,7 @@ import {
 } from './grade-engine'
 import type { GroupModeResult } from './grade-engine'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 type Feasibility = 'already_secured' | 'achievable' | 'impossible'
 
@@ -191,11 +192,9 @@ export function gradeProjectionTools(
         '- V1 computes one student per call. Omit student_id to compute for the authenticated user. ' +
         'When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, resolve the pseudonym first via resolve_pseudonym.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to compute the grade projection for.'),
+        course_id: canvasIdInput().describe(
+          'Canvas course ID to compute the grade projection for.',
+        ),
         target_percentage: z
           .number()
           .min(0)
@@ -213,10 +212,7 @@ export function gradeProjectionTools(
               'grading standard configured. Exactly one of target_percentage or target_letter must ' +
               'be provided. Case-insensitive.',
           ),
-        student_id: z
-          .number()
-          .int()
-          .positive()
+        student_id: canvasIdInput()
           .optional()
           .describe(
             'Canvas user_id of the student to compute for. Omit to compute for the authenticated user. ' +
@@ -230,11 +226,13 @@ export function gradeProjectionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const targetPercentageParam = params.target_percentage as number | undefined
         const targetLetterParam = params.target_letter as string | undefined
-        const studentParam = params.student_id as number | undefined
-        const studentId: number | 'self' = studentParam === undefined ? 'self' : studentParam
+        const studentParam = params.student_id as CanvasId | undefined
+        // See the note in grade-explanation.ts: the annotation documents the
+        // contract; `CanvasId | 'self'` is `string` to the compiler.
+        const studentId: CanvasId | 'self' = studentParam === undefined ? 'self' : studentParam
 
         if (targetPercentageParam !== undefined && targetLetterParam !== undefined) {
           throw new Error('Provide either target_percentage or target_letter, not both.')
@@ -355,9 +353,18 @@ export function gradeProjectionTools(
           remainingPointsPossible,
         )
 
-        // FERPA: pseudonymize only when viewing another student's data.
+        // FERPA: pseudonymize only when viewing another student's data. Viewing
+        // one's own grade (`self`) exposes no third-party PII.
+        //
+        // The test was `typeof studentId === 'number'`, which PR 1b (BRU-2827)
+        // silently made dead: `canvasIdInput()` transforms every ID input to a
+        // canonical **string**, so the guard was always false and this tool
+        // stopped pseudonymizing altogether. It survived review because the test
+        // suite calls `tool.handler(args)` directly, which bypasses Zod, so the
+        // fixture still handed the handler a runtime `number` (§18 row G). The
+        // check now tests what the comment above actually describes.
         const anonUser =
-          pseudonymizer?.isEnabled() && typeof studentId === 'number'
+          pseudonymizer?.isEnabled() && studentId !== 'self'
             ? await pseudonymizer.anonymizeUser(courseId, user, enrollments)
             : user
 

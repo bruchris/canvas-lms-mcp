@@ -1,6 +1,9 @@
 ---
 name: canvas-office-hours
 description: Educator skill for running office hours through Canvas Scheduler appointment groups. Create and publish sign-up slots for a course, list existing groups and their time slots, and see which students (or student groups) have reserved — one confirmed action at a time. Trigger phrases include "office hours", "appointment group", "Canvas Scheduler", "sign-up slots", "create office hours", "who signed up for office hours", "manage appointment slots", "publish office hours", or "schedule office hours".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id
 ---
 
 # Canvas Office Hours

@@ -7,6 +7,7 @@ import type {
   CanvasStudentSummary,
   CourseSearchResult,
 } from './types'
+import type { CanvasId } from './id'
 
 export const SEARCH_CONTENT_TYPES = [
   'pages',
@@ -20,13 +21,13 @@ export class AnalyticsModule {
   constructor(private client: CanvasHttpClient) {}
 
   async searchContentType(
-    courseId: number,
+    courseId: CanvasId,
     searchTerm: string,
     type: SearchContentType,
   ): Promise<CourseSearchResult[]> {
     switch (type) {
       case 'pages': {
-        const pages = await this.client.paginate<{ page_id: number; title: string; url: string }>(
+        const pages = await this.client.paginate<{ page_id: CanvasId; title: string; url: string }>(
           `/api/v1/courses/${courseId}/pages`,
           { search_term: searchTerm },
         )
@@ -39,7 +40,7 @@ export class AnalyticsModule {
         }))
       }
       case 'assignments': {
-        const assignments = await this.client.paginate<{ id: number; name: string }>(
+        const assignments = await this.client.paginate<{ id: CanvasId; name: string }>(
           `/api/v1/courses/${courseId}/assignments`,
           { search_term: searchTerm },
         )
@@ -51,7 +52,7 @@ export class AnalyticsModule {
         }))
       }
       case 'discussions': {
-        const discussions = await this.client.paginate<{ id: number; title: string }>(
+        const discussions = await this.client.paginate<{ id: CanvasId; title: string }>(
           `/api/v1/courses/${courseId}/discussion_topics`,
           { search_term: searchTerm },
         )
@@ -63,7 +64,7 @@ export class AnalyticsModule {
         }))
       }
       case 'announcements': {
-        const announcements = await this.client.paginate<{ id: number; title: string }>(
+        const announcements = await this.client.paginate<{ id: CanvasId; title: string }>(
           `/api/v1/courses/${courseId}/discussion_topics`,
           { search_term: searchTerm, only_announcements: 'true' },
         )
@@ -81,34 +82,34 @@ export class AnalyticsModule {
     }
   }
 
-  async getCourseActivity(courseId: number): Promise<CanvasCourseActivitySummary[]> {
+  async getCourseActivity(courseId: CanvasId): Promise<CanvasCourseActivitySummary[]> {
     return this.client.request<CanvasCourseActivitySummary[]>(
       `/api/v1/courses/${courseId}/analytics/activity`,
     )
   }
 
   async getStudentActivity(
-    courseId: number,
-    studentId: number,
+    courseId: CanvasId,
+    studentId: CanvasId,
   ): Promise<CanvasStudentActivitySummary> {
     return this.client.request<CanvasStudentActivitySummary>(
       `/api/v1/courses/${courseId}/analytics/users/${studentId}/activity`,
     )
   }
 
-  async getCourseActivityStream(courseId: number): Promise<CanvasActivityStreamItem[]> {
+  async getCourseActivityStream(courseId: CanvasId): Promise<CanvasActivityStreamItem[]> {
     return this.client.request<CanvasActivityStreamItem[]>(
       `/api/v1/courses/${courseId}/activity_stream/summary`,
     )
   }
 
-  async getStudentSummaries(courseId: number): Promise<CanvasStudentSummary[]> {
+  async getStudentSummaries(courseId: CanvasId): Promise<CanvasStudentSummary[]> {
     return this.client.paginate<CanvasStudentSummary>(
       `/api/v1/courses/${courseId}/analytics/student_summaries`,
     )
   }
 
-  async getAssignmentAnalytics(courseId: number): Promise<CanvasAssignmentAnalytics[]> {
+  async getAssignmentAnalytics(courseId: CanvasId): Promise<CanvasAssignmentAnalytics[]> {
     return this.client.paginate<CanvasAssignmentAnalytics>(
       `/api/v1/courses/${courseId}/analytics/assignments`,
     )

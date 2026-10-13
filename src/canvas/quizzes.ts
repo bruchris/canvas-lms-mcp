@@ -9,32 +9,76 @@ import type {
   CanvasQuizSubmissionEventsResponse,
   CanvasQuizExtension,
 } from './types'
+import type { CanvasId } from './id'
 
 export class QuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasQuiz[]> {
+  async list(courseId: CanvasId): Promise<CanvasQuiz[]> {
     return this.client.paginate<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes`)
   }
 
-  async get(courseId: number, quizId: number): Promise<CanvasQuiz> {
+  async get(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuiz> {
     return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`)
   }
 
-  async listSubmissions(courseId: number, quizId: number): Promise<CanvasQuizSubmission[]> {
+  /**
+   * Delete a Classic quiz. Per the Canvas Quizzes API docs, this "deletes a
+   * quiz and returns the deleted quiz object".
+   * @see https://canvas.instructure.com/doc/api/quizzes.html#method.quizzes/quizzes_api.destroy
+   */
+  async delete(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuiz> {
+    return this.client.request<CanvasQuiz>(`/api/v1/courses/${courseId}/quizzes/${quizId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Delete a question from a Classic quiz. Per the Canvas Quiz Questions API
+   * docs, a successful deletion returns 204 No Content, so there is no body.
+   * @see https://canvas.instructure.com/doc/api/quiz_questions.html
+   */
+  async deleteQuestion(courseId: CanvasId, quizId: CanvasId, questionId: CanvasId): Promise<void> {
+    await this.client.request<void>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`,
+      { method: 'DELETE' },
+    )
+  }
+
+  async listSubmissions(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuizSubmission[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmission>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/submissions`,
       'quiz_submissions',
     )
   }
 
-  async listQuestions(courseId: number, quizId: number): Promise<CanvasQuizQuestion[]> {
+  async listQuestions(courseId: CanvasId, quizId: CanvasId): Promise<CanvasQuizQuestion[]> {
     return this.client.paginate<CanvasQuizQuestion>(
       `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
     )
   }
 
-  async getSubmissionAnswers(quizSubmissionId: number): Promise<CanvasQuizSubmissionQuestion[]> {
+  /**
+   * The questions one quiz-submission attempt was actually served, via
+   * `GET /courses/:id/quizzes/:id/questions?quiz_submission_id=&quiz_submission_attempt=`.
+   * Unlike `listQuestions` (the quiz's active questions only), this includes the
+   * `generated` QuizQuestion rows Canvas creates for bank draws, with the text,
+   * type and points_possible that attempt saw. Canvas needs BOTH parameters: with
+   * either missing it silently returns the active list instead.
+   */
+  async listSubmissionQuestions(
+    courseId: CanvasId,
+    quizId: CanvasId,
+    quizSubmissionId: CanvasId,
+    attempt: number,
+  ): Promise<CanvasQuizQuestion[]> {
+    return this.client.paginate<CanvasQuizQuestion>(
+      `/api/v1/courses/${courseId}/quizzes/${quizId}/questions`,
+      { quiz_submission_id: quizSubmissionId, quiz_submission_attempt: attempt },
+    )
+  }
+
+  async getSubmissionAnswers(quizSubmissionId: CanvasId): Promise<CanvasQuizSubmissionQuestion[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmissionQuestion>(
       `/api/v1/quiz_submissions/${quizSubmissionId}/questions`,
       'quiz_submission_questions',
@@ -43,10 +87,10 @@ export class QuizzesModule {
   }
 
   async scoreQuestion(
-    courseId: number,
-    quizId: number,
-    submissionId: number,
-    questionId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    submissionId: CanvasId,
+    questionId: CanvasId,
     score: number,
     comment?: string,
     attempt?: number,
@@ -72,9 +116,9 @@ export class QuizzesModule {
   }
 
   async getSubmissionEvents(
-    courseId: number,
-    quizId: number,
-    submissionId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    submissionId: CanvasId,
     attempt?: number,
   ): Promise<CanvasQuizSubmissionEvent[]> {
     const query: CanvasQueryParams = {}
@@ -98,13 +142,21 @@ export class QuizzesModule {
    * body — never pass `extra_time: 0` (Canvas rejects zero/negative extensions).
    */
   async setExtension(
-    courseId: number,
-    quizId: number,
-    userId: number,
+    courseId: CanvasId,
+    quizId: CanvasId,
+    userId: CanvasId,
     extra_time?: number,
     extra_attempts?: number,
   ): Promise<CanvasQuizExtension[]> {
-    const extension: Record<string, number> = { user_id: userId }
+    // Not `Record<string, number>` any more (BRU-2730 §8 PR 1b): `user_id` is
+    // an identifier and `extra_time` / `extra_attempts` are quantities, so the
+    // two cannot share one value type. Spelling the three keys out is what
+    // makes that split checkable instead of a comment. Emitting `user_id` as a
+    // JSON string is also the correct form — a numeric `user_id` in a request
+    // body reaches Canvas's `Api::ID_REGEX.match?(42)` and raises there (§2.4).
+    const extension: { user_id: CanvasId; extra_time?: number; extra_attempts?: number } = {
+      user_id: userId,
+    }
     if (extra_time !== undefined) extension.extra_time = extra_time
     if (extra_attempts !== undefined) extension.extra_attempts = extra_attempts
     const response = await this.client.request<{ quiz_extensions: CanvasQuizExtension[] }>(

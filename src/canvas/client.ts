@@ -1,5 +1,7 @@
 import { version } from '../../package.json'
+import { normalizeCanvasIds } from './normalize-ids'
 import { appendCanvasQuery, type CanvasQueryParams } from './query'
+import { stringIdsAcceptHeader } from './string-ids'
 import type { CanvasClientConfig, CanvasErrorResponse } from './types'
 
 export class CanvasApiError extends Error {
@@ -62,10 +64,7 @@ export class CanvasHttpClient {
       )
     }
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
-      'User-Agent': USER_AGENT,
-    }
+    const headers: Record<string, string> = this.canvasHeaders(url)
     if (init.body) {
       headers['Content-Type'] = 'application/json'
     }
@@ -89,10 +88,15 @@ export class CanvasHttpClient {
       return undefined as T
     }
 
-    return response.json() as Promise<T>
+    return normalizeCanvasIds((await response.json()) as T)
   }
 
-  async paginate<T>(endpoint: string, params?: CanvasQueryParams): Promise<T[]> {
+  async paginate<T>(
+    endpoint: string,
+    params?: CanvasQueryParams,
+    options?: { maxItems?: number },
+  ): Promise<T[]> {
+    const maxItems = options?.maxItems
     const url = new URL(`${this._baseUrl}${endpoint}`)
     if (!url.searchParams.has('per_page')) {
       url.searchParams.set('per_page', '100')
@@ -102,14 +106,12 @@ export class CanvasHttpClient {
     const results: T[] = []
     let nextUrl: string | null = url.toString()
     let pages = 0
+    let stoppedAtMaxItems = false
 
     while (nextUrl && pages < this.maxPaginationPages) {
-      const response = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          'User-Agent': USER_AGENT,
-        },
-      })
+      // Inside the loop, keyed on `nextUrl`: a followed `Link` rel="next" URL
+      // must get the same header block, and is judged on its own pathname.
+      const response = await fetch(nextUrl, { headers: this.canvasHeaders(nextUrl) })
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
@@ -118,14 +120,24 @@ export class CanvasHttpClient {
         throw new CanvasApiError(message, response.status, endpoint)
       }
 
-      const data = (await response.json()) as T[]
+      const data = normalizeCanvasIds((await response.json()) as T[])
       results.push(...data)
       pages++
+
+      if (maxItems !== undefined && results.length >= maxItems) {
+        stoppedAtMaxItems = true
+        break
+      }
 
       nextUrl = this.parseNextLink(response.headers.get('Link'))
     }
 
-    return results
+    // A deliberate maxItems stop leaves `nextUrl` non-null on purpose — that
+    // is not the page-cap truncation assertNotTruncated exists to catch.
+    if (!stoppedAtMaxItems) {
+      this.assertNotTruncated(nextUrl, endpoint)
+    }
+    return stoppedAtMaxItems ? results.slice(0, maxItems) : results
   }
 
   async paginateEnvelope<T>(
@@ -144,12 +156,9 @@ export class CanvasHttpClient {
     let pages = 0
 
     while (nextUrl && pages < this.maxPaginationPages) {
-      const response = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          'User-Agent': USER_AGENT,
-        },
-      })
+      // Inside the loop, keyed on `nextUrl`: a followed `Link` rel="next" URL
+      // must get the same header block, and is judged on its own pathname.
+      const response = await fetch(nextUrl, { headers: this.canvasHeaders(nextUrl) })
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
@@ -158,7 +167,10 @@ export class CanvasHttpClient {
         throw new CanvasApiError(message, response.status, endpoint)
       }
 
-      const body = (await response.json()) as Record<string, T[]>
+      // Normalized before the envelope is opened, not after: the `answer`
+      // exception in `normalize-ids.ts` is scoped to the envelope key it
+      // arrives under, so the walk has to see the whole body (§4.3).
+      const body = normalizeCanvasIds((await response.json()) as Record<string, T[]>)
       const data = body[envelopeKey] ?? []
       results.push(...data)
       pages++
@@ -166,7 +178,36 @@ export class CanvasHttpClient {
       nextUrl = this.parseNextLink(response.headers.get('Link'))
     }
 
+    this.assertNotTruncated(nextUrl, endpoint)
     return results
+  }
+
+  /**
+   * The header block every Canvas request shares. Defining it in one place is
+   * what makes "the string-ID Accept header is on all three response paths"
+   * (BRU-2730 §5) structural rather than three coincidences.
+   *
+   * Takes the fully-resolved URL because the negotiation decision is per URL:
+   * `/api/quiz/v1` is excluded by pathname prefix.
+   */
+  private canvasHeaders(url: string): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.token}`,
+      'User-Agent': USER_AGENT,
+      ...stringIdsAcceptHeader(url),
+    }
+  }
+
+  /**
+   * The pagination loops exit with a non-null `nextUrl` only when the page cap
+   * was reached while Canvas still advertised another page. Surface that as an
+   * error rather than returning a partial list that looks complete.
+   */
+  private assertNotTruncated(nextUrl: string | null, endpoint: string): void {
+    if (!nextUrl) return
+    throw new Error(
+      `Results are incomplete: ${endpoint} has more pages beyond the configured limit of ${this.maxPaginationPages} pages, so the list was truncated. Narrow the query with filters or raise maxPaginationPages.`,
+    )
   }
 
   private parseNextLink(linkHeader: string | null): string | null {

@@ -66,8 +66,8 @@ describe('userTools', () => {
     it('delegates to canvas.users.listStudents', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_students')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.users.listStudents).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.users.listStudents).toHaveBeenCalledWith('1')
     })
   })
 
@@ -80,8 +80,8 @@ describe('userTools', () => {
     it('delegates to canvas.users.get', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'get_user')!
-      await tool.handler({ user_id: 5 })
-      expect(canvas.users.get).toHaveBeenCalledWith(5)
+      await tool.handler({ user_id: '5' })
+      expect(canvas.users.get).toHaveBeenCalledWith('5')
     })
   })
 
@@ -108,15 +108,15 @@ describe('userTools', () => {
     it('delegates to canvas.users.searchUsers with required params', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'search_users')!
-      await tool.handler({ account_id: 1, search_term: 'alice' })
-      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {})
+      await tool.handler({ account_id: '1', search_term: 'alice' })
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith('1', 'alice', {})
     })
 
     it('passes optional sort and order', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'search_users')!
-      await tool.handler({ account_id: 1, search_term: 'alice', sort: 'username', order: 'asc' })
-      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {
+      await tool.handler({ account_id: '1', search_term: 'alice', sort: 'username', order: 'asc' })
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith('1', 'alice', {
         sort: 'username',
         order: 'asc',
       })
@@ -125,8 +125,12 @@ describe('userTools', () => {
     it('forwards include[] to search', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'search_users')!
-      await tool.handler({ account_id: 1, search_term: 'alice', include: ['email', 'last_login'] })
-      expect(canvas.users.searchUsers).toHaveBeenCalledWith(1, 'alice', {
+      await tool.handler({
+        account_id: '1',
+        search_term: 'alice',
+        include: ['email', 'last_login'],
+      })
+      expect(canvas.users.searchUsers).toHaveBeenCalledWith('1', 'alice', {
         include: ['email', 'last_login'],
       })
     })
@@ -141,15 +145,15 @@ describe('userTools', () => {
     it('delegates to canvas.users.listCourseUsers with empty options when none provided', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
-      await tool.handler({ course_id: 100 })
-      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {})
+      await tool.handler({ course_id: '100' })
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith('100', {})
     })
 
     it('forwards enrollment_type as an array', async () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
-      await tool.handler({ course_id: 100, enrollment_type: ['teacher'] })
-      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {
+      await tool.handler({ course_id: '100', enrollment_type: ['teacher'] })
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith('100', {
         enrollment_type: ['teacher'],
       })
     })
@@ -158,18 +162,18 @@ describe('userTools', () => {
       const canvas = buildMockCanvas()
       const tool = userTools(canvas).find((t) => t.name === 'list_course_users')!
       await tool.handler({
-        course_id: 100,
+        course_id: '100',
         include: ['email', 'enrollments'],
         enrollment_state: ['active'],
-        user_ids: [1, 2],
+        user_ids: ['1', '2'],
         search_term: 'alice',
         sort: 'last_login',
         order: 'desc',
       })
-      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith(100, {
+      expect(canvas.users.listCourseUsers).toHaveBeenCalledWith('100', {
         include: ['email', 'enrollments'],
         enrollment_state: ['active'],
-        user_ids: [1, 2],
+        user_ids: ['1', '2'],
         search_term: 'alice',
         sort: 'last_login',
         order: 'desc',
@@ -198,7 +202,7 @@ describe('userTools', () => {
       it('pseudonymizes names and emails when enabled', async () => {
         const canvas = buildMockCanvas()
         const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'list_students')!
-        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ course_id: '1' })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
         expect(result[0].email).toMatch(/@anon\.invalid$/)
       })
@@ -208,7 +212,7 @@ describe('userTools', () => {
         const tool = userTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'list_students',
         )!
-        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ course_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })
@@ -217,14 +221,14 @@ describe('userTools', () => {
       it('pseudonymizes the user when enabled', async () => {
         const canvas = buildMockCanvas()
         const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'get_user')!
-        const result = (await tool.handler({ user_id: 5 })) as CanvasUser
+        const result = (await tool.handler({ user_id: '5' })) as CanvasUser
         expect(result.name).toMatch(/^Student \d+$/)
       })
 
       it('passes through real name when disabled', async () => {
         const canvas = buildMockCanvas()
         const tool = userTools(canvas, makePseudonymizer(false)).find((t) => t.name === 'get_user')!
-        const result = (await tool.handler({ user_id: 5 })) as CanvasUser
+        const result = (await tool.handler({ user_id: '5' })) as CanvasUser
         expect(result.name).toBe('Alice')
       })
     })
@@ -242,7 +246,10 @@ describe('userTools', () => {
       it('pseudonymizes users when enabled', async () => {
         const canvas = buildMockCanvas()
         const tool = userTools(canvas, makePseudonymizer()).find((t) => t.name === 'search_users')!
-        const result = (await tool.handler({ account_id: 1, search_term: 'alice' })) as CanvasUser[]
+        const result = (await tool.handler({
+          account_id: '1',
+          search_term: 'alice',
+        })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
       })
 
@@ -251,7 +258,10 @@ describe('userTools', () => {
         const tool = userTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'search_users',
         )!
-        const result = (await tool.handler({ account_id: 1, search_term: 'alice' })) as CanvasUser[]
+        const result = (await tool.handler({
+          account_id: '1',
+          search_term: 'alice',
+        })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })
@@ -262,7 +272,7 @@ describe('userTools', () => {
         const tool = userTools(canvas, makePseudonymizer()).find(
           (t) => t.name === 'list_course_users',
         )!
-        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ course_id: '1' })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
       })
 
@@ -271,7 +281,7 @@ describe('userTools', () => {
         const tool = userTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'list_course_users',
         )!
-        const result = (await tool.handler({ course_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ course_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })

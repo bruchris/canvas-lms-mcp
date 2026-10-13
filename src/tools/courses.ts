@@ -9,6 +9,7 @@ import type {
   ListCoursesOptions,
 } from '../canvas/courses'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const COURSE_LIST_INCLUDE = [
   'needs_grading_count',
@@ -106,7 +107,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Get details for a single course. Defaults to requesting `term` and `total_students`. Pass `include` to replace the default set with custom Canvas include[] fields (teachers, permissions, syllabus_body, sections, etc.).',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         include: z
           .array(z.enum(COURSE_GET_INCLUDE))
           .optional()
@@ -126,7 +127,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<CourseGetInclude>
         if (params.teacher_limit !== undefined) opts.teacher_limit = params.teacher_limit as number
-        return canvas.courses.get(params.course_id as number, opts)
+        return canvas.courses.get(params.course_id as CanvasId, opts)
       },
     },
     {
@@ -134,14 +135,14 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Get Syllabus',
       description: 'Get the syllabus HTML body for a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const syllabus_body = await canvas.courses.getSyllabus(course_id)
         return { course_id, syllabus_body }
       },
@@ -152,11 +153,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'admin',
       description: 'Create a new course in a Canvas account. Returns the created course object.',
       inputSchema: {
-        account_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('The Canvas account ID to create the course in'),
+        account_id: canvasIdInput().describe('The Canvas account ID to create the course in'),
         name: z.string().describe('The name of the course'),
         course_code: z.string().optional().describe('The course code (e.g. CS101)'),
         start_at: z
@@ -176,7 +173,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const { account_id, ...courseFields } = params as {
-          account_id: number
+          account_id: CanvasId
           name: string
           course_code?: string
           start_at?: string
@@ -192,7 +189,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('The Canvas course ID to update'),
+        course_id: canvasIdInput().describe('The Canvas course ID to update'),
         name: z.string().optional().describe('New course name'),
         course_code: z.string().optional().describe('New course code'),
         start_at: z
@@ -218,7 +215,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       },
       handler: async (params) => {
         const { course_id, ...fields } = params as {
-          course_id: number
+          course_id: CanvasId
           name?: string
           course_code?: string
           start_at?: string

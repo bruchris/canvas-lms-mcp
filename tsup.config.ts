@@ -6,6 +6,7 @@ export default defineConfig({
     stdio: 'src/stdio.ts',
     http: 'src/http.ts',
     init: 'src/init.ts',
+    doctor: 'src/doctor.ts',
     cli: 'src/cli.ts',
     'canvas/index': 'src/canvas/index.ts',
   },

@@ -1,4 +1,5 @@
 import { CanvasApiError } from '../canvas/client'
+import type { CanvasId } from '../canvas/id'
 
 /**
  * Terminal classification of a single fan-out item that did NOT throw.
@@ -22,7 +23,7 @@ export interface FanOutResult<TResult> {
    * IDs requested via a subset filter that were absent from the course.
    * Omitted entirely when the tool exposes no id-subset filter.
    */
-  not_found?: number[]
+  not_found?: CanvasId[]
   summary: {
     total: number
     applied: number
@@ -52,7 +53,7 @@ export interface FanOutConfig<TItem, TResult> {
    * IDs requested via a subset filter but absent from the course. Supply
    * (even as `[]`) to include `not_found` in the envelope; omit to leave it out.
    */
-  notFound?: number[]
+  notFound?: CanvasId[]
 }
 
 /**

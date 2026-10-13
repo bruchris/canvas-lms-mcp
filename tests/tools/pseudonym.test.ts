@@ -46,7 +46,7 @@ describe('pseudonymTools', () => {
         pseudonym: 'Student 7',
         status: 'active',
       })
-      const result = await tool.handler({ course_id: 1, pseudonym: 'Student 7' })
+      const result = await tool.handler({ course_id: '1', pseudonym: 'Student 7' })
       expect(result).toEqual({
         found: true,
         user_id: 42,
@@ -59,7 +59,7 @@ describe('pseudonymTools', () => {
     it('returns found=false with check-spelling note when no match', async () => {
       const { tool, pseudonymizer } = getHandler()
       ;(pseudonymizer.reverseLookup as ReturnType<typeof vi.fn>).mockResolvedValue(null)
-      const result = await tool.handler({ course_id: 1, pseudonym: 'Student 99' })
+      const result = await tool.handler({ course_id: '1', pseudonym: 'Student 99' })
       expect(result).toEqual({
         found: false,
         note: 'No pseudonym matched in the course map. Check the course_id and the exact pseudonym spelling.',
@@ -69,8 +69,8 @@ describe('pseudonymTools', () => {
     it('calls reverseLookup with the correct course_id and pseudonym', async () => {
       const { tool, pseudonymizer } = getHandler()
       ;(pseudonymizer.reverseLookup as ReturnType<typeof vi.fn>).mockResolvedValue(null)
-      await tool.handler({ course_id: 99, pseudonym: 'Student 3' })
-      expect(pseudonymizer.reverseLookup).toHaveBeenCalledWith(99, 'Student 3')
+      await tool.handler({ course_id: '99', pseudonym: 'Student 3' })
+      expect(pseudonymizer.reverseLookup).toHaveBeenCalledWith('99', 'Student 3')
     })
   })
 

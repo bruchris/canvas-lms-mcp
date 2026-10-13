@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -14,7 +15,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
         'start_date) — pass both start_date and end_date to cover a range, and type="assignment" ' +
         'to list assignment due dates instead of plain events.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         type: z
           .enum(['event', 'assignment', 'sub_assignment'])
           .optional()
@@ -38,7 +39,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.calendar.list(course_id, {
           type: params.type as 'event' | 'assignment' | 'sub_assignment' | undefined,
           start_date: params.start_date as string | undefined,
@@ -83,7 +84,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update Calendar Event',
       description: 'Update an existing calendar event. Only provided fields are changed.',
       inputSchema: {
-        event_id: z.number().describe('The Canvas calendar event ID'),
+        event_id: canvasIdInput().describe('The Canvas calendar event ID'),
         title: z.string().optional().describe('New event title'),
         start_at: z.string().optional().describe('New start time in ISO 8601 format'),
         end_at: z.string().optional().describe('New end time in ISO 8601 format'),
@@ -95,7 +96,7 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const event_id = params.event_id as number
+        const event_id = params.event_id as CanvasId
         return canvas.calendar.updateEvent(event_id, {
           title: params.title as string | undefined,
           start_at: params.start_at as string | undefined,

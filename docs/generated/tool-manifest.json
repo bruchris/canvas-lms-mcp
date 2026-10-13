@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 165,
+  "toolCount": 176,
   "tools": [
     {
       "name": "health_check",
@@ -14,7 +14,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_courses",
@@ -27,7 +28,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_course",
@@ -40,7 +42,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_syllabus",
@@ -53,7 +56,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_course",
@@ -65,8 +69,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "admin",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_course",
@@ -80,7 +85,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_assignments",
@@ -95,7 +101,8 @@
       "primaryAudience": "shared",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_assignment",
@@ -110,7 +117,8 @@
       "primaryAudience": "shared",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "list_assignment_groups",
@@ -123,7 +131,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_assignment",
@@ -136,7 +145,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_assignment",
@@ -150,7 +160,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_assignment",
@@ -164,7 +175,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_submissions",
@@ -179,7 +191,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_submission",
@@ -194,7 +207,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "grade_submission",
@@ -210,7 +224,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "comment_on_submission",
@@ -225,7 +240,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "list_course_submission_files",
@@ -238,7 +254,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_submissions_awaiting_grading",
@@ -251,7 +268,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_rubrics",
@@ -264,7 +282,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_rubric",
@@ -279,7 +298,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_rubric_assessment",
@@ -294,7 +314,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "submit_rubric_assessment",
@@ -310,7 +331,8 @@
       "primaryAudience": "educator",
       "relatedWorkflows": [
         "educator-assignment-review"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "create_rubric",
@@ -323,7 +345,37 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "attach_rubric",
+      "title": "Attach Rubric",
+      "domain": "rubrics",
+      "description": "Attach an existing course rubric to an assignment, so one rubric can be shared across many assignments instead of creating a duplicate per assignment with create_rubric. Returns the new rubric association.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_rubric",
+      "title": "Delete Rubric",
+      "domain": "rubrics",
+      "description": "Permanently delete a rubric from a course, removing it from every assignment it is attached to. Returns the deleted rubric.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_quizzes",
@@ -336,7 +388,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_quiz",
@@ -349,7 +402,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_quiz_submissions",
@@ -362,7 +416,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_quiz_questions",
@@ -374,8 +429,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_quiz_submission_answers",
@@ -388,7 +444,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "score_quiz_question",
@@ -402,7 +459,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_quiz_submission_events",
@@ -415,7 +473,38 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_quiz",
+      "title": "Delete Quiz",
+      "domain": "quizzes",
+      "description": "Permanently delete a Classic quiz from a course, including its questions and every student submission. Classic Quizzes only; use delete_new_quiz for a New Quiz (LTI).",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_quiz_question",
+      "title": "Delete Quiz Question",
+      "domain": "quizzes",
+      "description": "Permanently delete a single question from a Classic quiz. Classic Quizzes only; use delete_new_quiz_item for a New Quiz item.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_new_quiz",
@@ -428,7 +517,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_new_quiz",
@@ -442,7 +532,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_new_quiz",
@@ -456,7 +547,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_new_quiz_items",
@@ -469,7 +561,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_new_quiz_item",
@@ -482,7 +575,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_new_quiz_item",
@@ -495,7 +589,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_new_quiz_item",
@@ -509,7 +604,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_new_quiz_item",
@@ -523,20 +619,22 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_quiz_question_responses",
       "title": "Get Quiz Question Responses",
       "domain": "quiz_question_responses",
-      "description": "Review every student's answer to one or all questions in a Classic Quiz, pivoted by question instead of by student — for grading essay/short-answer/file-upload questions consistently across a class instead of paging through SpeedGrader one student at a time. Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New Quizzes exposes responses through a different API. Omit question_id to get every question; provide it to scope to one. Each question reports needs_manual_grading (true for essay and file-upload questions) and points_possible. Scans one Canvas API call per completed or pending-review submission; a failed per-submission fetch is recorded in submissions_failed rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with stable pseudonyms.",
+      "description": "Review every student's answer to one or all questions in a Classic Quiz, pivoted by question instead of by student — for grading essay/short-answer/file-upload questions consistently across a class instead of paging through SpeedGrader one student at a time. Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New Quizzes exposes responses through a different API. Omit question_id to get every question; provide it to scope to one. Each question reports needs_manual_grading (true for essay and file-upload questions) and points_possible. Questions drawn from a question bank are included: Canvas stores each draw as a generated question that the quiz's question list omits, so they are resolved from the students' own attempts, listed after the quiz's fixed questions, and report position: null. Scans one Canvas API call per completed or pending-review submission, plus one per attempt needed to resolve such questions. A failed per-submission fetch is recorded in submissions_failed, and a response whose question cannot be resolved is counted in unmatched_response_count and unmatched_question_ids, rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with stable pseudonyms.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_files",
@@ -549,7 +647,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_folders",
@@ -562,7 +661,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_file",
@@ -575,7 +675,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "upload_file",
@@ -587,8 +688,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_file",
@@ -600,8 +702,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "download_file",
@@ -614,7 +717,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "find_duplicate_files",
@@ -627,7 +731,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_gradebook_history_days",
@@ -640,7 +745,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_gradebook_history_day",
@@ -653,7 +759,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_gradebook_history_submissions",
@@ -666,7 +773,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_gradebook_history_feed",
@@ -679,7 +787,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_students",
@@ -692,7 +801,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_user",
@@ -705,7 +815,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_profile",
@@ -718,7 +829,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "search_users",
@@ -731,7 +843,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_course_users",
@@ -744,7 +857,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_groups",
@@ -756,8 +870,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_group_members",
@@ -769,8 +884,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_enrollments",
@@ -783,7 +899,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_course_enrollments",
@@ -795,8 +912,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "enroll_user",
@@ -809,7 +927,8 @@
       },
       "access": "write",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "remove_enrollment",
@@ -822,7 +941,8 @@
       },
       "access": "write",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_discussions",
@@ -835,7 +955,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_discussion",
@@ -848,7 +969,36 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "list_group_discussions",
+      "title": "List Group Discussions",
+      "domain": "discussions",
+      "description": "List all discussion topics in a group.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "get_group_discussion",
+      "title": "Get Group Discussion",
+      "domain": "discussions",
+      "description": "Get details for a single discussion topic in a group by ID.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_announcements",
@@ -861,7 +1011,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "post_discussion_entry",
@@ -874,7 +1025,8 @@
       },
       "access": "write",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_discussion",
@@ -886,8 +1038,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_discussion",
@@ -899,8 +1052,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_discussion",
@@ -912,8 +1066,9 @@
         "openWorldHint": true
       },
       "access": "write",
-      "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_modules",
@@ -926,7 +1081,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_module",
@@ -939,7 +1095,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_module_items",
@@ -952,7 +1109,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_course_structure",
@@ -964,8 +1122,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "view_course_structure",
@@ -977,8 +1136,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_module",
@@ -991,7 +1151,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_module",
@@ -1004,7 +1165,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_module_item",
@@ -1017,7 +1179,38 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "update_module_item",
+      "title": "Update Module Item",
+      "domain": "modules",
+      "description": "Edit an existing module item in place: rename it, repoint an ExternalUrl/ExternalTool item, reposition or re-indent it, publish/unpublish it, or move it to another module. ExternalUrl items exist only as module items, so a stale link carried in by a course copy can only be fixed here.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_module_item",
+      "title": "Delete Module Item",
+      "domain": "modules",
+      "description": "Remove an item from a module. For ExternalUrl, ExternalTool and SubHeader items the item is the content, so this deletes it outright; for Assignment, Page, Quiz, File and Discussion items it only unlinks the item and the underlying content survives. Re-add with create_module_item.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_pages",
@@ -1030,7 +1223,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "get_page",
@@ -1043,7 +1237,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "create_page",
@@ -1056,7 +1251,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "update_page",
@@ -1069,7 +1265,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "delete_page",
@@ -1082,7 +1279,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "list_calendar_events",
@@ -1095,7 +1293,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_calendar_event",
@@ -1108,7 +1307,8 @@
       },
       "access": "write",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_calendar_event",
@@ -1121,7 +1321,8 @@
       },
       "access": "write",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_conversations",
@@ -1134,7 +1335,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_conversation",
@@ -1147,7 +1349,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_conversation_unread_count",
@@ -1160,7 +1363,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "send_conversation",
@@ -1173,7 +1377,8 @@
       },
       "access": "write",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_peer_reviews",
@@ -1185,8 +1390,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_submission_peer_reviews",
@@ -1198,8 +1404,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_peer_review",
@@ -1212,7 +1419,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_peer_review",
@@ -1225,7 +1433,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_account",
@@ -1238,7 +1447,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_accounts",
@@ -1251,7 +1461,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_sub_accounts",
@@ -1264,7 +1475,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_account_courses",
@@ -1277,7 +1489,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_account_users",
@@ -1290,7 +1503,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_account_reports",
@@ -1303,7 +1517,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_account_notifications",
@@ -1316,7 +1531,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "view_account_notifications",
@@ -1329,7 +1545,8 @@
       },
       "access": "read",
       "primaryAudience": "admin",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "search_course_content",
@@ -1341,8 +1558,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_course_analytics",
@@ -1355,7 +1573,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_student_analytics",
@@ -1368,7 +1587,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_course_activity_stream",
@@ -1380,8 +1600,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_assignment_analytics",
@@ -1393,8 +1614,9 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_root_outcome_group",
@@ -1407,7 +1629,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_outcome_groups",
@@ -1420,7 +1643,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_outcome_group_links",
@@ -1433,7 +1657,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_group",
@@ -1446,7 +1671,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_outcome_group_outcomes",
@@ -1459,7 +1685,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_outcome_group_subgroups",
@@ -1472,7 +1699,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome",
@@ -1485,7 +1713,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_alignments",
@@ -1498,7 +1727,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_results",
@@ -1511,7 +1741,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_rollups",
@@ -1524,7 +1755,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_contributing_scores",
@@ -1537,7 +1769,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_outcome_mastery_distribution",
@@ -1550,7 +1783,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_my_courses",
@@ -1565,7 +1799,8 @@
       "primaryAudience": "student",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_my_grades",
@@ -1580,7 +1815,8 @@
       "primaryAudience": "student",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_my_submissions",
@@ -1593,7 +1829,8 @@
       },
       "access": "read",
       "primaryAudience": "student",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_my_upcoming_assignments",
@@ -1608,7 +1845,8 @@
       "primaryAudience": "student",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_my_submission_feedback",
@@ -1621,7 +1859,50 @@
       },
       "access": "read",
       "primaryAudience": "student",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "get_my_activity_stream_summary",
+      "title": "Get My Activity Stream Summary",
+      "domain": "student",
+      "description": "Count unread and total items in the authenticated student's cross-course activity stream, grouped by Canvas item type (e.g. DiscussionTopic, Announcement, Submission, Conversation). No item content — counts only. A good first call in a daily workflow to check \"is there anything to look at?\" before fetching the full stream.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "get_my_activity_stream",
+      "title": "Get My Activity Stream",
+      "domain": "student",
+      "description": "The authenticated student's cross-course activity stream: new discussion posts, announcements, conversation messages, graded submissions, peer-review requests and conference invitations from every course at once, newest first. Four caveats, none of them visible in the response: (1) RECENT ACTIVITY ONLY — typically the last ~4 weeks; the retention window is a per-Canvas-instance setting and cannot be read through the API, so \"nothing found\" is not evidence that nothing happened. (2) Each item's `message` was truncated to 4096 characters when Canvas stored it, with no marker — follow the item's `html_url` object with get_discussion or get_conversation for the full text. (3) At most 3 `root_discussion_entries` per discussion item and 3 `latest_messages` per conversation item. (4) Exactly one of `course_id` / `group_id` is present on each item and the other key is ABSENT, not null — join on `course_id`, and read `context_type` to tell which you have.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "list_my_planner_items",
+      "title": "List My Planner Items",
+      "domain": "student",
+      "description": "The authenticated student's planner: assignments, ungraded quizzes, planner notes, wiki pages, ungraded discussions, calendar events, peer reviews, sub-assignments and peer-review sub-assignments — everything with a due or to-do date, across every course and group at once. Strictly richer than get_todo_items, which covers only assignments needing submitting or grading. Four caveats: (1) start_date and end_date must be given TOGETHER or OMITTED TOGETHER — supplying only one makes Canvas silently default the other side to a ten-year window, so a half-specified range is rejected outright; omitting both resolves to Canvas's own ~2-week default, echoed back as the response's `start_date`/`end_date`. (2) `context_codes` (e.g. \"course_123\", \"group_7\") restricts to those contexts; omit it for every context the student belongs to — an empty array is rejected rather than silently meaning \"all\". (3) `submissions` is `false` when the item has no gradable submission, or an object when it does — never null. (4) a planner note has no `html_url` (Canvas exposes none for individual planner notes).",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "find_student_across_courses",
@@ -1634,7 +1915,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_dashboard_cards",
@@ -1646,10 +1928,11 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_todo_items",
@@ -1661,10 +1944,11 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_upcoming_events",
@@ -1676,10 +1960,11 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "student",
+      "primaryAudience": "shared",
       "relatedWorkflows": [
         "student-weekly-planning"
-      ]
+      ],
+      "structuredOutput": false
     },
     {
       "name": "get_missing_submissions",
@@ -1692,7 +1977,8 @@
       },
       "access": "read",
       "primaryAudience": "student",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_submission_comments_needing_attention",
@@ -1705,7 +1991,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_students_needing_attention",
@@ -1718,7 +2005,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_content_export",
@@ -1731,7 +2019,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_content_export",
@@ -1744,7 +2033,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_content_exports",
@@ -1757,7 +2047,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_content_migrations",
@@ -1770,7 +2061,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_content_migration",
@@ -1783,7 +2075,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_content_migration_types",
@@ -1796,7 +2089,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_migration_selective_data",
@@ -1809,7 +2103,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_migration_asset_id_mapping",
@@ -1822,7 +2117,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_migration_issues",
@@ -1835,7 +2131,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_content_migration",
@@ -1848,7 +2145,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_grading_standards",
@@ -1861,7 +2159,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_grading_standard",
@@ -1874,7 +2173,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "apply_grading_standard_to_course",
@@ -1887,7 +2187,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "set_student_quiz_accommodation",
@@ -1900,7 +2201,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_student_quiz_accommodations",
@@ -1913,7 +2215,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "set_student_new_quiz_accommodation",
@@ -1926,7 +2229,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_student_new_quiz_accommodations",
@@ -1939,7 +2243,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_assignment_overrides",
@@ -1952,7 +2257,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_assignment_override",
@@ -1965,7 +2271,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "set_student_assignment_dates",
@@ -1978,7 +2285,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "check_course_setup",
@@ -1991,7 +2299,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "explain_grade",
@@ -2004,7 +2313,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "explain_grading_policy",
@@ -2017,7 +2327,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "project_grade",
@@ -2030,7 +2341,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "audit_course_links",
@@ -2043,7 +2355,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "audit_course_accessibility",
@@ -2056,7 +2369,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_appointment_groups",
@@ -2069,7 +2383,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "get_appointment_group",
@@ -2082,7 +2397,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "create_appointment_group",
@@ -2095,7 +2411,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "update_appointment_group",
@@ -2108,7 +2425,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "delete_appointment_group",
@@ -2121,7 +2439,8 @@
       },
       "access": "write",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_appointment_group_users",
@@ -2134,7 +2453,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "list_appointment_group_groups",
@@ -2147,7 +2467,8 @@
       },
       "access": "read",
       "primaryAudience": "educator",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "next_appointment",
@@ -2160,7 +2481,8 @@
       },
       "access": "read",
       "primaryAudience": "shared",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "upload_submission_file",
@@ -2173,7 +2495,8 @@
       },
       "access": "write",
       "primaryAudience": "student",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     },
     {
       "name": "submit_assignment",
@@ -2186,7 +2509,8 @@
       },
       "access": "write",
       "primaryAudience": "student",
-      "relatedWorkflows": []
+      "relatedWorkflows": [],
+      "structuredOutput": false
     }
   ]
 }

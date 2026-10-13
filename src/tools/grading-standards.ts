@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const schemeEntrySchema = z.object({
   name: z.string().min(1).describe('Letter grade name (e.g. "A", "B+", "F")'),
@@ -27,16 +28,10 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         'Returns an array of grading standard objects, each with an id, title, context, ' +
         'and grading_scheme array of { name, value } entries.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput()
           .optional()
           .describe('Course ID to list standards for (mutually exclusive with account_id)'),
-        account_id: z
-          .number()
-          .int()
-          .positive()
+        account_id: canvasIdInput()
           .optional()
           .describe(
             'Account ID to list standards for (mutually exclusive with course_id; requires admin)',
@@ -47,8 +42,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number | undefined
-        const accountId = params.account_id as number | undefined
+        const courseId = params.course_id as CanvasId | undefined
+        const accountId = params.account_id as CanvasId | undefined
         if (courseId !== undefined && accountId !== undefined) {
           throw new Error('Provide either course_id or account_id, not both.')
         }
@@ -74,16 +69,10 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         'Returns the created grading standard object including its id — use that id with ' +
         'apply_grading_standard_to_course to activate it on a course.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput()
           .optional()
           .describe('Course ID to create the standard in (mutually exclusive with account_id)'),
-        account_id: z
-          .number()
-          .int()
-          .positive()
+        account_id: canvasIdInput()
           .optional()
           .describe(
             'Account ID to create the standard in (requires admin; mutually exclusive with course_id)',
@@ -105,8 +94,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number | undefined
-        const accountId = params.account_id as number | undefined
+        const courseId = params.course_id as CanvasId | undefined
+        const accountId = params.account_id as CanvasId | undefined
         const title = params.title as string
         const schemeEntries = params.scheme_entries as Array<{ name: string; value: number }>
         if (courseId !== undefined && accountId !== undefined) {
@@ -152,11 +141,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         'Pass null for grading_standard_id to remove the current grading standard from the course. ' +
         'Returns the updated course object.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('The Canvas course ID to update'),
-        grading_standard_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput().describe('The Canvas course ID to update'),
+        grading_standard_id: canvasIdInput()
           .nullable()
           .describe('The grading standard ID to apply, or null to remove the current standard'),
       },
@@ -165,8 +151,8 @@ export function gradingStandardsTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const gradingStandardId = params.grading_standard_id as number | null
+        const courseId = params.course_id as CanvasId
+        const gradingStandardId = params.grading_standard_id as CanvasId | null
         return canvas.courses.update(courseId, { grading_standard_id: gradingStandardId })
       },
     },

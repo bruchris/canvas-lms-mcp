@@ -47,14 +47,31 @@ describe('RubricsModule', () => {
           rubric_id: 1,
           association_id: 42,
           association_type: 'Assignment',
+          use_for_grading: true,
+          purpose: 'grading',
         },
       ],
     })
 
-    await rubrics.get(100, 1, { include: ['assignment_associations'] })
+    await rubrics.get('100', '1', { include: ['assignment_associations'] })
 
     expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/rubrics/1', {
       query: { include: ['assignment_associations'] },
+    })
+  })
+
+  it('deletes a rubric and unwraps the deleted rubric body', async () => {
+    const deletedRubric = {
+      id: 1,
+      title: 'Essay Rubric',
+      points_possible: 100,
+      data: [],
+    }
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ rubric: deletedRubric })
+    const result = await rubrics.delete(100, 1)
+    expect(result).toBe(deletedRubric)
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/rubrics/1', {
+      method: 'DELETE',
     })
   })
 
@@ -204,6 +221,82 @@ describe('RubricsModule', () => {
       const [, options] = vi.mocked(client.request).mock.calls[0]
       const body = new URLSearchParams(options?.body as string)
       expect(body.get('rubric_association[association_id]')).toBeNull()
+    })
+  })
+
+  describe('associate', () => {
+    const mockRubric = {
+      id: 42,
+      title: 'Essay Rubric',
+      points_possible: 100,
+      data: [],
+    }
+    const mockAssociation = {
+      id: 900,
+      rubric_id: 42,
+      association_id: 55,
+      association_type: 'Assignment',
+      use_for_grading: true,
+      purpose: 'grading',
+      association_count: 1,
+    }
+
+    it('POSTs bracket-notation form-data to the rubric_associations endpoint', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        rubric: mockRubric,
+        rubric_association: mockAssociation,
+      })
+
+      const result = await rubrics.associate(100, 42, 55, {
+        use_for_grading: true,
+        hide_score_total: false,
+      })
+
+      expect(result).toBe(mockAssociation)
+      const [endpoint, options] = vi.mocked(client.request).mock.calls[0]
+      expect(endpoint).toBe('/api/v1/courses/100/rubric_associations')
+      expect(options?.method).toBe('POST')
+      expect(options?.headers).toMatchObject({
+        'Content-Type': 'application/x-www-form-urlencoded',
+      })
+
+      const body = new URLSearchParams(options?.body as string)
+      expect(body.get('rubric_association[rubric_id]')).toBe('42')
+      expect(body.get('rubric_association[association_id]')).toBe('55')
+      expect(body.get('rubric_association[association_type]')).toBe('Assignment')
+      expect(body.get('rubric_association[use_for_grading]')).toBe('true')
+      expect(body.get('rubric_association[hide_score_total]')).toBe('false')
+    })
+
+    it('defaults purpose to grading and omits unset optional keys', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        rubric: mockRubric,
+        rubric_association: mockAssociation,
+      })
+
+      const result = await rubrics.associate(100, 42, 55)
+      expect(result).toBe(mockAssociation)
+
+      const [, options] = vi.mocked(client.request).mock.calls[0]
+      const body = new URLSearchParams(options?.body as string)
+      expect(body.get('rubric_association[purpose]')).toBe('grading')
+      expect(body.get('rubric_association[use_for_grading]')).toBeNull()
+      expect(body.get('rubric_association[hide_score_total]')).toBeNull()
+    })
+
+    it('passes an explicit purpose through', async () => {
+      const association = { ...mockAssociation, purpose: 'bookmark' }
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        rubric: mockRubric,
+        rubric_association: association,
+      })
+
+      const result = await rubrics.associate(100, 42, 55, { purpose: 'bookmark' })
+      expect(result).toBe(association)
+
+      const [, options] = vi.mocked(client.request).mock.calls[0]
+      const body = new URLSearchParams(options?.body as string)
+      expect(body.get('rubric_association[purpose]')).toBe('bookmark')
     })
   })
 })

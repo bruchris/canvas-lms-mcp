@@ -1,6 +1,9 @@
 ---
 name: canvas-peer-review-tracker
 description: Educator skill for tracking peer-review assignments in Canvas. Lists who has been asked to review whom, who has submitted versus who is still pending, and lets you assign new reviewers or send reminder messages — one student at a time. Trigger phrases include "peer reviews", "who hasn't done their peer review", "peer review status", "assign a peer reviewer", "remind students about peer reviews", or "peer review tracker".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: educator
+  io.github.bruchris/canvas-lms-mcp-arguments: course_id assignment_id
 ---
 
 # Canvas Peer Review Tracker

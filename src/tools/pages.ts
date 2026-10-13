@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import { listOutput, objectOutput } from './output/contract'
+import { canvasPageSchema, pageDeletionSchema } from './output/entities'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function pageTools(canvas: CanvasClient): ToolDefinition[] {
   return [
@@ -10,14 +13,15 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'shared',
       description: 'List all wiki pages in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
+      output: listOutput('pages', canvasPageSchema),
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.pages.list(course_id)
       },
     },
@@ -27,15 +31,16 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       audience: 'shared',
       description: 'Get a single wiki page by its URL slug.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug (e.g. "welcome-page")'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const page_url = params.page_url as string
         return canvas.pages.get(course_id, page_url)
       },
@@ -45,7 +50,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Create Page',
       description: 'Create a new wiki page in a course.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().describe('Title of the page'),
         body: z.string().optional().describe('HTML body content of the page'),
         published: z.boolean().optional().describe('Whether the page is published'),
@@ -54,12 +59,13 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Who can edit: "teachers", "students", "members", or "public"'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.pages.create(course_id, {
           title: params.title as string,
           body: params.body as string | undefined,
@@ -73,7 +79,7 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update Page',
       description: 'Update an existing wiki page.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug'),
         title: z.string().optional().describe('New title for the page'),
         body: z.string().optional().describe('New HTML body content'),
@@ -83,12 +89,13 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Who can edit: "teachers", "students", "members", or "public"'),
       },
+      output: objectOutput(canvasPageSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const page_url = params.page_url as string
         return canvas.pages.update(course_id, page_url, {
           title: params.title as string | undefined,
@@ -103,15 +110,16 @@ export function pageTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Delete Page',
       description: 'Delete a wiki page from a course. This action is permanent.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         page_url: z.string().describe('The page URL slug to delete'),
       },
+      output: objectOutput(pageDeletionSchema),
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const page_url = params.page_url as string
         await canvas.pages.delete(course_id, page_url)
         return { deleted: true, page_url }

@@ -255,6 +255,25 @@ describe('AssignmentsModule', () => {
   })
 
   describe('update', () => {
+    it('sends publish and grade fields nested under assignment on update', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 1 })
+      await assignments.update(100, 1, {
+        published: true,
+        omit_from_final_grade: true,
+        grade_group_students_individually: false,
+      })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignments/1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          assignment: {
+            published: true,
+            omit_from_final_grade: true,
+            grade_group_students_individually: false,
+          },
+        }),
+      })
+    })
+
     it('updates an assignment', async () => {
       const mockAssignment: CanvasAssignment = {
         id: 1,

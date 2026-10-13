@@ -90,8 +90,8 @@ describe('conversationTools', () => {
     it('delegates to canvas.conversations.get with conversation_id', async () => {
       const canvas = buildMockCanvas()
       const tool = conversationTools(canvas).find((t) => t.name === 'get_conversation')!
-      const result = await tool.handler({ conversation_id: 1 })
-      expect(canvas.conversations.get).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ conversation_id: '1' })
+      expect(canvas.conversations.get).toHaveBeenCalledWith('1')
       expect(result).toEqual(mockDetail)
       expect((result as CanvasConversationDetail).messages).toHaveLength(1)
     })
@@ -179,7 +179,7 @@ describe('conversationTools', () => {
         const tool = conversationTools(canvas, makePseudonymizer()).find(
           (t) => t.name === 'get_conversation',
         )!
-        const result = (await tool.handler({ conversation_id: 1 })) as CanvasConversationDetail
+        const result = (await tool.handler({ conversation_id: '1' })) as CanvasConversationDetail
         for (const p of result.participants) {
           expect(p.name).toMatch(/^Person \d+$/)
         }
@@ -190,7 +190,7 @@ describe('conversationTools', () => {
         const tool = conversationTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'get_conversation',
         )!
-        const result = (await tool.handler({ conversation_id: 1 })) as CanvasConversationDetail
+        const result = (await tool.handler({ conversation_id: '1' })) as CanvasConversationDetail
         expect(result.participants.map((p) => p.name)).toEqual(['Alice', 'Bob'])
       })
     })

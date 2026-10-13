@@ -42,7 +42,7 @@ describe('registerAssignmentDescriptionResource', () => {
       courseId: '1',
       assignmentId: '2',
     })
-    expect(canvas.assignments.get).toHaveBeenCalledWith(1, 2)
+    expect(canvas.assignments.get).toHaveBeenCalledWith('1', '2')
     // BRU-2104 §8.2 — block-form fence, same reasoning as the syllabus resource.
     expect(result.contents[0].text).toBe(
       fenceBlock('<p>Do the homework</p>', 'assignment description'),

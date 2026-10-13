@@ -125,8 +125,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.create', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz')!
-      const result = await tool.handler({ course_id: 1, title: 'Quiz 1' })
-      expect(canvas.newQuizzes.create).toHaveBeenCalledWith(1, {
+      const result = await tool.handler({ course_id: '1', title: 'Quiz 1' })
+      expect(canvas.newQuizzes.create).toHaveBeenCalledWith('1', {
         title: 'Quiz 1',
         instructions: undefined,
         points_possible: undefined,
@@ -143,8 +143,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.update', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'update_new_quiz')!
-      await tool.handler({ course_id: 1, assignment_id: 42, title: 'Updated' })
-      expect(canvas.newQuizzes.update).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({ course_id: '1', assignment_id: '42', title: 'Updated' })
+      expect(canvas.newQuizzes.update).toHaveBeenCalledWith('1', '42', {
         title: 'Updated',
         instructions: undefined,
         points_possible: undefined,
@@ -160,8 +160,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.delete and returns success', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'delete_new_quiz')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 42 })
-      expect(canvas.newQuizzes.delete).toHaveBeenCalledWith(1, 42)
+      const result = await tool.handler({ course_id: '1', assignment_id: '42' })
+      expect(canvas.newQuizzes.delete).toHaveBeenCalledWith('1', '42')
       expect(result).toEqual({ success: true })
     })
   })
@@ -170,8 +170,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.listItems', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'list_new_quiz_items')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 42 })
-      expect(canvas.newQuizzes.listItems).toHaveBeenCalledWith(1, 42)
+      const result = await tool.handler({ course_id: '1', assignment_id: '42' })
+      expect(canvas.newQuizzes.listItems).toHaveBeenCalledWith('1', '42')
       expect(result).toEqual([mockItem])
     })
   })
@@ -180,8 +180,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.getItem', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'get_new_quiz_item')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 42, item_id: 'item-1' })
-      expect(canvas.newQuizzes.getItem).toHaveBeenCalledWith(1, 42, 'item-1')
+      const result = await tool.handler({ course_id: '1', assignment_id: '42', item_id: 'item-1' })
+      expect(canvas.newQuizzes.getItem).toHaveBeenCalledWith('1', '42', 'item-1')
       expect(result).toEqual(mockItem)
     })
   })
@@ -190,8 +190,8 @@ describe('newQuizTools', () => {
     it('delegates to canvas.newQuizzes.deleteItem and returns success', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'delete_new_quiz_item')!
-      const result = await tool.handler({ course_id: 1, assignment_id: 42, item_id: 'item-1' })
-      expect(canvas.newQuizzes.deleteItem).toHaveBeenCalledWith(1, 42, 'item-1')
+      const result = await tool.handler({ course_id: '1', assignment_id: '42', item_id: 'item-1' })
+      expect(canvas.newQuizzes.deleteItem).toHaveBeenCalledWith('1', '42', 'item-1')
       expect(result).toEqual({ success: true })
     })
   })
@@ -211,8 +211,13 @@ describe('newQuizTools', () => {
         ],
         correct_choice_id: 'b',
       }
-      await tool.handler({ course_id: 1, assignment_id: 42, points_possible: 5, item: choiceItem })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '42',
+        points_possible: 5,
+        item: choiceItem,
+      })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 5,
         position: undefined,
         item: choiceItem,
@@ -227,8 +232,8 @@ describe('newQuizTools', () => {
         item_body: '<p>The sky is blue.</p>',
         correct_answer: true,
       }
-      await tool.handler({ course_id: 1, assignment_id: 42, points_possible: 1, item: tfItem })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({ course_id: '1', assignment_id: '42', points_possible: 1, item: tfItem })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 1,
         position: undefined,
         item: tfItem,
@@ -243,8 +248,13 @@ describe('newQuizTools', () => {
         item_body: '<p>Explain photosynthesis.</p>',
         rich_text: true,
       }
-      await tool.handler({ course_id: 1, assignment_id: 42, points_possible: 10, item: essayItem })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '42',
+        points_possible: 10,
+        item: essayItem,
+      })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 10,
         position: undefined,
         item: essayItem,
@@ -263,12 +273,12 @@ describe('newQuizTools', () => {
         ],
       }
       await tool.handler({
-        course_id: 1,
-        assignment_id: 42,
+        course_id: '1',
+        assignment_id: '42',
         points_possible: 4,
         item: matchItem,
       })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 4,
         position: undefined,
         item: matchItem,
@@ -283,8 +293,8 @@ describe('newQuizTools', () => {
         item_body: '<p>What is π to 2 decimal places?</p>',
         answers: [{ kind: 'exact', value: 3.14, margin: 0 }],
       }
-      await tool.handler({ course_id: 1, assignment_id: 42, points_possible: 2, item: numItem })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({ course_id: '1', assignment_id: '42', points_possible: 2, item: numItem })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 2,
         position: undefined,
         item: numItem,
@@ -299,8 +309,14 @@ describe('newQuizTools', () => {
         item_body: '<p>True or false?</p>',
         correct_answer: false,
       }
-      await tool.handler({ course_id: 1, assignment_id: 42, points_possible: 1, position: 3, item })
-      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 42, {
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '42',
+        points_possible: 1,
+        position: 3,
+        item,
+      })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
         points_possible: 1,
         position: 3,
         item,
@@ -318,13 +334,13 @@ describe('newQuizTools', () => {
         rich_text: false,
       }
       await tool.handler({
-        course_id: 1,
-        assignment_id: 42,
+        course_id: '1',
+        assignment_id: '42',
         item_id: 'item-1',
         points_possible: 8,
         item,
       })
-      expect(canvas.newQuizzes.updateItem).toHaveBeenCalledWith(1, 42, 'item-1', {
+      expect(canvas.newQuizzes.updateItem).toHaveBeenCalledWith('1', '42', 'item-1', {
         points_possible: 8,
         position: undefined,
         item,
@@ -335,12 +351,12 @@ describe('newQuizTools', () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'update_new_quiz_item')!
       await tool.handler({
-        course_id: 1,
-        assignment_id: 42,
+        course_id: '1',
+        assignment_id: '42',
         item_id: 'item-1',
         points_possible: 3,
       })
-      expect(canvas.newQuizzes.updateItem).toHaveBeenCalledWith(1, 42, 'item-1', {
+      expect(canvas.newQuizzes.updateItem).toHaveBeenCalledWith('1', '42', 'item-1', {
         points_possible: 3,
         position: undefined,
         item: undefined,

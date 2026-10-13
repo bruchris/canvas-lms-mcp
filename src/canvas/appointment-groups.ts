@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasAppointmentGroup, CanvasCalendarEvent, CanvasGroup, CanvasUser } from './types'
+import type { CanvasId } from './id'
 
 export type AppointmentGroupInclude = 'appointments' | 'child_events' | 'participant_count'
 
@@ -20,7 +21,7 @@ export class AppointmentGroupsModule {
   }
 
   async get(
-    id: number,
+    id: CanvasId,
     include?: ReadonlyArray<AppointmentGroupInclude>,
   ): Promise<CanvasAppointmentGroup> {
     const query: CanvasQueryParams = {}
@@ -50,7 +51,7 @@ export class AppointmentGroupsModule {
   }
 
   async update(
-    id: number,
+    id: CanvasId,
     params: {
       context_codes?: string[]
       title?: string
@@ -67,7 +68,7 @@ export class AppointmentGroupsModule {
     })
   }
 
-  async delete(id: number, cancelReason?: string): Promise<void> {
+  async delete(id: CanvasId, cancelReason?: string): Promise<void> {
     const body = cancelReason ? JSON.stringify({ cancel_reason: cancelReason }) : undefined
     return this.client.request<void>(`/api/v1/appointment_groups/${id}`, {
       method: 'DELETE',
@@ -75,15 +76,15 @@ export class AppointmentGroupsModule {
     })
   }
 
-  async listUsers(id: number): Promise<CanvasUser[]> {
+  async listUsers(id: CanvasId): Promise<CanvasUser[]> {
     return this.client.paginate<CanvasUser>(`/api/v1/appointment_groups/${id}/users`)
   }
 
-  async listGroups(id: number): Promise<CanvasGroup[]> {
+  async listGroups(id: CanvasId): Promise<CanvasGroup[]> {
     return this.client.paginate<CanvasGroup>(`/api/v1/appointment_groups/${id}/groups`)
   }
 
-  async nextAppointment(appointmentGroupIds?: number[]): Promise<CanvasCalendarEvent[]> {
+  async nextAppointment(appointmentGroupIds?: CanvasId[]): Promise<CanvasCalendarEvent[]> {
     const query: CanvasQueryParams = {}
     if (appointmentGroupIds?.length) query.appointment_group_ids = appointmentGroupIds
     return this.client.request<CanvasCalendarEvent[]>(

@@ -32,11 +32,52 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
   // today and exists so a widened projection is covered the day it lands.
   list_submissions_awaiting_grading: { body: 'submission body', comment: 'submission comment' },
   get_my_submission_feedback: { comment: 'submission comment' },
+  // The cross-course activity stream. `message` covers the DiscussionTopic /
+  // Announcement arm, each `root_discussion_entries[].message`, and each
+  // `latest_messages[].message` on a Conversation item; `body` and `comment`
+  // cover the Submission arm, whose merged `submission_json` carries the
+  // submission body and `submission_comments[]` (Canvas sets each comment's
+  // `body` from its `comment`, so both keys hold the same text).
+  //
+  // Three deliberate omissions. `title` is NOT fenced, following
+  // list_discussions / get_discussion — and here it would also hit the Message
+  // arm's Canvas-generated notification subject and the AssessmentRequest
+  // arm's synthesised "Peer Review for …" string, both server-authored.
+  // `name` is NOT fenced: the Submission arm merges `includes = %w[… assignment
+  // course …]`, so it would fence course and assignment names — the exact
+  // over-match this header warns about. `author_name` is NOT fenced because it
+  // is a name, and names are the pseudonymizer's job; the two layers must not
+  // both rewrite one value.
+  get_my_activity_stream: {
+    message: 'activity stream message',
+    body: 'submission body',
+    comment: 'submission comment',
+  },
+  // The cross-course planner. Despite carrying a `discussion_topic` /
+  // `announcement` plannable type, NEITHER arm's actual message text reaches
+  // this response: `lib/api/v1/planner_item.rb#plannable_json` slices every
+  // plannable down to `API_PLANNABLE_FIELDS` (+ a small per-type extra-field
+  // list), and `message`/`body` are in neither — a discussion's real message
+  // is dropped entirely at the planner layer (read at pinned SHA
+  // 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c, verified by re-deriving the
+  // slice from source rather than assuming the activity-stream registry
+  // entry carries over). The one free-text field that DOES survive the slice
+  // is a calendar event's `description` (`CALENDAR_PLANNABLE_FIELDS`), which
+  // can be course-wide and teacher-authored. `planner_note`'s own `details`
+  // field is excluded on purpose: it is the CALLER'S OWN note text, not
+  // third-party Canvas content, matching the authorship test this fencing
+  // design is built on. `title`, `location_name` and `location_address` are
+  // short metadata, not prose, and follow the existing title precedent.
+  list_my_planner_items: {
+    description: 'calendar event description',
+  },
 
   // Rank 2 — any enrolled student can author a discussion message, and
   // `post_discussion_entry` / `update_discussion` publish as the operator.
   get_discussion: { message: 'discussion message' },
   list_discussions: { message: 'discussion message' },
+  get_group_discussion: { message: 'discussion message' },
+  list_group_discussions: { message: 'discussion message' },
 
   // Rank 3 — arbitrary sender; `send_conversation` sends as the operator.
   // `last_message` is Canvas's preview string on the conversation itself;

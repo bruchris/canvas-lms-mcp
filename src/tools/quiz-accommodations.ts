@@ -3,13 +3,14 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasQuiz } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // Quiz types that the Classic Quizzes extensions API can extend. New Quizzes
 // (`quizzes.next`) use a different accommodation mechanism and are skipped.
 const CLASSIC_QUIZ_TYPES = new Set(['assignment', 'practice_quiz', 'graded_survey', 'survey'])
 
 interface QuizAccommodationResult {
-  quiz_id: number
+  quiz_id: CanvasId
   quiz_title: string
   // Status (applied/skipped/failed) is conveyed by which bucket the entry lands
   // in. skip_reason is present only on skipped[]; error only on failed[].
@@ -38,12 +39,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Real Canvas user ID of the student to accommodate'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student to accommodate'),
         extra_time_minutes: z
           .number()
           .int()
@@ -71,7 +68,7 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           .optional()
           .describe('Additional attempts to grant beyond the quiz default.'),
         quiz_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Limit accommodation to these specific quiz IDs. ' +
@@ -83,12 +80,12 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
         const extraTimeMinutes = params.extra_time_minutes as number | undefined
         const timeMultiplier = params.time_multiplier as number | undefined
         const extraAttempts = params.extra_attempts as number | undefined
-        const quizIds = params.quiz_ids as number[] | undefined
+        const quizIds = params.quiz_ids as CanvasId[] | undefined
 
         if (extraTimeMinutes !== undefined && timeMultiplier !== undefined) {
           throw new Error('Provide either extra_time_minutes or time_multiplier, not both.')
@@ -104,8 +101,11 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         }
 
         let quizzes = await canvas.quizzes.list(courseId)
-        const notFound: number[] = []
+        const notFound: CanvasId[] = []
         if (quizIds && quizIds.length > 0) {
+          // String-keyed sets: a `Set<number>` keyed on an ID is where §4.1 said
+          // the representation would go blind, and coercing the response id back
+          // to a number is what §4.4 forbids.
           const requested = new Set(quizIds)
           const present = new Set(quizzes.map((q) => q.id))
           for (const id of requested) {
@@ -192,22 +192,22 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z.number().int().positive().describe('Real Canvas user ID of the student'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
 
         const quizzes = await canvas.quizzes.list(courseId)
         const classicQuizzes = quizzes.filter((q) => CLASSIC_QUIZ_TYPES.has(q.quiz_type))
 
         const results: Array<{
-          quiz_id: number
+          quiz_id: CanvasId
           quiz_title: string
           has_accommodation: boolean
           extra_time_minutes: number | null
@@ -222,6 +222,8 @@ export function quizAccommodationTools(canvas: CanvasClient): ToolDefinition[] {
           // skipped. This differs from set_student_quiz_accommodation, which
           // catches per-quiz errors so the fan-out continues.
           const submissions = await canvas.quizzes.listSubmissions(courseId, quiz.id)
+          // Canonical-string comparison: `s.user_id` is a response value and
+          // `userId` a migrated input (BRU-2730 §4.1).
           const mySubmission = submissions.find((s) => s.user_id === userId)
           const rawTime = mySubmission?.extra_time
           const rawAttempts = mySubmission?.extra_attempts

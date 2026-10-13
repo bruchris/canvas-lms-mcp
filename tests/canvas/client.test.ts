@@ -19,6 +19,9 @@ describe('CanvasHttpClient', () => {
   describe('request', () => {
     it('sends GET with auth header and user-agent', async () => {
       const mockResponse = { id: 1, name: 'Test Course' }
+      // `id` comes back normalized: the client rewrites every response
+      // identifier to its canonical decimal string (BRU-2730 §4.3).
+      const normalizedResponse = { id: '1', name: 'Test Course' }
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify(mockResponse), {
           status: 200,
@@ -37,7 +40,7 @@ describe('CanvasHttpClient', () => {
           }),
         }),
       )
-      expect(result).toEqual(mockResponse)
+      expect(result).toEqual(normalizedResponse)
     })
 
     it('passes through custom request options', async () => {
@@ -176,7 +179,7 @@ describe('CanvasHttpClient', () => {
       )
 
       const result = await client.request('/api/v1/courses/1/something')
-      expect(result).toEqual({ id: 1 })
+      expect(result).toEqual({ id: '1' })
     })
   })
 
@@ -203,7 +206,7 @@ describe('CanvasHttpClient', () => {
         )
 
       const result = await client.paginate<{ id: number }>('/api/v1/courses')
-      expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+      expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }])
       expect(fetch).toHaveBeenCalledTimes(2)
     })
 
@@ -269,9 +272,38 @@ describe('CanvasHttpClient', () => {
         }),
       )
 
-      const result = await limitedClient.paginate<{ id: number }>('/api/v1/courses')
-      expect(result).toEqual([{ id: 1 }])
+      await expect(limitedClient.paginate<{ id: number }>('/api/v1/courses')).rejects.toThrow(
+        /incomplete.*configured limit of 1 pages/,
+      )
       expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('succeeds when the final allowed page has no next link (exact at cap)', async () => {
+      const cappedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 2,
+      })
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([{ id: 1 }]), {
+            status: 200,
+            headers: {
+              Link: '<https://canvas.example.com/api/v1/courses?page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([{ id: 2 }]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+      const result = await cappedClient.paginate<{ id: number }>('/api/v1/courses')
+      expect(result).toEqual([{ id: '1' }, { id: '2' }])
+      expect(fetch).toHaveBeenCalledTimes(2)
     })
 
     it('throws CanvasApiError on paginated request failure', async () => {
@@ -295,6 +327,44 @@ describe('CanvasHttpClient', () => {
       const result = await client.paginate('/api/v1/courses')
       expect(result).toEqual([])
     })
+
+    it('stops at maxItems without throwing, even though a further page remains', async () => {
+      const makePage = (startId: number) =>
+        Array.from({ length: 100 }, (_, i) => ({ id: startId + i }))
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(1)), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              Link: '<https://canvas.example.com/api/v1/courses?page=2&per_page=100>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(101)), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              Link: '<https://canvas.example.com/api/v1/courses?page=3&per_page=100>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(makePage(201)), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+
+      const result = await client.paginate<{ id: number }>('/api/v1/courses', undefined, {
+        maxItems: 150,
+      })
+
+      expect(result).toHaveLength(150)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('paginateEnvelope', () => {
@@ -312,7 +382,7 @@ describe('CanvasHttpClient', () => {
         '/api/v1/quizzes/1/submissions',
         'quiz_submissions',
       )
-      expect(result).toEqual([{ id: 1 }, { id: 2 }])
+      expect(result).toEqual([{ id: '1' }, { id: '2' }])
     })
 
     it('follows pagination with envelope responses', async () => {
@@ -332,7 +402,54 @@ describe('CanvasHttpClient', () => {
         )
 
       const result = await client.paginateEnvelope<{ id: number }>('/api/v1/items', 'items')
-      expect(result).toEqual([{ id: 1 }, { id: 2 }])
+      expect(result).toEqual([{ id: '1' }, { id: '2' }])
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('rejects instead of returning a partial list when the page cap is reached', async () => {
+      const limitedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 1,
+      })
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [{ id: 1 }] }), {
+          status: 200,
+          headers: {
+            Link: '<https://canvas.example.com/api/v1/items?page=2>; rel="next"',
+          },
+        }),
+      )
+
+      await expect(
+        limitedClient.paginateEnvelope<{ id: number }>('/api/v1/items', 'items'),
+      ).rejects.toThrow(/incomplete.*configured limit of 1 pages/)
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('succeeds when the final allowed envelope page has no next link (exact at cap)', async () => {
+      const cappedClient = new CanvasHttpClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+        maxPaginationPages: 2,
+      })
+
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ items: [{ id: 1 }] }), {
+            status: 200,
+            headers: {
+              Link: '<https://canvas.example.com/api/v1/items?page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ items: [{ id: 2 }] }), { status: 200 }),
+        )
+
+      const result = await cappedClient.paginateEnvelope<{ id: number }>('/api/v1/items', 'items')
+      expect(result).toEqual([{ id: '1' }, { id: '2' }])
       expect(fetch).toHaveBeenCalledTimes(2)
     })
 

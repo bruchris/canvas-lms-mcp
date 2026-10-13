@@ -1,5 +1,242 @@
 # Changelog
 
+## [2.3.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.0...canvas-lms-mcp-v2.3.1) (2026-10-13)
+
+
+### Documentation
+
+* fix stale tool-count heading in README ([#410](https://github.com/bruchris/canvas-lms-mcp/issues/410)) ([57b9af9](https://github.com/bruchris/canvas-lms-mcp/commit/57b9af94d70fcc400e7d9845b105627256f9fd77))
+* October outreach draft (student tools, OAuth profile, destructive-tools gate) ([#411](https://github.com/bruchris/canvas-lms-mcp/issues/411)) ([c3783b1](https://github.com/bruchris/canvas-lms-mcp/commit/c3783b17c46b513ca0cf3054ec64a5c449d15659))
+
+## [2.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.2.0...canvas-lms-mcp-v2.3.0) (2026-10-12)
+
+
+### Features
+
+* **discussions:** add read-only group discussion tools (BRU-2897) ([#412](https://github.com/bruchris/canvas-lms-mcp/issues/412)) ([deab955](https://github.com/bruchris/canvas-lms-mcp/commit/deab955180704d83a491566fc3185838029a7ec1))
+
+## [2.2.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.1.0...canvas-lms-mcp-v2.2.0) (2026-10-10)
+
+
+### Features
+
+* **student:** add get_my_activity_stream with bounded pagination and PII handling (BRU-2802) ([#406](https://github.com/bruchris/canvas-lms-mcp/issues/406)) ([9234c9c](https://github.com/bruchris/canvas-lms-mcp/commit/9234c9c5b809f460ac335fd24ed2fcf794cb9486))
+* **student:** add list_my_planner_items cross-course tool (BRU-2803) ([#409](https://github.com/bruchris/canvas-lms-mcp/issues/409)) ([c579311](https://github.com/bruchris/canvas-lms-mcp/commit/c5793118d72dc3ea55a0d93d9ec95712ec73bb48))
+
+
+### Bug Fixes
+
+* **pseudonym:** skip the pseudonym warm for comment authors Canvas anonymized (BRU-2865) ([#408](https://github.com/bruchris/canvas-lms-mcp/issues/408)) ([14cc6ff](https://github.com/bruchris/canvas-lms-mcp/commit/14cc6ff166013e25a9ff21c97fe96aa80946cc23))
+
+## [2.1.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.0.0...canvas-lms-mcp-v2.1.0) (2026-10-09)
+
+
+### Features
+
+* **canvas:** add bounded maxItems support to client.paginate() (BRU-2801) ([#404](https://github.com/bruchris/canvas-lms-mcp/issues/404)) ([81c7702](https://github.com/bruchris/canvas-lms-mcp/commit/81c77024f389b5ab48fc1470c320a1dc588bd56d))
+* **student:** add get_my_activity_stream_summary tool (BRU-2800) ([#405](https://github.com/bruchris/canvas-lms-mcp/issues/405)) ([30ba58f](https://github.com/bruchris/canvas-lms-mcp/commit/30ba58fd3531143e5f30ac6b5dd6ec3904363735))
+
+
+### Documentation
+
+* **spec:** cross-course student activity and planner tools design (BRU-2797) ([#401](https://github.com/bruchris/canvas-lms-mcp/issues/401)) ([790350a](https://github.com/bruchris/canvas-lms-mcp/commit/790350a3930d4d1bb594c94b56ac80a34e88fffb))
+
+## [2.0.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.33.0...canvas-lms-mcp-v2.0.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **canvas:** the 122 identifier fields Canvas's key regexes convert and 11 of the 12 fields they miss change from number to CanvasId (string) in src/canvas/types.ts, so consumers of the independently importable CanvasClient see a type change on every response identifier, and tool text payloads carry "id": "123" rather than "id": 123. The transitional helper canvasIdFromResponse, added by PR 1b and documented there as PR 2a's to delete, is removed from the canvas-lms-mcp/canvas export.
+* **canvas:** adopt canonical Canvas IDs across inputs, signatures and handlers (BRU-2827) ([#396](https://github.com/bruchris/canvas-lms-mcp/issues/396))
+
+### Features
+
+* **canvas:** adopt canonical Canvas IDs across inputs, signatures and handlers (BRU-2827) ([#396](https://github.com/bruchris/canvas-lms-mcp/issues/396)) ([8effa9d](https://github.com/bruchris/canvas-lms-mcp/commit/8effa9dc9ea073cb02f77aac7ca126b6ffd00458))
+* **canvas:** normalize response identifiers to canonical Canvas IDs (BRU-2828) ([#399](https://github.com/bruchris/canvas-lms-mcp/issues/399)) ([7dc3a3f](https://github.com/bruchris/canvas-lms-mcp/commit/7dc3a3f3e787dba55308e5f287036d277eefc857))
+* **canvas:** opt-in Canvas string-ID Accept header on all client paths (BRU-2828) ([#402](https://github.com/bruchris/canvas-lms-mcp/issues/402)) ([1760407](https://github.com/bruchris/canvas-lms-mcp/commit/176040766301ef5d72584ea01080c8031b91cb45))
+* **quizzes:** add delete_quiz and delete_quiz_question for Classic Quizzes ([#369](https://github.com/bruchris/canvas-lms-mcp/issues/369)) ([cdfe6e2](https://github.com/bruchris/canvas-lms-mcp/commit/cdfe6e233f32cf4630e5100b467f4c01fed0b774))
+
+
+### Documentation
+
+* **canvas:** correct PR [#396](https://github.com/bruchris/canvas-lms-mcp/issues/396) review documentation findings (BRU-2838) ([#398](https://github.com/bruchris/canvas-lms-mcp/issues/398)) ([83dc8ca](https://github.com/bruchris/canvas-lms-mcp/commit/83dc8ca27a569724fce57238cfd472f682bf851d))
+
+## [1.33.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.1...canvas-lms-mcp-v1.33.0) (2026-10-09)
+
+
+### Features
+
+* **canvas:** add the canonical Canvas identifier input type (BRU-2816) ([#395](https://github.com/bruchris/canvas-lms-mcp/issues/395)) ([7be1eb4](https://github.com/bruchris/canvas-lms-mcp/commit/7be1eb4318d0ab7a4ffab7fcb2fdca2e64dacf6c))
+
+
+### Documentation
+
+* **spec:** close the layout-block drift gate in both directions (BRU-2818) ([#392](https://github.com/bruchris/canvas-lms-mcp/issues/392)) ([cbc1c49](https://github.com/bruchris/canvas-lms-mcp/commit/cbc1c4922a8523dbb51037e291c8c530468e4228))
+* **spec:** make depth-2 layout rows representative, not exhaustive (BRU-2822) ([#394](https://github.com/bruchris/canvas-lms-mcp/issues/394)) ([6e8d8ef](https://github.com/bruchris/canvas-lms-mcp/commit/6e8d8ef53a4549c910ebd7722c5b13067c9ee7ba))
+
+## [1.32.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.32.0...canvas-lms-mcp-v1.32.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **cli:** print usage for top-level --help and -h ([#389](https://github.com/bruchris/canvas-lms-mcp/issues/389)) ([3b3aa32](https://github.com/bruchris/canvas-lms-mcp/commit/3b3aa32b68f0bcd4b8db23c22e25a24bd57cf3a8))
+
+## [1.32.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.2...canvas-lms-mcp-v1.32.0) (2026-10-05)
+
+
+### Features
+
+* **prompts:** advertise the 16 Agent Skills as MCP prompts ([#358](https://github.com/bruchris/canvas-lms-mcp/issues/358)) ([1a2c000](https://github.com/bruchris/canvas-lms-mcp/commit/1a2c000cb99e6af43e6af586db4329533c72c3e3))
+
+## [1.31.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.1...canvas-lms-mcp-v1.31.2) (2026-10-05)
+
+
+### Documentation
+
+* **spec:** correct PR 1b/1c split and inline count (BRU-2741) ([#385](https://github.com/bruchris/canvas-lms-mcp/issues/385)) ([298899e](https://github.com/bruchris/canvas-lms-mcp/commit/298899ecf0e67ba4d8764df31674b78eddd0fdb6))
+* **spec:** fix PR 1b cast rationale and PR 1c dependency (BRU-2740, BRU-2741) ([#384](https://github.com/bruchris/canvas-lms-mcp/issues/384)) ([7ad650c](https://github.com/bruchris/canvas-lms-mcp/commit/7ad650c48f4741aa7b7d73965365db6e8fcc8402))
+* **spec:** merge PR 1b and PR 1c; re-measure Phase 1 compile counts (BRU-2743) ([#386](https://github.com/bruchris/canvas-lms-mcp/issues/386)) ([ff88077](https://github.com/bruchris/canvas-lms-mcp/commit/ff880779fb0f61d64fe7bd716c64c1f5891979fe))
+* **spec:** preserve 64-bit Canvas identifiers without precision loss (BRU-2730) ([#382](https://github.com/bruchris/canvas-lms-mcp/issues/382)) ([d3d3705](https://github.com/bruchris/canvas-lms-mcp/commit/d3d3705c616357fb41b30de68391d3a302971b9d))
+* **spec:** resolve PR 1b/1c order with transitional union (BRU-2741) ([#387](https://github.com/bruchris/canvas-lms-mcp/issues/387)) ([dddf625](https://github.com/bruchris/canvas-lms-mcp/commit/dddf625a45818a3d8f965f7e1d3e50d68cdfd83b))
+
+## [1.31.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.31.0...canvas-lms-mcp-v1.31.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **new-quizzes:** nest item create/update body under `item` ([#377](https://github.com/bruchris/canvas-lms-mcp/issues/377)) ([acd68be](https://github.com/bruchris/canvas-lms-mcp/commit/acd68be4993b667baa663895216fb69ebbd685ae))
+
+## [1.31.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.30.0...canvas-lms-mcp-v1.31.0) (2026-10-03)
+
+
+### Features
+
+* **assignments:** expose published, omit_from_final_grade and grade_group_students_individually ([#371](https://github.com/bruchris/canvas-lms-mcp/issues/371)) ([3e004c3](https://github.com/bruchris/canvas-lms-mcp/commit/3e004c3a74b9a101f2fe352e64f06a79c8ed6cc8))
+* **modules:** add update_module_item and delete_module_item; accept page_url on create_module_item ([#368](https://github.com/bruchris/canvas-lms-mcp/issues/368)) ([1427411](https://github.com/bruchris/canvas-lms-mcp/commit/14274110d5f6e8c95e404fc53c91145a200441e1))
+
+
+### Bug Fixes
+
+* **canvas:** fail closed when pagination cap truncates results (BRU-2669) ([#373](https://github.com/bruchris/canvas-lms-mcp/issues/373)) ([10914f5](https://github.com/bruchris/canvas-lms-mcp/commit/10914f50d01ef5180a1cf236cf67b173033ea849))
+* **deps:** refresh lockfile to clear residual dependency advisories ([#375](https://github.com/bruchris/canvas-lms-mcp/issues/375)) ([3d05972](https://github.com/bruchris/canvas-lms-mcp/commit/3d05972d3f4bc0f1767fa2d7b050106ee6108557))
+* **discussions:** classify anonymous-topic 404s instead of "check the ID" ([#378](https://github.com/bruchris/canvas-lms-mcp/issues/378)) ([86e42cd](https://github.com/bruchris/canvas-lms-mcp/commit/86e42cdc7e253e6d6ed6e36d2ae2a6d20c3b7bc3))
+* **new-quizzes:** nest create/update payload under `quiz` as the New Quizzes API requires ([#367](https://github.com/bruchris/canvas-lms-mcp/issues/367)) ([0a43dfb](https://github.com/bruchris/canvas-lms-mcp/commit/0a43dfbea1d7a515156b3e17322b814bc30ec183))
+
+
+### Miscellaneous
+
+* **deps:** bump @modelcontextprotocol/sdk from 1.30.0 to 1.30.1 ([#372](https://github.com/bruchris/canvas-lms-mcp/issues/372)) ([40f1947](https://github.com/bruchris/canvas-lms-mcp/commit/40f1947784fcedb04e94aaf852577fe4ed71abf8))
+
+
+### Documentation
+
+* **spec:** annotate the 9 shipped "v1.0 exclusions"; fix the present-tense constraints (BRU-2695) ([#380](https://github.com/bruchris/canvas-lms-mcp/issues/380)) ([5926d55](https://github.com/bruchris/canvas-lms-mcp/commit/5926d55f41fd14f5728eadacfcc0e636b1787eee))
+* **spec:** replace design spec's pre-OAuth auth section with the shipped profile model (BRU-2673) ([#376](https://github.com/bruchris/canvas-lms-mcp/issues/376)) ([fb01ed1](https://github.com/bruchris/canvas-lms-mcp/commit/fb01ed1a3b755a5dfddacadc95384699574519e4))
+* **spec:** replace the never-built dev-team skills section; gate the whole layout block (BRU-2681) ([#379](https://github.com/bruchris/canvas-lms-mcp/issues/379)) ([7327d94](https://github.com/bruchris/canvas-lms-mcp/commit/7327d94aebb8464daf8752f9df2ca89a18626144))
+
+## [1.30.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.5...canvas-lms-mcp-v1.30.0) (2026-09-20)
+
+
+### Features
+
+* **auth:** add oauth_brokered MCP OAuth profile with host-visible login ([#302](https://github.com/bruchris/canvas-lms-mcp/issues/302)) ([#356](https://github.com/bruchris/canvas-lms-mcp/issues/356)) ([ad1bec7](https://github.com/bruchris/canvas-lms-mcp/commit/ad1bec7de87160e9fee12a2b5cefb5c42f6d78a6))
+
+
+### Bug Fixes
+
+* **auth:** sanitize Canvas OAuth error code before logging (PR [#356](https://github.com/bruchris/canvas-lms-mcp/issues/356) follow-ups N3-N5) ([#365](https://github.com/bruchris/canvas-lms-mcp/issues/365)) ([edcf50e](https://github.com/bruchris/canvas-lms-mcp/commit/edcf50eab83d205a04c0e6ce716a8041ca44f834))
+
+## [1.29.5](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.4...canvas-lms-mcp-v1.29.5) (2026-09-19)
+
+
+### Bug Fixes
+
+* **quizzes:** keep question-bank responses in get_quiz_question_responses ([#360](https://github.com/bruchris/canvas-lms-mcp/issues/360)) ([0e3739a](https://github.com/bruchris/canvas-lms-mcp/commit/0e3739aa29f20d8c84f86655e12fa69eb8713133))
+
+
+### Documentation
+
+* **spec:** MCP Skills Extension (SEP-2640) design (BRU-2549) ([#353](https://github.com/bruchris/canvas-lms-mcp/issues/353)) ([6b2e0c0](https://github.com/bruchris/canvas-lms-mcp/commit/6b2e0c0d33741121cd9737c81924134ebb391c40))
+* **spec:** rubric assessment gradebook effects — explicit intent, preflight, verified postconditions (BRU-2550) ([#354](https://github.com/bruchris/canvas-lms-mcp/issues/354)) ([1f6dca3](https://github.com/bruchris/canvas-lms-mcp/commit/1f6dca39e2bcc0be040e30d849a6b322d1fde914))
+
+## [1.29.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.3...canvas-lms-mcp-v1.29.4) (2026-09-19)
+
+
+### Bug Fixes
+
+* **skills:** quote canvas-admin-roster description, add YAML frontmatter guard ([#357](https://github.com/bruchris/canvas-lms-mcp/issues/357)) ([5aee006](https://github.com/bruchris/canvas-lms-mcp/commit/5aee0061b7b1c4ad9b4baf5c6c99eb48c16d3622))
+
+## [1.29.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.2...canvas-lms-mcp-v1.29.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** clear 3 moderate hono advisories ([#347](https://github.com/bruchris/canvas-lms-mcp/issues/347)) ([853164c](https://github.com/bruchris/canvas-lms-mcp/commit/853164c2bf64f1b995292a9840c3a6b1bc95f3e4))
+
+
+### Documentation
+
+* **spec:** fix five drifted claims in design spec, gate two mechanically ([#349](https://github.com/bruchris/canvas-lms-mcp/issues/349)) ([d4f574b](https://github.com/bruchris/canvas-lms-mcp/commit/d4f574b6c8cd04e87f71aa0cbfa6712e2fe73189))
+
+## [1.29.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.1...canvas-lms-mcp-v1.29.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **http:** deny pseudonym reverse lookup on the shared HTTP transport ([#344](https://github.com/bruchris/canvas-lms-mcp/issues/344)) ([9de298d](https://github.com/bruchris/canvas-lms-mcp/commit/9de298d738ed4517cbcfe8d2ff92f27ba3866ad0))
+* **tools:** advertise JSON Schema 2020-12 on every tool schema ([#345](https://github.com/bruchris/canvas-lms-mcp/issues/345)) ([5b6fc4d](https://github.com/bruchris/canvas-lms-mcp/commit/5b6fc4df5da10d6b8ebd0c6f8ba4d21457aa429e)), closes [#341](https://github.com/bruchris/canvas-lms-mcp/issues/341)
+
+## [1.29.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.29.0...canvas-lms-mcp-v1.29.1) (2026-09-08)
+
+
+### Miscellaneous
+
+* **deps-dev:** bump the dev-dependencies group with 5 updates ([#342](https://github.com/bruchris/canvas-lms-mcp/issues/342)) ([a9b1a38](https://github.com/bruchris/canvas-lms-mcp/commit/a9b1a38c65b8a30c4f8b321d440eb59cfcaab456))
+
+## [1.29.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.28.0...canvas-lms-mcp-v1.29.0) (2026-09-05)
+
+
+### Features
+
+* **tools:** add CANVAS_DESTRUCTIVE_TOOLS policy gate ([#337](https://github.com/bruchris/canvas-lms-mcp/issues/337)) ([1536eee](https://github.com/bruchris/canvas-lms-mcp/commit/1536eee04f2e43ed1850cddd9bf3fdd6716989d5))
+
+
+### Bug Fixes
+
+* **deps:** update fast-uri and qs to clear 6 audit advisories ([#336](https://github.com/bruchris/canvas-lms-mcp/issues/336)) ([22fd183](https://github.com/bruchris/canvas-lms-mcp/commit/22fd183fc9c9dd54454d6d544ce37187e01e3556))
+* **discovery:** derive manifest audience from runtime ToolDefinition, not a parallel table ([#340](https://github.com/bruchris/canvas-lms-mcp/issues/340)) ([9c1e8c0](https://github.com/bruchris/canvas-lms-mcp/commit/9c1e8c08cbb0f2a49a33647ddd3d9390622db7d8))
+
+
+### Documentation
+
+* **educator-guide:** document all 48 write tools, fix tool count drift ([#339](https://github.com/bruchris/canvas-lms-mcp/issues/339)) ([ce54e78](https://github.com/bruchris/canvas-lms-mcp/commit/ce54e781ba31cf5b38cedf8590634ab36d8f603a))
+
+## [1.28.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.8...canvas-lms-mcp-v1.28.0) (2026-09-03)
+
+
+### Features
+
+* **tools:** add strict structured output contract and migrate pages ([#333](https://github.com/bruchris/canvas-lms-mcp/issues/333)) ([20540d9](https://github.com/bruchris/canvas-lms-mcp/commit/20540d9a56b213fabc193c7d0d01e968b6bebfa6))
+
+
+### Bug Fixes
+
+* **release:** sync server.json version with published release ([#335](https://github.com/bruchris/canvas-lms-mcp/issues/335)) ([d37aaef](https://github.com/bruchris/canvas-lms-mcp/commit/d37aaefbe44a77f6b9ba6cf70ea6ec85799530d1))
+
+## [1.27.8](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.7...canvas-lms-mcp-v1.27.8) (2026-09-01)
+
+
+### Miscellaneous
+
+* **deps-dev:** bump the dev-dependencies group with 5 updates ([#330](https://github.com/bruchris/canvas-lms-mcp/issues/330)) ([3b4f307](https://github.com/bruchris/canvas-lms-mcp/commit/3b4f30741540e8cdcd21bd462a1c97288904161f))
+
+## [1.27.7](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.6...canvas-lms-mcp-v1.27.7) (2026-08-31)
+
+
+### Documentation
+
+* **spec:** server-enforced confirmation for destructive Canvas tools (BRU-2390) ([#328](https://github.com/bruchris/canvas-lms-mcp/issues/328)) ([0fc2e6b](https://github.com/bruchris/canvas-lms-mcp/commit/0fc2e6b4d1d96729077eda45cf20a920220215de))
+
 ## [1.27.6](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.5...canvas-lms-mcp-v1.27.6) (2026-08-28)
 
 

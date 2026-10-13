@@ -3,11 +3,12 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CreateAssignmentOverrideParams } from '../canvas/types'
 import { fanOut } from './fan-out'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 interface AssignmentOverrideResult {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string
-  override_id?: number
+  override_id?: CanvasId
   // Status (applied/failed) is conveyed by which bucket the entry lands in, so
   // no per-entry status flag is carried; `error` is present only on failed[].
   error?: string
@@ -24,16 +25,16 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Useful for auditing before creating a new override — Canvas returns a 422 if a ' +
         'student-set override already exists for the same students on the same assignment.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        assignment_id: z.number().int().positive().describe('Canvas assignment ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        assignment_id: canvasIdInput().describe('Canvas assignment ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
         return canvas.assignments.listOverrides(courseId, assignmentId)
       },
     },
@@ -51,29 +52,23 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Provide student_ids as real Canvas user IDs. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to resolve pseudonyms to real user IDs.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        assignment_id: z.number().int().positive().describe('Canvas assignment ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        assignment_id: canvasIdInput().describe('Canvas assignment ID'),
         student_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .min(1)
           .optional()
           .describe(
             'Real Canvas user IDs to grant the override to. ' +
               'Mutually exclusive with course_section_id and group_id.',
           ),
-        course_section_id: z
-          .number()
-          .int()
-          .positive()
+        course_section_id: canvasIdInput()
           .optional()
           .describe(
             'ID of the course section to override. ' +
               'Mutually exclusive with student_ids and group_id.',
           ),
-        group_id: z
-          .number()
-          .int()
-          .positive()
+        group_id: canvasIdInput()
           .optional()
           .describe(
             'ID of the group to override. ' +
@@ -108,11 +103,11 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentId = params.assignment_id as number
-        const studentIds = params.student_ids as number[] | undefined
-        const sectionId = params.course_section_id as number | undefined
-        const groupId = params.group_id as number | undefined
+        const courseId = params.course_id as CanvasId
+        const assignmentId = params.assignment_id as CanvasId
+        const studentIds = params.student_ids as CanvasId[] | undefined
+        const sectionId = params.course_section_id as CanvasId | undefined
+        const groupId = params.group_id as CanvasId | undefined
 
         const targetCount = [studentIds, sectionId, groupId].filter((v) => v !== undefined).length
         if (targetCount === 0) {
@@ -156,14 +151,10 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Real Canvas user ID of the student to accommodate'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student to accommodate'),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .min(1)
           .optional()
           .describe(
@@ -198,9 +189,9 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
         const dueAt = params.due_at as string | null | undefined
         const unlockAt = params.unlock_at as string | null | undefined
         const lockAt = params.lock_at as string | null | undefined
@@ -211,8 +202,11 @@ export function assignmentOverrideTools(canvas: CanvasClient): ToolDefinition[] 
         }
 
         let assignments = await canvas.assignments.list(courseId)
-        const notFound: number[] = []
+        const notFound: CanvasId[] = []
         if (assignmentIds && assignmentIds.length > 0) {
+          // Both sets are keyed by the canonical string, not by `number`: a
+          // `Set<number>` is exactly where §4.1 said the union would go blind, and
+          // `Number(a.id)` to make the key fit is what §4.4 forbids.
           const requested = new Set(assignmentIds)
           const present = new Set(assignments.map((a) => a.id))
           for (const id of requested) {

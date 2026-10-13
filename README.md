@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-165 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+176 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -45,7 +45,7 @@ Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#ag
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 165 | 80+ | 54 |
+| Tools | 176 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -89,6 +89,8 @@ npx skills add bruchris/canvas-lms-mcp
 
 Skills are markdown workflow files (no extra dependencies). They work with the MCP server you already have installed. See the [`skills/` directory](./skills/) for the full list.
 
+The same 16 workflows are also served over MCP as [prompts](https://modelcontextprotocol.io/docs/concepts/prompts), so a host without a skill-file loader — Claude Desktop, ChatGPT, or an application embedding this server in-process — can list them with `prompts/list` and fetch one with `prompts/get`. Each prompt advertises optional `course_id`-style arguments a host can prefill, and marks the workflows that reach write tools. Prompts are inert templates the user chooses: selecting one grants the model no tool authority it did not already have.
+
 ## Example Prompts
 
 Once configured, try these prompts with your AI client:
@@ -104,7 +106,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (165)
+### All Registered Tools (176)
 
 | Category | Tools |
 |----------|-------|
@@ -115,8 +117,8 @@ Once configured, try these prompts with your AI client:
 | Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
 | Submissions Awaiting Grading | `list_submissions_awaiting_grading` |
 | Submission Files | `list_course_submission_files` |
-| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment`, `create_rubric` |
-| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question`, `get_quiz_submission_events` |
+| Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment`, `create_rubric`, `attach_rubric`, `delete_rubric` |
+| Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question`, `get_quiz_submission_events`, `delete_quiz`, `delete_quiz_question` |
 | Quiz Question Responses | `get_quiz_question_responses` |
 | Quiz Accommodations | `list_student_quiz_accommodations`, `set_student_quiz_accommodation` |
 | New Quizzes (LTI) | `create_new_quiz`, `update_new_quiz`, `delete_new_quiz`, `list_new_quiz_items`, `get_new_quiz_item`, `create_new_quiz_item`, `update_new_quiz_item`, `delete_new_quiz_item` |
@@ -131,7 +133,7 @@ Once configured, try these prompts with your AI client:
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `list_course_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
-| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item`, `update_module_item`, `delete_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
@@ -148,9 +150,9 @@ Once configured, try these prompts with your AI client:
 | Student Search | `find_student_across_courses` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
-| FERPA (conditional) | `resolve_pseudonym` — registered only when `CANVAS_PSEUDONYMIZE_STUDENTS=true` |
+| FERPA (conditional) | `resolve_pseudonym` — stdio only, registered when `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` |
 
-117 tools are read-only and 48 tools perform Canvas write operations. When FERPA mode is enabled, `resolve_pseudonym` is registered as the 166th tool overall (118th read tool).
+122 tools are read-only and 54 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 177th tool overall (123rd read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -165,6 +167,41 @@ Canvas applies rate limits per-user. When creating many New Quizzes items (e.g.,
 | Course Syllabus | `canvas://course/{courseId}/syllabus` | text/html |
 | Assignment Description | `canvas://course/{courseId}/assignment/{assignmentId}/description` | text/html |
 
+### Structured output
+
+Some tools return machine-readable `structuredContent` alongside their text content, validated against an `outputSchema` the server advertises in `tools/list`. Migration is **per tool**, so the two surfaces coexist:
+
+| Client behaviour | Migrated tool | Unmigrated tool |
+|---|---|---|
+| Reads `content[0].text` | Works, byte-identical to before | Works |
+| Reads `structuredContent` | Works | Field is absent |
+| Validates against `outputSchema` | Works | No schema advertised |
+
+Three guarantees hold for every migrated tool:
+
+- **The text content is unchanged.** `content[0].text` carries exactly the bytes it did before migration. `structuredContent` is added alongside it, never in place of it, so text-only clients and the interactive widgets are unaffected.
+- **Canvas fields we do not declare are passed through, not stripped or rejected.** Entity schemas are open, because Canvas ships new fields continuously and a closed schema would turn each one into a failed tool call. Only the envelopes this server authors itself are closed.
+- **Errors are never structured.** A tool failure returns `isError: true` with plain text, exactly as before.
+
+A tool returning a list wraps it under a single plural key, since MCP requires an output schema to be an object:
+
+```jsonc
+{
+  "content": [{ "type": "text", "text": "[ ... unchanged JSON ... ]" }],
+  "structuredContent": { "pages": [ /* the same value */ ] }
+}
+```
+
+Which tools are migrated is recorded per tool as `structuredOutput` in [`docs/generated/tool-manifest.json`](docs/generated/tool-manifest.json) (manifest schema 1.1). Currently: the five `pages` tools.
+
+#### JSON Schema dialect
+
+Every advertised `inputSchema` and `outputSchema` declares **JSON Schema 2020-12** (`"$schema": "https://json-schema.org/draft/2020-12/schema"`).
+
+`@modelcontextprotocol/sdk` v1 converts Zod with a fixed draft-07 target and `registerTool` accepts no override, so the server re-declares the dialect on the `tools/list` response. That is a declaration change only: CI asks the SDK's own converter for both dialects and requires the emitted bodies to be byte-identical for every registered schema, with a tuple schema as the control for a case where the two genuinely differ. A 2020-12-only validator (Ajv's `2020` entry point, the same family Claude Desktop uses) compiles all 168 schemas in the guard suite.
+
+Clients that support 2020-12 only rejected the five tools advertising an `outputSchema` before this — see [#341](https://github.com/bruchris/canvas-lms-mcp/issues/341). The rewrite is installed during tool registration rather than in a transport, so stdio, HTTP and the library factory are all covered.
+
 ### Interactive widgets
 
 `view_course_structure` is an [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) tool: hosts that support the spec render an interactive tree explorer (collapsible modules, type-filter chips, title search, published/unpublished badges, links open in a new tab); hosts that don't fall back transparently to the same JSON payload that `get_course_structure` returns. The widget is self-contained — no external scripts, fonts, or network calls — and is shipped inline with the tool definition.
@@ -177,7 +214,9 @@ Host verification (Claude Desktop, ChatGPT, Codex fallback) is performed manuall
 
 ## Deployment Modes
 
-### stdio (Default)
+Every process runs exactly one **auth profile**: `local_static_token` (stdio, the default), `remote_static_token` (`serve`, the default), or `oauth_brokered` (`serve --auth-profile oauth_brokered`). Run `npx canvas-lms-mcp doctor` to see which profile your configuration resolves to and what it is missing, without printing any secret.
+
+### stdio (Default) — `local_static_token`
 
 For local AI clients like Claude Desktop, Cursor, and VS Code. The server communicates over stdin/stdout.
 
@@ -185,9 +224,11 @@ For local AI clients like Claude Desktop, Cursor, and VS Code. The server commun
 npx canvas-lms-mcp --token $CANVAS_API_TOKEN --base-url $CANVAS_BASE_URL
 ```
 
-### HTTP
+stdio has no network edge, so hosts cannot show a login state for it: Codex lists a stdio server as `Auth Unsupported` and `codex mcp login` refuses it. That is by design (the MCP authorization spec applies to HTTP transports only). Use the OAuth profile below when you need a native **Authenticate** experience.
 
-For web-based clients or hosted services. Starts an HTTP server with Streamable HTTP transport.
+### HTTP (static token, self-managed) — `remote_static_token`
+
+For a developer's own HTTP experiments, or an application that already holds Canvas tokens. Starts an HTTP server with Streamable HTTP transport; each request carries a Canvas token in `X-Canvas-Token`, or the server's configured token is used.
 
 ```bash
 npx canvas-lms-mcp serve \
@@ -200,6 +241,22 @@ npx canvas-lms-mcp serve \
 Endpoints:
 - `POST /mcp` -- MCP protocol endpoint
 - `GET /health` -- Health check (returns `{"status":"ok"}`)
+
+This profile is **self-managed only**: anyone who can reach the port can present any token, and Canvas's API policy forbids asking other users for personal tokens. Do not expose it to other people; use the OAuth profile instead.
+
+### HTTP (OAuth, host-visible login) — `oauth_brokered`
+
+For Codex, ChatGPT, Claude, and any other host that implements the MCP authorization specification. The server is an OAuth 2.1 authorization + resource server for MCP clients and connects each user to your Canvas institution through a Canvas Developer Key. Hosts show **Not logged in** → **Authenticate**; `codex mcp login canvas-lms` completes the login in the browser. No `CANVAS_API_TOKEN` is needed, and `X-Canvas-Token` is refused.
+
+```bash
+export CANVAS_BASE_URL=https://school.instructure.com
+export CANVAS_MCP_ISSUER=http://127.0.0.1:3001          # public URL of this server; https when hosted
+export CANVAS_OAUTH_CLIENT_ID=…                          # Canvas Developer Key
+export CANVAS_OAUTH_CLIENT_SECRET=…
+npx canvas-lms-mcp serve --auth-profile oauth_brokered
+```
+
+Full setup (Canvas admin prerequisites, Codex `config.toml`, hosted deployment, verification matrix): [docs/oauth-profile.md](docs/oauth-profile.md).
 
 ### Docker
 
@@ -254,23 +311,87 @@ const courses = await canvas.courses.list()
 | `--base-url` | `CANVAS_BASE_URL` | (required) | Canvas instance URL |
 | `serve` | -- | stdio mode | Switch to HTTP mode |
 | `--port` | -- | `3001` | HTTP server port |
-| `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
+| `--allowed-origin` | `CANVAS_ALLOWED_ORIGIN` | `http://localhost:3000` | CORS allowed origin; requests carrying any other `Origin` header are refused |
+| `--auth-profile` | `CANVAS_AUTH_PROFILE` | `local_static_token` (stdio) / `remote_static_token` (`serve`) | Auth profile: `local_static_token`, `remote_static_token`, or `oauth_brokered` (see [docs/oauth-profile.md](docs/oauth-profile.md)) |
+| `--host` | `CANVAS_HTTP_HOST` | all interfaces; `127.0.0.1` in `oauth_brokered` | Bind address for HTTP mode |
+| `--issuer` | `CANVAS_MCP_ISSUER` | (required in `oauth_brokered`) | Public URL of this server; OAuth issuer and resource prefix |
+| `doctor` | -- | -- | Print an identity-safe setup report (also `auth status`); exit 1 when something is missing |
 | `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
+| `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the ten irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `CANVAS_API_TOKEN` | Yes | Canvas personal access token |
+| `CANVAS_API_TOKEN` | Yes, except in `oauth_brokered` | Canvas personal access token |
 | `CANVAS_BASE_URL` | Yes | Canvas instance URL (e.g., `https://school.instructure.com`) |
 | `CANVAS_ALLOWED_ORIGIN` | No | CORS origin for HTTP mode (default: `http://localhost:3000`) |
+| `CANVAS_AUTH_PROFILE` | No | `local_static_token`, `remote_static_token`, or `oauth_brokered` (see [docs/oauth-profile.md](docs/oauth-profile.md)) |
+| `CANVAS_HTTP_HOST` | No | Bind address for HTTP mode (default: all interfaces; `127.0.0.1` in `oauth_brokered`) |
+| `CANVAS_MCP_ISSUER` | `oauth_brokered` | Public URL of this server, `https` unless loopback |
+| `CANVAS_OAUTH_CLIENT_ID` | `oauth_brokered` | Canvas Developer Key ID |
+| `CANVAS_OAUTH_CLIENT_SECRET` | `oauth_brokered` | Canvas Developer Key secret |
+| `CANVAS_OAUTH_SCOPES` | No | Space-separated Canvas API scopes for a Developer Key with *Enforce Scopes* |
+| `CANVAS_MCP_OAUTH_CLIENTS` | No | JSON array of pre-registered MCP clients |
+| `CANVAS_MCP_OAUTH_DCR` | No | `true` (default) / `false`: dynamic client registration |
+| `CANVAS_MCP_OAUTH_CIMD_ALLOWED_HOSTS` | No | Trusted Client ID Metadata Document hosts (default `chatgpt.com`; `*` any; `none` off) |
+| `CANVAS_MCP_OAUTH_STORE` | No | Path of the encrypted OAuth grant store (default: in-memory) |
+| `CANVAS_MCP_OAUTH_STORE_KEY` | With store | Secret that encrypts the grant store |
 | `CANVAS_ROLE` | No | Filter the tool list by role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
 | `CANVAS_ENABLE_ASSIGNMENT_SUBMISSION` | No | Set to `true` to register the opt-in [assignment submission tools](#student-assignment-submission-opt-in) |
 | `CANVAS_PSEUDONYMIZE_STUDENTS` | No | Set to `true` to enable [FERPA mode](#ferpa-mode-student-pseudonymization) |
-| `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | No | Set to `true` (with `CANVAS_PSEUDONYMIZE_STUDENTS=true`) to register the `resolve_pseudonym` audit tool |
+| `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | No | **stdio only.** Set to `true` (with `CANVAS_PSEUDONYMIZE_STUDENTS=true`) to register the `resolve_pseudonym` audit tool. Ignored on the HTTP transport, with a warning |
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 | `CANVAS_PROVENANCE_FENCING` | No | **On by default.** Set to exactly `false` to disable [provenance fencing](#provenance-fencing-untrusted-canvas-content) |
+| `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the ten irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
+
+## Destructive tool policy
+
+Canvas has no undo. This server cannot restore anything it deletes -- every recovery
+story for a mistaken delete is something you do outside this tooling, in Canvas or
+with your institution's admin. `CANVAS_DESTRUCTIVE_TOOLS=block` removes the ten
+irreversible delete tools from the server entirely, so no amount of model confusion
+or [prompt injection](#provenance-fencing-untrusted-canvas-content) can reach them.
+
+```bash
+CANVAS_DESTRUCTIVE_TOOLS=block canvas-lms-mcp --base-url https://school.instructure.com
+# or
+canvas-lms-mcp --destructive-tools=block --base-url https://school.instructure.com
+```
+
+| Mode | Behaviour |
+|------|-----------|
+| `allow` | **Default.** Every tool is registered -- unchanged from previous releases. |
+| `block` | The ten tools below are not registered at all. They are absent from `tools/list`, and a call naming one is refused by the MCP protocol layer before any Canvas request is made. |
+
+**Blocked by `block`:**
+
+| Tool | What is lost |
+|------|--------------|
+| `delete_assignment` | The assignment **plus its submissions and gradebook column** |
+| `delete_new_quiz` | The quiz, all its items, and all student results |
+| `delete_new_quiz_item` | One question and its responses; re-authoring is manual |
+| `delete_quiz` | A Classic quiz, its questions, and **every student submission** |
+| `delete_quiz_question` | One Classic-quiz question and its responses; re-authoring is manual |
+| `delete_discussion` | The whole reply thread, including student-authored posts |
+| `delete_page` | Page body and revision history (keyed by URL slug, not a numeric ID) |
+| `delete_rubric` | The rubric and **every assignment association on it** |
+| `delete_file` | A file, addressed by a **global** ID with no course scoping in the call |
+| `delete_appointment_group` | Every reservation -- and it **emails every signed-up student** |
+
+**Not blocked:** `delete_peer_review` and `delete_module_item`. Both are deletes this
+server can itself undo (`create_peer_review` / `create_module_item` recreate the row) and
+neither destroys authored content -- a module item is a pointer, and removing it leaves the
+underlying assignment, page, quiz, file or discussion in place.
+
+Notes:
+
+- **Invalid values stop startup.** The value is matched byte-exactly: `Block`, `BLOCK`, `block ` and an empty value are all errors, not a silent fall-back to `allow`. A kill switch that fails open on a typo is worse than none.
+- **The flag beats the environment outright.** When `--destructive-tools` is present, `CANVAS_DESTRUCTIVE_TOOLS` is not read or validated at all -- so a host that exports a typo'd value cannot stop you overriding it on the command line. Precedence is last-writer-wins, not strictest-wins: `--destructive-tools=allow` really does override `CANVAS_DESTRUCTIVE_TOOLS=block`.
+- **`confirm` is reserved but not implemented.** Setting it is a startup error naming it as such, so it can never be mistaken for protection you do not have.
+- **Server-side only.** Unlike `CANVAS_ROLE`, there is no request header for this in HTTP mode -- a client that could pick the mode could switch the gate off.
+- **This is a real boundary, not a UX filter.** `CANVAS_ROLE` hides tools from a listing; `block` means the handler is never registered.
 
 ## Provenance fencing (untrusted Canvas content)
 
@@ -358,6 +479,57 @@ Conversation participants are pseudonymized as `Person N` from a cross-course po
 
 Optional `resolve_pseudonym` reverse-lookup tool: register it only by also setting `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true`. Every call is audit-logged to stderr (and to `CANVAS_PSEUDONYM_AUDIT_LOG` if set). When the flag is off the tool is absent from `tools/list` — a prompt-injection attempt to call it fails at the protocol layer.
 
+**Reverse lookup requires a single-caller deployment.** A server process that serves callers with **different** Canvas credentials shares one pseudonym map across all of them, and `resolve_pseudonym` makes no Canvas call — so on such a deployment it would let one caller resolve a student another caller's token had seeded. What that means depends on how the server is run:
+
+| Deployment | Reverse lookup | How it is decided |
+| --- | --- | --- |
+| **Built-in HTTP** (`canvas-lms-mcp serve`) | Never registered | Shared by construction. The flag is ignored and setting it prints a startup warning. |
+| **stdio** (`canvas-lms-mcp`) | Available | One process, one user, one token. |
+| **Your own transport** (`createCanvasMCPServer`) | You declare it | See [Embedding a custom transport](#embedding-a-custom-transport). The factory refuses to start rather than guess. |
+
+Pseudonymization itself is unaffected in all three.
+
+Safe configuration for a shared/hosted deployment:
+
+```bash
+# HTTP: pseudonymize, never reverse-resolve
+CANVAS_PSEUDONYMIZE_STUDENTS=true canvas-lms-mcp serve --base-url https://school.instructure.com
+
+# stdio (single user, own token, own machine): reverse lookup is available
+CANVAS_PSEUDONYMIZE_STUDENTS=true CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true \
+  canvas-lms-mcp --base-url https://school.instructure.com
+```
+
+`X-Canvas-Role` does not change this: the role is a client-supplied UX filter, so it can never authorize a reverse lookup.
+
+#### Embedding a custom transport
+
+The built-in transports declare their own shape. If you connect `createCanvasMCPServer` to a transport of your own, that declaration is yours to make — it is a fact about your deployment, and the server must never infer it from a request header, a role, or any other caller-supplied value.
+
+If one process serves callers with different Canvas credentials, build the pseudonymizer with `createSharedPseudonymizer` and give it to every server. It is shared by construction, so `resolve_pseudonym` is not registered and a direct `reverseLookup()` refuses before it reads the map:
+
+```typescript
+import { createCanvasMCPServer, createSharedPseudonymizer } from 'canvas-lms-mcp'
+
+// Once, at startup: one map, shared, reverse lookup permanently off.
+const pseudonymizer = createSharedPseudonymizer({ baseUrl: process.env.CANVAS_BASE_URL! })
+
+// Per request, with that caller's own token.
+const { server } = createCanvasMCPServer({
+  token: callerToken,
+  baseUrl: process.env.CANVAS_BASE_URL!,
+  pseudonymizer,
+})
+```
+
+If one process serves exactly one caller identity — a desktop client, a per-user sidecar — say so, and reverse lookup behaves as it does on stdio:
+
+```typescript
+const { server } = createCanvasMCPServer({ token, baseUrl, sharedAcrossCallers: false })
+```
+
+Say nothing and the deployment shape is undeclared. Nothing changes unless `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` is on, in which case `createCanvasMCPServer` throws rather than pick an answer for you.
+
 Threat model and design rationale in [docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md](docs/superpowers/specs/2026-05-25-ferpa-pseudonymization.md).
 
 ## Role-based tool filtering
@@ -374,17 +546,17 @@ Three roles, plus the default of "unset = every tool":
 
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
-| _(unset)_ | all (~165) | default; backwards-compatible |
-| `student` | ~59 | a student's own courses, grades, submissions, and read-only course content |
-| `teacher` | ~138 | grading, roster, content authoring, analytics |
-| `admin` | ~150 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
+| _(unset)_ | all (~176) | default; backwards-compatible |
+| `student` | ~63 | a student's own courses, grades, submissions, and read-only course content |
+| `teacher` | ~153 | grading, roster, content authoring, analytics |
+| `admin` | ~165 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 
 Notes:
 
 - **Equivalent to `CANVAS_ROLE` in [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp)** — set the same value to migrate.
 - Role values are **case-insensitive**; `all` is accepted as an explicit "no filter". An unrecognised value logs a warning to stderr and registers all tools (a config typo never stops the server).
 - `teacher` / `admin` do **not** see the student-only `get_my_*` tools in v1 — they should use `list_submissions` / `get_submission` etc. instead.
-- The FERPA `resolve_pseudonym` tool is `teacher`/`admin`-only and is never exposed to `student`, even when reverse lookup is enabled.
+- The FERPA `resolve_pseudonym` tool is `teacher`/`admin`-only and is never exposed to `student`, even when reverse lookup is enabled. It is also never exposed on the built-in HTTP transport — or on any custom transport that declares itself shared across callers — for **any** role, because the role header is client-supplied and cannot be an authorization boundary.
 - **HTTP transport:** the role is read per request from the `X-Canvas-Role` header, falling back to `CANVAS_ROLE` from the server config. A valid header (or `all`) overrides the configured default; an invalid header is ignored with a warning.
 - Tool counts above are a snapshot and grow as tools are added — the authoritative guarantee is that every tool resolves to exactly one audience (enforced by `tests/tools/audience-coverage.test.ts`).
 

@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { ListStudentSubmissionsOptions, SubmissionWorkflowState } from '../canvas/submissions'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const WORKFLOW_STATE = ['submitted', 'graded', 'pending_review', 'unsubmitted'] as const
 
@@ -13,12 +14,12 @@ const URL_EXPIRY_NOTE =
   'Attachment download URLs are time-limited (typically 1 hour). Use file_id with the download_file tool to re-fetch a fresh URL.'
 
 interface SubmissionFileEntry {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string | null
-  user_id: number
+  user_id: CanvasId
   user_name: string | null
   original_filename: string
-  file_id: number
+  file_id: CanvasId
   download_url: string
   content_type: string
   size: number
@@ -52,13 +53,13 @@ export function submissionFileTools(
         '(e.g. "Student 1"); user_id (the raw numeric Canvas ID) is always returned and works as a ' +
         'stable per-student folder key.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID.'),
+        course_id: canvasIdInput().describe('Canvas course ID.'),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe('Restrict to these assignment IDs. Omit to scan all assignments.'),
         student_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Restrict to these student user IDs. Omit to include all students. When ' +
@@ -92,16 +93,16 @@ export function submissionFileTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const maxFiles = (params.max_files as number | undefined) ?? DEFAULT_MAX_FILES
         const attachmentsOnly = (params.attachments_only as boolean | undefined) ?? true
 
         const listOpts: ListStudentSubmissionsOptions = {
-          student_ids: (params.student_ids as number[] | undefined) ?? (['all'] as const),
+          student_ids: (params.student_ids as CanvasId[] | undefined) ?? (['all'] as const),
           include: ['user', 'assignment'] as const,
         }
         if (params.assignment_ids !== undefined)
-          listOpts.assignment_ids = params.assignment_ids as number[]
+          listOpts.assignment_ids = params.assignment_ids as CanvasId[]
         if (params.workflow_state !== undefined)
           listOpts.workflow_state = params.workflow_state as SubmissionWorkflowState
 

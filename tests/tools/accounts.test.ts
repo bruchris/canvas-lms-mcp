@@ -100,8 +100,8 @@ describe('accountTools', () => {
     it('delegates to canvas.accounts.get', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'get_account')!
-      await tool.handler({ account_id: 1 })
-      expect(canvas.accounts.get).toHaveBeenCalledWith(1)
+      await tool.handler({ account_id: '1' })
+      expect(canvas.accounts.get).toHaveBeenCalledWith('1')
     })
   })
 
@@ -123,8 +123,8 @@ describe('accountTools', () => {
     it('delegates to canvas.accounts.listSubAccounts', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_sub_accounts')!
-      await tool.handler({ account_id: 1 })
-      expect(canvas.accounts.listSubAccounts).toHaveBeenCalledWith(1)
+      await tool.handler({ account_id: '1' })
+      expect(canvas.accounts.listSubAccounts).toHaveBeenCalledWith('1')
     })
   })
 
@@ -132,15 +132,15 @@ describe('accountTools', () => {
     it('delegates to canvas.accounts.listCourses without search_term', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_courses')!
-      await tool.handler({ account_id: 1 })
-      expect(canvas.accounts.listCourses).toHaveBeenCalledWith(1, { search_term: undefined })
+      await tool.handler({ account_id: '1' })
+      expect(canvas.accounts.listCourses).toHaveBeenCalledWith('1', { search_term: undefined })
     })
 
     it('delegates to canvas.accounts.listCourses with search_term', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_courses')!
-      await tool.handler({ account_id: 1, search_term: 'math' })
-      expect(canvas.accounts.listCourses).toHaveBeenCalledWith(1, { search_term: 'math' })
+      await tool.handler({ account_id: '1', search_term: 'math' })
+      expect(canvas.accounts.listCourses).toHaveBeenCalledWith('1', { search_term: 'math' })
     })
   })
 
@@ -148,8 +148,8 @@ describe('accountTools', () => {
     it('delegates to canvas.accounts.listUsers', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_users')!
-      await tool.handler({ account_id: 1 })
-      expect(canvas.accounts.listUsers).toHaveBeenCalledWith(1, { search_term: undefined })
+      await tool.handler({ account_id: '1' })
+      expect(canvas.accounts.listUsers).toHaveBeenCalledWith('1', { search_term: undefined })
     })
   })
 
@@ -157,8 +157,8 @@ describe('accountTools', () => {
     it('delegates to canvas.accounts.getReports', async () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'get_account_reports')!
-      await tool.handler({ account_id: 1 })
-      expect(canvas.accounts.getReports).toHaveBeenCalledWith(1)
+      await tool.handler({ account_id: '1' })
+      expect(canvas.accounts.getReports).toHaveBeenCalledWith('1')
     })
   })
 
@@ -301,7 +301,7 @@ describe('accountTools', () => {
         const tool = accountTools(canvas, makePseudonymizer()).find(
           (t) => t.name === 'list_account_users',
         )!
-        const result = (await tool.handler({ account_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ account_id: '1' })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
       })
 
@@ -310,7 +310,7 @@ describe('accountTools', () => {
         const tool = accountTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'list_account_users',
         )!
-        const result = (await tool.handler({ account_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ account_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })

@@ -6,32 +6,45 @@ import type {
   CreateDiscussionParams,
   UpdateDiscussionParams,
 } from './types'
+import type { CanvasId } from './id'
 
 export class DiscussionsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasDiscussionTopic[]> {
+  async list(courseId: CanvasId): Promise<CanvasDiscussionTopic[]> {
     return this.client.paginate<CanvasDiscussionTopic>(
       `/api/v1/courses/${courseId}/discussion_topics`,
     )
   }
 
-  async get(courseId: number, topicId: number): Promise<CanvasDiscussionTopic> {
+  async get(courseId: CanvasId, topicId: CanvasId): Promise<CanvasDiscussionTopic> {
     return this.client.request<CanvasDiscussionTopic>(
       `/api/v1/courses/${courseId}/discussion_topics/${topicId}?include[]=all_dates`,
     )
   }
 
-  async listAnnouncements(courseId: number): Promise<CanvasAnnouncement[]> {
+  async listAnnouncements(courseId: CanvasId): Promise<CanvasAnnouncement[]> {
     return this.client.paginate<CanvasAnnouncement>(
       `/api/v1/courses/${courseId}/discussion_topics`,
       { only_announcements: 'true' },
     )
   }
 
+  async listForGroup(groupId: CanvasId): Promise<CanvasDiscussionTopic[]> {
+    return this.client.paginate<CanvasDiscussionTopic>(
+      `/api/v1/groups/${groupId}/discussion_topics`,
+    )
+  }
+
+  async getForGroup(groupId: CanvasId, topicId: CanvasId): Promise<CanvasDiscussionTopic> {
+    return this.client.request<CanvasDiscussionTopic>(
+      `/api/v1/groups/${groupId}/discussion_topics/${topicId}?include[]=all_dates`,
+    )
+  }
+
   async postEntry(
-    courseId: number,
-    topicId: number,
+    courseId: CanvasId,
+    topicId: CanvasId,
     message: string,
   ): Promise<CanvasDiscussionEntry> {
     return this.client.request<CanvasDiscussionEntry>(
@@ -43,7 +56,7 @@ export class DiscussionsModule {
     )
   }
 
-  async create(courseId: number, params: CreateDiscussionParams): Promise<CanvasDiscussionTopic> {
+  async create(courseId: CanvasId, params: CreateDiscussionParams): Promise<CanvasDiscussionTopic> {
     return this.client.request<CanvasDiscussionTopic>(
       `/api/v1/courses/${courseId}/discussion_topics`,
       {
@@ -54,8 +67,8 @@ export class DiscussionsModule {
   }
 
   async update(
-    courseId: number,
-    topicId: number,
+    courseId: CanvasId,
+    topicId: CanvasId,
     params: UpdateDiscussionParams,
   ): Promise<CanvasDiscussionTopic> {
     return this.client.request<CanvasDiscussionTopic>(
@@ -67,7 +80,7 @@ export class DiscussionsModule {
     )
   }
 
-  async delete(courseId: number, topicId: number): Promise<void> {
+  async delete(courseId: CanvasId, topicId: CanvasId): Promise<void> {
     await this.client.request<void>(`/api/v1/courses/${courseId}/discussion_topics/${topicId}`, {
       method: 'DELETE',
     })

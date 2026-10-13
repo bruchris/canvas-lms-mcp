@@ -45,8 +45,8 @@ describe('pageTools', () => {
     it('delegates to canvas.pages.list', async () => {
       const canvas = buildMockCanvas()
       const tool = pageTools(canvas).find((t) => t.name === 'list_pages')!
-      await tool.handler({ course_id: 1 })
-      expect(canvas.pages.list).toHaveBeenCalledWith(1)
+      await tool.handler({ course_id: '1' })
+      expect(canvas.pages.list).toHaveBeenCalledWith('1')
     })
   })
 
@@ -59,8 +59,8 @@ describe('pageTools', () => {
     it('delegates to canvas.pages.get', async () => {
       const canvas = buildMockCanvas()
       const tool = pageTools(canvas).find((t) => t.name === 'get_page')!
-      await tool.handler({ course_id: 1, page_url: 'welcome-page' })
-      expect(canvas.pages.get).toHaveBeenCalledWith(1, 'welcome-page')
+      await tool.handler({ course_id: '1', page_url: 'welcome-page' })
+      expect(canvas.pages.get).toHaveBeenCalledWith('1', 'welcome-page')
     })
   })
 
@@ -73,8 +73,8 @@ describe('pageTools', () => {
     it('delegates to canvas.pages.create', async () => {
       const canvas = buildMockCanvas()
       const tool = pageTools(canvas).find((t) => t.name === 'create_page')!
-      await tool.handler({ course_id: 1, title: 'New Page', body: '<p>Hi</p>' })
-      expect(canvas.pages.create).toHaveBeenCalledWith(1, {
+      await tool.handler({ course_id: '1', title: 'New Page', body: '<p>Hi</p>' })
+      expect(canvas.pages.create).toHaveBeenCalledWith('1', {
         title: 'New Page',
         body: '<p>Hi</p>',
         published: undefined,
@@ -92,8 +92,8 @@ describe('pageTools', () => {
     it('delegates to canvas.pages.update', async () => {
       const canvas = buildMockCanvas()
       const tool = pageTools(canvas).find((t) => t.name === 'update_page')!
-      await tool.handler({ course_id: 1, page_url: 'welcome-page', published: false })
-      expect(canvas.pages.update).toHaveBeenCalledWith(1, 'welcome-page', {
+      await tool.handler({ course_id: '1', page_url: 'welcome-page', published: false })
+      expect(canvas.pages.update).toHaveBeenCalledWith('1', 'welcome-page', {
         title: undefined,
         body: undefined,
         published: false,
@@ -111,8 +111,8 @@ describe('pageTools', () => {
     it('delegates to canvas.pages.delete', async () => {
       const canvas = buildMockCanvas()
       const tool = pageTools(canvas).find((t) => t.name === 'delete_page')!
-      const result = await tool.handler({ course_id: 1, page_url: 'old-page' })
-      expect(canvas.pages.delete).toHaveBeenCalledWith(1, 'old-page')
+      const result = await tool.handler({ course_id: '1', page_url: 'old-page' })
+      expect(canvas.pages.delete).toHaveBeenCalledWith('1', 'old-page')
       expect(result).toEqual({ deleted: true, page_url: 'old-page' })
     })
   })

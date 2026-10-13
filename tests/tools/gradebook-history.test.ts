@@ -102,20 +102,20 @@ describe('gradebookHistoryTools', () => {
       (t) => t.name === 'list_gradebook_history_days',
     )!
 
-    const result = await tool.handler({ course_id: 42 })
+    const result = await tool.handler({ course_id: '42' })
 
     expect(result).toEqual(mockDays)
-    expect(canvas.gradebookHistory.listDays).toHaveBeenCalledWith(42)
+    expect(canvas.gradebookHistory.listDays).toHaveBeenCalledWith('42')
   })
 
   it('delegates get_gradebook_history_day to canvas.gradebookHistory.getDay', async () => {
     const canvas = buildMockCanvas()
     const tool = gradebookHistoryTools(canvas).find((t) => t.name === 'get_gradebook_history_day')!
 
-    const result = await tool.handler({ course_id: 42, date: '2026-04-20' })
+    const result = await tool.handler({ course_id: '42', date: '2026-04-20' })
 
     expect(result).toEqual(mockGraders)
-    expect(canvas.gradebookHistory.getDay).toHaveBeenCalledWith(42, '2026-04-20')
+    expect(canvas.gradebookHistory.getDay).toHaveBeenCalledWith('42', '2026-04-20')
   })
 
   it('delegates list_gradebook_history_submissions to canvas.gradebookHistory.listSubmissions', async () => {
@@ -125,14 +125,19 @@ describe('gradebookHistoryTools', () => {
     )!
 
     const result = await tool.handler({
-      course_id: 42,
+      course_id: '42',
       date: '2026-04-20',
-      grader_id: 7,
-      assignment_id: 101,
+      grader_id: '7',
+      assignment_id: '101',
     })
 
     expect(result).toEqual(mockSubmissionHistory)
-    expect(canvas.gradebookHistory.listSubmissions).toHaveBeenCalledWith(42, '2026-04-20', 7, 101)
+    expect(canvas.gradebookHistory.listSubmissions).toHaveBeenCalledWith(
+      '42',
+      '2026-04-20',
+      '7',
+      '101',
+    )
   })
 
   it('delegates get_gradebook_history_feed to canvas.gradebookHistory.getFeed', async () => {
@@ -140,16 +145,16 @@ describe('gradebookHistoryTools', () => {
     const tool = gradebookHistoryTools(canvas).find((t) => t.name === 'get_gradebook_history_feed')!
 
     const result = await tool.handler({
-      course_id: 42,
-      assignment_id: 101,
-      user_id: 12,
+      course_id: '42',
+      assignment_id: '101',
+      user_id: '12',
       ascending: true,
     })
 
     expect(result).toEqual(mockFeed)
-    expect(canvas.gradebookHistory.getFeed).toHaveBeenCalledWith(42, {
-      assignment_id: 101,
-      user_id: 12,
+    expect(canvas.gradebookHistory.getFeed).toHaveBeenCalledWith('42', {
+      assignment_id: '101',
+      user_id: '12',
       ascending: true,
     })
   })
@@ -178,10 +183,10 @@ describe('gradebookHistoryTools', () => {
           (t) => t.name === 'list_gradebook_history_submissions',
         )!
         const result = (await tool.handler({
-          course_id: 42,
+          course_id: '42',
           date: '2026-04-20',
-          grader_id: 7,
-          assignment_id: 101,
+          grader_id: '7',
+          assignment_id: '101',
         })) as CanvasGradebookHistorySubmission[]
         expect(result[0].versions![0].user_name).toMatch(/^Student \d+$/)
       })
@@ -192,10 +197,10 @@ describe('gradebookHistoryTools', () => {
           (t) => t.name === 'list_gradebook_history_submissions',
         )!
         const result = (await tool.handler({
-          course_id: 42,
+          course_id: '42',
           date: '2026-04-20',
-          grader_id: 7,
-          assignment_id: 101,
+          grader_id: '7',
+          assignment_id: '101',
         })) as CanvasGradebookHistorySubmission[]
         expect(result[0].versions![0].user_name).toBe('Alice Student')
       })
@@ -206,10 +211,10 @@ describe('gradebookHistoryTools', () => {
           (t) => t.name === 'list_gradebook_history_submissions',
         )!
         const result = (await tool.handler({
-          course_id: 42,
+          course_id: '42',
           date: '2026-04-20',
-          grader_id: 7,
-          assignment_id: 101,
+          grader_id: '7',
+          assignment_id: '101',
         })) as CanvasGradebookHistorySubmission[]
         expect(result[0].versions![0].current_grader).toBe('Prof Smith')
       })
@@ -222,7 +227,7 @@ describe('gradebookHistoryTools', () => {
           (t) => t.name === 'get_gradebook_history_feed',
         )!
         const result = (await tool.handler({
-          course_id: 42,
+          course_id: '42',
         })) as CanvasGradebookHistorySubmissionVersion[]
         expect(result[0].user_name).toMatch(/^Student \d+$/)
       })
@@ -233,7 +238,7 @@ describe('gradebookHistoryTools', () => {
           (t) => t.name === 'get_gradebook_history_feed',
         )!
         const result = (await tool.handler({
-          course_id: 42,
+          course_id: '42',
         })) as CanvasGradebookHistorySubmissionVersion[]
         expect(result[0].user_name).toBe('Alice Student')
       })

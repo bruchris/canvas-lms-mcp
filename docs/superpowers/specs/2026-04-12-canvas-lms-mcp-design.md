@@ -28,81 +28,61 @@ A `createCanvasMCPServer(config)` factory in `src/server.ts` wires tools + resou
 ```
 canvas-lms-mcp/
 ├── src/
-│   ├── canvas/                    # Standalone Canvas API client
+│   ├── canvas/                    # Standalone Canvas API client — a representative sample of modules, not every one; see src/canvas/index.ts for the full facade
 │   │   ├── client.ts              # HTTP client, pagination, error handling
 │   │   ├── types.ts               # Canvas API types
 │   │   ├── courses.ts             # Course module
-│   │   ├── assignments.ts         # Assignment module
-│   │   ├── submissions.ts         # Submission module (read + write)
-│   │   ├── rubrics.ts             # Rubric module (read + write)
-│   │   ├── quizzes.ts             # Quiz module (read + write)
-│   │   ├── files.ts               # File module
-│   │   ├── users.ts               # User module
-│   │   ├── groups.ts              # Group module
-│   │   ├── enrollments.ts         # Enrollment module
-│   │   ├── discussions.ts         # Discussions + announcements
-│   │   ├── modules.ts             # Modules + module items
-│   │   ├── pages.ts               # Course pages
-│   │   ├── calendar.ts            # Calendar events
-│   │   ├── conversations.ts       # Inbox messages
 │   │   └── index.ts               # CanvasClient facade
-│   ├── tools/                     # MCP tool definitions (one file per domain)
+│   ├── tools/                     # MCP tool definitions, one file per domain — a representative sample, not every domain; see src/tools/index.ts for the registry
 │   │   ├── types.ts               # ToolDefinition type
 │   │   ├── courses.ts
-│   │   ├── assignments.ts
-│   │   ├── submissions.ts
-│   │   ├── rubrics.ts
-│   │   ├── quizzes.ts
-│   │   ├── files.ts
-│   │   ├── users.ts
-│   │   ├── groups.ts
-│   │   ├── enrollments.ts
-│   │   ├── discussions.ts
-│   │   ├── modules.ts
-│   │   ├── pages.ts
-│   │   ├── calendar.ts
-│   │   ├── conversations.ts
-│   │   ├── health.ts              # health_check tool
+│   │   ├── output/                # Structured output contracts (objectOutput/listOutput/ackOutput)
 │   │   └── index.ts               # Tool registry (registers all tools)
-│   ├── resources/                 # MCP resources (URI-addressable content)
+│   ├── resources/                 # MCP resources (URI-addressable content) — a representative sample, not every resource
 │   │   ├── syllabus.ts
-│   │   ├── assignment-description.ts
 │   │   └── index.ts
-│   ├── auth/                      # Authentication strategies
-│   │   ├── token.ts               # Personal access token (v1.0)
-│   │   └── oauth.ts               # OAuth 2.0 (v1.2)
+│   ├── prompts/                   # Agent Skills advertised to clients as MCP prompts
+│   ├── ui/                        # MCP Apps UI resources — HTML widgets and their sanitizers
+│   ├── provenance/                # Untrusted-content fencing applied to tool output
+│   ├── pseudonym/                 # FERPA pseudonymization — Pseudonymizer, alias store, coverage gate
+│   ├── discovery/                 # Generated manifests; getPrimaryAudience(), the tool-audience oracle
+│   ├── auth/                      # Auth profile resolution (profile.ts) + `doctor` diagnostics (auth/doctor.ts)
+│   │   └── oauth/                 # oauth_brokered: OAuth 2.1 authorization + resource server, grant/token store, Canvas Developer Key client
+│   ├── init/                      # `init` wizard internals: client discovery, config writers, JSON/TOML merges
 │   ├── server.ts                  # MCP server factory
+│   ├── mcp-apps.ts                # MCP Apps wiring: UI resources bound to tool results
+│   ├── schema-dialect.ts          # JSON Schema draft-07 / 2020-12 compatibility shim
+│   ├── env.ts                     # Environment-variable reading
 │   ├── cli.ts                     # CLI argument parsing
-│   ├── stdio.ts                   # Entry: stdio transport
-│   └── http.ts                    # Entry: HTTP/SSE transport
+│   ├── stdio.ts                   # Entry: stdio transport (bin default)
+│   ├── http.ts                    # Entry: HTTP transport (bin `serve`)
+│   ├── init.ts                    # Entry: `init` wizard (bin `init`)
+│   └── doctor.ts                  # Entry: `doctor` / `auth status` (bin `doctor`)
 ├── tests/
 │   ├── canvas/                    # Canvas client unit tests
 │   └── tools/                     # MCP tool handler tests
 ├── .claude/
 │   ├── CLAUDE.md
 │   ├── settings.json
-│   ├── agents/
-│   │   ├── team-lead.md
-│   │   ├── architect.md
-│   │   ├── fullstack-dev.md
-│   │   ├── qa-engineer.md
-│   │   └── devops-engineer.md
-│   └── skills/                    # Dev team skills (mirrored in .agents/skills/)
-│       ├── canvas-lms-api/        # Canvas REST API reference
-│       └── mcp-sdk-patterns/      # MCP SDK usage patterns
-├── .agents/
-│   └── skills/                    # Canonical skill source
-│       ├── canvas-lms-api/
-│       └── mcp-sdk-patterns/
+│   └── agents/
+│       ├── team-lead.md
+│       ├── architect.md
+│       ├── fullstack-dev.md
+│       ├── qa-engineer.md
+│       └── devops-engineer.md
+├── .claude-plugin/
+│   ├── plugin.json                # Claude Code plugin manifest (MCP server + skills/)
+│   └── marketplace.json           # Single-plugin marketplace for /plugin marketplace add
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                 # Lint, typecheck, test, build
-│       ├── release-please.yml     # Automated releases via release-please
-│       └── npm-publish.yml        # Publish to npm on release
+│       ├── release-please.yml     # Releases: release-please, npm publish, .mcpb bundle, MCP Registry
+│       └── audit.yml              # Scheduled dependency + advisory audit
 ├── docs/
 │   ├── student-guide.md           # Getting started for students
 │   ├── educator-guide.md          # Getting started for educators
 │   └── integration-guide.md       # Integration patterns for applications
+├── skills/                        # Shipped Agent Skills, one directory per skill
 ├── .mcp.json
 ├── AGENTS.md                      # AI agent guide for the repo
 ├── Dockerfile
@@ -111,12 +91,31 @@ canvas-lms-mcp/
 ├── tsconfig.json
 ├── tsup.config.ts
 ├── vitest.config.ts
-├── .eslintrc.json
+├── eslint.config.mjs
 ├── .prettierrc
 ├── LICENSE
 ├── CHANGELOG.md
 └── README.md
 ```
+
+The block above is a present-tense claim about the repo, and CI gates it in both
+directions (`tests/docs/oauth-profile-doc-consistency.test.ts`): no row may name a
+path that does not exist, and every top-level entry under `src/` must appear as a
+row. Add a top-level module to the block in the same change that adds it to `src/`.
+Do not annotate a row that has gone stale — an annotated row still parses as a tree
+row, so the only corrections available here are adding and removing rows. Do not
+write a count into the rows or the surrounding prose; state the rule and point at
+the oracle, as the skill count does under [Agent Skills](#agent-skills).
+
+The rows nested under `src/tools/`, `src/canvas/`, and `src/resources/` are a
+representative sample of each domain, not an exhaustive listing — the same shape
+already used above for `src/auth/oauth/` and the newer top-level directories
+(`prompts/`, `ui/`, `provenance/`, `pseudonym/`, `discovery/`, `init/`). Adding or
+removing a domain file under `src/tools/` or `src/canvas/` does not touch this
+block (BRU-2822; the depth-2 enumerations were judged an architectural map, not a
+file inventory, in BRU-2820). A row at this depth still names a real path — the
+spec -> repo direction above still fails if one does not exist — but nothing here
+asserts the reverse (repo -> spec) for anything deeper than the top level of `src/`.
 
 ## Transport & Deployment Modes
 
@@ -149,7 +148,7 @@ Claude Desktop config example:
 }
 ```
 
-### Mode 2: HTTP/SSE (remote server)
+### Mode 2: HTTP (remote server)
 
 For ChatGPT custom GPTs, shared team instances, and future hosted service.
 
@@ -158,10 +157,11 @@ canvas-lms-mcp serve --port 3001
 ```
 
 - Entry point: `src/http.ts`
-- Uses `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk` (primary)
-- Falls back to `SSEServerTransport` for older MCP clients that don't support streamable HTTP
-- Per-request auth via headers: `X-Canvas-Token`, `X-Canvas-Base-URL`
-- Tokens are never stored server-side — passed through per request
+- Uses `StreamableHTTPServerTransport` from `@modelcontextprotocol/sdk`
+- Two auth profiles are available on this transport — `remote_static_token` (default) and `oauth_brokered`; see [Authentication](#authentication) for the full table
+- Under `remote_static_token`, the Canvas token arrives per request in the `X-Canvas-Token` header. The base URL is **not** a request header: it is server-configured via `--base-url` / `CANVAS_BASE_URL`
+- Under `oauth_brokered`, the client authenticates with an MCP OAuth 2.1 bearer token and this server brokers the Canvas credential behind it
+- Token storage differs by profile — see [Token storage](#token-storage)
 - CORS configuration for allowed origins
 
 ### Mode 3: Library import (npm)
@@ -188,7 +188,7 @@ For non-technical users (students, educators) who cannot self-host.
 
 - A publicly hosted instance where users just add a URL and their Canvas credentials
 - Same HTTP transport as Mode 2, but managed and maintained
-- Per-request auth via headers — tokens never stored
+- Per-request auth via headers under `remote_static_token` (tokens never stored), or brokered MCP OAuth under `oauth_brokered` (see [Authentication](#authentication))
 - Not in scope for v1.0 but the HTTP transport architecture supports it without changes
 - Hosting domain TBD (e.g., `mcp.canvas-lms.dev` or similar)
 
@@ -253,7 +253,7 @@ Built fresh referencing the Fjordbyte Canvas Integration's `src/types/canvas.ts`
 
 ## MCP Tool Inventory
 
-The tool set spans Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, health checks, attention/engagement signals, content exports, grading standards, quiz and assignment accommodations, course setup, grade explanation, grading policy, link auditing, and more. A conditional tool — `resolve_pseudonym` — is registered when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set (see [FERPA Mode](#ferpa-mode) below).
+The tool set spans Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, student workflows, dashboard, health checks, attention/engagement signals, content exports, grading standards, quiz and assignment accommodations, course setup, grade explanation, grading policy, link auditing, and more. A conditional tool — `resolve_pseudonym` — is registered on the **stdio transport** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set (see [FERPA Mode](#ferpa-mode) below).
 
 > **Note:** The authoritative tool inventory is the generated manifest — run `pnpm generate:manifests` and check `manifest.json` or `tests/discovery/manifests.test.ts` for the always-current count. **Do not hand-maintain a number here.** The per-domain tables below are a point-in-time snapshot as of 2026-07-23; add new domains to this section when you add a new tool file, but let the manifest be the source of truth for counts.
 
@@ -334,7 +334,7 @@ All errors returned as structured MCP content, never thrown:
 | `grade_submission` | write | Post a grade to a submission |
 | `comment_on_submission` | write | Post a comment, optionally with a file attachment (uses Canvas's comment file upload workflow — not general file uploads) |
 
-#### Rubrics (5 tools)
+#### Rubrics (7 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -343,8 +343,10 @@ All errors returned as structured MCP content, never thrown:
 | `get_rubric_assessment` | read | Existing assessment for a submission |
 | `submit_rubric_assessment` | write | Grade via rubric criteria |
 | `create_rubric` | write | Create a new rubric in a course with criteria and rating levels |
+| `attach_rubric` | write | Attach an existing course rubric to an assignment (share one rubric across many assignments) |
+| `delete_rubric` | write | Permanently delete a rubric and every assignment association on it |
 
-#### Quizzes (7 tools)
+#### Quizzes (9 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -355,6 +357,8 @@ All errors returned as structured MCP content, never thrown:
 | `get_quiz_submission_answers` | read | Student's answered questions |
 | `score_quiz_question` | write | Score an essay/open-ended question |
 | `get_quiz_submission_events` | read | Chronological event log for a Classic Quiz submission (session_started, question_answered, page_blurred, etc.) |
+| `delete_quiz` | write | Permanently delete a Classic quiz, its questions, and every student submission |
+| `delete_quiz_question` | write | Permanently delete one question from a Classic quiz |
 
 #### Quiz Question Responses (1 tool)
 
@@ -400,7 +404,7 @@ All errors returned as structured MCP content, never thrown:
 | `enroll_user` | write | Enroll a user in a course |
 | `remove_enrollment` | write | Remove or conclude an enrollment |
 
-#### Modules (8 tools)
+#### Modules (10 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -412,6 +416,8 @@ All errors returned as structured MCP content, never thrown:
 | `create_module` | write | Create a module |
 | `update_module` | write | Update an existing module |
 | `create_module_item` | write | Add an item to a module |
+| `update_module_item` | write | Edit a module item in place (rename, repoint an ExternalUrl, reposition, publish, move to another module) |
+| `delete_module_item` | write | Remove an item from a module; the underlying content is not deleted |
 
 #### Pages (5 tools)
 
@@ -423,12 +429,14 @@ All errors returned as structured MCP content, never thrown:
 | `update_page` | write | Update a wiki page |
 | `delete_page` | write | Delete a wiki page |
 
-#### Discussions (7 tools)
+#### Discussions (9 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_discussions` | read | Discussion topics in a course |
 | `get_discussion` | read | Discussion topic with entries |
+| `list_group_discussions` | read | Discussion topics in a group |
+| `get_group_discussion` | read | Group discussion topic with entries |
 | `list_announcements` | read | Course announcements |
 | `post_discussion_entry` | write | Post to a discussion topic |
 | `create_discussion` | write | Create a discussion topic |
@@ -484,7 +492,7 @@ All errors returned as structured MCP content, never thrown:
 | `get_course_activity_stream` | read | Course activity stream |
 | `get_assignment_analytics` | read | Score distribution analytics (min, max, median, quartiles), submission counts, and on-time/late/missing tardiness breakdown per assignment; scope to one assignment or all in a course |
 
-#### Student (5 tools)
+#### Student (8 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -493,6 +501,9 @@ All errors returned as structured MCP content, never thrown:
 | `get_my_submissions` | read | Authenticated student's submissions |
 | `get_my_upcoming_assignments` | read | Authenticated student's upcoming assignments |
 | `get_my_submission_feedback` | read | Submissions that carry feedback comments from an instructor or peer reviewer |
+| `get_my_activity_stream_summary` | read | Counts of unread and total items in the authenticated student's cross-course activity stream, grouped by item type |
+| `get_my_activity_stream` | read | The authenticated student's cross-course activity stream itself, with bounded pagination, completeness metadata and a retention caveat |
+| `list_my_planner_items` | read | The authenticated student's planner across every course and group — assignments, quizzes, planner notes, wiki pages, discussions, calendar events, peer reviews and sub-assignments — with bounded pagination and a resolved date window |
 
 #### Dashboard (4 tools)
 
@@ -675,7 +686,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `upload_submission_file` | write | Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called. |
 | `submit_assignment` | write | Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids. |
 
-**Totals: 165 tools (117 read, 48 write).** When both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 166th tool (read).
+**Totals: 176 tools (122 read, 54 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 177th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 176.
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand. After updating the base count, also update the conditional-tool ordinal in the FERPA Mode section below: it must always equal **base + 1** (the `resolve_pseudonym` tool is never included in the base total).
 
@@ -690,7 +701,7 @@ An opt-in server-side mode that pseudonymizes student personally identifiable in
 - Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
 - The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
 
-**Conditional tool `resolve_pseudonym`:** when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 156th tool is registered. It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+**Conditional tool `resolve_pseudonym`:** on the **stdio transport**, when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 177th tool is registered. It is never registered on the HTTP transport, where one pseudonym map is shared by callers holding different Canvas tokens (BRU-2511). It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
 
 **Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
 
@@ -707,25 +718,32 @@ URI-addressable content that AI agents can read without calling tools:
 
 ## Authentication
 
-### v1.0: Personal Access Token
+Every process resolves to exactly **one auth profile** at startup. The profile is a deployment fact chosen by the operator — never by a client — and it decides where the Canvas credential comes from and what, if anything, authenticates the inbound MCP connection. The profile names below are the live values of `AUTH_PROFILES` in `src/auth/profile.ts`.
 
-Users provide their Canvas personal access token and institution base URL:
+| Profile | Transport | Canvas credential | Inbound MCP auth |
+| --- | --- | --- | --- |
+| `local_static_token` | stdio | `--token` / `CANVAS_API_TOKEN` | none — the client owns the process |
+| `remote_static_token` | HTTP | `X-Canvas-Token` header, per request | none — the header *is* the credential |
+| `oauth_brokered` | HTTP | brokered by this server via a Canvas Developer Key | MCP OAuth 2.1 bearer token |
 
-- **CLI**: `--token` and `--base-url` args, or `CANVAS_API_TOKEN` / `CANVAS_BASE_URL` env vars
-- **HTTP**: `X-Canvas-Token` and `X-Canvas-Base-URL` request headers (per-request, never stored)
-- **Library**: passed directly via `createCanvasMCPServer({ token, baseUrl })`
+`local_static_token` and `remote_static_token` shipped in v1.0. `oauth_brokered` shipped in **1.30.0** (PR #356, issue #302) — not "v1.2" as earlier drafts of this spec projected.
 
-### v1.2: OAuth 2.0
+Library consumers bypass profile resolution entirely: `createCanvasMCPServer({ token, baseUrl })` takes a Canvas token the host app already holds, from whatever flow it uses (OAuth, LTI, personal token).
 
-Full OAuth 2.0 authorization code flow for integration with apps like Fjordbyte Canvas Integration:
+> **Note:** This section is a map, not the specification. The profile model, its decision table and the operator-facing setup live in [Canvas authentication modes](./2026-04-22-canvas-authentication-modes.md) and the [OAuth profile design](./2026-09-17-issue-302-mcp-oauth-profile.md); the deployment guide is [`docs/oauth-profile.md`](../../oauth-profile.md). Prefer those three when they disagree with this summary.
 
-- Token refresh with expiry buffer
-- Stored tokens managed by host application
-- Passed to MCP server factory at construction time
+### Token storage
 
-### No Role-Based Filtering
+Storage differs by profile, and the difference is a security property worth stating precisely:
 
-Canvas enforces permissions server-side. A student token trying to grade returns 403. The MCP server registers all tools regardless and returns clear error messages when Canvas denies access. This is correct because users have context-aware roles — a single user can be a student in one course and an instructor in another.
+- **Static-token profiles store nothing.** The Canvas token arrives per request (or per process) and is never written to disk.
+- **`oauth_brokered` necessarily stores tokens server-side.** Brokering a Canvas Developer Key means holding the Canvas access and refresh tokens behind each grant so they can be refreshed without re-prompting the user. `OAuthStore` (`src/auth/oauth/store.ts`) is the seam; `FileOAuthStore` (`src/auth/oauth/file-store.ts`) is the default on-disk implementation, which encrypts the snapshot with AES-256-GCM and writes it atomically. An embedder can replace the seam with a database.
+
+Earlier revisions of this spec asserted "tokens are never stored server-side" without qualification. That is true of the two static-token profiles and false of `oauth_brokered`.
+
+### Role-Based Tool Filtering
+
+Canvas enforces permissions server-side. A student token trying to grade returns 403 regardless of which tools are registered. `--role` / `CANVAS_ROLE` (`student` | `teacher` | `admin`) narrows the *registered* tool list so a context-aware caller sees only what's relevant to it — implemented in `src/tools/roles.ts` (`ROLE_VISIBILITY`) against each tool's `audience`. This is a **client-side UX / context-reduction filter only**, not an authorization boundary: setting `CANVAS_ROLE=admin` does not grant admin powers, and Canvas still returns 403 if the token lacks the scope. Unlike `CANVAS_DESTRUCTIVE_TOOLS=block` (see Deliberate Constraints below), which is a real boundary — the server refuses to register the gated tools at all — this is a UX filter, not a security control. See [Role-based tool filtering](../../../README.md#role-based-tool-filtering) for the full role/tool-count breakdown.
 
 ## Tech Stack
 
@@ -743,7 +761,7 @@ Canvas enforces permissions server-side. A student token trying to grade returns
 | CI | GitHub Actions |
 | Releases | release-please + npm publish |
 
-No runtime dependencies beyond the MCP SDK and Zod. The Canvas client uses native `fetch`.
+Runtime dependencies: `@modelcontextprotocol/sdk`, `zod`, `@iarna/toml`, and `prompts` (the latter two power the init wizard's TOML config generation and interactive prompts). The Canvas client uses native `fetch` for HTTP requests.
 
 ## Release & CI/CD
 
@@ -775,12 +793,12 @@ Automated release management via [release-please](https://github.com/googleapis/
 
 **release-please.yml** — runs on push to `main`:
 - Runs release-please to create/update release PR
-- On release created: triggers npm-publish
+- On release created, three downstream jobs run in the same workflow:
+  - `npm-publish` — builds and publishes to npm as `canvas-lms-mcp` via npm Trusted Publishing (OIDC)
+  - `mcpb-bundle` — packs and uploads the `.mcpb` bundle to the GitHub release
+  - `registry-publish` — syncs `server.json` and publishes to the MCP Registry
 
-**npm-publish.yml** — runs when release-please creates a release:
-- Builds the package
-- Publishes to npm as `canvas-lms-mcp`
-- Uses npm Trusted Publishing (OIDC) for authentication
+**audit.yml** — scheduled dependency and advisory audit.
 
 ## Agent Team
 
@@ -828,8 +846,8 @@ All tools include MCP tool annotations to help clients (Claude, ChatGPT) make sa
 
 | Annotation | Applied to | Effect |
 |------------|-----------|--------|
-| `readOnlyHint: true` | All 60 read tools | Clients may auto-execute without confirmation |
-| `destructiveHint: true` | All 28 write tools | Clients should ask for user confirmation before executing |
+| `readOnlyHint: true` | All 122 read tools | Clients may auto-execute without confirmation |
+| `destructiveHint: true` | All 54 write tools | Clients should ask for user confirmation before executing |
 | `idempotentHint: true` | `grade_submission`, `submit_rubric_assessment`, `score_quiz_question` | Safe to retry — re-grading with same value is a no-op |
 | `openWorldHint: true` | All tools | Tools interact with external Canvas API |
 
@@ -879,16 +897,19 @@ A single-file guide at the repo root for external AI agents consuming the codeba
 
 This mirrors what `vishalsachdev/canvas-mcp` does — agents that clone or access the repo get immediate context.
 
-### Dev Team Skills
+### Agent Skills
 
-Skills installed in `.claude/skills/` and `.agents/skills/` to help the dev team work efficiently:
+The skills this repo actually ships live in the top-level `skills/` tree — one directory per skill, each with a `SKILL.md` — and reach Claude Code through the plugin manifests in `.claude-plugin/`:
 
-| Skill | Purpose |
-|-------|---------|
-| `canvas-lms-api` | Canvas REST API reference — copied from Fjordbyte repo as a blueprint |
-| `mcp-sdk-patterns` | `@modelcontextprotocol/sdk` usage patterns — server creation, tool registration, transport setup, resource definitions |
+| Surface | What it is |
+|---------|------------|
+| `skills/` | Educator and student Canvas workflow skills (grading passes, week planning, course QC, at-risk sweeps, accessibility sweeps, …). An end-user product surface, not dev tooling. |
+| `.claude-plugin/plugin.json` | Claude Code plugin manifest — bundles this MCP server together with the `skills/` tree, and declares the `userConfig` fields (token, base URL, FERPA flags) |
+| `.claude-plugin/marketplace.json` | Single-plugin marketplace, so `/plugin marketplace add bruchris/canvas-lms-mcp` resolves |
 
-These ensure agents spawned by the team-lead or architect immediately know Canvas API conventions and MCP SDK patterns without needing to search documentation.
+The skill count is derived, never hand-maintained: `tests/docs/skill-count-consistency.test.ts` counts the directories under `skills/` that contain a `SKILL.md` and fails CI if `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md` or `docs/index.html` disagrees. **Do not write a skill count into this spec.**
+
+> **Never built (BRU-2681).** This section originally planned two _dev-team_ skills — `canvas-lms-api` (a Canvas REST API reference copied from the Fjordbyte repo as a blueprint) and `mcp-sdk-patterns` (`@modelcontextprotocol/sdk` usage patterns) — installed in `.claude/skills/` and mirrored from a canonical `.agents/skills/`. Neither directory was ever committed: `git log --diff-filter=D -- .claude/skills .agents` is empty, so they were planned and never built rather than built and removed. The dev team has worked from `.claude/CLAUDE.md`, `AGENTS.md` and `.claude/agents/` instead. The plan is recorded here; the two directories are gone from the layout block above, because that block is a claim about what the repo contains and is ~~now gated end-to-end~~ gated by `tests/docs/oauth-profile-doc-consistency.test.ts`. **Corrected 2026-10-09 (BRU-2818):** "end-to-end" overstated it. The gate was one-directional when this paragraph was written — spec → repo only — so it caught a row naming a path that does not exist but never a path that shipped without a row, and a backlog of unlisted top-level `src/` entries had accumulated behind the gap, `src/pseudonym/` since 1.17.0. The repo → spec direction is now asserted as well, for the top level of `src/`; the block's deeper enumerations stay one-directional until BRU-2820 settles what they are for.
 
 ### CLAUDE.md
 
@@ -1017,8 +1038,8 @@ The repo (`bruchris/canvas-lms-mcp`) will be initialized with a complete foundat
 
 - Spec files and design documentation
 - `.claude/` with agent team definitions, CLAUDE.md, settings.json
-- `.agents/skills/` with dev team skills
-- `.github/workflows/` with CI, release-please, npm-publish
+- ~~`.agents/skills/` with dev team skills~~ — planned on 2026-04-12 and never built; see [Agent Skills](#agent-skills) (BRU-2681)
+- `.github/workflows/` with CI, release-please (incl. npm publish), and scheduled `audit.yml`
 - `AGENTS.md`, `LICENSE` (MIT), base `README.md`
 - `package.json`, TypeScript config, ESLint, Prettier, Vitest
 - `Dockerfile`, `docker-compose.yml`
@@ -1027,32 +1048,64 @@ This repo is then linked to the Paperclip AI project board so the team can begin
 
 ## Explicitly Out of Scope
 
-### v1.0 exclusions
-- Course/assignment/quiz/module creation or deletion
-- Enrollment management (add/drop students)
-- Course settings modification
-- Account admin tools
-- File uploads to Canvas (read-only file access)
-- Code execution sandbox
-- Accessibility auditing
-- FERPA anonymization
-- Role-based tool filtering (Canvas enforces permissions)
-- Skills.sh skill definitions (v1.1)
-- OAuth 2.0 flow (v1.2)
+### v1.0 exclusions (as planned 2026-04-12)
+
+**10 of the 11 entries below have since shipped.** Each one now says where, following the
+precedent the OAuth entry already set in this list; the 2026-04-12 decision itself is preserved
+as the un-annotated part of each line. Two caveats on reading it as a historical record:
+
+- **No `1.0.0` was ever released.** The tag sequence runs `0.6.0` → `1.1.0`, both on
+  2026-04-17 (`git tag -l 'canvas-lms-mcp-v1.0*'` is empty), so "v1.0" names a planning
+  milestone and not a shipped version. Five entries — creation/deletion, enrollment management,
+  course settings, account admin tools and file uploads — shipped in **0.5.0**, i.e. *before*
+  the jump to `1.x`. They were never excluded from a shipped `1.x` server, so this list
+  cannot be read as a true record of what the first release left out.
+- There is deliberately **no CI gate** on these annotations. Three entries are prose concepts
+  with no key in `docs/generated/tool-manifest.json`, so a gate would need a hand-maintained
+  prose-to-tool mapping — the wrong-oracle shape BRU-2530 removed. Tool *counts* elsewhere in
+  this document are gated; these annotations are a one-time prose pass (BRU-2695).
+
+- Course/assignment/quiz/module creation or deletion — **shipped**: `create_course`,
+  `create_assignment`, `create_module`, `delete_assignment`, `delete_page` and
+  `delete_discussion` in 0.5.0; `create_new_quiz` in 1.15.0
+- Enrollment management (add/drop students) — **shipped in 0.5.0** as `enroll_user` and
+  `remove_enrollment`
+- Course settings modification — **shipped in 0.5.0** as `update_course`
+- Account admin tools — **shipped**: `list_accounts`, `get_account`, `list_account_users`
+  and `list_account_courses` in 0.5.0; `list_account_notifications` in 1.23.0
+- File uploads to Canvas (read-only file access) — **shipped in 0.5.0** as `upload_file` and
+  `delete_file`
+- Code execution sandbox — **still excluded**, and the only one of the eleven entries in this
+  list that is not shipped
+- Accessibility auditing — **shipped in 1.23.0** as `audit_course_accessibility`
+- FERPA anonymization — **shipped in 1.17.0** as the `Pseudonymizer` (`src/pseudonym/`,
+  `CANVAS_PSEUDONYMIZE_STUDENTS`)
+- Role-based tool filtering (Canvas enforces permissions) — **shipped in 1.4.0** as the
+  `ToolAudience` tag resolved by `getPrimaryAudience()`. The parenthetical rationale no
+  longer holds either — see "Canvas is not the sole permission authority" under
+  [Deliberate constraints](#deliberate-constraints) below
+- Skills.sh skill definitions (v1.1) — **shipped in 1.9.0** (PR #90) as the top-level
+  `skills/` tree, not in 1.1; see [Agent Skills](#agent-skills)
+- OAuth 2.0 flow — **shipped in 1.30.0** as the `oauth_brokered` profile
 
 ### Deliberate constraints
-- No destructive write operations
-- No account-level admin tools
-- Canvas is the permission authority — MCP server never makes access control decisions
+- Destructive write operations are opt-out, not opt-in: 54 write tools ship, including 12 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 10 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
+- ~~No account-level admin tools~~ — **false since 0.5.0**: `list_accounts`, `get_account`, `list_account_users`, `list_account_courses` and `list_account_notifications` all ship. Unlike the exclusions above, this list is written in the present tense, so the line is struck rather than annotated (BRU-2695)
+- Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 
 ## Versioning Roadmap
 
 | Version | Scope |
 |---------|-------|
 | **v1.0** | Core MCP tools (~41), resources, stdio + HTTP transports, personal token auth, npm package with library export, CI/CD with release-please |
-| **v1.1** | Skills.sh skill definitions (grading workflows: rubric grading, essay grading, batch grading, pass/fail, quiz scoring) |
-| **v1.2** | OAuth 2.0 authentication support |
+| **v1.1** | Skills.sh skill definitions (grading workflows: rubric grading, essay grading, batch grading, pass/fail, quiz scoring) — **shipped in 1.9.0** (PR #90), not 1.1 |
+| **1.30.0** (shipped) | OAuth 2.0 authentication support (`oauth_brokered` profile) |
 | **v2.0** | Plugin architecture (enable/disable tool domains via config), hosted service mode |
+
+This table is the roadmap as drawn on 2026-04-12. No `1.0.0` was ever released — the tags go
+`0.6.0` → `1.1.0`, both on 2026-04-17 — so the **v1.0** row describes the initial scope
+target rather than a shipped version. For what exists today, read
+`docs/generated/tool-manifest.json`, which is generated from the registry.
 
 ## Competitive Landscape
 
@@ -1068,11 +1121,11 @@ This project differentiates by:
 4. **Clean modular architecture** — Canvas client fully independent of MCP, reusable
 5. **Three integration patterns** — dev-time MCP, shared client library, runtime MCP for agentic features
 6. **Grading-focused writes** — safer default than full CRUD
-7. **Skills.sh integration** (v1.1) — pre-built grading workflows
+7. **Skills.sh integration** (shipped in 1.9.0) — pre-built grading workflows
 
 ## Subsequent Specs
 
 | Spec | Topic |
 |------|-------|
 | [2026-05-13-new-quizzes-tools.md](./2026-05-13-new-quizzes-tools.md) | New Quizzes (LTI) domain design — 8 tools for creating and managing New Quizzes and quiz items |
-8. **OAuth support** (v1.2) — for LTI/OAuth app integration
+8. **OAuth support** (shipped in 1.30.0) — for LTI/OAuth app integration

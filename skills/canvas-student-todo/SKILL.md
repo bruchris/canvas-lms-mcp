@@ -1,6 +1,8 @@
 ---
 name: canvas-student-todo
 description: Student action list for Canvas. Surfaces every incomplete to-do item, missing submission, and upcoming deadline in one prioritised view — no calendar, no context switching. Trigger phrases include "what do I need to do", "my Canvas to-dos", "student to-do list", "what's missing", "catch me up", or "what should I work on".
+metadata:
+  io.github.bruchris/canvas-lms-mcp-audience: student
 ---
 
 # Canvas Student To-Do

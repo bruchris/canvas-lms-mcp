@@ -1,4 +1,6 @@
 import type { z } from 'zod'
+import type { DestructiveToolsMode } from './destructive-policy'
+import type { ToolOutputContract } from './output/contract'
 
 /**
  * Internal audience tag on every tool. `'educator'` is the internal name for
@@ -34,7 +36,27 @@ export interface ToolUiBinding {
 export interface ToolFeatureFlags {
   /** CANVAS_ENABLE_ASSIGNMENT_SUBMISSION / --enable-assignment-submission */
   assignmentSubmission?: boolean
+  /**
+   * CANVAS_DESTRUCTIVE_TOOLS / --destructive-tools=<mode> (BRU-2444, design
+   * BRU-2390 §7). A policy, not a boolean: `block` removes the ten
+   * irreversible delete tools from the registry entirely. Unset resolves to
+   * `allow`, which is today's behaviour byte-for-byte.
+   *
+   * Not usable as a domain `gate` — see `ToolDomainGateKey` in `catalog.ts`.
+   */
+  destructiveTools?: DestructiveToolsMode
+  /**
+   * Write-tool policy for the OAuth profile (issue #302 §7.4). `block` keeps
+   * only tools with `readOnlyHint: true`, so a token that lacks the
+   * `canvas:write` scope neither lists nor can call a write tool. Unset
+   * resolves to `allow`. A string union on purpose: a boolean here would
+   * become a domain gate key (see `ToolDomainGateKey` in `catalog.ts`).
+   */
+  writeTools?: WriteToolsMode
 }
+
+/** `allow` = every tool the other policies permit; `block` = read-only tools only. */
+export type WriteToolsMode = 'allow' | 'block'
 
 export interface ToolDefinition {
   name: string
@@ -59,4 +81,15 @@ export interface ToolDefinition {
    * diverges from its domain default.
    */
   audience?: ToolAudience
+  /**
+   * Structured-output contract (BRU-2418). When set, the tool advertises an
+   * `outputSchema` and every successful response carries a `structuredContent`
+   * envelope alongside the unchanged text content. Migration is per-tool and
+   * all-or-nothing: with a schema declared, a text-only result is rejected by
+   * both the server and the client.
+   *
+   * Adding this obliges you to add a fixture to `tests/tools/output-contract`'s
+   * registry — CI fails until you do.
+   */
+  output?: ToolOutputContract
 }

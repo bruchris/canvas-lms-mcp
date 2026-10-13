@@ -3,13 +3,14 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasGradebookHistorySubmissionVersion } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // Pseudonymize the student `user_name` string on a gradebook history version.
 // The embedded `user_id` lets us assign a stable pseudonym keyed by course.
 // Grader name fields (current_grader, new_grader, previous_grader) are staff
 // and pass through unchanged per the FERPA spec.
 async function anonymizeHistoryVersion(
-  courseId: number,
+  courseId: CanvasId,
   version: CanvasGradebookHistorySubmissionVersion,
   pseudonymizer: Pseudonymizer,
 ): Promise<CanvasGradebookHistorySubmissionVersion> {
@@ -36,14 +37,14 @@ export function gradebookHistoryTools(
       description:
         'List the dates in a course gradebook history that contain grading activity, grouped by grader and assignment.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         return canvas.gradebookHistory.listDays(course_id)
       },
     },
@@ -53,7 +54,7 @@ export function gradebookHistoryTools(
       description:
         'Get the graders and assignment IDs that had gradebook activity on a specific course date.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         date: z.string().describe('The gradebook history date to inspect, in YYYY-MM-DD format'),
       },
       annotations: {
@@ -61,7 +62,7 @@ export function gradebookHistoryTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const date = params.date as string
         return canvas.gradebookHistory.getDay(course_id, date)
       },
@@ -72,20 +73,20 @@ export function gradebookHistoryTools(
       description:
         'List versioned submission history for one grader and assignment on a specific gradebook history date.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
         date: z.string().describe('The gradebook history date to inspect, in YYYY-MM-DD format'),
-        grader_id: z.number().describe('The Canvas user ID of the grader'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        grader_id: canvasIdInput().describe('The Canvas user ID of the grader'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const date = params.date as string
-        const grader_id = params.grader_id as number
-        const assignment_id = params.assignment_id as number
+        const grader_id = params.grader_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
         const submissions = await canvas.gradebookHistory.listSubmissions(
           course_id,
           date,
@@ -111,12 +112,11 @@ export function gradebookHistoryTools(
       description:
         'Get the paginated gradebook history feed for a course, optionally filtered by assignment or user and optionally sorted oldest-first.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z
-          .number()
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput()
           .optional()
           .describe('Optional Canvas assignment ID to filter the feed'),
-        user_id: z.number().optional().describe('Optional Canvas user ID to filter the feed'),
+        user_id: canvasIdInput().optional().describe('Optional Canvas user ID to filter the feed'),
         ascending: z
           .boolean()
           .optional()
@@ -127,9 +127,9 @@ export function gradebookHistoryTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number | undefined
-        const user_id = params.user_id as number | undefined
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId | undefined
+        const user_id = params.user_id as CanvasId | undefined
         const ascending = params.ascending as boolean | undefined
         const versions = await canvas.gradebookHistory.getFeed(course_id, {
           assignment_id,

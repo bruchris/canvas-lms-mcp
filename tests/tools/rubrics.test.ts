@@ -31,6 +31,15 @@ describe('rubricTools', () => {
     data: [{ criterion_id: 'c1', points: 25, comments: 'Good thesis' }],
   }
 
+  const mockAssociation = {
+    id: 900,
+    rubric_id: 1,
+    association_id: 55,
+    association_type: 'Assignment',
+    use_for_grading: true,
+    purpose: 'grading',
+  }
+
   function buildMockCanvas(): CanvasClient {
     return {
       rubrics: {
@@ -39,13 +48,15 @@ describe('rubricTools', () => {
         getAssessment: vi.fn().mockResolvedValue(mockSubmission),
         submitAssessment: vi.fn().mockResolvedValue(mockAssessment),
         create: vi.fn().mockResolvedValue(mockRubric),
+        associate: vi.fn().mockResolvedValue(mockAssociation),
+        delete: vi.fn().mockResolvedValue(mockRubric),
       },
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
+  it('returns an array with 7 tool definitions', () => {
     const tools = rubricTools(buildMockCanvas())
-    expect(tools).toHaveLength(5)
+    expect(tools).toHaveLength(7)
   })
 
   it('exports tools with correct names', () => {
@@ -56,6 +67,8 @@ describe('rubricTools', () => {
       'get_rubric_assessment',
       'submit_rubric_assessment',
       'create_rubric',
+      'attach_rubric',
+      'delete_rubric',
     ])
   })
 
@@ -68,8 +81,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.list', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'list_rubrics')!
-      const result = await tool.handler({ course_id: 1 })
-      expect(canvas.rubrics.list).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ course_id: '1' })
+      expect(canvas.rubrics.list).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockRubric])
     })
   })
@@ -83,8 +96,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.get', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric')!
-      const result = await tool.handler({ course_id: 1, rubric_id: 10 })
-      expect(canvas.rubrics.get).toHaveBeenCalledWith(1, 10)
+      const result = await tool.handler({ course_id: '1', rubric_id: '10' })
+      expect(canvas.rubrics.get).toHaveBeenCalledWith('1', '10')
       expect(result).toEqual(mockRubric)
     })
 
@@ -92,11 +105,11 @@ describe('rubricTools', () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric')!
       await tool.handler({
-        course_id: 1,
-        rubric_id: 10,
+        course_id: '1',
+        rubric_id: '10',
         include: ['assignment_associations'],
       })
-      expect(canvas.rubrics.get).toHaveBeenCalledWith(1, 10, {
+      expect(canvas.rubrics.get).toHaveBeenCalledWith('1', '10', {
         include: ['assignment_associations'],
       })
     })
@@ -111,8 +124,8 @@ describe('rubricTools', () => {
     it('delegates to canvas.rubrics.getAssessment', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'get_rubric_assessment')!
-      await tool.handler({ course_id: 1, assignment_id: 101, user_id: 5 })
-      expect(canvas.rubrics.getAssessment).toHaveBeenCalledWith(1, 101, 5)
+      await tool.handler({ course_id: '1', assignment_id: '101', user_id: '5' })
+      expect(canvas.rubrics.getAssessment).toHaveBeenCalledWith('1', '101', '5')
     })
   })
 
@@ -132,8 +145,8 @@ describe('rubricTools', () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'submit_rubric_assessment')!
       const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
-      await tool.handler({ course_id: 1, association_id: 10, data })
-      expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith(1, 10, data)
+      await tool.handler({ course_id: '1', association_id: '10', data })
+      expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith('1', '10', data)
     })
   })
 
@@ -158,12 +171,12 @@ describe('rubricTools', () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
       const result = await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Essay Rubric',
         criteria: validCriteria,
       })
       expect(canvas.rubrics.create).toHaveBeenCalledWith(
-        1,
+        '1',
         { title: 'Essay Rubric', criteria: validCriteria },
         undefined,
       )
@@ -175,16 +188,76 @@ describe('rubricTools', () => {
       const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
       const association = { assignment_id: 55, use_for_grading: true, purpose: 'grading' }
       await tool.handler({
-        course_id: 1,
+        course_id: '1',
         title: 'Essay Rubric',
         criteria: validCriteria,
         association,
       })
       expect(canvas.rubrics.create).toHaveBeenCalledWith(
-        1,
+        '1',
         { title: 'Essay Rubric', criteria: validCriteria },
         association,
       )
+    })
+  })
+
+  describe('attach_rubric', () => {
+    it('has destructive and openWorld annotations', () => {
+      const tool = rubricTools(buildMockCanvas()).find((t) => t.name === 'attach_rubric')!
+      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.rubrics.associate and returns the association', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'attach_rubric')!
+      const result = await tool.handler({
+        course_id: 1,
+        rubric_id: 1,
+        assignment_id: 55,
+        use_for_grading: true,
+      })
+      expect(canvas.rubrics.associate).toHaveBeenCalledWith(1, 1, 55, {
+        use_for_grading: true,
+        hide_score_total: undefined,
+        purpose: undefined,
+      })
+      expect(result).toEqual(mockAssociation)
+    })
+
+    it('passes hide_score_total and purpose through', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'attach_rubric')!
+      await tool.handler({
+        course_id: 1,
+        rubric_id: 1,
+        assignment_id: 55,
+        hide_score_total: true,
+        purpose: 'bookmark',
+      })
+      expect(canvas.rubrics.associate).toHaveBeenCalledWith(1, 1, 55, {
+        use_for_grading: undefined,
+        hide_score_total: true,
+        purpose: 'bookmark',
+      })
+    })
+  })
+
+  describe('delete_rubric', () => {
+    it('has destructive, idempotent and openWorld annotations', () => {
+      const tool = rubricTools(buildMockCanvas()).find((t) => t.name === 'delete_rubric')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('delegates to canvas.rubrics.delete and returns the deleted rubric', async () => {
+      const canvas = buildMockCanvas()
+      const tool = rubricTools(canvas).find((t) => t.name === 'delete_rubric')!
+      const result = await tool.handler({ course_id: 1, rubric_id: 1 })
+      expect(canvas.rubrics.delete).toHaveBeenCalledWith(1, 1)
+      expect(result).toEqual(mockRubric)
     })
   })
 })

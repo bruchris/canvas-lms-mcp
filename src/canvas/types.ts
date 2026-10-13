@@ -1,3 +1,5 @@
+import type { CanvasId } from './id'
+
 // --- Config ---
 
 export interface CanvasClientConfig {
@@ -16,17 +18,17 @@ export interface CanvasErrorResponse {
 // --- Courses ---
 
 export interface CanvasCourse {
-  id: number
+  id: CanvasId
   name: string
   course_code: string
   workflow_state: string
-  enrollment_term_id?: number
+  enrollment_term_id?: CanvasId
   total_students?: number
   syllabus_body?: string
   term?: CanvasTerm
   enrollments?: CanvasEnrollment[]
-  account_id?: number
-  root_account_id?: number
+  account_id?: CanvasId
+  root_account_id?: CanvasId
   is_public?: boolean
   is_public_to_auth_users?: boolean
   public_syllabus?: boolean
@@ -56,7 +58,7 @@ export interface CanvasCourse {
   permissions?: Record<string, boolean>
   sections?: CanvasCourseSection[]
   teachers?: Array<{
-    id: number
+    id: CanvasId
     anonymous_id?: string
     display_name: string
     avatar_image_url?: string | null
@@ -68,17 +70,17 @@ export interface CanvasCourse {
   banner_image_download_url?: string | null
   concluded?: boolean
   post_manually?: boolean
-  grading_standard_id?: number | null
+  grading_standard_id?: CanvasId | null
 }
 
 export interface CanvasCourseSection {
-  id: number
+  id: CanvasId
   name: string
   start_at?: string | null
   end_at?: string | null
   created_at?: string
   restrict_enrollments_to_section_dates?: boolean
-  nonxlist_course_id?: number | null
+  nonxlist_course_id?: CanvasId | null
   sis_section_id?: string | null
   sis_course_id?: string | null
 }
@@ -91,7 +93,7 @@ export interface CanvasCourseProgress {
 }
 
 export interface CanvasTerm {
-  id: number
+  id: CanvasId
   name: string
   start_at: string | null
   end_at: string | null
@@ -105,18 +107,18 @@ export interface CanvasEnrollmentGrades {
 }
 
 export interface CanvasEnrollment {
-  id: number
-  course_id: number
-  user_id: number
+  id: CanvasId
+  course_id: CanvasId
+  user_id: CanvasId
   type: string
   role: string
-  role_id?: number
+  role_id?: CanvasId
   enrollment_state: string
   created_at?: string
   updated_at?: string
   start_at?: string | null
   end_at?: string | null
-  course_section_id?: number
+  course_section_id?: CanvasId
   last_activity_at?: string | null
   last_attended_at?: string | null
   total_activity_time?: number
@@ -132,12 +134,16 @@ export interface CanvasEnrollment {
   can_be_removed?: boolean
   avatar_url?: string
   observed_users?: CanvasUser[]
-  group_ids?: number[]
+  group_ids?: CanvasId[]
   uuid?: string
 }
 
+// The `*Params` interfaces below are REQUEST bodies, not response shapes, so
+// their ID-named properties migrate with the input side in PR 1b. They live in
+// `types.ts`, which §3.6's declaration walk excludes wholesale — correct for
+// response types, which are PR 2a's, and a gap for these six. Noted in the PR.
 export interface CreateCourseParams {
-  account_id: number
+  account_id: CanvasId
   name: string
   course_code?: string
   start_at?: string
@@ -151,13 +157,13 @@ export interface UpdateCourseParams {
   end_at?: string
   default_view?: 'feed' | 'wiki' | 'modules' | 'assignments' | 'syllabus'
   syllabus_body?: string
-  grading_standard_id?: number | null
+  grading_standard_id?: CanvasId | null
 }
 
 // --- Assignments ---
 
 export interface CanvasAssignment {
-  id: number
+  id: CanvasId
   name: string
   description: string | null
   due_at: string | null
@@ -166,12 +172,12 @@ export interface CanvasAssignment {
   points_possible: number
   grading_type: string
   submission_types: string[]
-  course_id: number
-  rubric_settings?: { id: number }
-  group_category_id?: number | null
-  quiz_id?: number | null
+  course_id: CanvasId
+  rubric_settings?: { id: CanvasId }
+  group_category_id?: CanvasId | null
+  quiz_id?: CanvasId | null
   allowed_attempts: number
-  assignment_group_id?: number
+  assignment_group_id?: CanvasId
   position?: number
   muted?: boolean
   published?: boolean
@@ -192,7 +198,7 @@ export interface CanvasAssignment {
     median?: number
     lower_q?: number
   }
-  assignment_visibility?: number[]
+  assignment_visibility?: CanvasId[]
   is_quiz_assignment?: boolean
   is_quiz_lti_assignment?: boolean // true when backed by the New Quizzes (Quizzes.Next) LTI tool
   in_closed_grading_period?: boolean
@@ -202,7 +208,7 @@ export interface CanvasAssignment {
 }
 
 export interface CanvasAssignmentDate {
-  id?: number
+  id?: CanvasId
   base?: boolean
   title?: string
   due_at: string | null
@@ -211,21 +217,21 @@ export interface CanvasAssignmentDate {
 }
 
 export interface CanvasAssignmentOverride {
-  id: number
-  assignment_id: number
+  id: CanvasId
+  assignment_id: CanvasId
   title: string
   due_at?: string | null
   unlock_at?: string | null
   lock_at?: string | null
   all_day?: boolean
   all_day_date?: string | null
-  student_ids?: number[]
-  group_id?: number
-  course_section_id?: number
+  student_ids?: CanvasId[]
+  group_id?: CanvasId
+  course_section_id?: CanvasId
 }
 
 export interface CanvasAssignmentGroup {
-  id: number
+  id: CanvasId
   name: string
   position: number
   group_weight: number
@@ -234,14 +240,14 @@ export interface CanvasAssignmentGroup {
   rules?: {
     drop_lowest?: number
     drop_highest?: number
-    never_drop?: number[]
+    never_drop?: CanvasId[]
   }
   assignments?: CanvasAssignment[]
   any_assignment_in_closed_grading_period?: boolean
 }
 
 export interface CanvasUpcomingEvent {
-  id: number
+  id: CanvasId
   title: string
   type: string
   workflow_state?: string
@@ -256,10 +262,10 @@ export interface CanvasUpcomingEvent {
 // --- Submissions ---
 
 export interface CanvasSubmission {
-  id: number
-  assignment_id: number
-  user_id: number
-  grader_id?: number | null
+  id: CanvasId
+  assignment_id: CanvasId
+  user_id: CanvasId
+  grader_id?: CanvasId | null
   submitted_at: string | null
   graded_at?: string | null
   posted_at?: string | null
@@ -283,7 +289,7 @@ export interface CanvasSubmission {
   preview_url?: string
   html_url?: string
   read_status?: 'read' | 'unread'
-  custom_grade_status_id?: number | null
+  custom_grade_status_id?: CanvasId | null
   attachments?: CanvasAttachment[]
   submission_comments?: CanvasSubmissionComment[]
   submission_history?: CanvasSubmission[]
@@ -298,7 +304,7 @@ export interface CanvasSubmission {
 }
 
 export interface CanvasAttachment {
-  id: number
+  id: CanvasId
   filename: string
   display_name: string
   url: string
@@ -306,18 +312,76 @@ export interface CanvasAttachment {
   size: number
 }
 
+/**
+ * Canvas's `user_display_json` (`lib/api/v1/user.rb`): `{id, anonymous_id,
+ * display_name, avatar_image_url, html_url, pronouns}`, where `display_name` is
+ * `user.short_name` — a REAL NAME. It is returned `{}` when the user is nil, so
+ * every field is optional.
+ *
+ * This shape shows up wherever Canvas wants "enough to render a byline", and it
+ * is easy to miss because it spells the name `display_name` rather than `name`:
+ * a wrapper that looks for `name` / `user_name` / `author_name` walks straight
+ * past it. The pseudonymizer rewrites `display_name` and nulls the sibling
+ * `avatar_image_url` / `pronouns` — a face and a pronoun set beside a masked
+ * name are the same leak — but never `id` / `anonymous_id` / `html_url`, which
+ * are identifiers, and identifiers are preserved everywhere in this layer.
+ */
+export interface CanvasUserDisplay {
+  id?: CanvasId
+  anonymous_id?: string
+  display_name?: string
+  avatar_image_url?: string | null
+  html_url?: string
+  pronouns?: string | null
+  [key: string]: unknown
+}
+
 export interface CanvasSubmissionComment {
-  id: number
-  author_id: number
+  id: CanvasId
+  /**
+   * `null` when the viewer lacks `:read_author` on the comment:
+   * `submission_comment_json`'s `else` branch sets `author_id: nil` together
+   * with `author: {}` and `author_name: "Anonymous User"`
+   * (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas SHA
+   * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+   *
+   * ~~Declared non-null.~~ Widened 2026-10-10 (BRU-2865): the declaration had
+   * contradicted that branch since the branch was first cited, and the two
+   * sites that key a pseudonym off this field were written against the
+   * declaration rather than the serializer. Derive the key with
+   * `submissionCommentAuthorKey` rather than `String(author_id)` — `null`
+   * means "this comment carries no identity at all", not "key the map on the
+   * string `null`".
+   */
+  author_id: CanvasId | null
   author_name: string
   comment: string
   created_at: string
+  /**
+   * `submission_comment_json` sets this to `user_display_json(comment.author,
+   * …)` whenever the viewer holds `:read_author` — so a comment normally
+   * carries the author's `display_name` BESIDE `author_name`, and masking only
+   * `author_name` leaves the real name one key over.
+   *
+   * ~~Optional because the anonymous-moderated branch replaces it with `{}`.~~
+   * Corrected 2026-10-10 (BRU-2864): it is `submission_comment_json`'s OWN
+   * `else` branch that sets `author: {}`, together with `author_id: nil` and
+   * `author_name: "Anonymous User"`, when the viewer lacks `:read_author`
+   * (lib/api/v1/submission_comment.rb:68-72 at the pinned Canvas SHA
+   * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+   * `anonymous_moderated_submission_comments_json` — the serializer that does
+   * `json.delete(:author_id)` — never emits this key at all, because
+   * `ANONYMOUS_MODERATED_JSON_ATTRIBUTES` (lines 24-36) has no `author` entry.
+   * So there is no shape in either serializer where `author.id` survives an
+   * absent `author_id`, and this key is never a fallback source for it.
+   */
+  author?: CanvasUserDisplay
 }
 
 export interface CanvasGradebookHistoryGrader {
-  id: number
+  id: CanvasId
   name: string
-  assignments: number[]
+  assignments: CanvasId[]
 }
 
 export interface CanvasGradebookHistoryDay {
@@ -333,7 +397,7 @@ export interface CanvasGradebookHistorySubmissionVersion extends CanvasSubmissio
   grade_matches_current_submission?: boolean
   graded_at?: string | null
   grader?: string | null
-  grader_id?: number | null
+  grader_id?: CanvasId | null
   new_grade?: string | null
   new_graded_at?: string | null
   new_grader?: string | null
@@ -345,27 +409,19 @@ export interface CanvasGradebookHistorySubmissionVersion extends CanvasSubmissio
 }
 
 export interface CanvasGradebookHistorySubmission {
-  submission_id: number
+  submission_id: CanvasId
   versions: CanvasGradebookHistorySubmissionVersion[] | null
 }
 
 // --- Rubrics ---
 
 export interface CanvasRubric {
-  id: number
+  id: CanvasId
   title: string
   points_possible: number
   data: CanvasRubricCriterion[]
+  /** Present only when the rubric is fetched with an association include. */
   associations?: CanvasRubricAssociation[]
-}
-
-export interface CanvasRubricAssociation {
-  id: number
-  rubric_id: number
-  association_id: number
-  association_type: 'Assignment' | 'Course' | 'Account'
-  use_for_grading?: boolean
-  purpose?: 'grading' | 'bookmark'
 }
 
 export interface CanvasRubricCriterion {
@@ -381,9 +437,24 @@ export interface CanvasRubricRating {
   points: number
 }
 
+/** A rubric ↔ assignment link, as returned by `POST /courses/:id/rubric_associations`. */
+export interface CanvasRubricAssociation {
+  id: CanvasId
+  rubric_id: CanvasId
+  association_id: CanvasId
+  association_type: string
+  use_for_grading: boolean
+  purpose: string
+  hide_score_total?: boolean
+  hide_points?: boolean
+  hide_outcome_results?: boolean
+  /** Canvas adds this to the association returned from a create. */
+  association_count?: number
+}
+
 export interface CanvasRubricAssessment {
-  id: number
-  rubric_id: number
+  id: CanvasId
+  rubric_id: CanvasId
   score: number
   data: Array<{
     criterion_id: string
@@ -395,7 +466,7 @@ export interface CanvasRubricAssessment {
 // --- Quizzes ---
 
 export interface CanvasQuiz {
-  id: number
+  id: CanvasId
   title: string
   quiz_type: string
   description?: string | null // HTML shown above the quiz's questions
@@ -407,10 +478,10 @@ export interface CanvasQuiz {
 }
 
 export interface CanvasQuizSubmission {
-  id: number
-  quiz_id: number
-  user_id: number
-  submission_id: number
+  id: CanvasId
+  quiz_id: CanvasId
+  user_id: CanvasId
+  submission_id: CanvasId
   attempt: number
   score: number | null
   kept_score: number | null
@@ -423,18 +494,18 @@ export interface CanvasQuizSubmission {
 }
 
 export interface CanvasQuizQuestion {
-  id: number
-  quiz_id: number
+  id: CanvasId
+  quiz_id: CanvasId
   position: number
   question_text: string
   question_type: string
   points_possible: number
-  answers?: Array<{ id: number; text: string; weight: number }>
+  answers?: Array<{ id: CanvasId; text: string; weight: number }>
 }
 
 export interface CanvasQuizSubmissionQuestion {
-  id: number
-  quiz_id: number
+  id: CanvasId
+  quiz_id: CanvasId
   // Widened from `string | number | null`: matching / multiple-answer question
   // types return arrays or keyed objects, not a plain scalar. Still backward
   // compatible — the scalar members remain valid.
@@ -448,7 +519,7 @@ export interface CanvasQuizSubmissionQuestion {
 }
 
 export interface CanvasQuizExtension {
-  user_id: number
+  user_id: CanvasId
   // Canvas field name (minutes); tool output renames this to extra_time_minutes.
   extra_time: number | null
   extra_attempts: number | null
@@ -477,22 +548,22 @@ export interface CanvasQuizSubmissionEventsResponse {
 // --- Files ---
 
 export interface CanvasFile {
-  id: number
+  id: CanvasId
   filename?: string
   display_name: string
   content_type: string
   url: string
   size: number
-  folder_id: number
+  folder_id: CanvasId
   created_at?: string
   updated_at?: string
 }
 
 export interface CanvasFolder {
-  id: number
+  id: CanvasId
   name: string
   full_name: string
-  parent_folder_id: number | null
+  parent_folder_id: CanvasId | null
   created_at?: string
   files_count?: number
   folders_count?: number
@@ -515,7 +586,7 @@ export interface DownloadedFile {
 // --- Users ---
 
 export interface CanvasUser {
-  id: number
+  id: CanvasId
   name: string
   sortable_name?: string
   short_name?: string
@@ -539,7 +610,7 @@ export interface CanvasUser {
 }
 
 export interface CanvasUserProfile {
-  id: number
+  id: CanvasId
   name: string
   primary_email: string
   login_id: string
@@ -551,16 +622,16 @@ export interface CanvasUserProfile {
 // --- Groups ---
 
 export interface CanvasGroup {
-  id: number
+  id: CanvasId
   name: string
-  group_category_id: number
+  group_category_id: CanvasId
   members_count: number
 }
 
 // --- Modules ---
 
 export interface CanvasModule {
-  id: number
+  id: CanvasId
   name: string
   position: number
   items_count: number
@@ -571,12 +642,12 @@ export interface CanvasModule {
 }
 
 export interface CanvasModuleItem {
-  id: number
-  module_id: number
+  id: CanvasId
+  module_id: CanvasId
   title: string
   position: number
   type: string
-  content_id?: number
+  content_id?: CanvasId
   html_url?: string
   page_url?: string
   indent?: number
@@ -586,7 +657,7 @@ export interface CanvasModuleItem {
 }
 
 export interface CanvasCourseStructureModule {
-  id: number
+  id: CanvasId
   name: string
   position: number
   state: string
@@ -619,7 +690,7 @@ export interface CanvasCourseStructure {
 // --- Pages ---
 
 export interface CanvasPage {
-  page_id: number
+  page_id: CanvasId
   url: string
   title: string
   body?: string
@@ -632,7 +703,7 @@ export interface CanvasPage {
 // --- Discussions ---
 
 export interface CanvasDiscussionTopic {
-  id: number
+  id: CanvasId
   title: string
   message: string | null
   posted_at: string
@@ -648,14 +719,14 @@ export interface CanvasDiscussionTopic {
 }
 
 export interface CanvasDiscussionEntry {
-  id: number
-  user_id: number
+  id: CanvasId
+  user_id: CanvasId
   message: string
   created_at: string
 }
 
 export interface CanvasAnnouncement {
-  id: number
+  id: CanvasId
   title: string
   message: string
   posted_at: string
@@ -683,7 +754,7 @@ export interface UpdateDiscussionParams {
 // --- Calendar ---
 
 export interface CanvasCalendarEvent {
-  id: number
+  id: CanvasId
   title: string
   description?: string | null
   start_at: string
@@ -702,7 +773,7 @@ export interface CanvasCalendarEvent {
 // --- Appointment Groups ---
 
 export interface CanvasAppointmentGroup {
-  id: number
+  id: CanvasId
   title: string
   context_codes: string[]
   sub_context_codes?: string[]
@@ -715,7 +786,7 @@ export interface CanvasAppointmentGroup {
   location_name?: string | null
   location_address?: string | null
   participant_count?: number
-  reserved_times?: Array<{ id: number; start_at: string; end_at: string }>
+  reserved_times?: Array<{ id: CanvasId; start_at: string; end_at: string }>
   appointment_count?: number
   appointments?: CanvasCalendarEvent[]
   participant_type?: string
@@ -728,19 +799,19 @@ export interface CanvasAppointmentGroup {
 // --- Conversations ---
 
 export interface CanvasConversation {
-  id: number
+  id: CanvasId
   subject: string
   last_message: string
   last_message_at: string
   message_count: number
-  participants: Array<{ id: number; name: string }>
+  participants: Array<{ id: CanvasId; name: string }>
 }
 
 export interface CanvasConversationMessage {
-  id: number
+  id: CanvasId
   created_at: string
   body: string
-  author_id: number
+  author_id: CanvasId
   generated: boolean
   media_comment?: { media_id: string; media_type: string; url: string }
   attachments?: Pick<CanvasAttachment, 'id' | 'filename' | 'url'>[]
@@ -766,9 +837,9 @@ export interface CanvasOutcomeRating {
 }
 
 export interface CanvasOutcome {
-  id: number
+  id: CanvasId
   url: string
-  context_id: number | null
+  context_id: CanvasId | null
   context_type: 'Account' | 'Course' | 'Global' | (string & {})
   title: string
   display_name?: string | null
@@ -782,9 +853,9 @@ export interface CanvasOutcome {
 }
 
 export interface CanvasOutcomeGroup {
-  id: number
+  id: CanvasId
   url: string
-  context_id: number | null
+  context_id: CanvasId | null
   context_type: 'Account' | 'Course' | 'Global' | (string & {})
   title: string
   description?: string | null
@@ -795,9 +866,9 @@ export interface CanvasOutcomeGroup {
 }
 
 export interface CanvasOutcomeLink {
-  id: number | string
+  id: CanvasId
   url?: string
-  context_id?: number | null
+  context_id?: CanvasId | null
   context_type?: 'Account' | 'Course' | 'Global' | (string & {})
   outcome_group?: CanvasOutcomeGroup | null
   outcome?: CanvasOutcome | null
@@ -805,22 +876,22 @@ export interface CanvasOutcomeLink {
 }
 
 export interface CanvasOutcomeAlignment {
-  id: number
-  assignment_id: number | null
-  assessment_id: number | null
+  id: CanvasId
+  assignment_id: CanvasId | null
+  assessment_id: CanvasId | null
   submission_types?: string | null
   url?: string | null
   title: string
 }
 
 export interface CanvasOutcomeResult {
-  id: number
+  id: CanvasId
   score: number | null
   submitted_or_assessed_at: string | null
   links: {
-    user: string | number
-    learning_outcome: string | number
-    alignment: string | number
+    user: CanvasId
+    learning_outcome: CanvasId
+    alignment: CanvasId
   }
   percent: number | null
 }
@@ -839,7 +910,7 @@ export interface CanvasOutcomeRollupScore {
   score: number | null
   count: number
   links: {
-    outcome: string | number
+    outcome: CanvasId
   }
 }
 
@@ -847,9 +918,9 @@ export interface CanvasOutcomeRollup {
   scores: CanvasOutcomeRollupScore[] | null
   name: string
   links: {
-    course?: number
-    user?: number
-    section?: number
+    course?: CanvasId
+    user?: CanvasId
+    section?: CanvasId
   }
 }
 
@@ -860,7 +931,7 @@ export interface CanvasOutcomeRollupsResponse {
     outcomes?: CanvasOutcome[]
     outcome_groups?: CanvasOutcomeGroup[]
     courses?: CanvasCourse[]
-    sections?: Array<{ id: number; name: string }>
+    sections?: Array<{ id: CanvasId; name: string }>
   }
 }
 
@@ -886,7 +957,7 @@ export interface CanvasOutcomeMasteryDistributionResponse {
 // --- Accounts ---
 
 export interface CanvasAccountNotification {
-  id: number
+  id: CanvasId
   subject: string
   message: string
   start_at: string
@@ -895,10 +966,10 @@ export interface CanvasAccountNotification {
 }
 
 export interface CanvasAccount {
-  id: number
+  id: CanvasId
   name: string
-  parent_account_id: number | null
-  root_account_id: number | null
+  parent_account_id: CanvasId | null
+  root_account_id: CanvasId | null
   uuid: string
   default_storage_quota_mb: number
   default_user_storage_quota_mb: number
@@ -911,7 +982,7 @@ export interface CanvasAccountReport {
   title: string
   parameters: Record<string, { required?: boolean; description?: string }> | null
   last_run: {
-    id: number
+    id: CanvasId
     report: string
     status: 'created' | 'running' | 'complete' | 'error'
     created_at: string
@@ -931,10 +1002,10 @@ export interface CanvasGradingSchemeEntry {
 export type CanvasGradingStandardContextType = 'Course' | 'Account'
 
 export interface CanvasGradingStandard {
-  id: number
+  id: CanvasId
   title: string
   context_type: CanvasGradingStandardContextType
-  context_id: number
+  context_id: CanvasId
   grading_scheme: CanvasGradingSchemeEntry[]
 }
 
@@ -948,8 +1019,8 @@ export interface CanvasGradingStandard {
  * policy saved returns 404.
  */
 export interface CanvasLatePolicy {
-  id?: number
-  course_id?: number
+  id?: CanvasId
+  course_id?: CanvasId
   late_submission_deduction_enabled: boolean
   /** Percent deducted per interval (0–100; used as-is, no normalization). */
   late_submission_deduction: number
@@ -970,16 +1041,19 @@ export interface CreateAssignmentParams {
   points_possible?: number
   due_at?: string
   submission_types?: string[]
-  assignment_group_id?: number
+  assignment_group_id?: CanvasId
+  published?: boolean
+  omit_from_final_grade?: boolean
+  grade_group_students_individually?: boolean
 }
 
 export type UpdateAssignmentParams = Partial<CreateAssignmentParams>
 
 export interface CreateAssignmentOverrideParams {
   title?: string
-  student_ids?: number[]
-  group_id?: number
-  course_section_id?: number
+  student_ids?: CanvasId[]
+  group_id?: CanvasId
+  course_section_id?: CanvasId
   due_at?: string | null
   unlock_at?: string | null
   lock_at?: string | null
@@ -1013,8 +1087,314 @@ export interface CanvasActivityStreamItem {
   unread_count: number
 }
 
+/**
+ * One entry from GET /users/self/activity_stream/summary — `{type, count,
+ * unread_count}`. `CanvasActivityStreamItem` above already models this exact
+ * shape under a misleading name (it is used for the *course* activity stream
+ * summary, not a stream item); this is the correctly-named declaration for the
+ * cross-course summary endpoint. Renaming the existing type is tracked
+ * separately (BRU-2797 §1 C2, §11 Q4) and is not bundled here.
+ */
+export interface CanvasActivityStreamSummaryEntry {
+  type: string
+  count: number
+  unread_count: number
+}
+
+/**
+ * One `root_discussion_entries[]` entry on a `DiscussionTopic` / `Announcement`
+ * activity-stream item. Canvas caps the array at `StreamItem::LATEST_ENTRY_LIMIT`
+ * (3) at write time, and the nested `user` is the only place the stream spells a
+ * discussion author with an identifier beside the name.
+ *
+ * `user_id` can be missing or `null` — the pinned serializer SHA
+ * (1c9f0bb8013ed69c4f2efe11fd483025469b7e6c) can emit this nested `user`
+ * object with no usable identity (BRU-2868). There is nothing to key a stable
+ * pseudonym on in that case; see `anonymizeActivityStreamEntry`.
+ */
+export interface CanvasActivityStreamRootEntry {
+  user: { user_id?: CanvasId | null; user_name: string }
+  message: string | null
+}
+
+/**
+ * One `latest_messages[]` entry on a `Conversation` activity-stream item, built
+ * by `StreamItem#prepare_conversation`: `{id, created_at, author_id, message,
+ * participating_user_ids}`.
+ *
+ * Note what is NOT here: no name of any kind. The stream's conversation arm
+ * carries identifiers and message text only, which is why
+ * `Pseudonymizer.anonymizeActivityStream` has nothing to rewrite on it (the
+ * pseudonymizer rewrites names, never ids — `applyPseudonymToUser` preserves
+ * `user.id`). The message body is handled by provenance fencing instead.
+ */
+export interface CanvasActivityStreamConversationMessage {
+  id: CanvasId
+  created_at: string
+  author_id: CanvasId
+  message: string
+  participating_user_ids: CanvasId[]
+}
+
+/**
+ * One `discussion_entries[]` entry on the activity stream's `Submission` arm.
+ *
+ * `submission_attempt_json` emits `discussion_entries` for any submission to a
+ * `discussion_topic` assignment — it is in the default-on
+ * `SUBMISSION_OTHER_FIELDS`, and the stream narrows nothing — by calling
+ * `discussion_entry_api_json(entries, topic.context, user, session)` with four
+ * arguments, i.e. under the default `includes = %i[user_name subentries
+ * display_user]`.
+ *
+ * All three identity surfaces below can carry a real name, and they do NOT
+ * appear together. Per `serialize_entry`, `user_name` and `user_id` are both
+ * omitted when the entry is deleted, while `user` is emitted whenever
+ * `:display_user` is in includes — that guard has no `deleted?` check. So a
+ * deleted entry is `{user: {id, display_name, …}}` with no `user_id` and no
+ * `user_name`: keying off `user_name` alone silently passes that name through.
+ *
+ * `recent_replies` is the recursion and the only subentry key upstream emits
+ * (`discussion_entry_subentries`, capped at 10 with `has_more_replies`).
+ * Upstream nests exactly one level — the method returns `{}` unless
+ * `entry.root_entry_id.nil?` — but this type and its pseudonymizer are
+ * recursive regardless, because a depth assumption is not worth a leak.
+ */
+export interface CanvasSubmissionDiscussionEntry {
+  id?: CanvasId
+  created_at?: string
+  updated_at?: string
+  parent_id?: CanvasId | null
+  /** Omitted when the entry is deleted. */
+  user_id?: CanvasId
+  /** Omitted when the entry is deleted. */
+  user_name?: string
+  /** Present even on a deleted entry — see the note above. */
+  user?: CanvasUserDisplay
+  editor_id?: CanvasId
+  message?: string
+  deleted?: boolean
+  recent_replies?: CanvasSubmissionDiscussionEntry[]
+  has_more_replies?: boolean
+  [key: string]: unknown
+}
+
+/**
+ * One entry from `GET /users/self/activity_stream`.
+ *
+ * `context_type` is `"Course"` | `"Group"` and EXACTLY ONE of `course_id` /
+ * `group_id` is present — the key name is derived from the context type by
+ * Canvas's `Api::V1::Context#context_data`, so the other key is ABSENT, not
+ * null. Canvas's own doc block shows both keys with `group_id: null`; it is
+ * wrong. Every optional field is therefore `?` and never `| null`: a
+ * `null`-checking consumer cannot detect an absent key.
+ *
+ * The index signature is deliberate, not laziness. The `Submission` arm merges a
+ * whole `submission_json(submission, assignment, …, includes = %w[submission_comments
+ * assignment course html_url user])` into the item, so the key set of that one arm
+ * is as wide as Canvas's submission serializer and grows with it. The fields named
+ * below are the ones this server reads, pseudonymizes or fences; everything else
+ * passes through untyped rather than being silently dropped from the declaration.
+ */
+export interface CanvasActivityStreamEntry {
+  /** The stream item's own id, not the underlying object's. */
+  id: CanvasId
+  created_at: string
+  updated_at: string
+  title: string | null
+  message: string | null
+  /**
+   * A Ruby class name (`stream_item.data.class.name`), overwritten to
+   * `"WebConference"` / `"Collaboration"` for those arms. Not a closed set —
+   * `(string & {})` keeps it open, because the value is computed at runtime and
+   * the serializer's `else` arm raises rather than enumerating.
+   */
+  type:
+    | 'DiscussionTopic'
+    | 'Announcement'
+    | 'Conversation'
+    | 'Message'
+    | 'Submission'
+    | 'WebConference'
+    | 'Collaboration'
+    | 'AssessmentRequest'
+    | 'DiscussionEntry'
+    | (string & {})
+  /** Re-derived from `conversation_participants` on the `Conversation` arm, where it may be null. */
+  read_state: boolean | null
+  context_type?: 'Course' | 'Group' | (string & {})
+  course_id?: CanvasId
+  group_id?: CanvasId
+  html_url?: string
+  /** `Message` items set `url` alongside `html_url`, both from `data.url`. */
+  url?: string
+
+  // DiscussionTopic / Announcement
+  discussion_topic_id?: CanvasId
+  announcement_id?: CanvasId
+  total_root_discussion_entries?: number
+  require_initial_post?: boolean | null
+  user_has_posted?: boolean | null
+  root_discussion_entries?: CanvasActivityStreamRootEntry[]
+
+  // Conversation
+  conversation_id?: CanvasId
+  private?: boolean
+  participant_count?: number
+  latest_messages?: CanvasActivityStreamConversationMessage[]
+
+  // Message (a notification, not user-authored text)
+  message_id?: CanvasId
+  notification_category?: string | null
+
+  // Submission — plus everything else `submission_json` merges in.
+  submission_id?: CanvasId
+  assignment_id?: CanvasId
+  user_id?: CanvasId
+  grader_id?: CanvasId | null
+  body?: string | null
+  user?: CanvasUser
+  submission_comments?: CanvasSubmissionComment[]
+  /**
+   * Discussion-topic submissions only, but default-on when they occur — see
+   * {@link CanvasSubmissionDiscussionEntry}. Name-bearing and recursive.
+   */
+  discussion_entries?: CanvasSubmissionDiscussionEntry[]
+  /**
+   * `attempt.proxy_submitter.short_name` — a BARE STRING, not a user object,
+   * emitted with its `proxy_submitter_id` sibling whenever
+   * `attempt.proxy_submission?`. Because it is a naked string there is no
+   * `user`-shaped container for a generic walker to find.
+   */
+  proxy_submitter?: string
+  proxy_submitter_id?: CanvasId
+
+  // WebConference / Collaboration
+  web_conference_id?: CanvasId
+  collaboration_id?: CanvasId
+
+  // AssessmentRequest
+  assessment_request_id?: CanvasId
+
+  /**
+   * `DiscussionEntry` only. The serializer emits this name with NO accompanying
+   * identifier (`hash["author_name"] = discussion_entry.author_name` is the whole
+   * arm beside `message`), so a stable pseudonym is not derivable for it — see
+   * `Pseudonymizer.anonymizeActivityStream`.
+   */
+  author_name?: string
+
+  [key: string]: unknown
+}
+
+/**
+ * `PlannerOverride` json from `planner_override_json` — present only when the
+ * student has toggled an item's planner visibility ("mark as done" /
+ * "dismiss"). It is `api_json` on the AR record plus a re-derived
+ * `plannable_type` and `assignment_id`. None of its fields identify anyone
+ * but the authenticated caller — it is their own planner override.
+ */
+export interface CanvasPlannerOverride {
+  id: CanvasId
+  plannable_id: CanvasId
+  plannable_type: string
+  user_id: CanvasId
+  assignment_id: CanvasId | null
+  marked_complete: boolean
+  dismissed: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  [key: string]: unknown
+}
+
+/**
+ * The caller's own submission status on a planner item's underlying
+ * Assignment / SubAssignment / PeerReviewSubAssignment, from
+ * `submission_statuses_for` → `submission_statuses`.
+ */
+export interface CanvasPlannerSubmissionStatus {
+  submitted?: boolean
+  excused?: boolean
+  graded?: boolean
+  posted_at?: string | null
+  late?: boolean
+  missing?: boolean
+  needs_grading?: boolean
+  has_feedback?: boolean
+  redo_request?: boolean
+  feedback?: {
+    comment: string
+    is_media: boolean
+    author_name?: string
+    author_avatar_url?: string | null
+  }
+  [key: string]: unknown
+}
+
+/**
+ * One entry from `GET /planner/items`.
+ *
+ * `context_type` / `course_id` / `group_id` share the exact derivation and
+ * absent-not-null caveat as {@link CanvasActivityStreamEntry}
+ * (`Api::V1::Context#context_data`, BRU-2797 §1 C7) — a group-context item
+ * has no `course_id` key at all, not a null one.
+ *
+ * `plannable` is the polymorphic underlying object; its shape is keyed by
+ * `plannable_type` and varies per arm (`lib/api/v1/planner_item.rb`
+ * `planner_item_json`, pinned SHA 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c).
+ * No arm carries a third-party user record — the richest is `planner_note`,
+ * whose own `user_id` is the authenticated caller's own id, never another
+ * student's (BRU-2797 §6.1) — so this is declared as a loose object rather
+ * than a per-arm union.
+ */
+export interface CanvasPlannerItem {
+  context_type?: 'Course' | 'Group' | (string & {})
+  course_id?: CanvasId
+  group_id?: CanvasId
+  /** The caller's own course nickname when set, else the course name — join on `course_id`, never this. */
+  context_name?: string
+  context_image?: string | null
+  plannable_id: CanvasId
+  /**
+   * A `PlannerHelper::PLANNABLE_TYPES` key — snake_case, NOT the Ruby class
+   * name, unlike the activity stream's `type`. Not a closed set — kept open
+   * with `(string & {})` for the same reason as the activity stream's `type`.
+   */
+  plannable_type:
+    | 'assignment'
+    | 'quiz'
+    | 'planner_note'
+    | 'wiki_page'
+    | 'discussion_topic'
+    | 'announcement'
+    | 'calendar_event'
+    | 'assessment_request'
+    | 'sub_assignment'
+    | 'peer_review_sub_assignment'
+    | (string & {})
+  /** `null` unless the student has toggled this item's planner visibility. */
+  planner_override: CanvasPlannerOverride | null
+  /**
+   * `false` or an object — a union, not a nullable object. Canvas initialises
+   * `submission_status = { submissions: false }` and only replaces it with a
+   * hash for a submittable plannable; a consumer writing
+   * `item.submissions?.graded` would silently read `undefined` on the
+   * boolean arm if this were declared `CanvasPlannerSubmissionStatus | null`.
+   */
+  submissions: false | CanvasPlannerSubmissionStatus
+  new_activity: boolean
+  plannable_date: string
+  /** The polymorphic underlying object. Shape varies by `plannable_type`; no arm carries a third-party user record. */
+  plannable: Record<string, unknown>
+  /** Absent for `planner_note` items — Canvas has no html_url for individual planner notes. */
+  html_url?: string
+  /** `sub_assignment` discussion-checkpoint items only. */
+  details?: { reply_to_entry_required_count: number }
+  [key: string]: unknown
+}
+
 export interface CanvasStudentSummary {
-  id: number
+  id: CanvasId
   page_views: number
   max_page_views?: number
   page_views_level?: number
@@ -1030,16 +1410,22 @@ export interface CanvasStudentSummary {
   }
 }
 
+/**
+ * The one response type PR 1b widens (BRU-2730 §8). It is the sink for the
+ * four `analytics.ts` inline response-shape sites, so Phase 1 cannot leave it
+ * `number`; §8's ordering constraint exists because of this — **PR 2a must not
+ * widen `CourseSearchResult` again.**
+ */
 export interface CourseSearchResult {
-  id: number
+  id: CanvasId
   title: string
   type: 'page' | 'assignment' | 'discussion' | 'announcement'
   url?: string
-  course_id: number
+  course_id: CanvasId
 }
 
 export interface CanvasAssignmentAnalytics {
-  assignment_id: number
+  assignment_id: CanvasId
   title: string
   points_possible: number
   due_at: string | null
@@ -1064,7 +1450,7 @@ export interface CanvasAssignmentAnalytics {
 // --- Dashboard & Notifications ---
 
 export interface CanvasDashboardCard {
-  id: number
+  id: CanvasId
   shortName: string
   originalName: string
   courseCode: string
@@ -1083,39 +1469,39 @@ export interface CanvasDashboardCard {
   canChangeCourseState: boolean
   defaultView: string
   longName: string
-  courseId: number
+  courseId: CanvasId
   position: number | null
 }
 
 export interface CanvasTodoItem {
   type: string
   assignment?: {
-    id: number
+    id: CanvasId
     name: string
     due_at: string | null
-    course_id: number
+    course_id: CanvasId
     points_possible: number
   }
   quiz?: {
-    id: number
+    id: CanvasId
     title: string
     due_at: string | null
-    course_id: number
+    course_id: CanvasId
   }
   ignore: string
   ignore_permanently: string
   html_url: string
   needs_grading_count?: number
   context_type: string
-  course_id?: number
-  group_id?: number
+  course_id?: CanvasId
+  group_id?: CanvasId
 }
 
 export interface CanvasMissingSubmission {
-  id: number
+  id: CanvasId
   name: string
   due_at: string | null
-  course_id: number
+  course_id: CanvasId
   points_possible: number
   submission_types: string[]
   html_url: string
@@ -1124,7 +1510,7 @@ export interface CanvasMissingSubmission {
 // --- New Quizzes ---
 
 export interface CanvasNewQuiz {
-  id: number
+  id: CanvasId
   title: string
   instructions: string | null
   points_possible: number
@@ -1132,7 +1518,7 @@ export interface CanvasNewQuiz {
   unlock_at: string | null
   lock_at: string | null
   published: boolean
-  assignment_id: number
+  assignment_id: CanvasId
 }
 
 export interface CanvasNewQuizItem {
@@ -1152,7 +1538,7 @@ export interface CanvasNewQuizItem {
 }
 
 export interface CanvasNewQuizAccommodation {
-  user_id: number
+  user_id: CanvasId
   time_multiplier: number | null
   extra_attempts: number | null
 }
@@ -1160,12 +1546,12 @@ export interface CanvasNewQuizAccommodation {
 // --- Peer Reviews ---
 
 export interface CanvasPeerReview {
-  id: number
+  id: CanvasId
   /** The user ID of the reviewer (the person doing the reviewing). */
-  assessor_id: number
+  assessor_id: CanvasId
   /** The user ID of the reviewee (the student whose submission is being reviewed). */
-  user_id: number
-  asset_id: number
+  user_id: CanvasId
+  asset_id: CanvasId
   asset_type: 'Submission'
   workflow_state: 'assigned' | 'completed'
 }
@@ -1189,7 +1575,7 @@ export interface CanvasContentExportAttachment {
 }
 
 export interface CanvasContentExport {
-  id: number
+  id: CanvasId
   export_type: ContentExportType
   workflow_state: ContentExportWorkflowState
   /** null while 'created'; a Canvas progress URL once 'exporting'/'exported'. */
@@ -1197,7 +1583,7 @@ export interface CanvasContentExport {
   /** Non-null (time-limited download link) only when workflow_state === 'exported'. */
   attachment: CanvasContentExportAttachment | null
   /** Opaque integer — the teacher/admin who initiated the export, not a student identifier. */
-  user_id?: number
+  user_id?: CanvasId
   created_at: string
   updated_at: string
 }
@@ -1208,7 +1594,7 @@ export type ContentMigrationWorkflowState =
   'created' | 'queued' | 'running' | 'waiting_for_select' | 'completed' | 'failed' | (string & {})
 
 export interface CanvasContentMigration {
-  id: number
+  id: CanvasId
   migration_type: string
   migration_type_title?: string
   workflow_state: ContentMigrationWorkflowState
@@ -1219,7 +1605,7 @@ export interface CanvasContentMigration {
   started_at: string | null
   created_at: string
   updated_at: string
-  user_id?: number
+  user_id?: CanvasId
   attachment?: {
     url: string
     filename: string
@@ -1236,7 +1622,7 @@ export interface CanvasContentMigrator {
 }
 
 export interface CanvasMigrationIssue {
-  id: number
+  id: CanvasId
   content_migration_url: string
   description: string
   workflow_state: 'active' | 'resolved'

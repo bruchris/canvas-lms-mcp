@@ -9,6 +9,7 @@ import type {
 } from '../canvas/submissions'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput, canvasIdList } from '../canvas/id'
 
 const SUBMISSION_LIST_INCLUDE = [
   'submission_history',
@@ -46,22 +47,22 @@ export function submissionTools(
       description:
         'List all submissions for an assignment. Use `include` to attach user, assignment, rubric_assessment, submission_history, or visibility. Filter with `student_ids`, `workflow_state`, or `grading_period_id`. Defaults to including submission_comments.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
         include: z
           .array(z.enum(SUBMISSION_LIST_INCLUDE))
           .optional()
           .describe(
             'Extra fields to include (Canvas include[] param). Defaults to ["submission_comments"] when omitted.',
           ),
-        student_ids: z
-          .array(z.union([z.number(), z.string()]))
+        student_ids: canvasIdList({ sentinels: ['all', 'self'] })
           .optional()
           .describe(
-            'Restrict to submissions for these user IDs. Use "all" or "self" for shortcuts.',
+            'Restrict to submissions for these user IDs (pass large IDs as strings). ' +
+              'Use "all" or "self" for shortcuts.',
           ),
         section_ids: z
-          .array(z.number())
+          .array(canvasIdInput())
           .optional()
           .describe('Restrict to submissions in these sections'),
         grouped: z
@@ -72,29 +73,29 @@ export function submissionTools(
           .enum(SUBMISSION_WORKFLOW_STATE)
           .optional()
           .describe('Only include submissions in this workflow state'),
-        grading_period_id: z.number().int().optional().describe('Restrict to a grading period'),
+        grading_period_id: canvasIdInput().optional().describe('Restrict to a grading period'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const opts: ListSubmissionsOptions = {}
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<SubmissionListInclude>
         if (params.student_ids !== undefined)
-          opts.student_ids = params.student_ids as ReadonlyArray<number | string>
+          opts.student_ids = params.student_ids as ReadonlyArray<CanvasId>
         if (params.section_ids !== undefined)
-          opts.section_ids = params.section_ids as ReadonlyArray<number>
+          opts.section_ids = params.section_ids as ReadonlyArray<CanvasId>
         if (params.grouped !== undefined) opts.grouped = params.grouped as boolean
         if (params.workflow_state !== undefined)
           opts.workflow_state = params.workflow_state as SubmissionWorkflowState
         if (params.grading_period_id !== undefined)
-          opts.grading_period_id = params.grading_period_id as number
+          opts.grading_period_id = params.grading_period_id as CanvasId
         const submissions = await canvas.submissions.list(
           course_id,
-          params.assignment_id as number,
+          params.assignment_id as CanvasId,
           opts,
         )
         if (!pseudonymizer?.isEnabled()) return submissions
@@ -107,9 +108,9 @@ export function submissionTools(
       description:
         'Get a single submission for a specific user on an assignment. Defaults to including submission_comments. Pass `include` to add rubric_assessment, submission_history, visibility, course, user, or read_status.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        user_id: z.number().describe('The Canvas user ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID'),
         include: z
           .array(z.enum(SUBMISSION_GET_INCLUDE))
           .optional()
@@ -122,14 +123,14 @@ export function submissionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
+        const course_id = params.course_id as CanvasId
         const opts: GetSubmissionOptions = {}
         if (params.include !== undefined)
           opts.include = params.include as ReadonlyArray<SubmissionGetInclude>
         const submission = await canvas.submissions.get(
           course_id,
-          params.assignment_id as number,
-          params.user_id as number,
+          params.assignment_id as CanvasId,
+          params.user_id as CanvasId,
           opts,
         )
         if (!pseudonymizer?.isEnabled()) return submission
@@ -141,9 +142,9 @@ export function submissionTools(
       title: 'Grade Submission',
       description: 'Post or update a grade for a submission. Requires grading permissions.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        user_id: z.number().describe('The Canvas user ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID'),
         grade: z.string().describe('The grade to assign (e.g. "95", "A", "pass")'),
       },
       annotations: {
@@ -152,9 +153,9 @@ export function submissionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        const user_id = params.user_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
+        const user_id = params.user_id as CanvasId
         const grade = params.grade as string
         return canvas.submissions.grade(course_id, assignment_id, user_id, grade)
       },
@@ -164,9 +165,9 @@ export function submissionTools(
       title: 'Comment on Submission',
       description: 'Add a text comment to a submission.',
       inputSchema: {
-        course_id: z.number().describe('The Canvas course ID'),
-        assignment_id: z.number().describe('The Canvas assignment ID'),
-        user_id: z.number().describe('The Canvas user ID'),
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        user_id: canvasIdInput().describe('The Canvas user ID'),
         comment: z.string().describe('The comment text to add'),
       },
       annotations: {
@@ -174,9 +175,9 @@ export function submissionTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const course_id = params.course_id as number
-        const assignment_id = params.assignment_id as number
-        const user_id = params.user_id as number
+        const course_id = params.course_id as CanvasId
+        const assignment_id = params.assignment_id as CanvasId
+        const user_id = params.user_id as CanvasId
         const comment = params.comment as string
         return canvas.submissions.comment(course_id, assignment_id, user_id, comment)
       },

@@ -1,19 +1,20 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasPeerReview } from './types'
+import type { CanvasId } from './id'
 
 export class PeerReviewsModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async listForAssignment(courseId: number, assignmentId: number): Promise<CanvasPeerReview[]> {
+  async listForAssignment(courseId: CanvasId, assignmentId: CanvasId): Promise<CanvasPeerReview[]> {
     return this.client.paginate<CanvasPeerReview>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/peer_reviews`,
     )
   }
 
   async listForSubmission(
-    courseId: number,
-    assignmentId: number,
-    submissionId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    submissionId: CanvasId,
   ): Promise<CanvasPeerReview[]> {
     return this.client.paginate<CanvasPeerReview>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/peer_reviews`,
@@ -21,10 +22,10 @@ export class PeerReviewsModule {
   }
 
   async create(
-    courseId: number,
-    assignmentId: number,
-    submissionId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    submissionId: CanvasId,
+    userId: CanvasId,
   ): Promise<CanvasPeerReview> {
     return this.client.request<CanvasPeerReview>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/peer_reviews`,
@@ -36,10 +37,10 @@ export class PeerReviewsModule {
   }
 
   async delete(
-    courseId: number,
-    assignmentId: number,
-    submissionId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    submissionId: CanvasId,
+    userId: CanvasId,
   ): Promise<void> {
     await this.client.request<void>(
       `/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/peer_reviews?user_id=${userId}`,

@@ -3,8 +3,7 @@
 // The Anthropic Connectors Directory requires every tool to expose a top-level
 // `title`. Rather than hand-write a literal on all 163 tool definitions, titles
 // are resolved centrally — mirroring how `audience` defaults from the domain
-// (see `tagAudience` in roles.ts and `toolAudienceOverrides` in
-// discovery/catalog.ts). The baseline is mechanical Title Case of the tool name
+// (see `tagAudience` in roles.ts). The baseline is mechanical Title Case of the tool name
 // (`list_courses` → "List Courses"); the override map below hand-tunes the
 // handful of names that Title Case reads badly for (acronyms, prepositions).
 //

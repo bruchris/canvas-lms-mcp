@@ -3,6 +3,7 @@ import type { CanvasClient } from '../canvas'
 import type { CanvasAssignment, CanvasSubmission } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 // ── Caveats ──────────────────────────────────────────────────────────────────
 
@@ -23,9 +24,9 @@ const UNMATCHED_CAVEAT = 'Some submissions could not be matched to an assignment
 // ── Output shape ─────────────────────────────────────────────────────────────
 
 interface AwaitingSubmissionRow {
-  submission_id: number
+  submission_id: CanvasId
   /** Always the raw Canvas numeric ID; never pseudonymized. */
-  user_id: number
+  user_id: CanvasId
   /** Pseudonymized when the flag is on; null when the user object was not sideloaded. */
   user_name: string | null
   workflow_state: 'submitted' | 'pending_review'
@@ -35,7 +36,7 @@ interface AwaitingSubmissionRow {
 }
 
 interface AwaitingItem {
-  assignment_id: number
+  assignment_id: CanvasId
   assignment_name: string
   type: 'classic_quiz' | 'assignment'
   due_at: string | null
@@ -93,13 +94,11 @@ export function submissionsAwaitingGradingTools(
         '- When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are replaced with ' +
         'pseudonyms. Use resolve_pseudonym to look up the real identity.',
       inputSchema: {
-        course_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Canvas course ID to scan for submissions awaiting grading.'),
+        course_id: canvasIdInput().describe(
+          'Canvas course ID to scan for submissions awaiting grading.',
+        ),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Limit the scan to these specific assignment IDs (numeric Canvas IDs). ' +
@@ -131,8 +130,8 @@ export function submissionsAwaitingGradingTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const courseId = params.course_id as CanvasId
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
         // Zod defaults are not applied when the handler is invoked directly (tests),
         // so the toggles are interpreted with explicit comparisons: undefined means
         // "use the default" (include = true, only_pending_review = false).
@@ -213,7 +212,7 @@ export function submissionsAwaitingGradingTools(
         )
 
         // Step 10: group by assignment_id.
-        const byAssignment = new Map<number, CanvasSubmission[]>()
+        const byAssignment = new Map<CanvasId, CanvasSubmission[]>()
         for (const sub of processedSubmissions) {
           const group = byAssignment.get(sub.assignment_id) ?? []
           group.push(sub)
@@ -225,7 +224,7 @@ export function submissionsAwaitingGradingTools(
 
         // Step 12: assemble items; submissions within each item sorted oldest-first.
         // Stray submissions (assignment not in toFetch) are skipped defensively.
-        const unmatchedIds: number[] = []
+        const unmatchedIds: CanvasId[] = []
         const items: AwaitingItem[] = [...byAssignment.entries()].flatMap(
           ([assignmentId, subs]) => {
             const assignment = assignmentById.get(assignmentId)

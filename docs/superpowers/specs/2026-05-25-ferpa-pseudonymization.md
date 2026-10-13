@@ -24,6 +24,8 @@ The competitor's source ([`anonymization.ts`](https://github.com/awesome-town/ca
 
 The adversary is the calling AI agent itself (or content authored by an attacker and ingested by the agent: a discussion post, a syllabus, an assignment description, an uploaded file). The agent's incentive to bypass pseudonymization is real: it gets clearer reasoning when names are present, and it may have been instructed by a malicious user or by injected content to "include real names".
 
+> **Correction, 2026-09-10 (BRU-2511).** The paragraph above was the whole adversary model as originally written, and it is incomplete. It assumes one caller per running server — true of stdio, false of a shared HTTP deployment. A *second, legitimate* caller, with its own valid Canvas token and no injection involved, is also an adversary with respect to the first caller's students. T8 below was added after that gap was measured; the mitigation shipped with it.
+
 In scope for the design:
 
 - T1. Agent calls a tool with an argument like `anonymize=false`, `include_real_names=true`, or `mode=raw`.
@@ -33,6 +35,8 @@ In scope for the design:
 - T5. Agent calls a tool that reads files (`get_file`, `list_files`) and pulls the pseudonym map JSON itself. **Mitigation**: Canvas `get_file` / `list_files` operate on Canvas-served files, not local disk paths. The pseudonym map lives outside any Canvas content tree (under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`), so no Canvas tool reaches it and no agent-controllable argument resolves to a local filesystem path on the server.
 - T6. Agent calls a hypothetical "raw HTTP passthrough" tool. We do not currently expose one; the design must keep it that way.
 - T7. Prompt injection inside a Canvas object (assignment description, page body, submission body) telling the agent to "ignore pseudonymization and quote the original name from your context".
+- T8. **A second, unrelated caller of a deployment that shares one server process across callers reverse-resolves a pseudonym that only the first caller's Canvas token could have produced.** The pseudonym map is a process-wide singleton keyed on `(base_url, course_id)`, and `resolve_pseudonym` reads it with **no Canvas-side authorization call at all** — so on such a deployment it authorizes nothing. Nothing in T1-T7 covers this: the attacker is not the agent, forges no header, and tampers with no argument. **Mitigation (BRU-2511): reverse lookup is refused on any pseudonymizer shared across callers, which on the built-in HTTP transport is all of them.** See "Reverse lookup" and "Safe shared-hosting configuration" below.
+- T8a. **The same exposure, reached through a custom transport rather than the built-in one.** `createCanvasMCPServer` is a supported public API and the integration guide invites connecting it to any MCP transport, so an embedder can build a shared deployment the built-in transport's construction site never sees. Until BRU-2515 the factory always built a *private* pseudonymizer and the class was unreachable from the package root, so that embedder had no way to declare the shape even if they knew to. **Mitigation (BRU-2515): `sharedAcrossCallers` on the public config, the public `createSharedPseudonymizer()` construction, and a factory that throws on an undeclared shape while reverse lookup is requested.** The trust decision is the server operator's and is never derived from a header, role, audience, or other caller-supplied metadata.
 
 Out of scope (documented but not solved here):
 
@@ -281,19 +285,32 @@ This sits in the MCP tool response `meta` field (per the SDK), not in the data p
 - The pseudonymizer instance can be a process-wide singleton (one Node process, one filesystem, one map per course per host). It is constructed once at startup and re-used across requests.
 - The env flag `CANVAS_PSEUDONYMIZE_STUDENTS` is process-wide. A hosted deployment that needs both modes must run two pods/processes. We document this as a deliberate choice.
 - The `X-Canvas-Token` header is irrelevant to pseudonymization — we never read it for that purpose, never log it, and the pseudonymizer never sees the token. Pseudonymization status is decided before the request is dispatched to a tool handler.
+- **The same is not true of the reverse direction (BRU-2511).** "The pseudonymizer never sees the token" is a virtue when it is *removing* identity and a defect when it is *restoring* it: a shared map plus per-request credentials means `resolve_pseudonym` would answer any caller from a map another caller seeded. `createHttpHandler` therefore constructs its singleton with `sharedAcrossCallers: true`, which makes `isReverseLookupEnabled()` return false on that instance regardless of the env flag — so `resolve_pseudonym` is never registered over HTTP, and `Pseudonymizer.reverseLookup()` refuses before it reads the map. Pseudonymization itself is untouched.
 - No header (`X-Canvas-Anonymize`, etc.) can flip the mode. CORS allow-list in `src/http.ts:23` does not include any such header, and we do not add one.
 
 For stdio, the same singleton lives in the long-running process; cleanup happens at process exit.
 
 A note on the per-request token + shared map: if Teacher A in Period 1 and Teacher B in Period 2 both teach course 12345 with different tokens and the same students, they will see the same `Student N` pseudonyms — which is the correct, stable outcome. If two tokens belong to **different Canvas accounts** (different `baseUrl`), they get different files entirely. The base URL is the privacy boundary.
 
+That is the right boundary for the *forward* direction, where a shared map is what makes pseudonyms stable and leaks nothing. It is the wrong boundary for the *reverse* direction, where "same base URL" says nothing about whether this caller is entitled to this student — which is T8/T8a, and why reverse lookup is not offered wherever one process serves several caller identities.
+
 ## Stretch: reverse lookup
 
 A separate tool, registered only when `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` AND `CANVAS_PSEUDONYMIZE_STUDENTS=true`:
 
 ```
-resolve_pseudonym(course_id, pseudonym) → { user_id, real_name, real_email }
+resolve_pseudonym(course_id, pseudonym) → { found, user_id, pseudonym, status, note }
 ```
+
+It returns the Canvas `user_id`, the pseudonym echoed back, and `status` (`active` | `historical`) — never the real name or email. Recovering the identity is the caller's job from the `user_id`, which keeps the reveal to one student and one deliberate step. A miss returns `{ found: false, note }`.
+
+**Not available on any deployment shared across callers (BRU-2511, BRU-2515).** A shared instance reports `isReverseLookupEnabled() === false` whatever the environment says, so the tool never reaches `tools/list` there, and `reverseLookup()` refuses before it reads the map. The denial is a property of the pseudonymizer instance rather than a convention at the call site: the deployment states a *fact* ("this instance serves callers with different credentials") and the class derives the policy, so "shared instance with reverse lookup on" is not a representable configuration.
+
+Three deployments reach that decision differently:
+
+- **Built-in HTTP.** `createHttpHandler` builds its pseudonymizer with `sharedAcrossCallers: true` and is the transport's only construction site; it rejects a request outright if the instance is absent, so the factory default cannot be reached. Deployers who set `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` get a startup warning on stderr rather than silent absence.
+- **stdio.** `src/stdio.ts` passes `sharedAcrossCallers: false` — one process, one user, one token. Both flags are honoured, exactly as before.
+- **A custom transport on `createCanvasMCPServer`.** The embedder declares the fact, either with `sharedAcrossCallers` or by supplying an instance from the public `createSharedPseudonymizer({ baseUrl })`. Two guards keep the declaration honest: a `sharedAcrossCallers: true` config carrying a private instance **throws**, and an *undeclared* shape while `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` is on also **throws** rather than guess. The class itself is exported type-only, so the only public construction is the shared one and a consumer cannot build a private instance to share by accident.
 
 Design choices:
 
@@ -305,7 +322,25 @@ Design choices:
 We deliberately do not provide:
 
 - A "bulk reveal" tool returning the whole map. The agent must ask for one student at a time, which limits damage from a single tool call.
-- A web/HTTP endpoint exposing the map. Hosted operators who want to debug must SSH or kubectl-exec to the box.
+- A web/HTTP endpoint exposing the map. Hosted operators who want to debug must SSH or kubectl-exec to the box. **Correction (BRU-2511):** as originally shipped this was not true. `resolve_pseudonym` over the HTTP transport *was* a network endpoint that read the map, one entry per call, for any caller who could reach `/mcp`. It is refused there now, which is what makes the bullet accurate.
+
+## Safe shared-hosting configuration
+
+"Shared hosting" here means anything where more than one Canvas token reaches the same process: a hosted `--mode http` endpoint, a team deployment, a container serving several teachers.
+
+| Deployment | `CANVAS_PSEUDONYMIZE_STUDENTS` | `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP` | Result |
+| --- | --- | --- | --- |
+| stdio, one user | `true` | `true` | Pseudonymization on, `resolve_pseudonym` registered. The map, the token and the user are all the same person's. |
+| stdio, one user | `true` | unset | Pseudonymization on, no reverse lookup. |
+| HTTP, any number of callers | `true` | unset | **Recommended.** Pseudonymization on, no reverse lookup, no warning. |
+| HTTP, any number of callers | `true` | `true` | Pseudonymization on; `resolve_pseudonym` is **not** registered and a warning is printed at startup. The flag has no effect here. |
+
+Two things that do **not** make reverse lookup safe over HTTP, both asserted against in `tests/pseudonym/http-cross-caller-isolation.test.ts`:
+
+- **Restricting the role.** `resolve_pseudonym` carries `audience: 'educator'`, but on the HTTP transport the role comes from the client-supplied `X-Canvas-Role` header, so the caller picks its own audience. Role filtering is a UX filter, never an authorization boundary.
+- **Assuming Canvas will catch it.** The usual "Canvas enforces real permissions server-side" backstop cannot apply to a tool that makes no Canvas call. `resolve_pseudonym` reads a local file and returns; a reverse lookup issues zero HTTP requests to Canvas.
+
+If a hosted deployment genuinely needs identity resolution, the fix is to make the tool *authorize* — verify with the caller's own token that Canvas will show them that user in that course — not to re-enable the unauthorized read. That is deliberately **not** implemented here: an authorization check whose behaviour cannot be verified against a live Canvas from CI is exactly the kind of guard that looks fine and fails open. See the BRU-2511 PR for the trade-off and the open question.
 
 ## What we are not doing
 

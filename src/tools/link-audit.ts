@@ -4,6 +4,7 @@ import { mapWithConcurrency } from '../canvas/concurrency'
 import { decodeHtmlEntities } from './html-entities'
 import { isOversizedHtml, oversizedWarning, type ScanWarning } from './html-scan-limits'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const CONTENT_SOURCES = ['pages', 'assignments', 'syllabus', 'announcements', 'quizzes'] as const
 type ContentSource = (typeof CONTENT_SOURCES)[number]
@@ -38,7 +39,12 @@ type FindingReason = 'cross_course_reference' | 'empty_or_malformed'
 
 interface ContentLocation {
   type: ContentSource
-  id: number
+  // `CanvasId | number` only for the duration of Phase 1 (BRU-2730 §8): the
+  // page / assignment / quiz ids come from response types, which are still
+  // `number` until PR 2a, while the `syllabus` row's id is the migrated
+  // `course_id` input. PR 2a narrows this to `CanvasId`. It is never compared
+  // or used as a key — it is rendered — so §4.1's union hazard does not apply.
+  id: CanvasId | number
   title: string
   // Set only when type === 'quizzes'. Classic ids resolve at
   // /courses/:id/quizzes/:id; New Quiz ids are the backing assignment id and
@@ -55,7 +61,7 @@ interface LinkFinding {
   kind: LinkKind
   href: string
   reason: FindingReason
-  cross_course_id?: number
+  cross_course_id?: CanvasId
 }
 
 // Canvas generates predictably structured HTML with double-quoted attributes, so
@@ -96,15 +102,21 @@ const DANGEROUS_SCHEME_RE = /^(javascript|data|vbscript):/i
 
 function classifyUrl(
   raw: string,
-  courseId: number,
-): { reason: FindingReason; crossCourseId?: number } | null {
+  courseId: CanvasId,
+): { reason: FindingReason; crossCourseId?: CanvasId } | null {
   const href = decodeHtmlEntities(raw).trim()
   if (!href || href === '#' || DANGEROUS_SCHEME_RE.test(href)) {
     return { reason: 'empty_or_malformed' }
   }
   const crossCourseId = href.match(/\/courses\/(\d+)\//)?.[1]
   if (crossCourseId) {
-    const refId = parseInt(crossCourseId, 10)
+    // Canonicalized by stripping leading zeros, not by `parseInt`: the compared
+    // value may exceed `Number.MAX_SAFE_INTEGER`, and parsing it would round
+    // both the comparison and the reported id (BRU-2730 §4.4 — "no `Number(id)`
+    // to make a comparison work"). A href can legitimately carry `/courses/007/`,
+    // which Canvas resolves to course 7, so the zero-strip is what keeps this
+    // comparison equivalent to the `parseInt` it replaces.
+    const refId = crossCourseId.replace(/^0+(?=\d)/, '')
     if (refId !== courseId) {
       return { reason: 'cross_course_reference', crossCourseId: refId }
     }
@@ -114,7 +126,7 @@ function classifyUrl(
 
 function scanHtml(
   html: string | null | undefined,
-  courseId: number,
+  courseId: CanvasId,
   location: ContentLocation,
   warnings: ScanWarning<ContentLocation>[],
 ): LinkFinding[] {
@@ -136,7 +148,7 @@ function scanHtml(
 
 async function scanQuizzes(
   canvas: CanvasClient,
-  courseId: number,
+  courseId: CanvasId,
   warnings: ScanWarning<ContentLocation>[],
 ): Promise<LinkFinding[]> {
   // `assignments` here is a separate, locally-scoped fetch from the outer
@@ -216,7 +228,7 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
         'instructor’s own preview. `quizzes` is opt-in (off by default). Structural checks ' +
         'only — no outbound HTTP requests. Requires instructor permissions in the course.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
         include: z
           .array(z.enum(['pages', 'assignments', 'syllabus', 'announcements', 'quizzes']))
           .optional()
@@ -232,7 +244,7 @@ export function linkAuditTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const activeInclude = new Set<ContentSource>(
           (params.include as ContentSource[] | undefined) ?? DEFAULT_CONTENT_SOURCES,
         )

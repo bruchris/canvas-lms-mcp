@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 export function conversationTools(
   canvas: CanvasClient,
@@ -28,14 +29,14 @@ export function conversationTools(
       title: 'Get Conversation',
       description: 'Get a single conversation with its full message thread.',
       inputSchema: {
-        conversation_id: z.number().describe('The conversation ID'),
+        conversation_id: canvasIdInput().describe('The conversation ID'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const conversation = await canvas.conversations.get(params.conversation_id as number)
+        const conversation = await canvas.conversations.get(params.conversation_id as CanvasId)
         if (!pseudonymizer?.isEnabled()) return conversation
         return pseudonymizer.anonymizeConversation(conversation)
       },

@@ -1,8 +1,12 @@
-import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
-import type { CanvasQuizSubmissionQuestion } from '../canvas/types'
+import type {
+  CanvasQuizQuestion,
+  CanvasQuizSubmission,
+  CanvasQuizSubmissionQuestion,
+} from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
+import { type CanvasId, compareCanvasIds, canvasIdInput } from '../canvas/id'
 
 // Classic Quiz `quiz_type` values. An allow-list (not a `!== 'quizzes.next'`
 // deny-list) so an unrecognized future quiz_type fails closed rather than being
@@ -20,9 +24,9 @@ const MANUALLY_GRADED_QUESTION_TYPES = new Set(['essay_question', 'file_upload_q
 const RESPONDED_WORKFLOW_STATES = new Set(['complete', 'pending_review'])
 
 interface QuestionResponse {
-  user_id: number
+  user_id: CanvasId
   user_name: string | null
-  quiz_submission_id: number
+  quiz_submission_id: CanvasId
   attempt: number
   answer: CanvasQuizSubmissionQuestion['answer']
   correct: boolean | null
@@ -30,13 +34,105 @@ interface QuestionResponse {
 }
 
 interface QuestionGroup {
-  question_id: number
+  question_id: CanvasId
   question_text: string
   question_type: string
-  position: number
+  // null for a question resolved from students' attempts (a bank draw, or one
+  // removed from the quiz after it was answered): it has no fixed quiz position.
+  position: number | null
   points_possible: number
   needs_manual_grading: boolean
   responses: QuestionResponse[]
+}
+
+function toGroup(question: CanvasQuizQuestion, position: number | null): QuestionGroup {
+  return {
+    question_id: question.id,
+    question_text: question.question_text,
+    question_type: question.question_type,
+    position,
+    points_possible: question.points_possible,
+    needs_manual_grading: MANUALLY_GRADED_QUESTION_TYPES.has(question.question_type),
+    responses: [],
+  }
+}
+
+/**
+ * Resolve question ids that students answered but listQuestions() did not
+ * return, by asking Canvas which questions each attempt was actually served.
+ *
+ * Why such ids exist (instructure/canvas-lms@1c9f0bb): a bank draw, or a
+ * duplicate draw from an in-quiz group, is materialised as a separate
+ * `generated` QuizQuestion row (AssessmentQuestion#create_quiz_question), and
+ * the attempt's quiz_data records that row's id. The answers endpoint renders
+ * QuizQuestion.where(id: <quiz_data ids>) with no workflow_state filter
+ * (QuizSubmission#quiz_questions), so it answers under the generated id, while
+ * listQuestions() renders only quiz.active_quiz_questions (workflow_state
+ * 'active' or NULL). The attempt's own question list (index_submission_questions)
+ * is keyed off the same quiz_data ids, so it does contain them, uncensored for
+ * quiz editors and with the attempt's points_possible (the group's
+ * question_points). The answers endpoint's include[]=quiz_question sideload is
+ * no substitute: quiz_submission_questions_json forces censoring on
+ * (`meta[:censored] ||= true`), which strips points_possible.
+ *
+ * Generated rows are reused by every attempt that drew the same bank question
+ * (AssessmentQuestion.find_or_create_quiz_questions), so a few attempts usually
+ * cover every id. They are picked greedily (most still-uncovered ids first) and
+ * fetched in parallel. A failed lookup is logged and its ids stay unresolved;
+ * the caller reports those responses as unmatched instead of dropping them.
+ */
+async function resolveAttemptQuestions(
+  canvas: CanvasClient,
+  courseId: CanvasId,
+  quizId: CanvasId,
+  submissions: CanvasQuizSubmission[],
+  // Both `answersBySubmission` and `missing` are now `CanvasId`-keyed: PR 2a
+  // normalized the response side, so a response-sourced id and an
+  // input-sourced one are the same representation (BRU-2730 §4.1).
+  answersBySubmission: Map<CanvasId, CanvasQuizSubmissionQuestion[]>,
+  missing: ReadonlySet<CanvasId>,
+): Promise<CanvasQuizQuestion[]> {
+  const uncovered = new Set(missing)
+  const picked: CanvasQuizSubmission[] = []
+  while (uncovered.size > 0) {
+    let best: CanvasQuizSubmission | undefined
+    let bestCount = 0
+    for (const submission of submissions) {
+      const answers = answersBySubmission.get(submission.id) ?? []
+      const count = answers.filter((answer) => uncovered.has(answer.id)).length
+      if (count > bestCount) {
+        best = submission
+        bestCount = count
+      }
+    }
+    if (!best) break // unreachable: every missing id came from some submission's answers
+    picked.push(best)
+    for (const answer of answersBySubmission.get(best.id) ?? []) uncovered.delete(answer.id)
+  }
+
+  const settled = await Promise.allSettled(
+    picked.map((s) => canvas.quizzes.listSubmissionQuestions(courseId, quizId, s.id, s.attempt)),
+  )
+  const resolved = new Map<CanvasId, CanvasQuizQuestion>()
+  settled.forEach((outcome, i) => {
+    const submission = picked[i]
+    if (!submission) return // index-aligned with `settled`; guard for the type checker
+    if (outcome.status === 'fulfilled') {
+      for (const question of outcome.value) {
+        const key = question.id
+        if (missing.has(key) && !resolved.has(key)) {
+          resolved.set(key, question)
+        }
+      }
+    } else {
+      console.error(
+        `get_quiz_question_responses: failed fetching the questions served in quiz submission ` +
+          `${submission.id} attempt ${submission.attempt} (course ${courseId}, quiz ${quizId}):`,
+        outcome.reason,
+      )
+    }
+  })
+  return [...resolved.values()]
 }
 
 export function quizQuestionResponseTools(
@@ -54,20 +150,23 @@ export function quizQuestionResponseTools(
         'Classic Quizzes only (quiz_type: assignment, practice_quiz, graded_survey, survey) — New ' +
         'Quizzes exposes responses through a different API. Omit question_id to get every question; ' +
         'provide it to scope to one. Each question reports needs_manual_grading (true for essay and ' +
-        'file-upload questions) and points_possible. Scans one Canvas API call per completed or ' +
-        'pending-review submission; a failed per-submission fetch is recorded in submissions_failed ' +
-        'rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student ' +
-        'names are replaced with stable pseudonyms.',
+        'file-upload questions) and points_possible. Questions drawn from a question bank are ' +
+        "included: Canvas stores each draw as a generated question that the quiz's question list " +
+        "omits, so they are resolved from the students' own attempts, listed after the quiz's " +
+        'fixed questions, and report position: null. Scans one Canvas API call per completed or pending-review ' +
+        'submission, plus one per attempt needed to resolve such questions. A failed ' +
+        'per-submission fetch is recorded in submissions_failed, and a response whose question ' +
+        'cannot be resolved is counted in unmatched_response_count and unmatched_question_ids, ' +
+        'rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
+        'student names are replaced with stable pseudonyms.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('The Canvas course ID'),
-        quiz_id: z.number().int().positive().describe('The Canvas quiz ID (Classic Quizzes only)'),
-        question_id: z
-          .number()
-          .int()
-          .positive()
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        quiz_id: canvasIdInput().describe('The Canvas quiz ID (Classic Quizzes only)'),
+        question_id: canvasIdInput()
           .optional()
           .describe(
-            'Scope the result to a single question ID (from list_quiz_questions). ' +
+            'Scope the result to a single question ID (from list_quiz_questions, or a ' +
+              'bank-drawn question_id returned by this tool). ' +
               "Omit to return every question with every student's response.",
           ),
       },
@@ -76,9 +175,9 @@ export function quizQuestionResponseTools(
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const quizId = params.quiz_id as number
-        const questionId = params.question_id as number | undefined
+        const courseId = params.course_id as CanvasId
+        const quizId = params.quiz_id as CanvasId
+        const questionId = params.question_id as CanvasId | undefined
 
         // Gate Classic vs New Quizzes first, before any further Canvas calls, so a
         // New Quiz fails fast with a clear message instead of an opaque 404 later.
@@ -91,12 +190,11 @@ export function quizQuestionResponseTools(
           )
         }
 
+        // An id absent from this list may still be a bank-drawn question, so an
+        // unknown question_id is only rejected once the attempts have been scanned.
         let questions = await canvas.quizzes.listQuestions(courseId, quizId)
         if (questionId !== undefined) {
           questions = questions.filter((q) => q.id === questionId)
-          if (questions.length === 0) {
-            throw new Error(`Question ${questionId} not found on quiz ${quizId}.`)
-          }
         }
         questions = [...questions].sort((a, b) => a.position - b.position)
 
@@ -122,8 +220,8 @@ export function quizQuestionResponseTools(
           submissions.map((s) => canvas.quizzes.getSubmissionAnswers(s.id)),
         )
 
-        const answersBySubmission = new Map<number, CanvasQuizSubmissionQuestion[]>()
-        const submissionsFailed: number[] = []
+        const answersBySubmission = new Map<CanvasId, CanvasQuizSubmissionQuestion[]>()
+        const submissionsFailed: CanvasId[] = []
         settled.forEach((outcome, i) => {
           const submission = submissions[i]
           if (!submission) return // index-aligned with `settled`; guard for the type checker
@@ -139,31 +237,68 @@ export function quizQuestionResponseTools(
           }
         })
 
-        const groups = new Map<number, QuestionGroup>(
-          questions.map((q) => [
-            q.id,
-            {
-              question_id: q.id,
-              question_text: q.question_text,
-              question_type: q.question_type,
-              position: q.position,
-              points_possible: q.points_possible,
-              needs_manual_grading: MANUALLY_GRADED_QUESTION_TYPES.has(q.question_type),
-              responses: [],
-            },
-          ]),
+        // Keyed by the canonical ID string, because `questionId` — a migrated
+        // input — is looked up in it below (BRU-2730 §4.1: no `Number(id)` to
+        // make a numeric key fit).
+        const groups = new Map<CanvasId, QuestionGroup>(
+          questions.map((q) => [q.id, toGroup(q, q.position)]),
         )
+        const inScope = (id: CanvasId) => questionId === undefined || id === questionId
 
+        // Answer ids that are not active quiz questions: bank draws, or questions
+        // removed from the quiz after the attempt. See resolveAttemptQuestions.
+        const missing = new Set<CanvasId>()
+        for (const answers of answersBySubmission.values()) {
+          for (const answer of answers) {
+            const key = answer.id
+            if (inScope(key) && !groups.has(key)) missing.add(key)
+          }
+        }
+        if (missing.size > 0) {
+          const resolved = await resolveAttemptQuestions(
+            canvas,
+            courseId,
+            quizId,
+            submissions,
+            answersBySubmission,
+            missing,
+          )
+          // After the fixed questions, in id order: a bank draw's per-attempt
+          // position differs between students, so it is not a stable sort key.
+          // `compareCanvasIds` rather than `a.id - b.id`: the ids are canonical
+          // strings now, and the subtraction would round both operands above
+          // 2**53 and order two distinct ids as equal (§4.4).
+          for (const question of resolved.sort((a, b) => compareCanvasIds(a.id, b.id))) {
+            groups.set(question.id, toGroup(question, null))
+          }
+        }
+
+        if (questionId !== undefined && !groups.has(questionId) && !missing.has(questionId)) {
+          const failedNote =
+            submissionsFailed.length > 0
+              ? ` (answers could not be fetched for ${submissionsFailed.length} submission(s), ` +
+                `so a question drawn only in those attempts would not be found)`
+              : ''
+          throw new Error(`Question ${questionId} not found on quiz ${quizId}${failedNote}.`)
+        }
+
+        // Responses whose question is neither an active question nor resolvable
+        // from the attempt are counted, so an identifier mismatch cannot look like
+        // a complete result.
+        const unmatchedQuestionIds = new Set<CanvasId>()
+        let unmatchedResponseCount = 0
         for (const submission of submissions) {
           const answers = answersBySubmission.get(submission.id)
           if (!answers) continue
           for (const answer of answers) {
-            // Assumes CanvasQuizSubmissionQuestion.id === CanvasQuizQuestion.id (the
-            // quiz's question ID). If Canvas ever returns a different identifier here,
-            // this lookup silently misses and responses[] comes back empty — see spec
-            // 2026-07-09-issue-240 design unknown §3 (the pivot's single highest risk).
-            const group = groups.get(answer.id)
-            if (!group) continue // not one of the (possibly question_id-filtered) target questions
+            const answerKey = answer.id
+            if (!inScope(answerKey)) continue // another question, excluded by question_id
+            const group = groups.get(answerKey)
+            if (!group) {
+              unmatchedQuestionIds.add(answerKey)
+              unmatchedResponseCount++
+              continue
+            }
             group.responses.push({
               user_id: submission.user_id,
               user_name: nameById.get(submission.user_id) ?? null,
@@ -183,6 +318,10 @@ export function quizQuestionResponseTools(
           questions: [...groups.values()],
           submissions_scanned: submissions.length,
           submissions_failed: submissionsFailed,
+          unmatched_response_count: unmatchedResponseCount,
+          // `a - b` would round both operands above 2**53 and can report two
+          // distinct ids as equal (BRU-2730 §4.4).
+          unmatched_question_ids: [...unmatchedQuestionIds].sort(compareCanvasIds),
         }
       },
     },

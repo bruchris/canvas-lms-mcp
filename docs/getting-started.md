@@ -134,6 +134,14 @@ You don't need course IDs — just describe what you want in plain English and t
 
 ## Troubleshooting
 
+Start with the built-in check. It reports what your configuration resolves to and what
+is missing, without printing your token or base URL:
+
+```bash
+npx canvas-lms-mcp doctor
+```
+
+
 ### "Canvas token is invalid or expired" (401 error)
 
 Your token is wrong or has been revoked.

@@ -2,9 +2,10 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 interface NewQuizAccommodationResult {
-  assignment_id: number | null
+  assignment_id: CanvasId | null
   time_multiplier: number | null
   extra_attempts: number | null
   error?: string
@@ -29,12 +30,8 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first to obtain the real user_id from a pseudonym.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z
-          .number()
-          .int()
-          .positive()
-          .describe('Real Canvas user ID of the student to accommodate'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student to accommodate'),
         time_multiplier: z
           .number()
           .min(1.01)
@@ -51,7 +48,7 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
           .optional()
           .describe("Additional attempts to grant beyond each quiz's default attempt limit."),
         assignment_ids: z
-          .array(z.number().int().positive())
+          .array(canvasIdInput())
           .optional()
           .describe(
             'Limit accommodation to these specific New Quiz assignment IDs. ' +
@@ -64,11 +61,11 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
         const timeMultiplier = params.time_multiplier as number | undefined
         const extraAttempts = params.extra_attempts as number | undefined
-        const assignmentIds = params.assignment_ids as number[] | undefined
+        const assignmentIds = params.assignment_ids as CanvasId[] | undefined
 
         if (timeMultiplier === undefined && extraAttempts === undefined) {
           throw new Error('Provide at least one of time_multiplier or extra_attempts.')
@@ -144,16 +141,16 @@ export function newQuizAccommodationTools(canvas: CanvasClient): ToolDefinition[
         'Provide user_id as the real Canvas user ID. If CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
         'call resolve_pseudonym first.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
-        user_id: z.number().int().positive().describe('Real Canvas user ID of the student'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
+        user_id: canvasIdInput().describe('Real Canvas user ID of the student'),
       },
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
-        const userId = params.user_id as number
+        const courseId = params.course_id as CanvasId
+        const userId = params.user_id as CanvasId
 
         const record = await canvas.newQuizzes.getAccommodation(courseId, userId)
 

@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasPage } from './types'
 import { mapWithConcurrency } from './concurrency'
+import type { CanvasId } from './id'
 
 /**
  * Max concurrent page-body fetches issued by {@link PagesModule.listWithBodies}.
@@ -12,11 +13,11 @@ export const PAGE_BODY_CONCURRENCY_LIMIT = 10
 export class PagesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async list(courseId: number): Promise<CanvasPage[]> {
+  async list(courseId: CanvasId): Promise<CanvasPage[]> {
     return this.client.paginate<CanvasPage>(`/api/v1/courses/${courseId}/pages`)
   }
 
-  async get(courseId: number, pageUrl: string): Promise<CanvasPage> {
+  async get(courseId: CanvasId, pageUrl: string): Promise<CanvasPage> {
     return this.client.request<CanvasPage>(
       `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`,
     )
@@ -31,7 +32,7 @@ export class PagesModule {
    * accessibility-audit tools to scan page content. `CanvasApiError` from either
    * the list or any individual fetch propagates unchanged.
    */
-  async listWithBodies(courseId: number): Promise<CanvasPage[]> {
+  async listWithBodies(courseId: CanvasId): Promise<CanvasPage[]> {
     const stubs = await this.client.paginate<CanvasPage>(`/api/v1/courses/${courseId}/pages`)
     return mapWithConcurrency(stubs, PAGE_BODY_CONCURRENCY_LIMIT, (stub) =>
       this.get(courseId, stub.url),
@@ -39,7 +40,7 @@ export class PagesModule {
   }
 
   async create(
-    courseId: number,
+    courseId: CanvasId,
     params: { title: string; body?: string; published?: boolean; editing_roles?: string },
   ): Promise<CanvasPage> {
     return this.client.request<CanvasPage>(`/api/v1/courses/${courseId}/pages`, {
@@ -49,7 +50,7 @@ export class PagesModule {
   }
 
   async update(
-    courseId: number,
+    courseId: CanvasId,
     pageUrl: string,
     params: { title?: string; body?: string; published?: boolean; editing_roles?: string },
   ): Promise<CanvasPage> {
@@ -62,7 +63,7 @@ export class PagesModule {
     )
   }
 
-  async delete(courseId: number, pageUrl: string): Promise<void> {
+  async delete(courseId: CanvasId, pageUrl: string): Promise<void> {
     await this.client.request<void>(
       `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageUrl)}`,
       { method: 'DELETE' },

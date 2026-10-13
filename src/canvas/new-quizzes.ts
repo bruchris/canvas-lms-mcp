@@ -1,5 +1,6 @@
 import { CanvasApiError, type CanvasHttpClient } from './client'
 import type { CanvasNewQuiz, CanvasNewQuizAccommodation, CanvasNewQuizItem } from './types'
+import type { CanvasId } from './id'
 
 export interface NewQuizPayload {
   title?: string
@@ -68,39 +69,44 @@ export interface NewQuizItemUpdatePayload {
 export class NewQuizzesModule {
   constructor(private client: CanvasHttpClient) {}
 
-  async create(courseId: number, payload: NewQuizPayload): Promise<CanvasNewQuiz> {
+  /**
+   * The New Quizzes API expects quiz fields nested under a `quiz` key
+   * (`quiz[title]`, `quiz[published]`, …), the same shape the Classic quizzes
+   * endpoint uses. A flat body is rejected with `400 quiz is missing`.
+   */
+  async create(courseId: CanvasId, payload: NewQuizPayload): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(`/api/quiz/v1/courses/${courseId}/quizzes`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ quiz: payload }),
     })
   }
 
   async update(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     patch: NewQuizPayload,
   ): Promise<CanvasNewQuiz> {
     return this.client.request<CanvasNewQuiz>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}`,
-      { method: 'PATCH', body: JSON.stringify(patch) },
+      { method: 'PATCH', body: JSON.stringify({ quiz: patch }) },
     )
   }
 
-  async delete(courseId: number, assignmentId: number): Promise<void> {
+  async delete(courseId: CanvasId, assignmentId: CanvasId): Promise<void> {
     await this.client.request<void>(`/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}`, {
       method: 'DELETE',
     })
   }
 
-  async listItems(courseId: number, assignmentId: number): Promise<CanvasNewQuizItem[]> {
+  async listItems(courseId: CanvasId, assignmentId: CanvasId): Promise<CanvasNewQuizItem[]> {
     return this.client.paginate<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items`,
     )
   }
 
   async getItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     itemId: string,
   ): Promise<CanvasNewQuizItem> {
     return this.client.request<CanvasNewQuizItem>(
@@ -108,40 +114,45 @@ export class NewQuizzesModule {
     )
   }
 
+  /**
+   * The New Quizzes Items API expects item fields nested under an `item` key
+   * (`item[entry_type]`, `item[points_possible]`, `item[entry][...]`). Flat
+   * fields would not be bound to the `item` parameter.
+   */
   async createItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     input: NewQuizItemCreatePayload,
   ): Promise<CanvasNewQuizItem> {
-    const wireBody: Record<string, unknown> = {
+    const wireItem: Record<string, unknown> = {
       entry_type: 'Item',
       points_possible: input.points_possible,
       entry: this.toWireItem(input.item),
     }
-    if (input.position !== undefined) wireBody.position = input.position
+    if (input.position !== undefined) wireItem.position = input.position
     return this.client.request<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items`,
-      { method: 'POST', body: JSON.stringify(wireBody) },
+      { method: 'POST', body: JSON.stringify({ item: wireItem }) },
     )
   }
 
   async updateItem(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     itemId: string,
     patch: NewQuizItemUpdatePayload,
   ): Promise<CanvasNewQuizItem> {
-    const wireBody: Record<string, unknown> = {}
-    if (patch.position !== undefined) wireBody.position = patch.position
-    if (patch.points_possible !== undefined) wireBody.points_possible = patch.points_possible
-    if (patch.item !== undefined) wireBody.entry = this.toWireItem(patch.item)
+    const wireItem: Record<string, unknown> = {}
+    if (patch.position !== undefined) wireItem.position = patch.position
+    if (patch.points_possible !== undefined) wireItem.points_possible = patch.points_possible
+    if (patch.item !== undefined) wireItem.entry = this.toWireItem(patch.item)
     return this.client.request<CanvasNewQuizItem>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items/${itemId}`,
-      { method: 'PATCH', body: JSON.stringify(wireBody) },
+      { method: 'PATCH', body: JSON.stringify({ item: wireItem }) },
     )
   }
 
-  async deleteItem(courseId: number, assignmentId: number, itemId: string): Promise<void> {
+  async deleteItem(courseId: CanvasId, assignmentId: CanvasId, itemId: string): Promise<void> {
     await this.client.request<void>(
       `/api/quiz/v1/courses/${courseId}/quizzes/${assignmentId}/items/${itemId}`,
       { method: 'DELETE' },
@@ -149,8 +160,8 @@ export class NewQuizzesModule {
   }
 
   async setAccommodation(
-    courseId: number,
-    userId: number,
+    courseId: CanvasId,
+    userId: CanvasId,
     timeMultiplier?: number,
     extraAttempts?: number,
   ): Promise<CanvasNewQuizAccommodation> {
@@ -164,9 +175,9 @@ export class NewQuizzesModule {
   }
 
   async setQuizAccommodation(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
     timeMultiplier?: number,
     extraAttempts?: number,
   ): Promise<CanvasNewQuizAccommodation> {
@@ -180,8 +191,8 @@ export class NewQuizzesModule {
   }
 
   async getAccommodation(
-    courseId: number,
-    userId: number,
+    courseId: CanvasId,
+    userId: CanvasId,
   ): Promise<CanvasNewQuizAccommodation | null> {
     try {
       return await this.client.request<CanvasNewQuizAccommodation>(

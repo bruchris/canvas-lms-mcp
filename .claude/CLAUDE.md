@@ -29,9 +29,11 @@ Canvas LMS MCP server — no UI, pure TypeScript. Three layers:
 ```
 src/canvas/       Standalone Canvas REST API client (pure fetch, no MCP dependency)
 src/tools/        MCP tool definitions — each domain returns ToolDefinition[]
+src/auth/         Auth profiles; src/auth/oauth/ is the OAuth 2.1 authorization/resource server + Canvas Developer Key client
 src/server.ts     Factory: createCanvasMCPServer(config) wires canvas + tools into McpServer
 src/stdio.ts      stdio transport entry — Claude Desktop, Cursor, VS Code
-src/http.ts       HTTP transport entry — ChatGPT, hosted service (per-request auth)
+src/http.ts       HTTP transport entry — remote_static_token (X-Canvas-Token) or oauth_brokered (MCP OAuth)
+src/doctor.ts     `canvas-lms-mcp doctor` — identity-safe setup diagnostics
 ```
 
 ### Canvas Client Pattern
@@ -89,12 +91,13 @@ Every tool must declare MCP annotations:
 | MCP server factory       | `src/server.ts`               |
 | stdio transport          | `src/stdio.ts`                |
 | HTTP transport           | `src/http.ts`                 |
+| Auth profiles / OAuth    | `src/auth/`                   |
 | CLI argument parser      | `src/cli.ts`                  |
 | Tests                    | `tests/`                      |
 
 ### Required Environment Variables
 
-- `CANVAS_API_TOKEN` — Canvas personal access token (or passed via `--token` CLI flag)
+- `CANVAS_API_TOKEN` — Canvas personal access token (or passed via `--token` CLI flag). Not used by the `oauth_brokered` HTTP profile, which takes `CANVAS_MCP_ISSUER`, `CANVAS_OAUTH_CLIENT_ID`, `CANVAS_OAUTH_CLIENT_SECRET` instead (see `docs/oauth-profile.md`)
 - `CANVAS_BASE_URL` — Canvas instance base URL, origin only with no `/api/v1` suffix (the client embeds `/api/v1` per endpoint), e.g., `https://school.instructure.com` (or passed via `--base-url` CLI flag)
 
 ### How to Add a New Tool
@@ -105,4 +108,20 @@ Every tool must declare MCP annotations:
 4. Register the domain in `getAllTools()` in `src/tools/index.ts`
 5. Write tests in `tests/<domain>.test.ts` using mocked Canvas responses
 6. **If the tool returns student PII (a `CanvasUser`, a `participants` array, or a `user_name` field), wrap it.** Inside the tool handler, route the response through the matching `pseudonymizer.anonymize*` method (`anonymizeUser` / `anonymizeUsers` / `anonymizeEnrollment` / `anonymizeSubmission` / `anonymizeConversation` / `anonymizeOutcomeResults`) AND add the tool's name to `PSEUDONYMIZER_WRAPPED_TOOLS` in `src/pseudonym/coverage.ts`. CI (`tests/pseudonym/coverage.test.ts`) fails until both are done.
-7. **Tag the tool's audience for role-based filtering.** Every tool resolves to one `ToolAudience` (`student` | `educator` | `admin` | `shared`). By default it inherits the domain's `defaultPrimaryAudience` from `src/tools/catalog.ts`; only set `audience: '<value>'` on the `ToolDefinition` when the tool diverges from its domain default (e.g. a read tool in a write-heavy domain that students should also see → `audience: 'shared'`). Note `'educator'` is the internal tag for the user-facing `teacher` role. CI (`tests/tools/audience-coverage.test.ts`) fails if any tool resolves to no audience.
+7. **Tag the tool's audience for role-based filtering.** Every tool resolves to one `ToolAudience` (`student` | `educator` | `admin` | `shared`). By default it inherits the domain's `defaultPrimaryAudience` from `src/tools/catalog.ts`; only set `audience: '<value>'` on the `ToolDefinition` when the tool diverges from its domain default (e.g. a read tool in a write-heavy domain that students should also see → `audience: 'shared'`). Note `'educator'` is the internal tag for the user-facing `teacher` role. **This `audience` field is the single source of truth** — `docs/generated/tool-manifest.json` (`primaryAudience`) and every published role count derive from it directly via `getPrimaryAudience()` in `src/discovery/manifests.ts`. There is no separate manifest-only override table to keep in sync; run `pnpm generate:manifests` to regenerate the manifest after changing a tool's audience. CI (`tests/tools/audience-coverage.test.ts`) fails if any tool resolves to no audience, and `tests/discovery/audience-runtime-parity.test.ts` fails if the manifest ever disagrees with what a role filter actually registers at runtime.
+
+8. **If the tool declares an `output` contract, add a fixture.** Structured output (`ToolDefinition.output`) is opt-in per tool. Build the contract with `objectOutput` / `listOutput` / `ackOutput` from `src/tools/output/contract.ts`, and add the tool to `OUTPUT_FIXTURES` in `tests/tools/fixtures/output-fixtures.ts`. CI (`tests/tools/output-contract.test.ts`) fails until you do. Two rules decide the schema:
+   - **Loose where Canvas authors the shape, strict where we do.** A value that comes straight from Canvas — including the top-level object of a single-entity tool — uses `z.looseObject`, so a newly added Canvas field does not break every strict client. Envelopes and acknowledgements this server builds itself use `z.strictObject`.
+   - **No constraints on Canvas-sourced values.** No `format`, `pattern`, `min`, `max` or enum, and `z.string()` rather than `z.iso.datetime()` for dates (its emitted pattern requires a `Z` suffix and rejects the offset timestamps some Canvas instances send). Use `.nullish()` for anything not guaranteed present *and* non-null, and never a bare `z.unknown()` — in output mode Zod marks it required.
+
+## How to Add a New Skill
+
+Skills under `skills/` are both markdown workflow files (installed via `npx skills add`) and MCP prompts served by this server. One file feeds both.
+
+1. Create `skills/<name>/SKILL.md` with frontmatter `name` (matching the directory) and `description` (carrying the trigger phrases), then a body whose first heading is `# Title`. The title becomes the prompt title.
+2. **Keep the frontmatter valid YAML.** A description containing `": "` must be quoted — `canvas-admin-roster` was unreadable to every real YAML parser for months because it was not. CI (`tests/prompts/frontmatter-yaml.test.ts`) parses all 16 files and fails on any that does not.
+3. Declare the audience and any arguments in frontmatter `metadata`, using the two namespaced keys `io.github.bruchris/canvas-lms-mcp-audience` (`student` | `educator` | `admin` | `shared`) and `io.github.bruchris/canvas-lms-mcp-arguments` (space-separated). Argument names must exist in `ARGUMENT_VOCABULARY` in `src/prompts/arguments.ts`; generation fails on anything else.
+4. Run `pnpm generate:prompts` and commit `src/prompts/skills.generated.ts`. CI (`tests/prompts/generate.test.ts`) fails if it is stale.
+5. Update the skill counts that CI checks in `tests/docs/skill-count-consistency.test.ts`: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md`, and `docs/index.html`.
+
+Write tools are **derived** from the body, never declared — a body may safely name a tool that does not exist ("there is no `list_discussion_entries` tool"), because identifiers that do not resolve are ignored.

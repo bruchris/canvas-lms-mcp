@@ -255,16 +255,16 @@ describe('appointmentGroupTools', () => {
     it('delegates to canvas.appointmentGroups.get', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'get_appointment_group')!
-      const result = await tool.handler({ appointment_group_id: 1 })
-      expect(canvas.appointmentGroups.get).toHaveBeenCalledWith(1, undefined)
+      const result = await tool.handler({ appointment_group_id: '1' })
+      expect(canvas.appointmentGroups.get).toHaveBeenCalledWith('1', undefined)
       expect(result).toEqual(mockAppointmentGroup)
     })
 
     it('passes include when provided', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'get_appointment_group')!
-      await tool.handler({ appointment_group_id: 1, include: ['appointments'] })
-      expect(canvas.appointmentGroups.get).toHaveBeenCalledWith(1, ['appointments'])
+      await tool.handler({ appointment_group_id: '1', include: ['appointments'] })
+      expect(canvas.appointmentGroups.get).toHaveBeenCalledWith('1', ['appointments'])
     })
 
     describe('pseudonymization of child_events', () => {
@@ -296,7 +296,7 @@ describe('appointmentGroupTools', () => {
           (t) => t.name === 'get_appointment_group',
         )!
         const result = (await tool.handler({
-          appointment_group_id: 1,
+          appointment_group_id: '1',
           include: ['appointments', 'child_events'],
         })) as CanvasAppointmentGroup
         const childUser = result.appointments?.[0].child_events?.[0].user
@@ -316,7 +316,7 @@ describe('appointmentGroupTools', () => {
           (t) => t.name === 'get_appointment_group',
         )!
         const result = (await tool.handler({
-          appointment_group_id: 1,
+          appointment_group_id: '1',
           include: ['appointments', 'child_events'],
         })) as CanvasAppointmentGroup
         const childUser = result.appointments?.[0].child_events?.[0].user
@@ -359,9 +359,9 @@ describe('appointmentGroupTools', () => {
     it('delegates to canvas.appointmentGroups.update', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'update_appointment_group')!
-      await tool.handler({ appointment_group_id: 1, title: 'New Title', publish: true })
+      await tool.handler({ appointment_group_id: '1', title: 'New Title', publish: true })
       expect(canvas.appointmentGroups.update).toHaveBeenCalledWith(
-        1,
+        '1',
         expect.objectContaining({ title: 'New Title', publish: true }),
       )
     })
@@ -371,15 +371,15 @@ describe('appointmentGroupTools', () => {
     it('delegates to canvas.appointmentGroups.delete without reason', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'delete_appointment_group')!
-      await tool.handler({ appointment_group_id: 1 })
-      expect(canvas.appointmentGroups.delete).toHaveBeenCalledWith(1, undefined)
+      await tool.handler({ appointment_group_id: '1' })
+      expect(canvas.appointmentGroups.delete).toHaveBeenCalledWith('1', undefined)
     })
 
     it('passes cancel_reason when provided', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'delete_appointment_group')!
-      await tool.handler({ appointment_group_id: 1, cancel_reason: 'Rescheduled' })
-      expect(canvas.appointmentGroups.delete).toHaveBeenCalledWith(1, 'Rescheduled')
+      await tool.handler({ appointment_group_id: '1', cancel_reason: 'Rescheduled' })
+      expect(canvas.appointmentGroups.delete).toHaveBeenCalledWith('1', 'Rescheduled')
     })
   })
 
@@ -389,8 +389,8 @@ describe('appointmentGroupTools', () => {
       const tool = appointmentGroupTools(canvas).find(
         (t) => t.name === 'list_appointment_group_users',
       )!
-      const result = await tool.handler({ appointment_group_id: 1 })
-      expect(canvas.appointmentGroups.listUsers).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ appointment_group_id: '1' })
+      expect(canvas.appointmentGroups.listUsers).toHaveBeenCalledWith('1')
       expect(result).toEqual([mockUser])
     })
 
@@ -416,7 +416,7 @@ describe('appointmentGroupTools', () => {
         const tool = appointmentGroupTools(canvas, makePseudonymizer()).find(
           (t) => t.name === 'list_appointment_group_users',
         )!
-        const result = (await tool.handler({ appointment_group_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ appointment_group_id: '1' })) as CanvasUser[]
         expect(result[0].name).toMatch(/^Student \d+$/)
       })
 
@@ -425,7 +425,7 @@ describe('appointmentGroupTools', () => {
         const tool = appointmentGroupTools(canvas, makePseudonymizer(false)).find(
           (t) => t.name === 'list_appointment_group_users',
         )!
-        const result = (await tool.handler({ appointment_group_id: 1 })) as CanvasUser[]
+        const result = (await tool.handler({ appointment_group_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
       })
     })
@@ -437,8 +437,8 @@ describe('appointmentGroupTools', () => {
       const tool = appointmentGroupTools(canvas).find(
         (t) => t.name === 'list_appointment_group_groups',
       )!
-      const result = await tool.handler({ appointment_group_id: 1 })
-      expect(canvas.appointmentGroups.listGroups).toHaveBeenCalledWith(1)
+      const result = await tool.handler({ appointment_group_id: '1' })
+      expect(canvas.appointmentGroups.listGroups).toHaveBeenCalledWith('1')
       expect(result).toEqual([])
     })
   })
@@ -455,8 +455,8 @@ describe('appointmentGroupTools', () => {
     it('passes appointment_group_ids when provided', async () => {
       const canvas = buildMockCanvas()
       const tool = appointmentGroupTools(canvas).find((t) => t.name === 'next_appointment')!
-      await tool.handler({ appointment_group_ids: [1, 2] })
-      expect(canvas.appointmentGroups.nextAppointment).toHaveBeenCalledWith([1, 2])
+      await tool.handler({ appointment_group_ids: ['1', '2'] })
+      expect(canvas.appointmentGroups.nextAppointment).toHaveBeenCalledWith(['1', '2'])
     })
   })
 })

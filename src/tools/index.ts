@@ -9,10 +9,13 @@ import {
   findMarkerBearingParam,
 } from '../provenance/apply'
 import { isProvenanceFencingEnabled, markerRejectionMessage } from '../provenance/markers'
+import { installSchemaDialectCompat } from '../schema-dialect'
 import type { CanvasRole, ToolDefinition, ToolFeatureFlags } from './types'
 import { toolDomainCatalog } from './catalog'
+import { DEFAULT_DESTRUCTIVE_TOOLS_MODE, applyDestructiveToolsPolicy } from './destructive-policy'
 import { formatError } from './errors'
 import { pseudonymTools } from './pseudonym'
+import { buildEnvelope, outputContractError, validateEnvelope } from './output/contract'
 import { isVisibleForRole, tagAudience } from './roles'
 import { tagTitle } from './titles'
 
@@ -25,6 +28,12 @@ const PSEUDONYM_META_NOTE =
  * audiences that role can see; when unset, every tool is returned (the default,
  * backwards-compatible behaviour). Domains with a `gate` are excluded unless the
  * corresponding flag is enabled in `features`.
+ *
+ * This is also the single choke point for the destructive-tools policy
+ * (BRU-2444): `registerAllTools` builds its registration list from here, so
+ * `features.destructiveTools === 'block'` removes the ten irreversible
+ * deletes from every consumer of the tool set at once — no caller can route
+ * around it by assembling tools from the catalog directly.
  */
 export function getAllTools(
   canvas: CanvasClient,
@@ -40,13 +49,24 @@ export function getAllTools(
         .map(tagAudience(registration.defaultPrimaryAudience)),
     )
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
-  const all = [...domainTools, ...conditional].map(tagTitle())
+  const policed = applyDestructiveToolsPolicy(
+    [...domainTools, ...conditional].map(tagTitle()),
+    features?.destructiveTools ?? DEFAULT_DESTRUCTIVE_TOOLS_MODE,
+  )
+  // Write-tool policy (issue #302 §7.4): applied at the same choke point as the
+  // destructive policy, so an OAuth token without `canvas:write` cannot reach a
+  // write tool through any consumer of the tool set.
+  const all =
+    features?.writeTools === 'block'
+      ? policed.filter((tool) => tool.annotations.readOnlyHint === true)
+      : policed
   if (!role) return all
   return all.filter((tool) => isVisibleForRole(tool, role))
 }
 
 type ToolResponse = {
   content: { type: 'text'; text: string }[]
+  structuredContent?: Record<string, unknown>
   isError?: boolean
   _meta?: Record<string, unknown>
 }
@@ -87,6 +107,27 @@ function buildHandler(
       const response: ToolResponse = {
         content: [{ type: 'text' as const, text }],
       }
+
+      // Structured output (BRU-2418). Built from `value` — the *fenced* value —
+      // so the two surfaces cannot disagree; a structured copy built from the
+      // raw result would hand the model an unfenced version of exactly the text
+      // the fence exists to neutralize. Error results never get here: they
+      // return early above or from the catch, and attaching structured content
+      // to one would mean an error satisfying the success schema.
+      if (tool.output) {
+        const structured = buildEnvelope(tool.output, value)
+        const validation = validateEnvelope(tool.output, structured)
+        if (!validation.ok) {
+          // Type and path only, never the offending value, and stderr only.
+          console.error(`Output contract violation in "${tool.name}":`, validation.issues)
+          return {
+            content: [{ type: 'text' as const, text: outputContractError(tool.name) }],
+            isError: true,
+          }
+        }
+        response.structuredContent = structured as Record<string, unknown>
+      }
+
       if (pseudonymizer?.isEnabled()) {
         response._meta = { pseudonymized: true, note: PSEUDONYM_META_NOTE }
       }
@@ -116,6 +157,13 @@ export function registerAllTools(
   role?: CanvasRole,
   features?: ToolFeatureFlags,
 ): void {
+  // Before the first `registerTool` call, which is what makes `McpServer`
+  // install the `tools/list` handler this wraps (issue #341). Installed here
+  // rather than in `createCanvasMCPServer` so that every server carrying these
+  // tools carries the compatibility fix too, including one an embedder wired
+  // up itself.
+  installSchemaDialectCompat(server)
+
   const tools = getAllTools(canvas, pseudonymizer, role, features)
   for (const tool of tools) {
     const handler = buildHandler(tool, pseudonymizer)
@@ -127,6 +175,7 @@ export function registerAllTools(
           title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.output ? { outputSchema: tool.output.schema } : {}),
           annotations: tool.annotations,
           _meta: { ui: { resourceUri: tool.ui.resourceUri } },
         },
@@ -139,6 +188,7 @@ export function registerAllTools(
           title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          ...(tool.output ? { outputSchema: tool.output.schema } : {}),
           annotations: tool.annotations,
         },
         handler,

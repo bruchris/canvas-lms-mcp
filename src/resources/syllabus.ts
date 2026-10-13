@@ -2,6 +2,7 @@ import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
+import { type CanvasId, normalizeCanvasIdInput } from '../canvas/id'
 import { RESOURCE_LABELS } from '../provenance/fields'
 import { fenceBlock, isProvenanceFencingEnabled } from '../provenance/markers'
 import { formatError } from '../tools'
@@ -21,12 +22,18 @@ export function registerSyllabusResource(server: McpServer, canvas: CanvasClient
     template,
     { mimeType: 'text/html' },
     async (_uri, variables) => {
-      const courseId = Number(variables.courseId)
-      if (Number.isNaN(courseId)) {
+      // See the note in src/resources/assignment-description.ts: a URI-template
+      // variable is a string, and `Number()` on it was BRU-2730 §4.4's forbidden
+      // coercion.
+      const rawCourseId = String(variables.courseId)
+      let courseId: CanvasId
+      try {
+        courseId = normalizeCanvasIdInput(rawCourseId)
+      } catch {
         return {
           contents: [
             {
-              uri: `canvas://course/${variables.courseId}/syllabus`,
+              uri: `canvas://course/${rawCourseId}/syllabus`,
               mimeType: 'text/plain',
               text: 'Invalid course ID',
             },

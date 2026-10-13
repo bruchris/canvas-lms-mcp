@@ -1,6 +1,7 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type { CanvasSubmission } from './types'
+import type { CanvasId } from './id'
 
 export type SubmissionListInclude =
   | 'submission_history'
@@ -27,12 +28,12 @@ export type SubmissionWorkflowState = 'submitted' | 'unsubmitted' | 'graded' | '
 
 export interface ListSubmissionsOptions {
   include?: ReadonlyArray<SubmissionListInclude>
-  student_ids?: ReadonlyArray<number | string>
-  assignment_ids?: ReadonlyArray<number>
-  section_ids?: ReadonlyArray<number>
+  student_ids?: ReadonlyArray<CanvasId>
+  assignment_ids?: ReadonlyArray<CanvasId>
+  section_ids?: ReadonlyArray<CanvasId>
   grouped?: boolean
   workflow_state?: SubmissionWorkflowState
-  grading_period_id?: number
+  grading_period_id?: CanvasId
   post_to_sis?: boolean
   submitted_since?: string
   graded_since?: string
@@ -43,8 +44,8 @@ export interface GetSubmissionOptions {
 }
 
 export interface ListStudentSubmissionsOptions {
-  student_ids?: ReadonlyArray<number | 'all'>
-  assignment_ids?: ReadonlyArray<number>
+  student_ids?: ReadonlyArray<CanvasId>
+  assignment_ids?: ReadonlyArray<CanvasId>
   include?: ReadonlyArray<SubmissionListInclude>
   workflow_state?: SubmissionWorkflowState
 }
@@ -57,7 +58,7 @@ export interface SubmitAssignmentParams {
   submission_type: 'online_text_entry' | 'online_url' | 'online_upload'
   body?: string
   url?: string
-  file_ids?: ReadonlyArray<number>
+  file_ids?: ReadonlyArray<CanvasId>
   comment?: string
 }
 
@@ -84,8 +85,8 @@ export class SubmissionsModule {
   constructor(private client: CanvasHttpClient) {}
 
   async list(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     opts: ListSubmissionsOptions = {},
   ): Promise<CanvasSubmission[]> {
     return this.client.paginate<CanvasSubmission>(
@@ -95,9 +96,9 @@ export class SubmissionsModule {
   }
 
   async get(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
     opts: GetSubmissionOptions = {},
   ): Promise<CanvasSubmission> {
     const include = opts.include && opts.include.length > 0 ? opts.include : DEFAULT_GET_INCLUDE
@@ -108,9 +109,9 @@ export class SubmissionsModule {
   }
 
   async grade(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
     grade: string,
   ): Promise<CanvasSubmission> {
     return this.client.request<CanvasSubmission>(
@@ -123,9 +124,9 @@ export class SubmissionsModule {
   }
 
   async comment(
-    courseId: number,
-    assignmentId: number,
-    userId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    userId: CanvasId,
     comment: string,
   ): Promise<CanvasSubmission> {
     return this.client.request<CanvasSubmission>(
@@ -139,7 +140,10 @@ export class SubmissionsModule {
     )
   }
 
-  async listMy(courseId: number, opts: ListMySubmissionsOptions = {}): Promise<CanvasSubmission[]> {
+  async listMy(
+    courseId: CanvasId,
+    opts: ListMySubmissionsOptions = {},
+  ): Promise<CanvasSubmission[]> {
     const params: CanvasQueryParams = { student_ids: ['self'] }
     if (opts.include && opts.include.length > 0) params.include = opts.include
     return this.client.paginate<CanvasSubmission>(
@@ -149,8 +153,8 @@ export class SubmissionsModule {
   }
 
   async submit(
-    courseId: number,
-    assignmentId: number,
+    courseId: CanvasId,
+    assignmentId: CanvasId,
     params: SubmitAssignmentParams,
   ): Promise<CanvasSubmission> {
     const submission: Record<string, unknown> = { submission_type: params.submission_type }
@@ -166,7 +170,7 @@ export class SubmissionsModule {
   }
 
   async listForStudents(
-    courseId: number,
+    courseId: CanvasId,
     opts: ListStudentSubmissionsOptions = {},
   ): Promise<CanvasSubmission[]> {
     const params: CanvasQueryParams = {}

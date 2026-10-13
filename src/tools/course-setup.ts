@@ -8,6 +8,7 @@ import type {
   CanvasModuleItem,
 } from '../canvas/types'
 import type { ToolDefinition } from './types'
+import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const ALL_CHECKS = [
   'missing_due_dates',
@@ -21,7 +22,7 @@ type CheckName = (typeof ALL_CHECKS)[number]
 
 interface SetupFinding {
   type: string
-  id: number
+  id: CanvasId | number
   name: string
   detail: string
   parent_module_name?: string
@@ -132,7 +133,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
         '(see list_students_needing_attention / get_missing_submissions for those). ' +
         'Requires instructor permissions in the course.',
       inputSchema: {
-        course_id: z.number().int().positive().describe('Canvas course ID'),
+        course_id: canvasIdInput().describe('Canvas course ID'),
         checks: z
           .array(
             z.enum([
@@ -155,7 +156,7 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
         openWorldHint: true,
       },
       handler: async (params) => {
-        const courseId = params.course_id as number
+        const courseId = params.course_id as CanvasId
         const requestedChecks = (params.checks as CheckName[] | undefined) ?? [...ALL_CHECKS]
         const activeChecks = new Set<CheckName>(requestedChecks)
 

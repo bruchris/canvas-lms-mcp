@@ -125,6 +125,26 @@ Or use the one-liner:
 codex mcp add canvas-lms -- npx canvas-lms-mcp
 ```
 
+Codex shows this stdio entry as `Auth Unsupported`. That is expected: only URL-based
+servers can show a login state.
+
+### Codex with a native login (OAuth)
+
+Run the server in the OAuth profile (see [oauth-profile.md](oauth-profile.md) for the
+Canvas Developer Key prerequisites), then point Codex at its URL:
+
+```toml
+[mcp_servers.canvas-lms]
+url = "http://127.0.0.1:3001/mcp"
+default_tools_approval_mode = "prompt"
+```
+
+```bash
+codex mcp list                # canvas-lms … Not logged in
+codex mcp login canvas-lms    # browser login through Canvas
+codex mcp logout canvas-lms
+```
+
 ## Continue
 
 Add to `~/.continue/config.json`:
@@ -183,5 +203,9 @@ npx canvas-lms-mcp serve --port 3001 \
   --base-url https://your-institution.instructure.com
 ```
 
-The MCP endpoint is `http://localhost:3001/mcp`. Per-request credentials can
-be passed via `X-Canvas-Token` and `X-Canvas-Base-URL` headers.
+The MCP endpoint is `http://localhost:3001/mcp`. A per-request Canvas token can be
+passed in the `X-Canvas-Token` header; the base URL is always server configuration.
+This is the self-managed `remote_static_token` profile.
+
+For ChatGPT connectors and other hosts that log in with OAuth, run the
+`oauth_brokered` profile instead; see [oauth-profile.md](oauth-profile.md).

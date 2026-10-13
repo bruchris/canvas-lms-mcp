@@ -4,6 +4,7 @@ import type {
   CanvasConversationDetail,
   CanvasConversationUnreadCount,
 } from './types'
+import type { CanvasId } from './id'
 
 export class ConversationsModule {
   constructor(private client: CanvasHttpClient) {}
@@ -12,7 +13,7 @@ export class ConversationsModule {
     return this.client.paginate<CanvasConversation>('/api/v1/conversations')
   }
 
-  async get(conversationId: number): Promise<CanvasConversationDetail> {
+  async get(conversationId: CanvasId): Promise<CanvasConversationDetail> {
     return this.client.request<CanvasConversationDetail>(`/api/v1/conversations/${conversationId}`)
   }
 
