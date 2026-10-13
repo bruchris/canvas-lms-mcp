@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.0...canvas-lms-mcp-v2.3.1) (2026-10-13)
+
+
+### Documentation
+
+* fix stale tool-count heading in README ([#410](https://github.com/bruchris/canvas-lms-mcp/issues/410)) ([57b9af9](https://github.com/bruchris/canvas-lms-mcp/commit/57b9af94d70fcc400e7d9845b105627256f9fd77))
+* October outreach draft (student tools, OAuth profile, destructive-tools gate) ([#411](https://github.com/bruchris/canvas-lms-mcp/issues/411)) ([c3783b1](https://github.com/bruchris/canvas-lms-mcp/commit/c3783b17c46b513ca0cf3054ec64a5c449d15659))
+
 ## [2.3.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.2.0...canvas-lms-mcp-v2.3.0) (2026-10-12)
 
 
