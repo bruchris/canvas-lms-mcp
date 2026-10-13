@@ -106,7 +106,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (172)
+### All Registered Tools (174)
 
 | Category | Tools |
 |----------|-------|
