@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.0...canvas-lms-mcp-v2.4.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **rubrics:** return create_rubric's { rubric, rubric_association } envelope ([#419](https://github.com/bruchris/canvas-lms-mcp/issues/419)) ([c5e1e63](https://github.com/bruchris/canvas-lms-mcp/commit/c5e1e633533f6c9e3da29f276206ef375acefed2))
+
+
+### CI/CD
+
+* **release:** credit outside contributors in release notes ([#420](https://github.com/bruchris/canvas-lms-mcp/issues/420)) ([5421716](https://github.com/bruchris/canvas-lms-mcp/commit/5421716fcdbc9a6e2eff9e3fe3712f3d7fff65f3))
+
 ## [2.4.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.1...canvas-lms-mcp-v2.4.0) (2026-10-13)
 
 
