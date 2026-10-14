@@ -124,7 +124,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_rubric',
       title: 'Create Rubric',
       description:
-        'Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.',
+        'Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately. Returns { rubric, rubric_association? }; when an assignment association was requested, rubric_association.id is the association_id that submit_rubric_assessment takes.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().describe('The rubric title'),

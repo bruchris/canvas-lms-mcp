@@ -424,6 +424,12 @@ export interface CanvasRubric {
   associations?: CanvasRubricAssociation[]
 }
 
+/** POST /courses/:id/rubrics result; the association is present only when one was requested. */
+export interface CanvasRubricCreateResult {
+  rubric: CanvasRubric
+  rubric_association?: CanvasRubricAssociation
+}
+
 export interface CanvasRubricCriterion {
   id: string
   description: string

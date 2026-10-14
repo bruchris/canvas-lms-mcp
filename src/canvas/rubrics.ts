@@ -1,9 +1,10 @@
-import type { CanvasHttpClient } from './client'
+import { CanvasApiError, type CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
 import type {
   CanvasRubric,
   CanvasRubricAssessment,
   CanvasRubricAssociation,
+  CanvasRubricCreateResult,
   CanvasSubmission,
 } from './types'
 import type { CanvasId } from './id'
@@ -105,11 +106,12 @@ export class RubricsModule {
     )
   }
 
+  /** Canvas returns an envelope and reports association validation failures with HTTP 200. */
   async create(
     courseId: CanvasId,
     rubric: RubricCreateInput,
     association?: RubricAssociationInput,
-  ): Promise<CanvasRubric> {
+  ): Promise<CanvasRubricCreateResult> {
     const params = new URLSearchParams()
     params.append('rubric[title]', rubric.title)
 
@@ -136,11 +138,22 @@ export class RubricsModule {
       }
     }
 
-    return this.client.request<CanvasRubric>(`/api/v1/courses/${courseId}/rubrics`, {
+    const endpoint = `/api/v1/courses/${courseId}/rubrics`
+    const result = await this.client.request<
+      (CanvasRubricCreateResult & { error?: false }) | { error: true; messages?: string[] }
+    >(endpoint, {
       method: 'POST',
       body: params.toString(),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
+    if (result.error === true) {
+      throw new CanvasApiError(
+        result.messages?.join('; ') || 'Canvas rejected the rubric',
+        422,
+        endpoint,
+      )
+    }
+    return result
   }
 
   /**

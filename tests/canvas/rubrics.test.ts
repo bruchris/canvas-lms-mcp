@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { RubricsModule } from '../../src/canvas/rubrics'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasApiError, CanvasHttpClient } from '../../src/canvas/client'
 
 describe('RubricsModule', () => {
   let client: CanvasHttpClient
@@ -113,10 +113,23 @@ describe('RubricsModule', () => {
       data: [],
     }
 
-    it('POSTs bracket-notation form-data to the rubrics endpoint', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreatedRubric)
+    const mockCreateResult = { rubric: mockCreatedRubric }
+    const mockLinkedCreateResult = {
+      rubric: mockCreatedRubric,
+      rubric_association: {
+        id: 900,
+        rubric_id: 42,
+        association_id: 55,
+        association_type: 'Assignment',
+        use_for_grading: true,
+        purpose: 'grading',
+      },
+    }
 
-      await rubrics.create(100, {
+    it('POSTs bracket-notation form-data to the rubrics endpoint', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreateResult)
+
+      const result = await rubrics.create(100, {
         title: 'Essay Rubric',
         criteria: [
           {
@@ -130,6 +143,7 @@ describe('RubricsModule', () => {
         ],
       })
 
+      expect(result).toBe(mockCreateResult)
       const [endpoint, options] = vi.mocked(client.request).mock.calls[0]
       expect(endpoint).toBe('/api/v1/courses/100/rubrics')
       expect(options?.method).toBe('POST')
@@ -148,9 +162,9 @@ describe('RubricsModule', () => {
     })
 
     it('sorts ratings highest to lowest before encoding', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreatedRubric)
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreateResult)
 
-      await rubrics.create(100, {
+      const result = await rubrics.create(100, {
         title: 'Sorted Rubric',
         criteria: [
           {
@@ -165,6 +179,7 @@ describe('RubricsModule', () => {
         ],
       })
 
+      expect(result).toBe(mockCreateResult)
       const [, options] = vi.mocked(client.request).mock.calls[0]
       const body = new URLSearchParams(options?.body as string)
       expect(body.get('rubric[criteria][0][ratings][0][points]')).toBe('10')
@@ -173,9 +188,9 @@ describe('RubricsModule', () => {
     })
 
     it('includes rubric_association keys when association is provided', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreatedRubric)
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockLinkedCreateResult)
 
-      await rubrics.create(
+      const result = await rubrics.create(
         100,
         {
           title: 'Linked Rubric',
@@ -193,6 +208,7 @@ describe('RubricsModule', () => {
         { assignment_id: 55, use_for_grading: true, purpose: 'grading' },
       )
 
+      expect(result).toBe(mockLinkedCreateResult)
       const [, options] = vi.mocked(client.request).mock.calls[0]
       const body = new URLSearchParams(options?.body as string)
       expect(body.get('rubric_association[association_id]')).toBe('55')
@@ -202,9 +218,9 @@ describe('RubricsModule', () => {
     })
 
     it('omits rubric_association keys when no association is provided', async () => {
-      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreatedRubric)
+      vi.spyOn(client, 'request').mockResolvedValueOnce(mockCreateResult)
 
-      await rubrics.create(100, {
+      const result = await rubrics.create(100, {
         title: 'Standalone Rubric',
         criteria: [
           {
@@ -218,10 +234,38 @@ describe('RubricsModule', () => {
         ],
       })
 
+      expect(result).toBe(mockCreateResult)
       const [, options] = vi.mocked(client.request).mock.calls[0]
       const body = new URLSearchParams(options?.body as string)
       expect(body.get('rubric_association[association_id]')).toBeNull()
     })
+
+    it('throws a CanvasApiError with joined association validation messages', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        error: true,
+        messages: ['Association is invalid', 'Assignment was not found'],
+      })
+
+      await expect(
+        rubrics.create(100, { title: 'Essay Rubric', criteria: [] }, { assignment_id: 55 }),
+      ).rejects.toMatchObject({
+        name: 'CanvasApiError',
+        message: 'Association is invalid; Assignment was not found',
+        status: 422,
+        endpoint: '/api/v1/courses/100/rubrics',
+      })
+    })
+
+    it.each([undefined, []])(
+      'uses a fallback when validation messages are %j',
+      async (messages) => {
+        vi.spyOn(client, 'request').mockResolvedValueOnce({ error: true, messages })
+
+        const result = rubrics.create(100, { title: 'Essay Rubric', criteria: [] })
+        await expect(result).rejects.toBeInstanceOf(CanvasApiError)
+        await expect(result).rejects.toThrow('Canvas rejected the rubric')
+      },
+    )
   })
 
   describe('associate', () => {
