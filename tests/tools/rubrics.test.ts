@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import type { CanvasClient } from '../../src/canvas'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { CanvasClient, type CanvasRubricCreateResult } from '../../src/canvas'
+import { registerAllTools } from '../../src/tools'
 import type { CanvasRubric, CanvasRubricAssessment, CanvasSubmission } from '../../src/canvas/types'
 import { rubricTools } from '../../src/tools/rubrics'
 
@@ -40,6 +42,8 @@ describe('rubricTools', () => {
     purpose: 'grading',
   }
 
+  const mockCreateResult: CanvasRubricCreateResult = { rubric: mockRubric }
+
   function buildMockCanvas(): CanvasClient {
     return {
       rubrics: {
@@ -47,7 +51,7 @@ describe('rubricTools', () => {
         get: vi.fn().mockResolvedValue(mockRubric),
         getAssessment: vi.fn().mockResolvedValue(mockSubmission),
         submitAssessment: vi.fn().mockResolvedValue(mockAssessment),
-        create: vi.fn().mockResolvedValue(mockRubric),
+        create: vi.fn().mockResolvedValue(mockCreateResult),
         associate: vi.fn().mockResolvedValue(mockAssociation),
         delete: vi.fn().mockResolvedValue(mockRubric),
       },
@@ -180,14 +184,16 @@ describe('rubricTools', () => {
         { title: 'Essay Rubric', criteria: validCriteria },
         undefined,
       )
-      expect(result).toEqual(mockRubric)
+      expect(result).toEqual(mockCreateResult)
     })
 
     it('delegates to canvas.rubrics.create with association', async () => {
       const canvas = buildMockCanvas()
       const tool = rubricTools(canvas).find((t) => t.name === 'create_rubric')!
       const association = { assignment_id: 55, use_for_grading: true, purpose: 'grading' }
-      await tool.handler({
+      const linkedResult = { rubric: mockRubric, rubric_association: mockAssociation }
+      vi.mocked(canvas.rubrics.create).mockResolvedValueOnce(linkedResult)
+      const result = await tool.handler({
         course_id: '1',
         title: 'Essay Rubric',
         criteria: validCriteria,
@@ -198,6 +204,40 @@ describe('rubricTools', () => {
         { title: 'Essay Rubric', criteria: validCriteria },
         association,
       )
+      expect(result).toEqual(linkedResult)
+    })
+
+    it('reports an HTTP 200 validation failure as an MCP tool error', async () => {
+      const canvas = new CanvasClient({
+        token: 'test-token',
+        baseUrl: 'https://canvas.example.com',
+      })
+      const server = new McpServer({ name: 'test', version: '1.0.0' })
+      const registerSpy = vi.spyOn(server, 'registerTool')
+      registerAllTools(server, canvas)
+      const call = registerSpy.mock.calls.find(([name]) => name === 'create_rubric')!
+      const handler = call[2] as (params: Record<string, unknown>) => Promise<unknown>
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: true, messages: ['Association is invalid'] }), {
+          status: 200,
+        }),
+      )
+      try {
+        const response = await handler({
+          course_id: '1',
+          title: 'Essay Rubric',
+          criteria: validCriteria,
+          association: { assignment_id: '55' },
+        })
+        expect(response).toEqual({
+          content: [{ type: 'text', text: 'Invalid data sent to Canvas: Association is invalid' }],
+          isError: true,
+        })
+      } finally {
+        fetchSpy.mockRestore()
+        registerSpy.mockRestore()
+        await server.close()
+      }
     })
   })
 

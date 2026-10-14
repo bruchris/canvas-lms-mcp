@@ -338,7 +338,7 @@
       "name": "create_rubric",
       "title": "Create Rubric",
       "domain": "rubrics",
-      "description": "Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately.",
+      "description": "Create a new rubric in a course with criteria and rating levels. Optionally link it to an assignment immediately. Returns { rubric, rubric_association? }; when an assignment association was requested, rubric_association.id is the association_id that submit_rubric_assessment takes.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
