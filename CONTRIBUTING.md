@@ -75,6 +75,7 @@ The committed files in `docs/generated/` are expected to stay in sync with the l
 - Link the related issue when one exists.
 - Mention any follow-up work or known limitations.
 - Keep release/versioning changes out of unrelated PRs.
+- Merged contributions are credited by GitHub handle in the release notes and in the README's [Contributors list](./README.md#contributors).
 
 ## Commit Format
 

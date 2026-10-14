@@ -291,6 +291,11 @@
 ## [1.27.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.1...canvas-lms-mcp-v1.27.2) (2026-08-21)
 
 
+### Bug Fixes
+
+* avoid tuple-style JSON Schema in new_appointments for OpenAI-compatible clients ([#308](https://github.com/bruchris/canvas-lms-mcp/issues/308)) ([8a1ed50](https://github.com/bruchris/canvas-lms-mcp/commit/8a1ed50990ee9f551869b09494e30b0ad4c76961))
+
+
 ### Performance Improvements
 
 * **tools:** bound quiz fan-out in course audit tools ([#297](https://github.com/bruchris/canvas-lms-mcp/issues/297)) ([eb209c1](https://github.com/bruchris/canvas-lms-mcp/commit/eb209c1b00e6a8136bbc41a51542bd08ddbe6ae0))
