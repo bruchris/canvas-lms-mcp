@@ -611,7 +611,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full contribution and validatio
 Thanks to our community contributors for improving canvas-lms-mcp:
 
 - [@roowus](https://github.com/roowus): tuple-style JSON Schema fix for OpenAI-compatible clients ([#308](https://github.com/bruchris/canvas-lms-mcp/pull/308))
-- [@algorithm0r](https://github.com/algorithm0r): New Quizzes payload fix ([#367](https://github.com/bruchris/canvas-lms-mcp/pull/367)), module item update/delete ([#368](https://github.com/bruchris/canvas-lms-mcp/pull/368)), Classic Quiz deletes ([#369](https://github.com/bruchris/canvas-lms-mcp/pull/369)), rubric attach/delete ([#370](https://github.com/bruchris/canvas-lms-mcp/pull/370)), assignment grading fields ([#371](https://github.com/bruchris/canvas-lms-mcp/pull/371))
+- [@algorithm0r](https://github.com/algorithm0r): New Quizzes payload fix ([#367](https://github.com/bruchris/canvas-lms-mcp/pull/367)), module item update/delete ([#368](https://github.com/bruchris/canvas-lms-mcp/pull/368)), Classic Quiz deletes ([#369](https://github.com/bruchris/canvas-lms-mcp/pull/369)), rubric attach/delete ([#370](https://github.com/bruchris/canvas-lms-mcp/pull/370)), assignment grading fields ([#371](https://github.com/bruchris/canvas-lms-mcp/pull/371)), assignment lock and unlock dates ([#424](https://github.com/bruchris/canvas-lms-mcp/pull/424)), course grade weighting and display settings ([#425](https://github.com/bruchris/canvas-lms-mcp/pull/425))
 - [@chiptoe-svg](https://github.com/chiptoe-svg): rubric association lookup on get_rubric ([#327](https://github.com/bruchris/canvas-lms-mcp/pull/327))
 
 See [all contributors](https://github.com/bruchris/canvas-lms-mcp/graphs/contributors).
