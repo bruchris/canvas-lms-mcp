@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.0...canvas-lms-mcp-v2.4.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **rubrics:** return create_rubric's { rubric, rubric_association } envelope ([#419](https://github.com/bruchris/canvas-lms-mcp/issues/419)) ([c5e1e63](https://github.com/bruchris/canvas-lms-mcp/commit/c5e1e633533f6c9e3da29f276206ef375acefed2))
+
+
+### CI/CD
+
+* **release:** credit outside contributors in release notes ([#420](https://github.com/bruchris/canvas-lms-mcp/issues/420)) ([5421716](https://github.com/bruchris/canvas-lms-mcp/commit/5421716fcdbc9a6e2eff9e3fe3712f3d7fff65f3))
+
 ## [2.4.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.3.1...canvas-lms-mcp-v2.4.0) (2026-10-13)
 
 
@@ -289,6 +301,11 @@
 * **ci:** add npm ecosystem to dependabot ([#317](https://github.com/bruchris/canvas-lms-mcp/issues/317)) ([919e6ca](https://github.com/bruchris/canvas-lms-mcp/commit/919e6ca4aa8762f29e8989cf6684867ed8a44635))
 
 ## [1.27.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v1.27.1...canvas-lms-mcp-v1.27.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* avoid tuple-style JSON Schema in new_appointments for OpenAI-compatible clients ([#308](https://github.com/bruchris/canvas-lms-mcp/issues/308)) ([8a1ed50](https://github.com/bruchris/canvas-lms-mcp/commit/8a1ed50990ee9f551869b09494e30b0ad4c76961))
 
 
 ### Performance Improvements
