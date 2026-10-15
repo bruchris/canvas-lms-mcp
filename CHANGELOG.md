@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.0...canvas-lms-mcp-v2.5.1) (2026-10-15)
+
+
+### Documentation
+
+* **readme:** credit [#424](https://github.com/bruchris/canvas-lms-mcp/issues/424) and [#425](https://github.com/bruchris/canvas-lms-mcp/issues/425) in the Contributors list ([#428](https://github.com/bruchris/canvas-lms-mcp/issues/428)) ([926e37a](https://github.com/bruchris/canvas-lms-mcp/commit/926e37a1f6a498bf27efc74932ec0c338303c5f9))
+* **spec:** design the student course requirement graph (BRU-2952) ([#427](https://github.com/bruchris/canvas-lms-mcp/issues/427)) ([82c1fa6](https://github.com/bruchris/canvas-lms-mcp/commit/82c1fa6f417711330f28c162cfe76867c68e65b9))
+
 ## [2.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.2...canvas-lms-mcp-v2.5.0) (2026-10-15)
 
 
