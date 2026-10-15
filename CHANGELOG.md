@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.2...canvas-lms-mcp-v2.5.0) (2026-10-15)
+
+
+### Features
+
+* **assignments:** expose lock_at and unlock_at on create and update ([#424](https://github.com/bruchris/canvas-lms-mcp/issues/424)) ([989911c](https://github.com/bruchris/canvas-lms-mcp/commit/989911c99f6f08cf11aae57870cd1f6795275789))
+* **courses:** expose apply_assignment_group_weights and hide_final_grades on update_course ([#425](https://github.com/bruchris/canvas-lms-mcp/issues/425)) ([3443fa5](https://github.com/bruchris/canvas-lms-mcp/commit/3443fa5e2a92beb69eb6b77d13abb1e391a1a544))
+
+
+### Miscellaneous
+
+* **deps:** bump actions/setup-node from 7.0.0 to 7.1.0 ([#416](https://github.com/bruchris/canvas-lms-mcp/issues/416)) ([4911cb8](https://github.com/bruchris/canvas-lms-mcp/commit/4911cb84c1ac99f059993480c85729a7f50716cb))
+
 ## [2.4.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.1...canvas-lms-mcp-v2.4.2) (2026-10-14)
 
 
