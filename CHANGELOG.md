@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.1...canvas-lms-mcp-v2.4.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **deps:** raise SDK floor to 1.32.1, consolidate Dependabot patches (BRU-2938) ([#422](https://github.com/bruchris/canvas-lms-mcp/issues/422)) ([afc6720](https://github.com/bruchris/canvas-lms-mcp/commit/afc6720f0942ef1191c88b9d373c900d9f5defae))
+
 ## [2.4.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.4.0...canvas-lms-mcp-v2.4.1) (2026-10-14)
 
 
