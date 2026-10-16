@@ -91,6 +91,23 @@ describe('submissionTools', () => {
       })
     })
 
+    it('forwards section_ids, grouped, and grading_period_id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '101',
+        section_ids: ['20', '21'],
+        grouped: true,
+        grading_period_id: '9',
+      })
+      expect(canvas.submissions.list).toHaveBeenCalledWith('1', '101', {
+        section_ids: ['20', '21'],
+        grouped: true,
+        grading_period_id: '9',
+      })
+    })
+
     it('returns the submission list from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = submissionTools(canvas).find((t) => t.name === 'list_submissions')!

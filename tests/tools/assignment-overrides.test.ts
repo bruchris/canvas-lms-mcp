@@ -177,6 +177,25 @@ describe('assignmentOverrideTools', () => {
       expect('course_section_id' in passedParams).toBe(false)
     })
 
+    it('forwards title, unlock_at, and lock_at', async () => {
+      const canvas = buildMockCanvas()
+      await tool(canvas, 'create_assignment_override').handler({
+        course_id: '10',
+        assignment_id: '1',
+        student_ids: ['42'],
+        title: 'Disability accommodation',
+        unlock_at: '2026-09-01T00:00:00Z',
+        lock_at: '2026-09-20T23:59:00Z',
+      })
+      const createOverride = canvas.assignments.createOverride as ReturnType<typeof vi.fn>
+      const passedParams = createOverride.mock.calls[0][2] as Record<string, unknown>
+      expect(passedParams).toMatchObject({
+        title: 'Disability accommodation',
+        unlock_at: '2026-09-01T00:00:00Z',
+        lock_at: '2026-09-20T23:59:00Z',
+      })
+    })
+
     it('throws when no target is provided', async () => {
       const canvas = buildMockCanvas()
       await expect(

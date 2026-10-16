@@ -71,6 +71,21 @@ describe('enrollmentTools', () => {
         include: ['grades'],
       })
     })
+
+    it('forwards role, grading_period_id, and enrollment_term_id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = enrollmentTools(canvas).find((t) => t.name === 'list_enrollments')!
+      await tool.handler({
+        role: ['Mentor'],
+        grading_period_id: '3',
+        enrollment_term_id: '4',
+      })
+      expect(canvas.enrollments.list).toHaveBeenCalledWith({
+        role: ['Mentor'],
+        grading_period_id: '3',
+        enrollment_term_id: '4',
+      })
+    })
   })
 
   describe('list_course_enrollments', () => {
@@ -96,6 +111,22 @@ describe('enrollmentTools', () => {
         state: ['active'],
         include: ['grades', 'current_points'],
         user_id: 'self',
+      })
+    })
+
+    it('forwards role, grading_period_id, and enrollment_term_id', async () => {
+      const canvas = buildMockCanvas()
+      const tool = enrollmentTools(canvas).find((t) => t.name === 'list_course_enrollments')!
+      await tool.handler({
+        course_id: '100',
+        role: ['Mentor'],
+        grading_period_id: '7',
+        enrollment_term_id: '8',
+      })
+      expect(canvas.enrollments.listForCourse).toHaveBeenCalledWith('100', {
+        role: ['Mentor'],
+        grading_period_id: '7',
+        enrollment_term_id: '8',
       })
     })
   })

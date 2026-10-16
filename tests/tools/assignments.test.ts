@@ -100,6 +100,26 @@ describe('assignmentTools', () => {
       })
     })
 
+    it('forwards assignment_ids, order_by, override_assignment_dates, needs_grading_count_by_section, and post_to_sis', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
+      await tool.handler({
+        course_id: '42',
+        assignment_ids: ['7', '8'],
+        order_by: 'due_at',
+        override_assignment_dates: false,
+        needs_grading_count_by_section: true,
+        post_to_sis: false,
+      })
+      expect(canvas.assignments.list).toHaveBeenCalledWith('42', {
+        assignment_ids: ['7', '8'],
+        order_by: 'due_at',
+        override_assignment_dates: false,
+        needs_grading_count_by_section: true,
+        post_to_sis: false,
+      })
+    })
+
     it('returns the assignment list from Canvas when fields is omitted (full mode)', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignments')!
@@ -195,6 +215,21 @@ describe('assignmentTools', () => {
       })
     })
 
+    it('forwards override_assignment_dates and needs_grading_count_by_section', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'get_assignment')!
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '101',
+        override_assignment_dates: false,
+        needs_grading_count_by_section: true,
+      })
+      expect(canvas.assignments.get).toHaveBeenCalledWith('1', '101', {
+        override_assignment_dates: false,
+        needs_grading_count_by_section: true,
+      })
+    })
+
     it('returns the assignment from Canvas', async () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'get_assignment')!
@@ -243,6 +278,24 @@ describe('assignmentTools', () => {
       expect(canvas.assignments.listGroups).toHaveBeenCalledWith('42', {
         include: ['assignments', 'submission'],
         grading_period_id: '3',
+      })
+    })
+
+    it('forwards assignment_ids, exclude_assignment_submission_types, override_assignment_dates, and scope_assignments_to_student', async () => {
+      const canvas = buildMockCanvas()
+      const tool = assignmentTools(canvas).find((t) => t.name === 'list_assignment_groups')!
+      await tool.handler({
+        course_id: '42',
+        assignment_ids: ['11', '12'],
+        exclude_assignment_submission_types: ['online_quiz'],
+        override_assignment_dates: false,
+        scope_assignments_to_student: true,
+      })
+      expect(canvas.assignments.listGroups).toHaveBeenCalledWith('42', {
+        assignment_ids: ['11', '12'],
+        exclude_assignment_submission_types: ['online_quiz'],
+        override_assignment_dates: false,
+        scope_assignments_to_student: true,
       })
     })
 

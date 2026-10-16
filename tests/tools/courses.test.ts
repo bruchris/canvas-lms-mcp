@@ -79,6 +79,21 @@ describe('courseTools', () => {
       expect(canvas.courses.list).toHaveBeenCalledWith({ enrollment_state: 'active' })
     })
 
+    it('forwards state, include, and exclude_blueprint_courses', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
+      await tool.handler({
+        state: ['available', 'completed'],
+        include: ['total_students'],
+        exclude_blueprint_courses: true,
+      })
+      expect(canvas.courses.list).toHaveBeenCalledWith({
+        state: ['available', 'completed'],
+        include: ['total_students'],
+        exclude_blueprint_courses: true,
+      })
+    })
+
     it('returns the course list from Canvas when fields is omitted (full mode)', async () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'list_courses')!
@@ -180,6 +195,13 @@ describe('courseTools', () => {
       expect(canvas.courses.get).toHaveBeenCalledWith('42', {
         include: ['teachers', 'permissions'],
       })
+    })
+
+    it('forwards teacher_limit to canvas.courses.get', async () => {
+      const canvas = buildMockCanvas()
+      const tool = courseTools(canvas).find((t) => t.name === 'get_course')!
+      await tool.handler({ course_id: '42', teacher_limit: 5 })
+      expect(canvas.courses.get).toHaveBeenCalledWith('42', { teacher_limit: 5 })
     })
 
     it('returns the course from Canvas', async () => {
