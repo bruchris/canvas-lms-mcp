@@ -254,6 +254,14 @@ Two facts matter when embedding:
 
 Set `CANVAS_PROVENANCE_FENCING=false` (byte-exact; any other value leaves it on) to disable. See the [README](../README.md#provenance-fencing-untrusted-canvas-content) for the full field table.
 
+### 64-bit Canvas Identifiers
+
+Every Canvas identifier returned by `CanvasClient` — the same instance used above — is a canonical decimal **string**, not a `number`. That normalization is unconditional and does not depend on any flag: `canvas.courses.get(id)` returns `{ id: "7", ... }` whether or not `CANVAS_STRING_IDS` is set, because `JSON.parse` has already rounded any identifier above `Number.MAX_SAFE_INTEGER` by the time a `number` could represent it, and a string is the only representation that survives.
+
+Set `CANVAS_STRING_IDS=true` (byte-exact; any other value, including unset, leaves it off) to also ask Canvas itself to render large IDs precisely before that normalization runs — the fix for the precision loss itself, not just for the representation your code sees afterward. Recommended for any multi-shard hosted Canvas instance. See the [README](../README.md#64-bit-canvas-identifiers-opt-in-string-ids) for the full explanation, including the `/api/quiz/v1` exclusion.
+
+If you build your own typed layer on `CanvasClient`, treat every ID-shaped field as a string end to end — comparing one against a `number` (`===`) compiles but is silently always `false`.
+
 ### Error Handling
 
 All Canvas client methods throw `CanvasApiError` on failure:

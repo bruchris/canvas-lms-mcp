@@ -345,6 +345,27 @@ const courses = await canvas.courses.list()
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 | `CANVAS_PROVENANCE_FENCING` | No | **On by default.** Set to exactly `false` to disable [provenance fencing](#provenance-fencing-untrusted-canvas-content) |
 | `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the ten irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
+| `CANVAS_STRING_IDS` | No | **Off by default.** Set to exactly `true` to request Canvas identifiers as JSON strings instead of numbers (see [64-bit Canvas identifiers](#64-bit-canvas-identifiers-opt-in-string-ids)) |
+
+## 64-bit Canvas identifiers (opt-in string IDs)
+
+Canvas IDs are 64-bit integers, but a sharded, multi-tenant hosted Canvas assigns global IDs well above `Number.MAX_SAFE_INTEGER` (`9007199254740991`) once an account lives on shard 901 or higher. `JSON.parse` silently rounds such a value — `9010000000000001` arrives as `9010000000000000` — before any code in this server, or in the client reading its response, ever sees it.
+
+**Off by default, opt-in, byte-exact to enable:**
+
+```bash
+CANVAS_STRING_IDS=true canvas-lms-mcp --base-url https://school.instructure.com
+```
+
+The comparison is `=== "true"` and nothing else — no trimming, no case-folding, no truthy coercion. `True`, `TRUE`, `1`, `yes`, a trailing space, or an unset variable all leave the flag **off**. This is deliberate: every normalization step on a flag value widens the set of strings that can enable it by accident, and a precision feature that silently stays off is safer than one that silently turns on.
+
+With the flag on, this server asks Canvas to render every identifier as a JSON **string** rather than a number, on every `/api/v1` request it issues — including list endpoints and every page a response's pagination `Link` leads to — so the string form follows the data through to the end of a paginated fetch, not just the first page.
+
+**Not sent to New Quizzes.** `/api/quiz/v1` is served by a separate service that does not implement this negotiation, so the header is deliberately not sent on those 11 request call sites; a New Quizzes response's identifiers are unaffected by this flag either way.
+
+**What a caller observes:** every identifier in a tool's response — the MCP structured-content surface, the text surface, and the typed `CanvasClient` returned by [library import](docs/integration-guide.md#pattern-3-library-import-embedded-server) — becomes a canonical decimal string instead of a `number`, independent of this flag. Response identifiers are normalized to strings unconditionally so a client never has to special-case "did the flag catch this field"; the flag controls only whether Canvas itself renders large IDs precisely before that normalization runs, which is what actually prevents the precision loss for IDs above the safe-integer range.
+
+**Recommended for any hosted, multi-shard Canvas instance** — i.e., most institutional (non-self-hosted) deployments — where object IDs on shard 901+ are reachable in principle. A single-shard, self-hosted Canvas has no exposure and can leave this off.
 
 ## Destructive tool policy
 

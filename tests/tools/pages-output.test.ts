@@ -269,4 +269,55 @@ describe('pages structured output — strict client acceptance', () => {
       expect(json.required?.sort()).toEqual(['page_id', 'title', 'url'])
     })
   })
+
+  describe('64-bit identifier fidelity (BRU-2730 §2.1, Phase 2c)', () => {
+    // Canvas's global ID for shard 901+ exceeds `Number.MAX_SAFE_INTEGER`, so a
+    // `number` carrying it is already wrong before any code of ours runs —
+    // `JSON.parse` rounds `...001` to `...000`. `page_id`'s union (BRU-2730
+    // §7.2) exists so the canonical-string form Phase 2a/2b produce can reach
+    // a caller unchanged instead. These tests supply that string directly, the
+    // same way a normalized Canvas response would, and prove the output
+    // schema, the envelope, and the real MCP wire (JSON serialization through
+    // `InMemoryTransport`, armed client-side validation) do not re-coerce it
+    // back through a lossy numeric path anywhere in between.
+    const UNSAFE_PAGE_ID = '9010000000000001'
+
+    it('get_page: a shard-901 page_id survives the output-validation boundary byte-exact', async () => {
+      const canvas = buildCanvas({
+        get: vi.fn().mockResolvedValue({ ...driftedPage, page_id: UNSAFE_PAGE_ID }),
+      })
+
+      const result = await call(canvas, 'get_page', { course_id: '1', page_url: 'welcome-page' })
+
+      expect(result.isError).toBeFalsy()
+      expect(result.structuredContent?.page_id).toBe(UNSAFE_PAGE_ID)
+      expect(JSON.parse(result.content[0].text).page_id).toBe(UNSAFE_PAGE_ID)
+    })
+
+    it('list_pages: a shard-901 page_id survives the output-validation boundary byte-exact', async () => {
+      const canvas = buildCanvas({
+        list: vi.fn().mockResolvedValue([{ ...driftedPage, page_id: UNSAFE_PAGE_ID }]),
+      })
+
+      const result = await call(canvas, 'list_pages', { course_id: '1' })
+      const pages = result.structuredContent?.pages as Record<string, unknown>[]
+      // `list_pages`'s text surface is the bare array — the envelope key wraps
+      // only the structured-content side (see `envelopeKey` in output-fixtures).
+      const textPages = JSON.parse(result.content[0].text) as Record<string, unknown>[]
+
+      expect(result.isError).toBeFalsy()
+      expect(pages[0].page_id).toBe(UNSAFE_PAGE_ID)
+      expect(textPages[0].page_id).toBe(UNSAFE_PAGE_ID)
+    })
+
+    it('anti-vacuity control: the literal is only a meaningful fixture because it is actually unsafe as a number', () => {
+      // Pins down what "unsafe" means for the literal under test: round-tripped
+      // through a JS number, it silently loses its last digit. The two tests
+      // above would be unable to catch a regression that coerced `page_id`
+      // through `Number()` anywhere in the pipeline if this value round-tripped
+      // cleanly — this is the control that proves it does not.
+      expect(Number(UNSAFE_PAGE_ID)).toBeGreaterThan(Number.MAX_SAFE_INTEGER)
+      expect(String(Number(UNSAFE_PAGE_ID))).not.toBe(UNSAFE_PAGE_ID)
+    })
+  })
 })
