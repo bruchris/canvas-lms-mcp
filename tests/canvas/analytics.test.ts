@@ -103,6 +103,19 @@ describe('AnalyticsModule', () => {
     })
   })
 
+  describe('getStudentSummaries', () => {
+    it('paginates the student summaries endpoint', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+        { id: 1, page_views: 50, participations: 10, tardiness_breakdown: {} },
+      ])
+      const result = await analytics.getStudentSummaries(100)
+      expect(result).toHaveLength(1)
+      expect(client.paginate).toHaveBeenCalledWith(
+        '/api/v1/courses/100/analytics/student_summaries',
+      )
+    })
+  })
+
   describe('getAssignmentAnalytics', () => {
     it('paginates the analytics assignments endpoint', async () => {
       vi.spyOn(client, 'paginate').mockResolvedValueOnce([

@@ -3,7 +3,6 @@
 // listens. Nothing is ever read from a request.
 
 import { isEnvTruthy } from '../../env'
-import { hashToken } from './crypto'
 import { isLoopbackHost, validateRedirectUri } from './redirect-uri'
 
 /** Scopes this server issues. MCP scopes, not Canvas scopes (§7.4). */
@@ -314,9 +313,4 @@ export function resolveBindHost(
     )
   }
   return host
-}
-
-/** Hash a pre-registered client secret for storage; exported for the client store. */
-export function hashClientSecret(secret: string): string {
-  return hashToken(secret)
 }

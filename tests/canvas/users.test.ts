@@ -33,6 +33,13 @@ describe('UsersModule', () => {
     expect(client.request).toHaveBeenCalledWith('/api/v1/users/1')
   })
 
+  it('gets the current user', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 1, name: 'Alice' })
+    const result = await users.getSelf()
+    expect(result).toMatchObject({ id: 1, name: 'Alice' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/users/self')
+  })
+
   it('gets current user profile', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce({
       id: 1,

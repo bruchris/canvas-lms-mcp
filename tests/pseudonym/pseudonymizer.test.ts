@@ -323,6 +323,36 @@ describe('anonymizeEnrollment', () => {
     expect(out.sis_user_id).toBe('SIS-99')
     expect(out.user?.name).toBe('Prof Jones')
   })
+
+  /**
+   * Enrollments fetched without the `user` include (e.g. a bare
+   * `list_enrollments` call) carry no nested `user` object. `anonymizeEnrollment`
+   * falls back to `classifyRoleFromEnrollment`, which classifies from the
+   * enrollment's own `type` alone — this is the only path that reaches it.
+   */
+  it('nulls sis_user_id for a user-less student enrollment', async () => {
+    const p = make()
+    const e: CanvasEnrollment = {
+      ...studentEnrollment(),
+      user_id: 1,
+      sis_user_id: 'SIS-1',
+    }
+    const out = await p.anonymizeEnrollment(COURSE_ID, e)
+    expect(out.sis_user_id).toBeNull()
+    expect(out.user).toBeUndefined()
+  })
+
+  it('passes a user-less teacher enrollment through unchanged', async () => {
+    const p = make()
+    const e: CanvasEnrollment = {
+      ...teacherEnrollment(),
+      user_id: 99,
+      sis_user_id: 'SIS-99',
+    }
+    const out = await p.anonymizeEnrollment(COURSE_ID, e)
+    expect(out.sis_user_id).toBe('SIS-99')
+    expect(out).toEqual(e)
+  })
 })
 
 describe('anonymizeSubmission', () => {
