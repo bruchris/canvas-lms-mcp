@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.1...canvas-lms-mcp-v2.5.2) (2026-10-16)
+
+
+### Documentation
+
+* **canvas:** add unsafe-ID output fixtures and CANVAS_STRING_IDS docs (BRU-2853 Phase 2c) ([#432](https://github.com/bruchris/canvas-lms-mcp/issues/432)) ([78d98fc](https://github.com/bruchris/canvas-lms-mcp/commit/78d98fc37dd7e032b368f1fee8528d3fb9e90d85))
+
 ## [2.5.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.0...canvas-lms-mcp-v2.5.1) (2026-10-15)
 
 
