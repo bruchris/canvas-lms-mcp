@@ -38,7 +38,7 @@ export interface ToolFeatureFlags {
   assignmentSubmission?: boolean
   /**
    * CANVAS_DESTRUCTIVE_TOOLS / --destructive-tools=<mode> (BRU-2444, design
-   * BRU-2390 §7). A policy, not a boolean: `block` removes the ten
+   * BRU-2390 §7). A policy, not a boolean: `block` removes the eleven
    * irreversible delete tools from the registry entirely. Unset resolves to
    * `allow`, which is today's behaviour byte-for-byte.
    *

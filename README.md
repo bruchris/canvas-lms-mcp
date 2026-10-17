@@ -11,7 +11,7 @@
 
 MCP server for [Canvas LMS](https://www.instructure.com/canvas). Read courses, assignments, submissions, rubrics, quizzes; grade, comment, manage course content, and handle Canvas admin workflows from any AI agent.
 
-176 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
+177 tools across Canvas courses, assignments, submissions, gradebook history, rubrics, quizzes, New Quizzes (LTI), files, users, groups, enrollments, discussions, modules, pages, calendar, conversations, peer reviews, accounts, analytics, outcomes, grading standards, grade projection, link audit, accessibility audit, content exports, content migrations, quiz accommodations, appointment groups, student workflows, student search, dashboard, instructor attention workflows, and health checks. Three deployment modes: stdio, HTTP, and library import.
 
 ## One-click install (Claude Desktop)
 
@@ -45,7 +45,7 @@ Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#ag
 | | canvas-lms-mcp | [vishalsachdev/canvas-mcp](https://github.com/vishalsachdev/canvas-mcp) | [DMontgomery40/mcp-canvas-lms](https://github.com/DMontgomery40/mcp-canvas-lms) |
 |---|---|---|---|
 | Language | TypeScript | Python | TypeScript |
-| Tools | 176 | 80+ | 54 |
+| Tools | 177 | 80+ | 54 |
 | License | [![License: MIT](https://img.shields.io/github/license/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp/blob/main/LICENSE) | [![License](https://img.shields.io/github/license/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms/blob/main/LICENSE) |
 | Last commit | [![Last commit](https://img.shields.io/github/last-commit/bruchris/canvas-lms-mcp)](https://github.com/bruchris/canvas-lms-mcp) | [![Last commit](https://img.shields.io/github/last-commit/vishalsachdev/canvas-mcp)](https://github.com/vishalsachdev/canvas-mcp) | [![Last commit](https://img.shields.io/github/last-commit/DMontgomery40/mcp-canvas-lms)](https://github.com/DMontgomery40/mcp-canvas-lms) |
 
@@ -106,7 +106,7 @@ Once configured, try these prompts with your AI client:
 
 ## Tool Inventory
 
-### All Registered Tools (176)
+### All Registered Tools (177)
 
 | Category | Tools |
 |----------|-------|
@@ -133,7 +133,7 @@ Once configured, try these prompts with your AI client:
 | Groups | `list_groups`, `list_group_members` |
 | Enrollments | `list_enrollments`, `list_course_enrollments`, `enroll_user`, `remove_enrollment` |
 | Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
-| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `create_module_item`, `update_module_item`, `delete_module_item` |
+| Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `delete_module`, `create_module_item`, `update_module_item`, `delete_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
 | Conversations | `list_conversations`, `get_conversation`, `get_conversation_unread_count`, `send_conversation` |
@@ -152,7 +152,7 @@ Once configured, try these prompts with your AI client:
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
 | FERPA (conditional) | `resolve_pseudonym` — stdio only, registered when `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` |
 
-122 tools are read-only and 54 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 177th tool overall (123rd read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
+122 tools are read-only and 55 tools perform Canvas write operations. When FERPA mode is enabled **on the stdio transport**, `resolve_pseudonym` is registered as the 178th tool overall (123rd read tool). The HTTP transport never registers it — see [FERPA mode](#ferpa-mode-student-pseudonymization).
 
 All write tools require appropriate Canvas permissions. Canvas enforces its own permission model -- the MCP server does not bypass it.
 
@@ -317,7 +317,7 @@ const courses = await canvas.courses.list()
 | `--issuer` | `CANVAS_MCP_ISSUER` | (required in `oauth_brokered`) | Public URL of this server; OAuth issuer and resource prefix |
 | `doctor` | -- | -- | Print an identity-safe setup report (also `auth status`); exit 1 when something is missing |
 | `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
-| `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the ten irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
+| `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the eleven irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 
 ## Environment Variables
 
@@ -344,7 +344,7 @@ const courses = await canvas.courses.list()
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 | `CANVAS_PROVENANCE_FENCING` | No | **On by default.** Set to exactly `false` to disable [provenance fencing](#provenance-fencing-untrusted-canvas-content) |
-| `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the ten irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
+| `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the eleven irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 | `CANVAS_STRING_IDS` | No | **Off by default.** Set to exactly `true` to request Canvas identifiers as JSON strings instead of numbers (see [64-bit Canvas identifiers](#64-bit-canvas-identifiers-opt-in-string-ids)) |
 
 ## 64-bit Canvas identifiers (opt-in string IDs)
@@ -371,7 +371,7 @@ With the flag on, this server asks Canvas to render every identifier as a JSON *
 
 Canvas has no undo. This server cannot restore anything it deletes -- every recovery
 story for a mistaken delete is something you do outside this tooling, in Canvas or
-with your institution's admin. `CANVAS_DESTRUCTIVE_TOOLS=block` removes the ten
+with your institution's admin. `CANVAS_DESTRUCTIVE_TOOLS=block` removes the eleven
 irreversible delete tools from the server entirely, so no amount of model confusion
 or [prompt injection](#provenance-fencing-untrusted-canvas-content) can reach them.
 
@@ -384,7 +384,7 @@ canvas-lms-mcp --destructive-tools=block --base-url https://school.instructure.c
 | Mode | Behaviour |
 |------|-----------|
 | `allow` | **Default.** Every tool is registered -- unchanged from previous releases. |
-| `block` | The ten tools below are not registered at all. They are absent from `tools/list`, and a call naming one is refused by the MCP protocol layer before any Canvas request is made. |
+| `block` | The eleven tools below are not registered at all. They are absent from `tools/list`, and a call naming one is refused by the MCP protocol layer before any Canvas request is made. |
 
 **Blocked by `block`:**
 
@@ -398,6 +398,7 @@ canvas-lms-mcp --destructive-tools=block --base-url https://school.instructure.c
 | `delete_discussion` | The whole reply thread, including student-authored posts |
 | `delete_page` | Page body and revision history (keyed by URL slug, not a numeric ID) |
 | `delete_rubric` | The rubric and **every assignment association on it** |
+| `delete_module` | The module and its **whole ordered item list**; the linked assignments, pages, quizzes, files and discussions are not deleted, but the module itself has to be rebuilt item by item |
 | `delete_file` | A file, addressed by a **global** ID with no course scoping in the call |
 | `delete_appointment_group` | Every reservation -- and it **emails every signed-up student** |
 
@@ -567,10 +568,10 @@ Three roles, plus the default of "unset = every tool":
 
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
-| _(unset)_ | all (~176) | default; backwards-compatible |
+| _(unset)_ | all (~177) | default; backwards-compatible |
 | `student` | ~63 | a student's own courses, grades, submissions, and read-only course content |
-| `teacher` | ~153 | grading, roster, content authoring, analytics |
-| `admin` | ~165 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
+| `teacher` | ~154 | grading, roster, content authoring, analytics |
+| `admin` | ~166 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 
 Notes:
 

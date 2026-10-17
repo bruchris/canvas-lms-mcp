@@ -177,6 +177,22 @@ describe('ModulesModule', () => {
     })
   })
 
+  it('deletes a module and returns the deleted module', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 7, name: 'Extra Labors' })
+    const result = await modules.delete(100, 7)
+    expect(result).toMatchObject({ id: 7, name: 'Extra Labors' })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/modules/7', {
+      method: 'DELETE',
+    })
+  })
+
+  it('surfaces a Canvas error from delete', async () => {
+    vi.spyOn(client, 'request').mockRejectedValueOnce(
+      new CanvasApiError(404, 'The specified resource does not exist.'),
+    )
+    await expect(modules.delete(100, 999)).rejects.toBeInstanceOf(CanvasApiError)
+  })
+
   it('surfaces a Canvas error from deleteItem', async () => {
     vi.spyOn(client, 'request').mockRejectedValueOnce(
       new CanvasApiError(404, 'The specified resource does not exist.'),

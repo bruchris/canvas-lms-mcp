@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 176,
+  "toolCount": 177,
   "tools": [
     {
       "name": "health_check",
@@ -1161,6 +1161,21 @@
       "description": "Update an existing module (rename, reposition, publish/unpublish).",
       "annotations": {
         "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false
+    },
+    {
+      "name": "delete_module",
+      "title": "Delete Module",
+      "domain": "modules",
+      "description": "Permanently delete a module from a course, including its ordered list of module items. Assignments, pages, quizzes, files and discussions that the items link to are stored separately in the course and this call does not delete them, but ExternalUrl, ExternalTool and SubHeader items exist only inside the module and go with it. There is no single inverse: rebuilding the module means create_module plus create_module_item for each item.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
         "openWorldHint": true
       },
       "access": "write",

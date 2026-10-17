@@ -66,7 +66,7 @@ Posts a reply to a discussion topic. Supports HTML formatting.
 
 ## Write Operations Reference
 
-The server includes 54 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
+The server includes 55 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
 
 ### Grading & Feedback
 
@@ -148,8 +148,9 @@ The server includes 54 write tools. All require appropriate Canvas permissions. 
 
 | Operation | Tool | What It Does | Reversible? |
 |-----------|------|--------------|-------------|
-| Create a module | `create_module` | Creates a new module in a course | No -- no `delete_module` tool in this server; remove via Canvas UI |
+| Create a module | `create_module` | Creates a new module in a course | Yes (call `delete_module`) |
 | Update a module | `update_module` | Renames, repositions, publishes, or unpublishes a module | Yes (call again to revert fields, e.g. unpublish) |
+| Delete a module | `delete_module` | Deletes the module and its ordered item list; the linked assignment, page, quiz, file, or discussion content is not deleted | No -- the module has to be rebuilt with `create_module` and `create_module_item` |
 | Add a module item | `create_module_item` | Adds an item (Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool, or SubHeader) to a module | Yes (call `delete_module_item`) |
 | Update a module item | `update_module_item` | Renames, repoints (ExternalUrl/ExternalTool), repositions, re-indents, publishes, or moves an item to another module | Yes (call again to revert fields) |
 | Remove a module item | `delete_module_item` | Removes the item from its module; the underlying assignment, page, quiz, file, or discussion is not deleted | Yes (call `create_module_item` to re-add it) |

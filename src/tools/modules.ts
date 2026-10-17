@@ -187,6 +187,26 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       },
     },
     {
+      name: 'delete_module',
+      title: 'Delete Module',
+      description:
+        'Permanently delete a module from a course, including its ordered list of module items. Assignments, pages, quizzes, files and discussions that the items link to are stored separately in the course and this call does not delete them, but ExternalUrl, ExternalTool and SubHeader items exist only inside the module and go with it. There is no single inverse: rebuilding the module means create_module plus create_module_item for each item.',
+      inputSchema: {
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        module_id: canvasIdInput().describe('The Canvas module ID to delete'),
+      },
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as CanvasId
+        const module_id = params.module_id as CanvasId
+        return canvas.modules.delete(course_id, module_id)
+      },
+    },
+    {
       name: 'create_module_item',
       title: 'Create Module Item',
       description:

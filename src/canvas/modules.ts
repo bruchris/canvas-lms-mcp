@@ -83,6 +83,17 @@ export class ModulesModule {
     })
   }
 
+  /**
+   * Canvas answers a module DELETE with the deleted module's body (the
+   * controller renders `module_json` with no root key). The module's items go
+   * with it; the content they link to is stored separately in the course.
+   */
+  async delete(courseId: CanvasId, moduleId: CanvasId): Promise<CanvasModule> {
+    return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules/${moduleId}`, {
+      method: 'DELETE',
+    })
+  }
+
   async createItem(
     courseId: CanvasId,
     moduleId: CanvasId,

@@ -41,6 +41,7 @@ describe('moduleTools', () => {
         getCourseStructure: vi.fn().mockResolvedValue(mockCourseStructure),
         create: vi.fn().mockResolvedValue(mockModule),
         update: vi.fn().mockResolvedValue(mockModule),
+        delete: vi.fn().mockResolvedValue(mockModule),
         createItem: vi.fn().mockResolvedValue(mockItem),
         updateItem: vi.fn().mockResolvedValue(mockItem),
         deleteItem: vi.fn().mockResolvedValue(mockItem),
@@ -48,8 +49,8 @@ describe('moduleTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 10 tool definitions', () => {
-    expect(moduleTools(buildMockCanvas())).toHaveLength(10)
+  it('returns an array with 11 tool definitions', () => {
+    expect(moduleTools(buildMockCanvas())).toHaveLength(11)
   })
 
   it('exports tools with correct names', () => {
@@ -62,6 +63,7 @@ describe('moduleTools', () => {
       'view_course_structure',
       'create_module',
       'update_module',
+      'delete_module',
       'create_module_item',
       'update_module_item',
       'delete_module_item',
@@ -323,6 +325,30 @@ describe('moduleTools', () => {
         title: 'x',
       })
       expect(result).toEqual(mockItem)
+    })
+  })
+
+  describe('delete_module', () => {
+    it('has destructive + idempotent annotations', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'delete_module')!
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('takes course_id and module_id', () => {
+      const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'delete_module')!
+      expect(Object.keys(tool.inputSchema).sort()).toEqual(['course_id', 'module_id'])
+    })
+
+    it('delegates to canvas.modules.delete and returns the deleted module', async () => {
+      const canvas = buildMockCanvas()
+      const tool = moduleTools(canvas).find((t) => t.name === 'delete_module')!
+      const result = await tool.handler({ course_id: '1', module_id: '7' })
+      expect(canvas.modules.delete).toHaveBeenCalledWith('1', '7')
+      expect(result).toEqual(mockModule)
     })
   })
 

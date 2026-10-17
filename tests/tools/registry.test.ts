@@ -228,7 +228,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 174 default tools across all domains (176 with assignmentSubmission)', () => {
+  it('returns all 175 default tools across all domains (177 with assignmentSubmission)', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -308,7 +308,7 @@ describe('getAllTools', () => {
     expect(names).toContain('create_discussion')
     expect(names).toContain('update_discussion')
     expect(names).toContain('delete_discussion')
-    // Modules (8)
+    // Modules (11)
     expect(names).toContain('list_modules')
     expect(names).toContain('get_module')
     expect(names).toContain('list_module_items')
@@ -316,6 +316,7 @@ describe('getAllTools', () => {
     expect(names).toContain('view_course_structure')
     expect(names).toContain('create_module')
     expect(names).toContain('update_module')
+    expect(names).toContain('delete_module')
     expect(names).toContain('create_module_item')
     expect(names).toContain('update_module_item')
     expect(names).toContain('delete_module_item')
@@ -439,14 +440,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(174)
+    expect(tools).toHaveLength(175)
   })
 
-  it('returns 176 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 177 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(176)
+    expect(tools).toHaveLength(177)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
@@ -481,6 +482,7 @@ describe('getAllTools', () => {
       'delete_peer_review',
       'create_module',
       'update_module',
+      'delete_module',
       'create_module_item',
       'update_module_item',
       'delete_module_item',
@@ -552,6 +554,7 @@ describe('getAllTools', () => {
       'delete_peer_review',
       'create_module',
       'update_module',
+      'delete_module',
       'create_module_item',
       'update_module_item',
       'delete_module_item',

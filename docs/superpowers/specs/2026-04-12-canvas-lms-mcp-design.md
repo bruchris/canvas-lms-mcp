@@ -404,7 +404,7 @@ All errors returned as structured MCP content, never thrown:
 | `enroll_user` | write | Enroll a user in a course |
 | `remove_enrollment` | write | Remove or conclude an enrollment |
 
-#### Modules (10 tools)
+#### Modules (11 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
@@ -415,6 +415,7 @@ All errors returned as structured MCP content, never thrown:
 | `view_course_structure` | read | Interactive MCP Apps tree view of modules and items (falls back to JSON on non-MCP-Apps hosts) |
 | `create_module` | write | Create a module |
 | `update_module` | write | Update an existing module |
+| `delete_module` | write | Permanently delete a module and its item list; the linked content is not deleted |
 | `create_module_item` | write | Add an item to a module |
 | `update_module_item` | write | Edit a module item in place (rename, repoint an ExternalUrl, reposition, publish, move to another module) |
 | `delete_module_item` | write | Remove an item from a module; the underlying content is not deleted |
@@ -686,7 +687,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `upload_submission_file` | write | Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called. |
 | `submit_assignment` | write | Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids. |
 
-**Totals: 176 tools (122 read, 54 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 177th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 176.
+**Totals: 177 tools (122 read, 55 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 178th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 177.
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand. After updating the base count, also update the conditional-tool ordinal in the FERPA Mode section below: it must always equal **base + 1** (the `resolve_pseudonym` tool is never included in the base total).
 
@@ -701,7 +702,7 @@ An opt-in server-side mode that pseudonymizes student personally identifiable in
 - Student names are replaced with stable, course-scoped labels (`Student 1`, `Student 2`, …). The same real Canvas `user_id` always maps to the same label within a course for the lifetime of the pseudonym map file.
 - The pseudonym map is stored on the server operator's machine under XDG / `%APPDATA%` / `CANVAS_PSEUDONYM_DIR`. It never leaves the local machine.
 
-**Conditional tool `resolve_pseudonym`:** on the **stdio transport**, when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 177th tool is registered. It is never registered on the HTTP transport, where one pseudonym map is shared by callers holding different Canvas tokens (BRU-2511). It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
+**Conditional tool `resolve_pseudonym`:** on the **stdio transport**, when **both** `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, a 178th tool is registered. It is never registered on the HTTP transport, where one pseudonym map is shared by callers holding different Canvas tokens (BRU-2511). It accepts a pseudonym label (e.g., `Student 7`) and a course ID and returns the resolved Canvas `user_id` (not the real name). Instructors who need to act on a specific student can look up the ID without the AI agent ever seeing the PII. The tool is intentionally absent when FERPA mode is off.
 
 **Coverage enforcement:** `tests/pseudonym/coverage.test.ts` fails CI if any tool returning student PII is not wrapped. New tools that add `CanvasUser` or `user_name` fields must update `src/pseudonym/coverage.ts` and route through the appropriate `Pseudonymizer.anonymize*` method.
 
@@ -847,7 +848,7 @@ All tools include MCP tool annotations to help clients (Claude, ChatGPT) make sa
 | Annotation | Applied to | Effect |
 |------------|-----------|--------|
 | `readOnlyHint: true` | All 122 read tools | Clients may auto-execute without confirmation |
-| `destructiveHint: true` | All 54 write tools | Clients should ask for user confirmation before executing |
+| `destructiveHint: true` | All 55 write tools | Clients should ask for user confirmation before executing |
 | `idempotentHint: true` | `grade_submission`, `submit_rubric_assessment`, `score_quiz_question` | Safe to retry — re-grading with same value is a no-op |
 | `openWorldHint: true` | All tools | Tools interact with external Canvas API |
 
@@ -1089,7 +1090,7 @@ as the un-annotated part of each line. Two caveats on reading it as a historical
 - OAuth 2.0 flow — **shipped in 1.30.0** as the `oauth_brokered` profile
 
 ### Deliberate constraints
-- Destructive write operations are opt-out, not opt-in: 54 write tools ship, including 12 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 10 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
+- Destructive write operations are opt-out, not opt-in: 55 write tools ship, including 13 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 11 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
 - ~~No account-level admin tools~~ — **false since 0.5.0**: `list_accounts`, `get_account`, `list_account_users`, `list_account_courses` and `list_account_notifications` all ship. Unlike the exclusions above, this list is written in the present tense, so the line is struck rather than annotated (BRU-2695)
 - Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 
