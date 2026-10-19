@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.2...canvas-lms-mcp-v2.6.0) (2026-10-19)
+
+
+### Features
+
+* **modules:** add delete_module ([#436](https://github.com/bruchris/canvas-lms-mcp/issues/436)) ([7c717d7](https://github.com/bruchris/canvas-lms-mcp/commit/7c717d7592ded1dd3484b70ecfeae54659f285c4)), closes [#430](https://github.com/bruchris/canvas-lms-mcp/issues/430)
+
 ## [2.5.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.1...canvas-lms-mcp-v2.5.2) (2026-10-16)
 
 
