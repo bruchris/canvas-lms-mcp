@@ -71,6 +71,8 @@ The committed files in `docs/generated/` are expected to stay in sync with the l
 
 ## Pull Requests
 
+Maintainers aim to respond within 24 hours. An automated GitHub alarm flags outside pull requests and issues left without maintainer action.
+
 - Use a clear title and explain the user-facing impact.
 - Link the related issue when one exists.
 - Mention any follow-up work or known limitations.
