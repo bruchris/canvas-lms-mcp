@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.7.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.6.0...canvas-lms-mcp-v2.7.0) (2026-10-20)
+
+
+### Features
+
+* **groups:** add group category, group and membership write tools ([#438](https://github.com/bruchris/canvas-lms-mcp/issues/438)) ([bc9f2ca](https://github.com/bruchris/canvas-lms-mcp/commit/bc9f2ca20f1ec797cc6c365c224258c16788dcb1)), closes [#431](https://github.com/bruchris/canvas-lms-mcp/issues/431)
+
+
+### Miscellaneous
+
+* **deps-dev:** bump the dev-dependencies group with 5 updates ([#439](https://github.com/bruchris/canvas-lms-mcp/issues/439)) ([1584ce1](https://github.com/bruchris/canvas-lms-mcp/commit/1584ce1f6a725a37ae1bd5f47dd9b45be84e8c91))
+
+
+### Documentation
+
+* **discovery:** add tool-description standard, CI ratchet, and glama.json (BRU-3041) ([#444](https://github.com/bruchris/canvas-lms-mcp/issues/444)) ([e80a28f](https://github.com/bruchris/canvas-lms-mcp/commit/e80a28f7d8c5e52c6f79861f864e435cf7c4d286))
+
+
+### CI/CD
+
+* **maintainers:** add an SLA alarm for unattended outside PRs and issues ([#443](https://github.com/bruchris/canvas-lms-mcp/issues/443)) ([9bc2d76](https://github.com/bruchris/canvas-lms-mcp/commit/9bc2d7614b37a81231ec0df465edbea7500ef44e))
+
 ## [2.6.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.5.2...canvas-lms-mcp-v2.6.0) (2026-10-19)
 
 
