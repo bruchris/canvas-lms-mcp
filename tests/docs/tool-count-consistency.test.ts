@@ -18,6 +18,7 @@ const designSpec = readFileSync(
   resolve(ROOT, 'docs/superpowers/specs/2026-04-12-canvas-lms-mcp-design.md'),
   'utf8',
 )
+const smithery = readFileSync(resolve(ROOT, 'smithery.yaml'), 'utf8')
 
 interface ManifestTool {
   name: string
@@ -115,6 +116,42 @@ describe('doc tool-count consistency', () => {
       expect(
         Number(m![2]),
         `manifest.json description has ${m![2]} domains but manifest has ${DOMAIN_COUNT} distinct domains — update manifest.json`,
+      ).toBe(DOMAIN_COUNT)
+    })
+  })
+
+  describe('smithery.yaml', () => {
+    // BRU-3041: smithery.yaml said "88 tools across 20 domains" for months
+    // because, unlike every file above, nothing read it against the manifest.
+    // Unlike those files, Smithery's own listing isn't CI-gated to refresh in
+    // step with every release, so a hand-maintained exact count would drift
+    // again immediately. Instead the description states a durable floor
+    // ("175+ tools") that stays true across releases (BRU-3040 discovery-listings
+    // doc: true for both npm latest 177 and main's 183 as of 2026-10-20) — this
+    // test only guards the two ways that floor can go stale: claiming MORE
+    // tools than actually exist, or an exact domain count (which changes far
+    // less often than the tool count) drifting out from under the stated number.
+    it('no longer carries the stale 88-tools/20-domains claim', () => {
+      expect(smithery).not.toMatch(/\b88 tools\b/)
+      expect(smithery).not.toMatch(/\b20 domains\b/)
+    })
+
+    it('floor + domain count claim is never overstated', () => {
+      // The YAML folded scalar (`>`) wraps this sentence across source lines,
+      // so match across whitespace (including the literal newline) rather
+      // than assuming it's all on one line.
+      const m = smithery.match(/(\d+)\+\s+tools\s+across\s+(\d+)\s+domains/)
+      expect(m, 'smithery.yaml "N+ tools across N domains" claim not found').toBeTruthy()
+      const [, floorStr, domainsStr] = m!
+      expect(
+        Number(floorStr),
+        `smithery.yaml claims "${floorStr}+ tools" but manifest.toolCount is only ${TOTAL} — ` +
+          `the floor must never exceed the real count`,
+      ).toBeLessThanOrEqual(TOTAL)
+      expect(
+        Number(domainsStr),
+        `smithery.yaml says ${domainsStr} domains but the manifest has ${DOMAIN_COUNT} distinct ` +
+          `domains — update smithery.yaml (domain count is exact, unlike the tool-count floor)`,
       ).toBe(DOMAIN_COUNT)
     })
   })
