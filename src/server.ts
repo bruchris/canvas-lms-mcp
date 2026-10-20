@@ -6,6 +6,7 @@ import { isEnvTruthy } from './env'
 import { registerAllTools } from './tools'
 import type { CanvasRole, ToolFeatureFlags, WriteToolsMode } from './tools/types'
 import { resolveDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
+import type { ToolCallGate } from './auth/credential-gate'
 import { registerAllResources } from './resources'
 import { registerAllPrompts } from './prompts'
 
@@ -87,6 +88,22 @@ export interface CanvasMCPServerConfig {
    * Unset = `allow`, today's behaviour.
    */
   writeTools?: WriteToolsMode
+  /**
+   * When set, **every** registered tool call returns this gate message
+   * instead of running — before any argument is read and before any
+   * network I/O. Discovery (`initialize`, `tools/list`, `prompts/list`,
+   * `resources/list`) is untouched, so the server still advertises its full
+   * surface.
+   *
+   * Set by the stdio entry point when Canvas credentials are absent, so an
+   * MCP directory can introspect the package without credentials (GH #442,
+   * BRU-3043). Unset = no gate, which is every configured deployment
+   * byte-for-byte.
+   *
+   * This loosens no authentication: a gated server holds no usable Canvas
+   * credential, so there is nothing for it to authorize.
+   */
+  toolCallGate?: ToolCallGate
 }
 
 export interface CanvasMCPServer {
@@ -168,7 +185,7 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
     ),
     ...(config.writeTools ? { writeTools: config.writeTools } : {}),
   }
-  registerAllTools(server, canvas, pseudonymizer, config.role, features)
+  registerAllTools(server, canvas, pseudonymizer, config.role, features, config.toolCallGate)
   registerAllResources(server, canvas)
   // The 16 Agent Skills, served as MCP prompts so a host without a skill-file
   // loader can still discover the Canvas workflows. Inert templates the user

@@ -15,7 +15,8 @@ Commands:
   doctor              Check setup without starting the server
   auth status         Same as doctor
 
-Credentials (required by stdio and serve, not by help or init --help):
+Credentials (serve needs them at startup; stdio starts without them so MCP
+directories can read its tool list, but then every tool call fails):
   --token <t>         Canvas API token (or CANVAS_API_TOKEN)
   --base-url <u>      Canvas base URL, origin only (or CANVAS_BASE_URL)
 

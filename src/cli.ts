@@ -1,4 +1,5 @@
 import { isEnvTruthy } from './env'
+import { DOCTOR_HINT } from './auth/credential-gate'
 import { parseRole } from './tools/roles'
 import { parseDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
@@ -41,10 +42,21 @@ export interface CliConfig {
    * an invalid value *of the winning source* stops startup.
    */
   destructiveTools: DestructiveToolsMode
+  /**
+   * Whether this process holds a usable Canvas credential.
+   *
+   * `'absent'` is reachable only on the local stdio profile with *neither*
+   * token nor base URL set: the credentialless discovery state an MCP
+   * directory launches the package in (GH #442). Every other path either
+   * resolves a credential or exits, so `'present'` there is a fact, not a
+   * default. Callers must gate tool calls when this is `absent` — the
+   * server starts and advertises its full surface, but it can authorize
+   * nothing.
+   */
+  credentials: 'present' | 'absent'
 }
 
 const DESTRUCTIVE_FLAG = '--destructive-tools'
-const DOCTOR_HINT = 'Run `canvas-lms-mcp doctor` to check your setup.'
 
 /** Print a startup error and exit. Never returns. */
 function fatal(message: string): never {
@@ -96,12 +108,13 @@ export function parseArgs(args: string[]): CliConfig {
     )
   }
 
-  // `destructiveTools` and `authProfile` are deliberately absent from this
-  // object *and* from its type: both are resolved after the loop, once we know
-  // whether the command line supplied a flag. Omitting the keys makes the
-  // compiler demand them at the `return` below, so the resolution cannot be
-  // dropped, and leaves no placeholder here that could survive and fail *open*.
-  const config: Omit<CliConfig, 'destructiveTools' | 'authProfile'> = {
+  // `destructiveTools`, `authProfile` and `credentials` are deliberately absent
+  // from this object *and* from its type: all three are resolved at the
+  // returns below, once the parser knows what the command line supplied.
+  // Omitting the keys makes the compiler demand them at every `return`, so a
+  // resolution cannot be dropped, and leaves no placeholder here that could
+  // survive and fail *open*.
+  const config: Omit<CliConfig, 'destructiveTools' | 'authProfile' | 'credentials'> = {
     token: process.env.CANVAS_API_TOKEN ?? '',
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
     mode: 'stdio',
@@ -248,7 +261,26 @@ export function parseArgs(args: string[]): CliConfig {
       authProfile,
       oauth,
       destructiveTools,
+      // The Canvas credential arrives per request from the OAuth flow, and
+      // `loadOAuthProfileConfig` above has already refused to start without
+      // the client credentials it needs.
+      credentials: 'present',
     }
+  }
+
+  // Credentialless stdio discovery (GH #442, BRU-3043). An MCP directory
+  // launches the package with no environment at all and reads `tools/list`;
+  // exiting here is what made those listings report "No tools detected", and
+  // the only server that scored was one injecting placeholder credentials.
+  //
+  // Deliberately narrow. Only the local stdio profile qualifies, because
+  // nothing introspects a remote listener over stdio and the HTTP profiles
+  // keep their startup requirements exactly. And only when *neither*
+  // credential is set: one of the two present is a typo or a half-finished
+  // setup, so it keeps the fatal error rather than starting in a mode whose
+  // own message would tell the deployer to set what they already set.
+  if (authProfile === 'local_static_token' && !config.token && !config.baseUrl) {
+    return { ...config, authProfile, destructiveTools, credentials: 'absent' }
   }
 
   if (!config.token) {
@@ -263,5 +295,6 @@ export function parseArgs(args: string[]): CliConfig {
     ...(hostRaw !== undefined && hostRaw.trim() !== '' ? { host: hostRaw.trim() } : {}),
     authProfile,
     destructiveTools,
+    credentials: 'present',
   }
 }

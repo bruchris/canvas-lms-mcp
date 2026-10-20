@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerAppTool } from '../mcp-apps'
+import type { ToolCallGate } from '../auth/credential-gate'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
@@ -74,8 +75,24 @@ type ToolResponse = {
 function buildHandler(
   tool: ToolDefinition,
   pseudonymizer: Pseudonymizer | undefined,
+  toolCallGate?: ToolCallGate,
 ): (params: Record<string, unknown>, extra?: unknown) => Promise<ToolResponse> {
   return async (params) => {
+    // Credentialless gate (GH #442, BRU-3043). First statement in the
+    // handler, outside the try: before provenance fencing, before the
+    // tool's own handler, before any I/O. Every registered tool's handler
+    // comes from this function — both the `registerTool` and the
+    // `registerAppTool` branch below — so a server started without Canvas
+    // credentials refuses its *whole* surface by construction, including
+    // the tools that look locally harmless. No logging: the refusal is
+    // expected in this mode, and the one startup warning already said so.
+    if (toolCallGate) {
+      return {
+        content: [{ type: 'text' as const, text: toolCallGate.message }],
+        isError: true,
+      }
+    }
+
     try {
       // Provenance fencing (BRU-2104 §4). This is the single output boundary:
       // every one of the registered tools is wrapped here, so the fence is a
@@ -156,6 +173,7 @@ export function registerAllTools(
   pseudonymizer?: Pseudonymizer,
   role?: CanvasRole,
   features?: ToolFeatureFlags,
+  toolCallGate?: ToolCallGate,
 ): void {
   // Before the first `registerTool` call, which is what makes `McpServer`
   // install the `tools/list` handler this wraps (issue #341). Installed here
@@ -166,7 +184,7 @@ export function registerAllTools(
 
   const tools = getAllTools(canvas, pseudonymizer, role, features)
   for (const tool of tools) {
-    const handler = buildHandler(tool, pseudonymizer)
+    const handler = buildHandler(tool, pseudonymizer, toolCallGate)
     if (tool.ui) {
       registerAppTool(
         server,

@@ -40,6 +40,7 @@ describe('parseArgs', () => {
       authProfile: 'local_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
+      credentials: 'present',
     })
   })
 
@@ -152,17 +153,81 @@ describe('parseArgs', () => {
     expect(exitSpy).toHaveBeenCalledWith(1)
   })
 
-  it('exits with error when both token and baseUrl are missing', () => {
-    vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('process.exit called')
+  describe('credentialless stdio discovery (GH #442, BRU-3043)', () => {
+    /** parseArgs with process.exit and console.error stubbed; returns the error text. */
+    function expectFatal(args: string[]): string {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      expect(() => parseArgs(args)).toThrow('process.exit called')
+      expect(exitSpy).toHaveBeenCalledWith(1)
+      return String(errorSpy.mock.calls[0]?.[0])
+    }
+
+    // The behaviour this issue exists to create: an MCP directory launches
+    // the package with no environment at all, so startup must reach MCP
+    // initialization instead of exiting inside the parser.
+    it('returns a usable config when both token and baseUrl are absent on stdio', () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('process.exit called')
+      })
+
+      const result = parseArgs([])
+
+      expect(exitSpy).not.toHaveBeenCalled()
+      expect(result.credentials).toBe('absent')
+      expect(result.mode).toBe('stdio')
+      expect(result.token).toBe('')
+      expect(result.baseUrl).toBe('')
+      expect(result.authProfile).toBe('local_static_token')
     })
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(() => parseArgs([])).toThrow('process.exit called')
+    it('marks a configured stdio server credentials: present', () => {
+      const result = parseArgs(['--token', 't', '--base-url', 'https://canvas.example.com'])
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      'Error: Canvas API token required. Use --token or set CANVAS_API_TOKEN. Run `canvas-lms-mcp doctor` to check your setup.',
-    )
+      expect(result.credentials).toBe('present')
+    })
+
+    // §6: partial configuration stays fatal. One of the two present is a
+    // typo or a half-finished setup, never a deliberate credentialless
+    // launch, and starting gated would hide the mistake behind an error
+    // message that tells the deployer to set what they already set.
+    it('still exits when only baseUrl is configured', () => {
+      expect(expectFatal(['--base-url', 'https://canvas.example.com'])).toContain(
+        'Canvas API token required',
+      )
+    })
+
+    it('still exits when only the token is configured', () => {
+      expect(expectFatal(['--token', 'my-token'])).toContain('Canvas base URL required')
+    })
+
+    it('still exits when only CANVAS_BASE_URL is set in the environment', () => {
+      process.env.CANVAS_BASE_URL = 'https://canvas.example.com'
+
+      expect(expectFatal([])).toContain('Canvas API token required')
+    })
+
+    it('still exits when only CANVAS_API_TOKEN is set in the environment', () => {
+      process.env.CANVAS_API_TOKEN = 'env-token'
+
+      expect(expectFatal([])).toContain('Canvas base URL required')
+    })
+
+    // The HTTP transport keeps its startup requirements byte-for-byte: a
+    // remote listener with no credential is a broken deployment, not a
+    // directory crawl, and nothing introspects it over stdio.
+    it('serve with no credentials still exits 1', () => {
+      expect(expectFatal(['serve'])).toContain('Canvas API token required')
+    })
+
+    it('serve with only a base URL still exits 1', () => {
+      expect(expectFatal(['serve', '--base-url', 'https://canvas.example.com'])).toContain(
+        'Canvas API token required',
+      )
+    })
   })
 
   it('handles args in any order', () => {
@@ -185,6 +250,7 @@ describe('parseArgs', () => {
       authProfile: 'remote_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
+      credentials: 'present',
     })
   })
 

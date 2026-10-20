@@ -1,4 +1,5 @@
 import { version } from '../../package.json'
+import { MISSING_CREDENTIALS_TOOL_CALL_ERROR } from '../auth/credential-gate'
 import { normalizeCanvasIds } from './normalize-ids'
 import { appendCanvasQuery, type CanvasQueryParams } from './query'
 import { stringIdsAcceptHeader } from './string-ids'
@@ -191,6 +192,16 @@ export class CanvasHttpClient {
    * `/api/quiz/v1` is excluded by pathname prefix.
    */
   private canvasHeaders(url: string): Record<string, string> {
+    // Credentialless servers never reach the network (GH #442, BRU-3043).
+    // The tool layer gates earlier and more legibly; this is the property
+    // underneath that convention. Every authenticated Canvas request builds
+    // its header block here, and all three call sites evaluate this call
+    // *before* invoking `fetch`, so there is no way for a caller the tool
+    // wrapper does not cover — a resource read, or an embedder using the
+    // standalone client as a library — to issue a tokenless request.
+    if (this.token === '') {
+      throw new Error(MISSING_CREDENTIALS_TOOL_CALL_ERROR)
+    }
     return {
       Authorization: `Bearer ${this.token}`,
       'User-Agent': USER_AGENT,
