@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.7.0...canvas-lms-mcp-v2.8.0) (2026-10-20)
+
+
+### Features
+
+* **stdio:** start without Canvas credentials and gate every tool call (BRU-3043) ([#445](https://github.com/bruchris/canvas-lms-mcp/issues/445)) ([1913be7](https://github.com/bruchris/canvas-lms-mcp/commit/1913be76eeecc5717e5c35bd9ceb764af8bfd6b1))
+
 ## [2.7.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.6.0...canvas-lms-mcp-v2.7.0) (2026-10-20)
 
 
