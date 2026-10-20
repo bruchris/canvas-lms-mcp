@@ -89,11 +89,15 @@ export interface CanvasMCPServerConfig {
    */
   writeTools?: WriteToolsMode
   /**
-   * When set, **every** registered tool call returns this gate message
-   * instead of running — before any argument is read and before any
-   * network I/O. Discovery (`initialize`, `tools/list`, `prompts/list`,
-   * `resources/list`) is untouched, so the server still advertises its full
-   * surface.
+   * When set, **every** tool call returns this gate message instead of
+   * running — before any argument is read and before any network I/O.
+   * Enforced in two places, because neither alone is sufficient
+   * (BRU-3053): a wire-level `tools/call` handler that answers even the
+   * malformed requests the MCP SDK would reject before dispatch, and an
+   * early return in every registered tool handler, which covers an
+   * invocation that never goes over the protocol. Discovery
+   * (`initialize`, `tools/list`, `prompts/list`, `resources/list`) is
+   * untouched, so the server still advertises its full surface.
    *
    * Set by the stdio entry point when Canvas credentials are absent, so an
    * MCP directory can introspect the package without credentials (GH #442,

@@ -8,15 +8,24 @@ import {
 } from '../../src/auth/credential-gate'
 
 /**
- * BRU-3043 / GH #442 — the credentialless tool-call gate, proven across the
- * **whole registered tool surface** rather than a sample.
+ * BRU-3043 / GH #442 — the credentialless tool-call gate's **handler** layer,
+ * proven across the whole registered tool surface rather than a sample.
  *
- * The gate lives at the top of `buildHandler` in `src/tools/index.ts`, which is
- * where every registered tool handler comes from (both the `registerTool`
- * branch and the `registerAppTool` branch). That makes "covers every tool" a
- * structural property, and this file asserts the arrangement actually holds —
- * including for tools that look locally harmless and never touch Canvas, which
- * are exactly the ones a per-tool convention would miss.
+ * This layer lives at the top of `buildHandler` in `src/tools/index.ts`, which
+ * is where every registered tool handler comes from (both the `registerTool`
+ * branch and the `registerAppTool` branch). That makes "covers every registered
+ * tool" a structural property, and this file asserts the arrangement actually
+ * holds — including for tools that look locally harmless and never touch
+ * Canvas, which are exactly the ones a per-tool convention would miss.
+ *
+ * Scope, narrowed by BRU-3053: covering every registered *tool* is not the same
+ * claim as covering every wire-level `tools/call` *request*. A request the MCP
+ * SDK rejects before dispatch — no `params`, a non-string `name`, a non-object
+ * `arguments` — never reaches this layer at all. The seam that answers those,
+ * and the measurements behind it, are in
+ * `tests/auth/credential-gate-wire.test.ts`. Nothing here is weakened by that:
+ * this layer is still the only one covering an invocation that never goes over
+ * the protocol, which is why both exist.
  */
 
 const CONFIGURED = { token: 'test-token', baseUrl: 'https://canvas.example.com' }

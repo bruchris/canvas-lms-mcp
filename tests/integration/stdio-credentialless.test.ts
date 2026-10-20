@@ -2,7 +2,10 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { CREDENTIALLESS_STDIO_WARNING } from '../../src/auth/credential-gate'
+import {
+  CREDENTIALLESS_STDIO_WARNING,
+  MISSING_CREDENTIALS_TOOL_CALL_ERROR,
+} from '../../src/auth/credential-gate'
 
 /**
  * BRU-3043 / GH #442 — the real thing: spawn the **built** default stdio entry
@@ -119,6 +122,15 @@ class StdioProbe {
   }
 
   request(method: string, params: Record<string, unknown> = {}): Promise<JsonRpcResponse> {
+    return this.requestRaw(method, params)
+  }
+
+  /**
+   * Like {@link request} but sends `params` verbatim, including shapes the MCP
+   * schema forbids. The malformed-call assertions need this: a typed helper
+   * cannot express `params.name = 123`, and an SDK client would not send it.
+   */
+  requestRaw(method: string, params: unknown): Promise<JsonRpcResponse> {
     const id = this.nextId++
     return new Promise((resolvePromise, rejectPromise) => {
       if (this.exitInfo !== undefined) {
@@ -134,7 +146,9 @@ class StdioProbe {
         if (error) rejectPromise(error)
         else resolvePromise(response as JsonRpcResponse)
       })
-      this.child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`)
+      const message: Record<string, unknown> = { jsonrpc: '2.0', id, method }
+      if (params !== undefined) message.params = params
+      this.child.stdin.write(`${JSON.stringify(message)}\n`)
     })
   }
 
@@ -151,6 +165,7 @@ interface Capture {
   promptsList?: JsonRpcResponse
   resourcesList?: JsonRpcResponse
   gatedCall?: JsonRpcResponse
+  malformedCalls: { label: string; response: JsonRpcResponse }[]
   promptGet?: JsonRpcResponse
   toolsListAgain?: JsonRpcResponse
   stdoutLines: string[]
@@ -158,7 +173,32 @@ interface Capture {
   exitInfo?: string
 }
 
-const capture: Capture = { stdoutLines: [], stderr: '' }
+const capture: Capture = { stdoutLines: [], stderr: '', malformedCalls: [] }
+
+/**
+ * `tools/call` shapes the MCP SDK rejects *before* any registered handler runs
+ * — two schema layers deep (`Protocol.setRequestHandler`'s own parse, then
+ * `Server.setRequestHandler`'s unconditional `CallToolRequestSchema` wrapper).
+ * Before BRU-3053 each of these was answered with a protocol error rather than
+ * the stable credential refusal BRU-3043 requires, so they are the whole point
+ * of this batch. Each is sent over the real pipe, where nothing in the path can
+ * normalise it away.
+ *
+ * A `params` that is not an object is deliberately absent: the stdio
+ * `ReadBuffer` parses every line with `JSONRPCMessageSchema` and never hands
+ * such a line to the server, so it is not a `tools/call` request at all. That
+ * boundary is pinned in `tests/auth/credential-gate-wire.test.ts`.
+ */
+const MALFORMED_CALLS: [label: string, params: unknown][] = [
+  ['params omitted entirely', undefined],
+  ['params is an empty object', {}],
+  ['name is a number', { name: 123 }],
+  ['arguments is a string', { name: 'list_pages', arguments: 'nope' }],
+  ['arguments is an array', { name: 'list_pages', arguments: [] }],
+  ['required argument missing', { name: 'list_pages' }],
+  ['argument has the wrong type', { name: 'list_pages', arguments: { course_id: null } }],
+  ['the tool does not exist', { name: 'no_such_tool_xyz', arguments: {} }],
+]
 
 function toolNames(response: JsonRpcResponse | undefined): string[] {
   return ((response?.result?.tools ?? []) as { name: string }[]).map((t) => t.name)
@@ -196,6 +236,13 @@ describe('built stdio entry point with no Canvas credentials', () => {
         name: 'list_pages',
         arguments: { course_id: '1' },
       })
+
+      for (const [label, params] of MALFORMED_CALLS) {
+        capture.malformedCalls.push({
+          label,
+          response: await probe.requestRaw('tools/call', params),
+        })
+      }
 
       // Control: a non-tool method still works after the refused call. Without
       // it, "the tool call was refused" is indistinguishable from "the server
@@ -273,6 +320,26 @@ describe('built stdio entry point with no Canvas credentials', () => {
     // The refusal is a tool result, not a protocol error, and carries no
     // structured payload that could satisfy the success schema.
     expect(capture.gatedCall?.result?.structuredContent).toBeUndefined()
+  })
+
+  it('refuses every malformed tools/call with the same credential error', () => {
+    expect(capture.startupFailure).toBeUndefined()
+    expect(capture.malformedCalls).toHaveLength(MALFORMED_CALLS.length)
+
+    const wrong = capture.malformedCalls
+      .filter(({ response }) => {
+        const content = response.result?.content as { text?: string }[] | undefined
+        return (
+          response.error !== undefined ||
+          response.result?.isError !== true ||
+          content?.[0]?.text !== MISSING_CREDENTIALS_TOOL_CALL_ERROR
+        )
+      })
+      .map(
+        ({ label, response }) => `${label}: ${JSON.stringify(response.error ?? response.result)}`,
+      )
+
+    expect(wrong).toEqual([])
   })
 
   it('still answers a non-tool method after the refusal', () => {

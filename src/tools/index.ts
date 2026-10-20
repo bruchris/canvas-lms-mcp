@@ -1,6 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { registerAppTool } from '../mcp-apps'
-import type { ToolCallGate } from '../auth/credential-gate'
+import {
+  gatedToolCallResult,
+  installToolCallGateHandler,
+  type ToolCallGate,
+} from '../auth/credential-gate'
 import type { CanvasClient } from '../canvas'
 import { CanvasApiError } from '../canvas/client'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
@@ -78,19 +82,24 @@ function buildHandler(
   toolCallGate?: ToolCallGate,
 ): (params: Record<string, unknown>, extra?: unknown) => Promise<ToolResponse> {
   return async (params) => {
-    // Credentialless gate (GH #442, BRU-3043). First statement in the
-    // handler, outside the try: before provenance fencing, before the
+    // Credentialless gate (GH #442, BRU-3043), handler layer. First statement
+    // in the handler, outside the try: before provenance fencing, before the
     // tool's own handler, before any I/O. Every registered tool's handler
     // comes from this function — both the `registerTool` and the
     // `registerAppTool` branch below — so a server started without Canvas
-    // credentials refuses its *whole* surface by construction, including
-    // the tools that look locally harmless. No logging: the refusal is
-    // expected in this mode, and the one startup warning already said so.
+    // credentials refuses its *whole registered surface* by construction,
+    // including the tools that look locally harmless. No logging: the refusal
+    // is expected in this mode, and the one startup warning already said so.
+    //
+    // This layer is reached only by a call that already got past the SDK's
+    // `tools/call` dispatch, so it is *not* on its own sufficient for the
+    // wire-level requirement: see `installToolCallGateHandler`, installed
+    // below, for malformed requests the SDK rejects before any handler runs.
+    // It remains load-bearing for every invocation that bypasses the protocol
+    // — an embedder calling `tool.handler` directly, or a test double with no
+    // protocol object.
     if (toolCallGate) {
-      return {
-        content: [{ type: 'text' as const, text: toolCallGate.message }],
-        isError: true,
-      }
+      return gatedToolCallResult(toolCallGate)
     }
 
     try {
@@ -212,6 +221,16 @@ export function registerAllTools(
         handler,
       )
     }
+  }
+
+  // Credentialless gate (GH #442, BRU-3043), wire layer. After the loop, for
+  // the two ordering reasons documented on `installToolCallGateHandler`. The
+  // `tools.length` guard keeps the capability precondition honest rather than
+  // assumed: with nothing registered there is no `tools/call` handler to
+  // replace and no tools capability, so the SDK answers `MethodNotFound` and
+  // there is nothing to gate.
+  if (toolCallGate && tools.length > 0) {
+    installToolCallGateHandler(server, toolCallGate)
   }
 }
 export { formatError } from './errors'
