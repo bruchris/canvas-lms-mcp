@@ -74,8 +74,9 @@ describe('tool manifest generation', () => {
         'Get the full details for one learning outcome by outcome_id, including its rating ' +
         'criteria, mastery_points, and calculation_method. The outcome_id comes from ' +
         "list_outcome_group_outcomes, list_outcome_group_links, or get_outcome_results' / " +
-        "get_outcome_rollups' linked.outcomes; use get_outcome_alignments to see which " +
-        'assignments align to it in a course.',
+        "get_outcome_rollups' linked.outcomes; get_outcome_alignments lists all alignments " +
+        'in the course (not scoped to one outcome) — cross-reference via get_outcome_results ' +
+        'instead to tie an alignment to this outcome_id.',
       annotations: {
         readOnlyHint: true,
         openWorldHint: true,

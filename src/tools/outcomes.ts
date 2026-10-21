@@ -182,8 +182,9 @@ export function outcomeTools(
         'Get the full details for one learning outcome by outcome_id, including its rating ' +
         'criteria, mastery_points, and calculation_method. The outcome_id comes from ' +
         "list_outcome_group_outcomes, list_outcome_group_links, or get_outcome_results' / " +
-        "get_outcome_rollups' linked.outcomes; use get_outcome_alignments to see which " +
-        'assignments align to it in a course.',
+        "get_outcome_rollups' linked.outcomes; get_outcome_alignments lists all alignments " +
+        'in the course (not scoped to one outcome) — cross-reference via get_outcome_results ' +
+        'instead to tie an alignment to this outcome_id.',
       inputSchema: {
         outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
         add_defaults: z
@@ -203,8 +204,9 @@ export function outcomeTools(
       description:
         'Get the assignments aligned to outcomes in a course, optionally filtered to one ' +
         "student_id or assignment_id. Returns each alignment's assignment_id and title, but not " +
-        'the outcome_id it maps to — pair it with list_outcome_group_links or get_outcome_results, ' +
-        'which nest linked.alignments, to connect an alignment back to its outcome. Use ' +
+        'the outcome_id it maps to. get_outcome_results nests the same alignment objects under ' +
+        "linked.alignments, but ties an alignment to an outcome via each outcome_results[] entry's " +
+        'links.alignment and links.learning_outcome, not from linked.alignments alone. Use ' +
         "get_outcome_contributing_scores to see the assignment scores that produced an outcome's " +
         'results instead of just the links.',
       inputSchema: {
@@ -352,7 +354,7 @@ export function outcomeTools(
         'or more students in a course, optionally restricted to assignment alignments only or ' +
         'including unpublished assignments. Use get_outcome_results instead for the final ' +
         'per-alignment outcome score rather than the scores that fed it, or get_outcome_alignments ' +
-        'to list which assignments align to an outcome without their scores.',
+        'to list all alignments in the course (not scoped to this outcome) without their scores.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
