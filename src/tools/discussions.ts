@@ -136,7 +136,13 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_discussions',
       title: 'List Discussions',
-      description: 'List all discussion topics in a course.',
+      description:
+        'List discussion topics in a course, returning id, title, message, posted_at, ' +
+        'discussion_type, published, and is_announcement for each topic — replies are not ' +
+        "included. Fetches every page (100 per request) and fails with a 'Results are " +
+        "incomplete' error instead of silently truncating. Use get_discussion to fetch one " +
+        'topic in full detail including due/available dates, post_discussion_entry to reply, ' +
+        'and list_announcements to see only announcements.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -155,7 +161,12 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       // The anonymous-topic case is reported by the handler's error below rather than
       // advertised here: `docs/generated/tool-manifest.json` embeds this string, so any
       // edit also requires `pnpm generate:manifests`.
-      description: 'Get details for a single discussion topic by ID.',
+      description:
+        'Get a single discussion topic in a course by ID, returning its title, message, ' +
+        'posted_at, discussion_type, published state, and is_announcement, plus ' +
+        "due/available dates via Canvas's all_dates include. Find topic_id with " +
+        'list_discussions. Course-scoped only — use get_group_discussion for a topic that ' +
+        'belongs to a group instead of a course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
@@ -184,7 +195,14 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_group_discussions',
       title: 'List Group Discussions',
-      description: 'List all discussion topics in a group.',
+      description:
+        'List discussion topics in a group, returning id, title, message, posted_at, ' +
+        'discussion_type, published, and is_announcement for each topic — replies are not ' +
+        "included. Fetches every page (100 per request) and fails with a 'Results are " +
+        "incomplete' error instead of silently truncating. Use get_group_discussion to " +
+        'fetch one topic in full detail including due/available dates, and list_discussions ' +
+        'for the course-scoped equivalent; there is no group-scoped counterpart to ' +
+        'post_discussion_entry or list_announcements.',
       inputSchema: {
         group_id: canvasIdInput().describe('The Canvas group ID'),
       },
@@ -203,7 +221,13 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       // As with get_discussion, the anonymous-topic case is reported by the handler's
       // error below rather than advertised here — `docs/generated/tool-manifest.json`
       // embeds this string, so any edit also requires `pnpm generate:manifests`.
-      description: 'Get details for a single discussion topic in a group by ID.',
+      description:
+        'Get a single discussion topic in a group by ID, returning its title, message, ' +
+        'posted_at, discussion_type, published state, and is_announcement, plus ' +
+        "due/available dates via Canvas's all_dates include. Find topic_id with " +
+        'list_group_discussions. Group-scoped only — use get_discussion for a topic that ' +
+        'belongs to a course instead of a group; there is no group-scoped counterpart to ' +
+        'post_discussion_entry, so this server cannot post a reply to a group topic yet.',
       inputSchema: {
         group_id: canvasIdInput().describe('The Canvas group ID'),
         topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
@@ -230,7 +254,14 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_announcements',
       title: 'List Announcements',
-      description: 'List all announcements in a course.',
+      description:
+        'List announcements in a course, returning id, title, message, and posted_at for ' +
+        'each one. Canvas serves this from the same discussion_topics index as ' +
+        'list_discussions, filtered to topics marked is_announcement via the ' +
+        'only_announcements query parameter. Fetches every page (100 per request) and fails ' +
+        "with a 'Results are incomplete' error instead of silently truncating. Use " +
+        'create_discussion with is_announcement: true to post a new announcement, and ' +
+        'update_discussion to edit one afterward.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -246,7 +277,15 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'post_discussion_entry',
       title: 'Post Discussion Entry',
-      description: 'Post a new entry (reply) to a discussion topic.',
+      description:
+        'Post a new entry (reply) to a discussion topic in a course, and return the ' +
+        'created entry (id, user_id, message, created_at). Not idempotent: each call adds ' +
+        'another reply, Canvas does not deduplicate repeated calls. Works even on a topic ' +
+        'Canvas has made anonymous, where get_discussion itself 404s — use list_discussions ' +
+        'to confirm the topic exists and find its topic_id. Requires the caller to have an ' +
+        'active enrollment in the course with permission to post to the forum, which Canvas ' +
+        'grants to students, TAs and instructors by default unless an admin has restricted ' +
+        'it.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
@@ -267,7 +306,19 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_discussion',
       title: 'Create Discussion',
       audience: 'educator',
-      description: 'Create a new discussion topic in a course.',
+      description:
+        'Create a new discussion topic in a course, and return the created topic (id, ' +
+        'title, message, discussion_type, published, is_announcement, posted_at). Not ' +
+        'idempotent: each call creates another topic — Canvas does not deduplicate by ' +
+        'title, so check list_discussions first to avoid creating a duplicate. Setting ' +
+        'is_announcement: true asks Canvas to create an announcement, but Canvas silently ' +
+        'creates a plain discussion topic instead (HTTP 200, no error) if the caller lacks ' +
+        'announcement-create permission in the course — this tool then throws instead of ' +
+        'reporting success, naming the topic ID so you can check it with list_discussions ' +
+        'or get_discussion. Use update_discussion to change an existing topic afterward, ' +
+        'delete_discussion to remove one, and post_discussion_entry to reply to a topic ' +
+        'instead of creating a new one. Requires instructor/TA permission to manage ' +
+        'discussions in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().min(1).describe('Title of the discussion topic'),
