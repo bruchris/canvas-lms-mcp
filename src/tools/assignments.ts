@@ -243,7 +243,16 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'create_assignment',
       title: 'Create Assignment',
-      description: 'Create a new assignment in a course.',
+      description:
+        'Create a new assignment in a course and return the created assignment object. Each call ' +
+        'creates another assignment — Canvas assigns a new ID every time, so check list_assignments ' +
+        'with a search_term first to avoid duplicates. Use update_assignment to change an existing ' +
+        'assignment instead of calling this again, and delete_assignment to remove one. due_at, ' +
+        'lock_at, and unlock_at here apply to every student; to give a different date to a subset of ' +
+        'students, a section, or a group, use create_assignment_override instead, or ' +
+        'set_student_assignment_dates to fan a date change for one student across many assignments. ' +
+        'Dates are ISO 8601 strings; lock_at must be after due_at and unlock_at before due_at when both ' +
+        'are set. Requires instructor/TA permission to manage assignments and quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         name: z.string().describe('Assignment name'),

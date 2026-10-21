@@ -46,7 +46,17 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_peer_review',
       title: 'Create Peer Review',
       audience: 'educator',
-      description: 'Assign a user to peer-review a submission.',
+      description:
+        'Assign a Canvas user as a peer reviewer for one submission, and return the created peer ' +
+        'review object (id, assessor_id, user_id, asset_id, workflow_state). The user_id parameter ' +
+        'you pass is the reviewer being assigned; in the returned object assessor_id holds that same ' +
+        "reviewer, while the response's own user_id field instead identifies the submission owner " +
+        '(the reviewee) — the two user_id values are not the same person. The new review starts in ' +
+        'workflow_state "assigned". submission_id must already exist on this assignment. Use ' +
+        'list_peer_reviews to see every review assigned on the whole assignment, or ' +
+        'get_submission_peer_reviews to see only the reviews assigned to one submission, before ' +
+        'assigning another reviewer; use delete_peer_review to unassign one. Requires instructor/TA ' +
+        'permission in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
