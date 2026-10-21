@@ -214,8 +214,16 @@ export function appointmentGroupTools(
         appointment_group_id: canvasIdInput().describe('The appointment group ID'),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
-      handler: async (params) =>
-        canvas.appointmentGroups.listGroups(params.appointment_group_id as CanvasId),
+      handler: async (params) => {
+        // These are ordinary student groups, rendered by the same `group_json`
+        // as `list_groups` — so the reserving group's leader arrives with a
+        // real name unless it is pseudonymized here too (#441).
+        const groups = await canvas.appointmentGroups.listGroups(
+          params.appointment_group_id as CanvasId,
+        )
+        if (!pseudonymizer?.isEnabled()) return groups
+        return pseudonymizer.anonymizeGroups(groups)
+      },
     },
     {
       name: 'next_appointment',

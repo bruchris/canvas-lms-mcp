@@ -19,6 +19,7 @@ import type {
   CanvasConversation,
   CanvasConversationDetail,
   CanvasEnrollment,
+  CanvasGroup,
   CanvasOutcomeResultsResponse,
   CanvasOutcomeRollupsResponse,
   CanvasPlannerItem,
@@ -50,6 +51,23 @@ import {
  * `_group_<id>` / `_apptgrp_<id>` scope, so no identity map is ever merged.
  */
 const STREAM_NO_CONTEXT_SCOPE = '_stream_nocontext'
+
+/**
+ * The pseudonym scope for a Canvas *group* identity.
+ *
+ * A group has no single course to key on — `list_group_members` is addressed by
+ * group id alone, and a group can outlive the course view that found it — so
+ * group identities live in their own bucket, never merged with a course map
+ * (the same reading as `_apptgrp_<id>` and the activity stream's group arm).
+ *
+ * Every caller derives the key here rather than spelling the template again:
+ * `list_groups` and `list_appointment_group_groups` pseudonymize a group's
+ * leader, `list_group_members` pseudonymizes its members, and all three must
+ * land in the same bucket or one person gets two labels (#441).
+ */
+export function groupScopeKey(groupId: CanvasId): string {
+  return `_group_${groupId}`
+}
 
 /**
  * Replacement for `author_name` on a `DiscussionEntry` activity-stream item.
@@ -313,6 +331,36 @@ export class Pseudonymizer {
   }
 
   /**
+   * Pseudonymize the identities Canvas attaches to a rendered group (#441).
+   *
+   * `leader` rides on every `group_json` with no include asked for, so both
+   * read paths that list groups leak the leader's real `display_name`, avatar
+   * and pronouns without this. `users` only appears under `include[]=users`,
+   * which no call site sends — it is covered anyway so that adding the include
+   * later cannot reintroduce the leak.
+   *
+   * Scoped by {@link groupScopeKey}, so a leader's label here is the one
+   * `list_group_members` gives the same person. Staff keep their names: the
+   * decision runs through {@link anonymizeUser} like every other arm.
+   */
+  async anonymizeGroups(groups: ReadonlyArray<CanvasGroup>): Promise<CanvasGroup[]> {
+    if (!this.isEnabled() || !this.host) return [...groups]
+    const out: CanvasGroup[] = []
+    for (const group of groups) {
+      out.push(await this.anonymizeGroup(group))
+    }
+    return out
+  }
+
+  private async anonymizeGroup(group: CanvasGroup): Promise<CanvasGroup> {
+    const scope = groupScopeKey(group.id)
+    const next: CanvasGroup = { ...group }
+    if (group.leader) next.leader = await this.anonymizeDisplayUser(scope, group.leader)
+    if (group.users?.length) next.users = await this.anonymizeUsers(scope, group.users)
+    return next
+  }
+
+  /**
    * Pseudonymize the PII arms of a `GET /users/self/activity_stream` response.
    *
    * **Scope.** The stream is cross-course by construction, so there is no single
@@ -448,7 +496,7 @@ export class Pseudonymizer {
    */
   private activityStreamScope(item: CanvasActivityStreamEntry): CanvasId | string {
     if (item.course_id !== undefined) return item.course_id
-    if (item.group_id !== undefined) return `_group_${item.group_id}`
+    if (item.group_id !== undefined) return groupScopeKey(item.group_id)
     return STREAM_NO_CONTEXT_SCOPE
   }
 

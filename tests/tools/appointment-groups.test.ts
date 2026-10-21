@@ -3,14 +3,16 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import { Pseudonymizer, groupScopeKey } from '../../src/pseudonym/pseudonymizer'
 import type { CanvasClient } from '../../src/canvas'
 import type {
   CanvasAppointmentGroup,
   CanvasCalendarEvent,
+  CanvasGroup,
   CanvasUser,
 } from '../../src/canvas/types'
 import { appointmentGroupTools } from '../../src/tools/appointment-groups'
+import { REAL_GROUP_LEADER_NAME, groupJsonWithLeader } from './fixtures/group-json'
 
 const mockAppointmentGroup: CanvasAppointmentGroup = {
   id: 1,
@@ -440,6 +442,95 @@ describe('appointmentGroupTools', () => {
       const result = await tool.handler({ appointment_group_id: '1' })
       expect(canvas.appointmentGroups.listGroups).toHaveBeenCalledWith('1')
       expect(result).toEqual([])
+    })
+
+    describe('leader identity (#441)', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'apg-group-tool-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      function listing(): CanvasClient {
+        const canvas = buildMockCanvas()
+        ;(canvas.appointmentGroups.listGroups as ReturnType<typeof vi.fn>).mockResolvedValue([
+          groupJsonWithLeader(),
+        ])
+        return canvas
+      }
+
+      function listGroupsTool(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
+        return appointmentGroupTools(canvas, pseudonymizer).find(
+          (t) => t.name === 'list_appointment_group_groups',
+        )!
+      }
+
+      it('pseudonymizes the reserving group leader and nulls the siblings', async () => {
+        const result = (await listGroupsTool(listing(), makePseudonymizer()).handler({
+          appointment_group_id: '1',
+        })) as CanvasGroup[]
+
+        const leader = result[0].leader!
+        expect(leader.display_name).toMatch(/^Student \d+$/)
+        expect(leader.avatar_image_url).toBeNull()
+        expect(leader.pronouns).toBeNull()
+        expect(leader.id).toBe(5)
+        expect(leader.html_url).toBe(groupJsonWithLeader().leader!.html_url)
+      })
+
+      it('leaves no real name anywhere in the payload', async () => {
+        const result = await listGroupsTool(listing(), makePseudonymizer()).handler({
+          appointment_group_id: '1',
+        })
+        expect(JSON.stringify(result)).not.toContain(REAL_GROUP_LEADER_NAME)
+      })
+
+      it('CONTROL: the real name is present with pseudonymization off', async () => {
+        const result = await listGroupsTool(listing(), makePseudonymizer(false)).handler({
+          appointment_group_id: '1',
+        })
+        expect(JSON.stringify(result)).toContain(REAL_GROUP_LEADER_NAME)
+      })
+
+      it('keys the leader on the group, not the appointment group', async () => {
+        // Same bucket as `list_group_members` / `list_groups`: one person, one
+        // label, whichever tool surfaces them.
+        //
+        // Warm that bucket with somebody else first. A fresh bucket hands out
+        // `Student 1`, so without the warm the assertion would hold whatever
+        // scope the implementation picked.
+        const pseudonymizer = makePseudonymizer()
+        const member = (id: number, name: string) => ({
+          id,
+          name,
+          sortable_name: name,
+          short_name: name,
+          created_at: '2026-01-01T00:00:00Z',
+        })
+        const [other] = await pseudonymizer.anonymizeUsers(groupScopeKey(42), [
+          member(9, 'Other Member'),
+        ])
+
+        const result = (await listGroupsTool(listing(), pseudonymizer).handler({
+          appointment_group_id: '1',
+        })) as CanvasGroup[]
+
+        const [sameUser] = await pseudonymizer.anonymizeUsers(groupScopeKey(42), [
+          member(5, REAL_GROUP_LEADER_NAME),
+        ])
+        expect(result[0].leader!.display_name).toBe(sameUser!.name)
+        expect(result[0].leader!.display_name).not.toBe(other!.name)
+      })
     })
   })
 

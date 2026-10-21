@@ -1,17 +1,18 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
-import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
+import { groupScopeKey, type Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import type { CanvasGroup } from '../canvas/types'
 import type { CreateGroupParams } from '../canvas/groups'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 
-// Group write responses may embed user identities even when pseudonymization is enabled.
-function stripGroupUsers({
-  leader: _leader,
-  users: _users,
-  ...group
-}: CanvasGroup & { leader?: unknown; users?: unknown }): CanvasGroup {
+// Group WRITE responses may embed user identities even when pseudonymization
+// is enabled. A newly created group has no leader and no members, and a deleted
+// one is gone, so there is nothing a caller can do with either field: dropping
+// them is both safe and lossless here. The read paths pseudonymize instead,
+// because a group's leader is information an educator legitimately needs
+// (#438 strips, #441 pseudonymizes).
+function stripGroupUsers({ leader: _leader, users: _users, ...group }: CanvasGroup): CanvasGroup {
   return group
 }
 
@@ -30,7 +31,9 @@ export function groupTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer):
       },
       handler: async (params) => {
         const course_id = params.course_id as CanvasId
-        return canvas.groups.list(course_id)
+        const groups = await canvas.groups.list(course_id)
+        if (!pseudonymizer?.isEnabled()) return groups
+        return pseudonymizer.anonymizeGroups(groups)
       },
     },
     {
@@ -48,8 +51,9 @@ export function groupTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer):
         const group_id = params.group_id as CanvasId
         const users = await canvas.groups.listMembers(group_id)
         if (!pseudonymizer?.isEnabled()) return users
-        // No course context — use group_id as map key (group members share a pseudonym pool).
-        return pseudonymizer.anonymizeUsers(`_group_${group_id}`, users)
+        // No course context — group identities share their own pseudonym pool,
+        // which is also where `list_groups` puts a group's leader.
+        return pseudonymizer.anonymizeUsers(groupScopeKey(group_id), users)
       },
     },
     {

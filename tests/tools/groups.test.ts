@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
 import type { CanvasClient } from '../../src/canvas'
 import { CanvasApiError } from '../../src/canvas/client'
 import type {
@@ -13,6 +13,13 @@ import type {
 } from '../../src/canvas/types'
 import { formatError } from '../../src/tools/errors'
 import { groupTools } from '../../src/tools/groups'
+import {
+  GROUP_JSON_REAL_NAMES,
+  REAL_GROUP_LEADER_NAME,
+  REAL_GROUP_MEMBER_NAME,
+  groupJsonWithLeader,
+  groupJsonWithUsers,
+} from './fixtures/group-json'
 
 describe('groupTools', () => {
   const mockGroup: CanvasGroup = {
@@ -331,6 +338,119 @@ describe('groupTools', () => {
         )!
         const result = (await tool.handler({ group_id: '1' })) as CanvasUser[]
         expect(result[0].name).toBe('Alice')
+      })
+    })
+
+    describe('list_groups leader identity (#441)', () => {
+      function listGroups(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
+        return groupTools(canvas, pseudonymizer).find((t) => t.name === 'list_groups')!
+      }
+
+      function listing(groups: CanvasGroup[]): CanvasClient {
+        const canvas = buildMockCanvas()
+        ;(canvas.groups.list as ReturnType<typeof vi.fn>).mockResolvedValue(groups)
+        return canvas
+      }
+
+      it('pseudonymizes the leader name and nulls the re-identifying siblings', async () => {
+        const canvas = listing([groupJsonWithLeader()])
+        const result = (await listGroups(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+        })) as CanvasGroup[]
+
+        const leader = result[0].leader!
+        expect(leader.display_name).toMatch(/^Student \d+$/)
+        expect(leader.avatar_image_url).toBeNull()
+        expect(leader.pronouns).toBeNull()
+        // Identifiers are never rewritten in this layer.
+        expect(leader.id).toBe(5)
+        expect(leader.anonymous_id).toBe('aXy9Q')
+        expect(leader.html_url).toBe(groupJsonWithLeader().leader!.html_url)
+        // Everything that is not an identity field is untouched.
+        expect(result[0].name).toBe('Project Team 3')
+        expect(result[0].members_count).toBe(4)
+      })
+
+      it('leaves no real name anywhere in the payload', async () => {
+        const canvas = listing([groupJsonWithUsers()])
+        const result = await listGroups(canvas, makePseudonymizer()).handler({ course_id: '1' })
+        const json = JSON.stringify(result)
+        for (const name of GROUP_JSON_REAL_NAMES) expect(json).not.toContain(name)
+      })
+
+      it('CONTROL: every one of those names is present with pseudonymization off', async () => {
+        const canvas = listing([groupJsonWithUsers()])
+        const result = await listGroups(canvas, makePseudonymizer(false)).handler({
+          course_id: '1',
+        })
+        const json = JSON.stringify(result)
+        for (const name of GROUP_JSON_REAL_NAMES) expect(json).toContain(name)
+      })
+
+      it('passes the group through untouched when no pseudonymizer is wired at all', async () => {
+        const canvas = listing([groupJsonWithLeader()])
+        const result = await listGroups(canvas).handler({ course_id: '1' })
+        expect(result).toEqual([groupJsonWithLeader()])
+        expect(canvas.groups.list).toHaveBeenCalledWith('1')
+      })
+
+      it('gives the leader the same pseudonym list_group_members gives them', async () => {
+        // The decisive argument for keying on `_group_<group.id>` rather than on
+        // the course: `list_group_members` keys there, so one person gets one
+        // label across the two tools of this domain.
+        //
+        // The members run FIRST and the leader is the SECOND of them. A
+        // per-scope counter hands out `Student 1` in every fresh bucket, so a
+        // leader who is alone in his own bucket would match a leader who joined
+        // the group's bucket — comparing the two labels only means something
+        // once the group's bucket already holds somebody else.
+        const pseudonymizer = makePseudonymizer()
+        const canvas = listing([groupJsonWithLeader()])
+        ;(canvas.groups.listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { ...mockUser, id: 9, name: 'Other Member' },
+          { ...mockUser, id: 5, name: REAL_GROUP_LEADER_NAME },
+        ])
+
+        const members = (await groupTools(canvas, pseudonymizer)
+          .find((t) => t.name === 'list_group_members')!
+          .handler({ group_id: '42' })) as CanvasUser[]
+        const groups = (await listGroups(canvas, pseudonymizer).handler({
+          course_id: '1',
+        })) as CanvasGroup[]
+
+        expect(groups[0].leader!.display_name).toBe(members[1]!.name)
+        expect(groups[0].leader!.display_name).not.toBe(members[0]!.name)
+      })
+
+      it('withholds a leader name that arrives with no id to key a pseudonym on', async () => {
+        const canvas = listing([
+          groupJsonWithLeader({ leader: { display_name: REAL_GROUP_LEADER_NAME } }),
+        ])
+        const result = (await listGroups(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+        })) as CanvasGroup[]
+        expect(result[0].leader!.display_name).toBe(WITHHELD_AUTHOR_NAME)
+      })
+
+      it('leaves a null leader alone', async () => {
+        // Canvas renders `"leader": null` for a group that has no leader.
+        const canvas = listing([groupJsonWithLeader({ leader: null })])
+        const result = (await listGroups(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+        })) as CanvasGroup[]
+        expect(result[0].leader).toBeNull()
+      })
+
+      it('GUARD: pseudonymizes an embedded users array if an include ever produces one', async () => {
+        // Neither call site sends `include[]=users`, so Canvas cannot return
+        // this today. The arm is here so adding the include later cannot
+        // reintroduce the leak.
+        const canvas = listing([groupJsonWithUsers()])
+        const result = (await listGroups(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+        })) as CanvasGroup[]
+        expect(result[0].users![0].name).toMatch(/^Student \d+$/)
+        expect(groupJsonWithUsers().users![0].name).toBe(REAL_GROUP_MEMBER_NAME)
       })
     })
   })

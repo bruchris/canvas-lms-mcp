@@ -27,6 +27,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'get_outcome_results',
   'get_outcome_rollups',
   'list_group_members',
+  'list_groups',
   'list_submission_comments_needing_attention',
   'list_students_needing_attention',
   'explain_grade',
@@ -37,6 +38,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'get_quiz_question_responses',
   'find_student_across_courses',
   'list_appointment_group_users',
+  'list_appointment_group_groups',
   'list_appointment_groups',
   'get_appointment_group',
 ])

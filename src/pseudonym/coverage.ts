@@ -52,6 +52,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/groups.ts
   'list_group_members',
+  'list_groups',
 
   // src/tools/attention.ts
   'list_submission_comments_needing_attention',
@@ -76,6 +77,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
 
   // src/tools/appointment-groups.ts
   'list_appointment_group_users',
+  'list_appointment_group_groups',
   'list_appointment_groups',
   'get_appointment_group',
 ] as const

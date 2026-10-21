@@ -629,11 +629,42 @@ export interface CanvasUserProfile {
 
 // --- Groups ---
 
+/**
+ * Canvas's `group_json` (`lib/api/v1/group.rb`).
+ *
+ * `leader` is the identity surface, and it is NOT behind an include:
+ * `hash["leader"] = group.leader ? user_display_json(group.leader, group) : nil`
+ * runs on every render, so every endpoint that returns a group carries its
+ * leader's real `display_name`, avatar and pronouns. Both read paths —
+ * `GET /courses/:id/groups` and `GET /appointment_groups/:id/groups` — must run
+ * it through {@link Pseudonymizer.anonymizeGroups} (#441); the two write paths
+ * strip it instead (#438).
+ *
+ * `users` IS behind `include[]=users`, which no call site here sends. It is
+ * declared because the handlers that strip or pseudonymize it should do so
+ * against a type that admits the field rather than an inline intersection —
+ * the previous type stopped at four fields, which is a large part of why the
+ * leader leak went unnoticed for two releases.
+ */
 export interface CanvasGroup {
   id: CanvasId
   name: string
   group_category_id: CanvasId
   members_count: number
+  description?: string | null
+  is_public?: boolean
+  join_level?: string
+  max_membership?: number | null
+  created_at?: string
+  storage_quota_mb?: number
+  context_type?: string
+  course_id?: CanvasId
+  account_id?: CanvasId
+  context_name?: string
+  avatar_url?: string | null
+  role?: string | null
+  leader?: CanvasUserDisplay | null
+  users?: CanvasUser[]
 }
 
 /** A group set. Group assignments point at a category through `group_category_id`. */
