@@ -320,7 +320,19 @@ export function discussionTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'update_discussion',
       title: 'Update Discussion',
       audience: 'educator',
-      description: 'Update an existing discussion topic.',
+      description:
+        'Update an existing discussion topic in a course — title, message, published state, ' +
+        'require_initial_post, delayed_post_at, or is_announcement — and return the updated topic; ' +
+        'only the fields you pass are changed, the rest keep their current value. Course-scoped ' +
+        'only: there is no update tool for group discussions, though list_group_discussions and ' +
+        'get_group_discussion can still read them. Setting is_announcement: true asks Canvas to turn ' +
+        'the topic into an announcement, but Canvas silently keeps it a plain discussion topic (HTTP ' +
+        '200, no error) if the caller lacks announcement-create permission in the course — this tool ' +
+        'then throws instead of reporting success, naming the topic ID so you can check it with ' +
+        'list_discussions or get_discussion. Use create_discussion to make a new topic, ' +
+        'delete_discussion to remove one, list_announcements to see existing announcements, and ' +
+        'post_discussion_entry to reply instead of editing the topic itself. Requires instructor/TA ' +
+        'permission to manage discussions in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         topic_id: canvasIdInput().describe('The Canvas discussion topic ID'),
