@@ -80,7 +80,12 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'get_quiz_submission_answers',
       title: 'Get Quiz Submission Answers',
-      description: "Get a student's answers for a quiz submission.",
+      description:
+        "Get a quiz submission's state for an IN-PROGRESS (untaken) attempt, including the " +
+        "student's live answer and flag per question. For a SUBMITTED attempt (complete or " +
+        'pending_review), Canvas never returns the answer value or a real flag state through ' +
+        'this endpoint — only grading state (correct) is available here. To review a submitted ' +
+        "attempt's actual answer text, use get_quiz_question_responses instead.",
       inputSchema: {
         quiz_submission_id: canvasIdInput().describe('The Canvas quiz submission ID'),
       },

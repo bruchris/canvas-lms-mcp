@@ -99,7 +99,7 @@ describe('QuizzesModule', () => {
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/100/quizzes/1/questions')
   })
 
-  it('gets submission answers using envelope pagination', async () => {
+  it('gets submission answers using envelope pagination (untaken attempt shape)', async () => {
     vi.spyOn(client, 'paginateEnvelope').mockResolvedValueOnce([
       { id: '1', quiz_id: '1', answer: '4', flagged: false },
     ])
@@ -110,6 +110,35 @@ describe('QuizzesModule', () => {
       'quiz_submission_questions',
       { 'include[]': 'quiz_question' },
     )
+  })
+
+  it('round-trips the real graded (submitted-attempt) shape: no answer, widened correct domain', async () => {
+    // BRU-3080: for a complete/pending_review attempt, Canvas never assigns
+    // `answer` at all, and `correct` carries the full real domain. Guards the
+    // CanvasQuizSubmissionQuestion widening against a silent revert.
+    vi.spyOn(client, 'paginateEnvelope').mockResolvedValueOnce([
+      { id: '1', quiz_id: '1', correct: 'undefined', flagged: false },
+      { id: '2', quiz_id: '1', correct: 'partial', flagged: false },
+      { id: '3', quiz_id: '1', correct: 'no_score', flagged: false },
+      { id: '4', quiz_id: '1', correct: 'defined', flagged: false },
+      { id: '5', quiz_id: '1' }, // question_data.empty?: neither correct nor flagged present
+    ])
+    const result = await quizzes.getSubmissionAnswers(99)
+    expect(result.map((r) => r.answer)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ])
+    expect(result.map((r) => r.correct)).toEqual([
+      'undefined',
+      'partial',
+      'no_score',
+      'defined',
+      undefined,
+    ])
+    expect(result[4].flagged).toBeUndefined()
   })
 
   describe('listSubmissionQuestions', () => {

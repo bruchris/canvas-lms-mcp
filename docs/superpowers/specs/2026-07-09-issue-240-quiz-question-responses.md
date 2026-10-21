@@ -8,6 +8,41 @@ issue: 240
 **Issue**: [bruchris/canvas-lms-mcp#240](https://github.com/bruchris/canvas-lms-mcp/issues/240)
 **Status**: Design — awaiting CTO review
 
+> **Post-implementation correction (2026-10-21, BRU-3080 / BRU-3085).** Design unknown §3's
+> `correct?: boolean | null` commitment was wrong on both halves, confirmed by a source-level
+> read of `instructure/canvas-lms@1c9f0bb8013ed69c4f2efe11fd483025469b7e6c`:
+>
+> - **`answer` is unconditionally absent for every submitted (complete / pending_review) attempt.**
+>   `quiz_submission_question_json`'s graded branch (`lib/api/v1/quiz_submission_question.rb:89-110`)
+>   never assigns `data[:answer]` — only the in-progress (`untaken`) Hash branch does. So this
+>   tool's `answer` field was **always empty for every attempt it was built to review** until this
+>   correction; it is not an edge case. `CanvasQuizSubmissionQuestion.answer` is now optional, not
+>   nullable, to reflect that.
+> - **`correct` is not a tri-state `boolean | null`.** The real domain, from
+>   `Quizzes::QuizQuestion::UserAnswer#correctness`, is
+>   `true | false | 'partial' | 'no_score' | 'undefined' | 'defined'`, and the field is optional
+>   (absent, not `null`) when Canvas's own `question_data.empty?` guard omits it. `correct` is now
+>   typed `CanvasQuizCorrectness` (`src/canvas/types.ts`) and surfaced verbatim; a derived
+>   `scoring_state` field is added so an LLM caller is never left reading the literal string
+>   `"undefined"` as if it were a scoring outcome.
+> - **`flagged` is dropped from this tool's response rows.** For a submitted attempt Canvas
+>   hardcodes `flagged: false` (or omits it) — never the student's real flag state post-submission
+>   — so the field is strictly misleading on output, even though the underlying Canvas type keeps
+>   it (optional, documented) for completeness.
+> - **The submitted answer's actual text is reachable**, via the Submissions API's
+>   `include[]=submission_history` quiz branch (`lib/api/v1/submission.rb`
+>   `quiz_submission_attempt_json`), fetched once per quiz call and joined on
+>   `(user_id, attempt, question_id)` — the same id space `getSubmissionAnswers` already uses. This
+>   is unavailable (surfaced via `answer_text_available` / `answer_text_unavailable_reason`, never
+>   silently empty) when the quiz has no backing assignment (`practice_quiz`, an ungraded `survey`),
+>   the quiz is an anonymous survey, or the fetch itself fails.
+> - **§3's named risk — the `CanvasQuizSubmissionQuestion.id === CanvasQuizQuestion.id` join
+>   key — was independently re-verified and holds**; no correction needed there.
+>
+> See BRU-3080 for the full source-backed diagnosis and BRU-3085 for the implementation. The
+> handler sketch, output shape, and type declarations below are **historical** or partial scope —
+> `src/tools/quiz-question-responses.ts` and `src/canvas/types.ts` are the source of truth.
+
 ## Purpose
 
 Add a read-only `get_quiz_question_responses` tool that pivots Classic Quiz results by

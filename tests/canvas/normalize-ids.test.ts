@@ -251,6 +251,60 @@ describe('normalizeCanvasIds: the §3.2 misses Canvas does not convert', () => {
   })
 })
 
+describe('normalizeCanvasIds: quiz submission-history answer details (BRU-3085)', () => {
+  // CanvasQuizSubmissionHistoryAnswer needs no new ID_FIELD_EXCEPTIONS entry:
+  // `question_id` and `answer_id` already match the generic scalar `(^|_)id$`
+  // regex, and `attachment_ids` already matches the generic array
+  // `(^|_)ids$` regex. `text` is free-form student prose and must never be
+  // touched, even though its value can itself look numeric.
+  it('stringifies question_id/answer_id/attachment_ids while leaving text untouched', () => {
+    const body = {
+      submission_history: [
+        {
+          attempt: 1,
+          submission_data: [
+            { question_id: 10, correct: true, points: 5, text: '42', answer_id: 201 },
+            { question_id: 11, correct: 'undefined', points: null, attachment_ids: [301, 302] },
+          ],
+        },
+      ],
+    }
+    expect(normalized(body)).toEqual({
+      submission_history: [
+        {
+          attempt: 1,
+          submission_data: [
+            { question_id: '10', correct: true, points: 5, text: '42', answer_id: '201' },
+            {
+              question_id: '11',
+              correct: 'undefined',
+              points: null,
+              attachment_ids: ['301', '302'],
+            },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('leaves dynamic per-type keys (answer_<id>, answer_for_<blank>) untouched', () => {
+    // These keys end in digits or `_for_<blank>`, never in `id`/`ids`, so
+    // neither Canvas's regexes nor this module's exceptions reach them.
+    const body = {
+      submission_data: [
+        { question_id: 20, answer_205: '1', answer_206: '0', text: 'choice text' },
+        { question_id: 21, answer_for_1: 'blue', answer_id_for_1: 55 },
+      ],
+    }
+    expect(normalized(body)).toEqual({
+      submission_data: [
+        { question_id: '20', answer_205: '1', answer_206: '0', text: 'choice text' },
+        { question_id: '21', answer_for_1: 'blue', answer_id_for_1: 55 },
+      ],
+    })
+  })
+})
+
 describe('normalizeCanvasIds: ID_FIELD_EXCEPTIONS cross-checked against declared leaf types', () => {
   // Independent of the `converts` soundness gate above, which only encodes
   // Canvas's own two key regexes and says nothing about this module's own

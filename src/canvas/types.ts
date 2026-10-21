@@ -483,7 +483,39 @@ export interface CanvasQuiz {
   due_at: string | null
   published: boolean
   time_limit?: number | null // quiz duration in minutes; null if untimed
+  /**
+   * The assignment Canvas created for this quiz, when one exists. Always
+   * serialized (`quiz_serializer.rb:79` is unconditional — this is a
+   * required key, not optional), but the VALUE is `null` for a
+   * `practice_quiz` or an ungraded `survey`: `Quiz#for_assignment?` requires
+   * both an `assignment_id` and `submission_types == 'online_quiz'`. Needed
+   * to reach a submitted attempt's answer text via the Submissions API —
+   * see `src/tools/quiz-question-responses.ts` and BRU-3080.
+   */
+  assignment_id: CanvasId | null
+  /**
+   * Survey-only: Canvas's serializer filters this key to `quiz.survey?`
+   * (`quiz_serializer.rb:275-276`), so it is emitted ONLY for `survey` /
+   * `graded_survey` `quiz_type` — absent, not `false`, on every other quiz.
+   * `true` means `Quiz#anonymous_survey?`, which also disables the
+   * submission-history answer-text lookup (no `include[]=user`-free way to
+   * join an anonymous survey's identity back to its submission).
+   */
+  anonymous_submissions?: boolean
 }
+
+/**
+ * The real domain of a Classic Quiz answer's correctness, from
+ * `Quizzes::QuizQuestion::UserAnswer#correctness` (pinned SHA
+ * 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c): `true`/`false` once every part
+ * of a question is scored, `'partial'` for a part-credit multi-part answer,
+ * `'no_score'` for a `text_only_question` (zero answerable parts),
+ * `'undefined'` — the literal STRING, not the JS value — for every
+ * manually-graded (essay / file-upload) question pending a human score, and
+ * `'defined'` once `update_scores` has written a manual score
+ * (`quiz_submission.rb:781`). See BRU-3080.
+ */
+export type CanvasQuizCorrectness = boolean | 'partial' | 'no_score' | 'undefined' | 'defined'
 
 export interface CanvasQuizSubmission {
   id: CanvasId
@@ -514,16 +546,96 @@ export interface CanvasQuizQuestion {
 export interface CanvasQuizSubmissionQuestion {
   id: CanvasId
   quiz_id: CanvasId
-  // Widened from `string | number | null`: matching / multiple-answer question
-  // types return arrays or keyed objects, not a plain scalar. Still backward
-  // compatible — the scalar members remain valid.
-  answer: string | number | string[] | Record<string, unknown> | null
-  // Present once Canvas has graded an auto-graded question type; omitted for
-  // manually-graded (essay / file-upload) answers not yet scored, so it is
-  // optional and surfaced as `correct ?? null`. See
-  // docs/superpowers/specs/2026-07-09-issue-240-quiz-question-responses.md §3.
-  correct?: boolean | null
-  flagged: boolean
+  /**
+   * Present ONLY while the attempt is `untaken` (still in progress):
+   * `quiz_submission_question_json`'s `if qs.submission_data.is_a? Hash`
+   * branch (the ungraded shape) is the only one that assigns `data[:answer]`
+   * — once an attempt is `complete` or `pending_review`, `submission_data`
+   * is an Array and the `else` branch never assigns this key at all. So for
+   * every submitted attempt this field is unconditionally absent, not
+   * nullable-but-present. See `getSubmissionAnswers`'s doc comment and
+   * BRU-3080 — the submitted value lives in the Submissions API's
+   * `submission_history` instead (`CanvasQuizSubmissionHistoryAnswer`).
+   */
+  answer?: string | number | string[] | Record<string, unknown> | null
+  /**
+   * The raw {@link CanvasQuizCorrectness} domain. Optional because the
+   * `else` branch's `return data if question_data.empty?` guard omits both
+   * `correct` and `flagged` entirely when the submission has no graded entry
+   * for this question (e.g. served but unanswered, or added after the
+   * attempt). See
+   * docs/superpowers/specs/2026-07-09-issue-240-quiz-question-responses.md
+   * §3 (post-implementation correction, BRU-3080).
+   */
+  correct?: CanvasQuizCorrectness
+  /**
+   * Meaningful ONLY while the attempt is `untaken`. For a submitted attempt,
+   * the `else` branch hardcodes `data[:flagged] = false` whenever
+   * `question_data` is non-empty — never the student's real flag state post-
+   * submission — and omits the key entirely on the empty-question-data path.
+   * Declared optional so a submitted-attempt response can omit this
+   * structurally-false/absent value rather than assert something untrue;
+   * `get_quiz_question_responses` drops it from its output for exactly that
+   * reason (BRU-3080).
+   */
+  flagged?: boolean
+}
+
+/**
+ * One entry of `QuizSubmission#submission_data` for a GRADED attempt (an
+ * Array, not the in-progress Hash — see `Quizzes::SubmissionGrader#grade_submission`),
+ * reached via the Submissions API's quiz branch:
+ * `GET .../assignments/:id/submissions?include[]=submission_history` →
+ * `submission_history[].submission_data[]`
+ * (`lib/api/v1/submission.rb` `quiz_submission_attempt_json`). This is NOT a
+ * `CanvasQuizSubmissionQuestion` — it is the Submissions API's view of the
+ * same answer, keyed by `question_id` rather than by quiz-submission-
+ * question id, and it is the only place a completed attempt's actual
+ * submitted answer value survives. See BRU-3080.
+ *
+ * `answer_details` (everything beyond `question_id`/`correct`/`points`)
+ * varies by Classic Quiz question type (`Quizzes::QuizQuestion::UserAnswer`
+ * and its per-type subclasses):
+ * - `essay_question`: `text` (HTML-sanitized free text)
+ * - `file_upload_question`: `attachment_ids` (REPLACES `answer_details`; no `text`)
+ * - `multiple_choice` / `true_false` / `short_answer` / `numerical` / `calculated`: `text` + `answer_id`
+ * - `multiple_answers_question`: `text` + one `answer_<answerId>` key per option (`"1"` | `"0"`)
+ * - `fill_in_multiple_blanks` / `multiple_dropdowns`: `text` + `answer_for_<blank>` + `answer_id_for_<blank>` per blank
+ * - `matching_question`: per-part keys
+ *
+ * The dynamic per-type keys above have no fixed name, so they are reachable
+ * only through the index signature — never widen this type to enumerate
+ * them; that would re-guess an exact shape this server has not independently
+ * verified against a live Canvas instance (see BRU-3080 §5).
+ */
+export interface CanvasQuizSubmissionHistoryAnswer {
+  question_id: CanvasId
+  /** Same {@link CanvasQuizCorrectness} domain as `CanvasQuizSubmissionQuestion.correct`. */
+  correct?: CanvasQuizCorrectness
+  points?: number | null
+  /** Present for choice-type questions; this server's id normalizer stringifies it unconditionally (`/(^|_)id$/i`). */
+  answer_id?: CanvasId
+  /** `file_upload_question` only; replaces the rest of `answer_details`. */
+  attachment_ids?: CanvasId[]
+  /** The free-text or raw submitted value. Never transformed by ID normalization — it is not an identifier. */
+  text?: string
+  [key: string]: unknown
+}
+
+/**
+ * One `submission_history[]` entry on a quiz assignment's submission —
+ * `lib/api/v1/submission.rb` `quiz_submission_attempt_json`. NOT a
+ * `CanvasSubmission`: Canvas replaces the normal submission-version shape
+ * with this one whenever `submission.quiz_submission && assignment.quiz &&
+ * !assignment.quiz.anonymous_survey?`, overwriting `attempt` to the QUIZ
+ * attempt number so it joins directly against
+ * `CanvasQuizSubmission.attempt` / `CanvasQuizSubmissionQuestion`. See
+ * BRU-3080 §5.
+ */
+export interface CanvasQuizSubmissionHistoryEntry {
+  attempt: number
+  submission_data: CanvasQuizSubmissionHistoryAnswer[]
+  [key: string]: unknown
 }
 
 export interface CanvasQuizExtension {

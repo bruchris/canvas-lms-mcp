@@ -6,6 +6,7 @@ import type {
   CanvasQuizQuestion,
   CanvasQuizSubmission,
   CanvasQuizSubmissionQuestion,
+  CanvasSubmission,
   CanvasUser,
 } from '../../src/canvas/types'
 import type { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
@@ -19,9 +20,9 @@ interface ResponseRow {
   user_name: string | null
   quiz_submission_id: number
   attempt: number
-  answer: unknown
-  correct: boolean | null
-  flagged: boolean
+  answer: Record<string, unknown> | null
+  correct: boolean | 'partial' | 'no_score' | 'undefined' | 'defined' | null
+  scoring_state: string
 }
 
 interface QuestionGroupOut {
@@ -43,6 +44,8 @@ interface Result {
   submissions_failed: number[]
   unmatched_response_count: number
   unmatched_question_ids: number[]
+  answer_text_available: boolean
+  answer_text_unavailable_reason: string | null
 }
 
 // ── Fixtures — built to match src/canvas/types.ts, not copied from the existing
@@ -56,6 +59,7 @@ const defaultQuiz: CanvasQuiz = {
   question_count: 2,
   due_at: null,
   published: true,
+  assignment_id: '900',
 }
 
 // Q1 is an essay (manually graded); Q2 is auto-graded. listQuestions returns them
@@ -98,24 +102,53 @@ const subPendingReview: CanvasQuizSubmission = {
   workflow_state: 'pending_review',
 }
 
+// Real graded shape (BRU-3080): `answer` is NEVER present for a submitted
+// attempt (the else-branch of quiz_submission_question_json never assigns
+// it); `correct` carries the real five-value-plus-absent domain; `flagged`
+// is `false` when a graded entry exists and absent otherwise — never the
+// student's real flag state post-submission.
 const answersForSub100: CanvasQuizSubmissionQuestion[] = [
-  {
-    id: '10',
-    quiz_id: '1',
-    answer: 'Plants convert light to chemical energy.',
-    correct: null,
-    flagged: false,
-  },
-  { id: '20', quiz_id: '1', answer: '4', correct: true, flagged: false },
+  { id: '10', quiz_id: '1', correct: 'undefined', flagged: false }, // essay awaiting manual grading
+  { id: '20', quiz_id: '1', correct: true, flagged: false },
 ]
 const answersForSub101: CanvasQuizSubmissionQuestion[] = [
-  // `correct` intentionally omitted here to exercise the `?? null` passthrough.
-  { id: '10', quiz_id: '1', answer: 'It uses sunlight.', flagged: false },
-  { id: '20', quiz_id: '1', answer: '5', correct: false, flagged: true },
+  // `return data if question_data.empty?`: no graded entry for this question
+  // at all, so neither `correct` nor `flagged` is present.
+  { id: '10', quiz_id: '1' },
+  { id: '20', quiz_id: '1', correct: false, flagged: false },
 ]
 
 const alice: CanvasUser = { id: '5', name: 'Alice Anderson' }
 const bob: CanvasUser = { id: '6', name: 'Bob Brown' }
+
+// The submitted answer TEXT lives in the Submissions API's quiz branch
+// (`include[]=submission_history`), joined on (user_id, attempt, question_id)
+// — a completely separate Canvas call from `getSubmissionAnswers` above.
+function historySubmission(
+  userId: CanvasId,
+  attempt: number,
+  submissionData: ReadonlyArray<Record<string, unknown>>,
+): CanvasSubmission {
+  return {
+    user_id: userId,
+    submission_history: [{ attempt, submission_data: submissionData }],
+  } as unknown as CanvasSubmission
+}
+
+const defaultAssignmentSubmissions: CanvasSubmission[] = [
+  historySubmission('5', 1, [
+    {
+      question_id: '10',
+      correct: 'undefined',
+      points: null,
+      text: 'Plants convert light to chemical energy.',
+    },
+    { question_id: '20', correct: true, points: 10, text: '4', answer_id: '201' },
+  ]),
+  historySubmission('6', 2, [
+    { question_id: '20', correct: false, points: 0, text: '5', answer_id: '202' },
+  ]),
+]
 
 interface MockOpts {
   quiz?: CanvasQuiz
@@ -126,6 +159,15 @@ interface MockOpts {
   // Questions Canvas returns for one submission attempt (listSubmissionQuestions).
   attemptQuestionsImpl?: (subId: CanvasId, attempt: number) => Promise<CanvasQuizQuestion[]>
   students?: CanvasUser[]
+  // canvas.submissions.list mock for the submission-history answer-text fetch.
+  // Defaults to an empty, successful fetch (answer_text_available: true, every
+  // answer null) unless a test needs the real join exercised or a failure path.
+  assignmentSubmissions?: CanvasSubmission[]
+  submissionsListImpl?: (
+    courseId: CanvasId,
+    assignmentId: CanvasId,
+    opts: unknown,
+  ) => Promise<CanvasSubmission[]>
 }
 
 function buildMockCanvas(opts: MockOpts = {}): CanvasClient {
@@ -133,6 +175,9 @@ function buildMockCanvas(opts: MockOpts = {}): CanvasClient {
   const getSubmissionAnswers = opts.answersImpl
     ? vi.fn().mockImplementation(opts.answersImpl)
     : vi.fn().mockImplementation((subId: number) => Promise.resolve(answers[subId] ?? []))
+  const submissionsList = opts.submissionsListImpl
+    ? vi.fn().mockImplementation(opts.submissionsListImpl)
+    : vi.fn().mockResolvedValue(opts.assignmentSubmissions ?? [])
   return {
     quizzes: {
       get: vi.fn().mockResolvedValue(opts.quiz ?? defaultQuiz),
@@ -151,6 +196,9 @@ function buildMockCanvas(opts: MockOpts = {}): CanvasClient {
     users: {
       listStudents: vi.fn().mockResolvedValue(opts.students ?? [alice, bob]),
       listCourseUsers: vi.fn().mockResolvedValue([]),
+    },
+    submissions: {
+      list: submissionsList,
     },
   } as unknown as CanvasClient
 }
@@ -187,8 +235,8 @@ describe('quizQuestionResponseTools', () => {
   })
 
   describe('pivot behaviour', () => {
-    it('pivots every question with every response, ordered by position', async () => {
-      const canvas = buildMockCanvas()
+    it('pivots every question with every response, ordered by position, with submitted answer text joined in', async () => {
+      const canvas = buildMockCanvas({ assignmentSubmissions: defaultAssignmentSubmissions })
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
@@ -199,8 +247,15 @@ describe('quizQuestionResponseTools', () => {
       expect(result.submissions_failed).toEqual([])
       expect(result.unmatched_response_count).toBe(0)
       expect(result.unmatched_question_ids).toEqual([])
+      expect(result.answer_text_available).toBe(true)
+      expect(result.answer_text_unavailable_reason).toBeNull()
       // Every answer matched an active question, so no per-attempt lookup is made.
       expect(canvas.quizzes.listSubmissionQuestions).not.toHaveBeenCalled()
+      // Fetched once per quiz call, not once per submission.
+      expect(canvas.submissions.list).toHaveBeenCalledTimes(1)
+      expect(canvas.submissions.list).toHaveBeenCalledWith('1', '900', {
+        include: ['submission_history'],
+      })
 
       // Sorted by position: Q1 (essay, pos 1) then Q2 (mc, pos 2).
       expect(result.questions.map((q) => q.question_id)).toEqual(['10', '20'])
@@ -212,16 +267,33 @@ describe('quizQuestionResponseTools', () => {
 
       // Each question has one response per scanned submission, in submission order.
       expect(essay.responses.map((r) => r.user_id)).toEqual(['5', '6'])
-      expect(essay.responses[0]).toMatchObject({
+      expect(essay.responses[0]).toEqual({
         user_id: '5',
         user_name: 'Alice Anderson',
         quiz_submission_id: '100',
         attempt: 1,
-        answer: 'Plants convert light to chemical energy.',
-        correct: null,
-        flagged: false,
+        answer: { text: 'Plants convert light to chemical energy.' },
+        correct: 'undefined',
+        scoring_state: 'awaiting_manual_grading',
       })
-      expect(mc.responses.map((r) => r.answer)).toEqual(['4', '5'])
+      // Bob's essay has no submission-history entry for q10 (see fixture) and
+      // no graded entry either (answersForSub101): both diagnostics are null/unscored.
+      expect(essay.responses[1]).toEqual({
+        user_id: '6',
+        user_name: 'Bob Brown',
+        quiz_submission_id: '101',
+        attempt: 2,
+        answer: null,
+        correct: null,
+        scoring_state: 'unscored',
+      })
+
+      expect(mc.responses.map((r) => r.answer)).toEqual([
+        { text: '4', answer_id: '201' },
+        { text: '5', answer_id: '202' },
+      ])
+      expect(mc.responses.map((r) => r.correct)).toEqual([true, false])
+      expect(mc.responses.map((r) => r.scoring_state)).toEqual(['correct', 'incorrect'])
     })
 
     it('scopes to a single question when question_id is provided', async () => {
@@ -271,6 +343,7 @@ describe('quizQuestionResponseTools', () => {
       expect(canvas.quizzes.listSubmissions).not.toHaveBeenCalled()
       expect(canvas.quizzes.getSubmissionAnswers).not.toHaveBeenCalled()
       expect(canvas.users.listStudents).not.toHaveBeenCalled()
+      expect(canvas.submissions.list).not.toHaveBeenCalled()
     })
   })
 
@@ -321,21 +394,160 @@ describe('quizQuestionResponseTools', () => {
     })
   })
 
-  describe('correct passthrough', () => {
-    it('surfaces correct verbatim and null when Canvas omits it', async () => {
-      const canvas = buildMockCanvas()
-      const tool = getTool(canvas)
-      const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
-
-      const mc = result.questions.find((q) => q.question_id === '20')!
-      const bySub = new Map(mc.responses.map((r) => [r.quiz_submission_id, r.correct]))
-      expect(bySub.get('100')).toBe(true) // correct: true
-      expect(bySub.get('101')).toBe(false) // correct: false
+  describe('correct passthrough and scoring_state mapping', () => {
+    // The full real CanvasQuizCorrectness domain, plus "no graded entry at
+    // all" (undefined) — the derived scoring_state must cover all seven so an
+    // LLM caller never has to interpret the raw Canvas string "undefined" or
+    // "no_score" itself. BRU-3080 §8 item 2.
+    it.each([
+      [true, 'correct'],
+      [false, 'incorrect'],
+      ['partial', 'partial'],
+      ['no_score', 'not_scored'],
+      ['undefined', 'awaiting_manual_grading'],
+      ['defined', 'graded'],
+      [undefined, 'unscored'],
+    ] as const)('maps raw correct %j to scoring_state %j', async (rawCorrect, expectedState) => {
+      const answer: CanvasQuizSubmissionQuestion =
+        rawCorrect === undefined
+          ? { id: '10', quiz_id: '1' }
+          : { id: '10', quiz_id: '1', correct: rawCorrect, flagged: false }
+      const canvas = buildMockCanvas({
+        submissions: [subComplete],
+        answersBySubmission: { 100: [answer] },
+      })
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const essay = result.questions.find((q) => q.question_id === '10')!
-      const essayBySub = new Map(essay.responses.map((r) => [r.quiz_submission_id, r.correct]))
-      expect(essayBySub.get('100')).toBeNull() // correct: null
-      expect(essayBySub.get('101')).toBeNull() // correct omitted -> null
+      expect(essay.responses[0].correct).toBe(rawCorrect ?? null)
+      expect(essay.responses[0].scoring_state).toBe(expectedState)
+    })
+  })
+
+  describe('submission-history answer text', () => {
+    it('reports no_assignment and leaves every answer null for a practice quiz', async () => {
+      const canvas = buildMockCanvas({ quiz: { ...defaultQuiz, assignment_id: null } })
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
+
+      expect(result.answer_text_available).toBe(false)
+      expect(result.answer_text_unavailable_reason).toBe('no_assignment')
+      expect(canvas.submissions.list).not.toHaveBeenCalled()
+      expect(result.questions.flatMap((q) => q.responses).every((r) => r.answer === null)).toBe(
+        true,
+      )
+    })
+
+    it('reports anonymous_survey and skips the fetch for an anonymous survey', async () => {
+      const canvas = buildMockCanvas({
+        quiz: { ...defaultQuiz, quiz_type: 'survey', anonymous_submissions: true },
+      })
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
+
+      expect(result.answer_text_available).toBe(false)
+      expect(result.answer_text_unavailable_reason).toBe('anonymous_survey')
+      expect(canvas.submissions.list).not.toHaveBeenCalled()
+    })
+
+    it('does not skip a non-anonymous survey', async () => {
+      const canvas = buildMockCanvas({
+        quiz: { ...defaultQuiz, quiz_type: 'survey', anonymous_submissions: false },
+        assignmentSubmissions: defaultAssignmentSubmissions,
+      })
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
+
+      expect(result.answer_text_available).toBe(true)
+      expect(canvas.submissions.list).toHaveBeenCalledTimes(1)
+    })
+
+    it('reports history_fetch_failed and leaves every answer null when the fetch rejects', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const canvas = buildMockCanvas({
+        submissionsListImpl: () => Promise.reject(new Error('Canvas 503')),
+      })
+      const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
+
+      expect(result.answer_text_available).toBe(false)
+      expect(result.answer_text_unavailable_reason).toBe('history_fetch_failed')
+      expect(result.questions.flatMap((q) => q.responses).every((r) => r.answer === null)).toBe(
+        true,
+      )
+      expect(errorSpy).toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    describe('answer_details shapes per question type', () => {
+      const cases: ReadonlyArray<{
+        name: string
+        submissionData: Record<string, unknown>
+        expectedAnswer: Record<string, unknown>
+      }> = [
+        {
+          name: 'essay_question (text only)',
+          submissionData: { question_id: '10', correct: 'undefined', text: 'My essay answer.' },
+          expectedAnswer: { text: 'My essay answer.' },
+        },
+        {
+          name: 'file_upload_question (attachment_ids, no text)',
+          submissionData: { question_id: '10', correct: 'undefined', attachment_ids: ['55', '56'] },
+          expectedAnswer: { attachment_ids: ['55', '56'] },
+        },
+        {
+          name: 'a choice type (text + answer_id)',
+          submissionData: { question_id: '10', correct: true, text: 'Paris', answer_id: '301' },
+          expectedAnswer: { text: 'Paris', answer_id: '301' },
+        },
+        {
+          name: 'multiple_answers_question (text + per-option answer_<id> keys)',
+          submissionData: {
+            question_id: '10',
+            correct: 'partial',
+            text: 'A, C',
+            answer_401: '1',
+            answer_402: '0',
+            answer_403: '1',
+          },
+          expectedAnswer: { text: 'A, C', answer_401: '1', answer_402: '0', answer_403: '1' },
+        },
+        {
+          name: 'fill_in_multiple_blanks_question (answer_for_<blank> / answer_id_for_<blank> per blank)',
+          submissionData: {
+            question_id: '10',
+            correct: true,
+            text: 'blue, 7',
+            answer_for_1: 'blue',
+            answer_id_for_1: '501',
+            answer_for_2: '7',
+            answer_id_for_2: '502',
+          },
+          expectedAnswer: {
+            text: 'blue, 7',
+            answer_for_1: 'blue',
+            answer_id_for_1: '501',
+            answer_for_2: '7',
+            answer_id_for_2: '502',
+          },
+        },
+        {
+          name: 'matching_question (per-part keys)',
+          submissionData: { question_id: '10', correct: 'partial', answer_1: '10', answer_2: '11' },
+          expectedAnswer: { answer_1: '10', answer_2: '11' },
+        },
+      ]
+
+      for (const { name, submissionData, expectedAnswer } of cases) {
+        it(`joins the ${name} shape through verbatim, stripping only question_id/correct/points`, async () => {
+          const canvas = buildMockCanvas({
+            submissions: [subComplete],
+            answersBySubmission: {
+              100: [{ id: '10', quiz_id: '1', correct: true, flagged: false }],
+            },
+            assignmentSubmissions: [historySubmission('5', 1, [submissionData])],
+          })
+          const result = (await getTool(canvas).handler({ course_id: '1', quiz_id: '1' })) as Result
+          const essay = result.questions.find((q) => q.question_id === '10')!
+          expect(essay.responses[0].answer).toEqual(expectedAnswer)
+        })
+      }
     })
   })
 
@@ -381,6 +593,53 @@ describe('quizQuestionResponseTools', () => {
       expect(anonymizeUsers).not.toHaveBeenCalled()
       expect(result.questions[0].responses[0].user_name).toBe('Alice Anderson')
     })
+
+    it('replaces the structured user_name even when the essay answer text carries a name', async () => {
+      // The disclosed, by-design exception: student-authored prose is never
+      // scrubbed (there is no structured field to rewrite inside free text),
+      // but the STRUCTURED user_name field must still be pseudonymized. This
+      // proves the two are independent — one real name surviving in `answer`
+      // is expected; one surviving in `user_name` would be a defect.
+      const canvas = buildMockCanvas({
+        submissions: [subComplete],
+        answersBySubmission: {
+          100: [{ id: '10', quiz_id: '1', correct: 'undefined', flagged: false }],
+        },
+        assignmentSubmissions: [
+          historySubmission('5', 1, [
+            { question_id: '10', correct: 'undefined', text: "Hi, it's Alice Anderson here!" },
+          ]),
+        ],
+      })
+      const pseudonymizer = {
+        isEnabled: () => true,
+        anonymizeUsers: vi.fn(async (_courseId: number, users: CanvasUser[]) =>
+          users.map((u) => ({ ...u, name: `Student ${u.id}` })),
+        ),
+      } as unknown as Pseudonymizer
+
+      const result = (await getTool(canvas, pseudonymizer).handler({
+        course_id: '1',
+        quiz_id: '1',
+      })) as Result
+
+      const essay = result.questions.find((q) => q.question_id === '10')!
+      expect(essay.responses[0].user_name).toBe('Student 5')
+      expect(essay.responses[0].user_id).toBe('5')
+      // No nested user object or sibling identity field is introduced by the join.
+      expect(Object.keys(essay.responses[0]).sort()).toEqual(
+        [
+          'answer',
+          'attempt',
+          'correct',
+          'quiz_submission_id',
+          'scoring_state',
+          'user_id',
+          'user_name',
+        ].sort(),
+      )
+      expect(essay.responses[0].answer).toEqual({ text: "Hi, it's Alice Anderson here!" })
+    })
   })
 
   describe('unrostered submitter', () => {
@@ -389,7 +648,7 @@ describe('quizQuestionResponseTools', () => {
       const canvas = buildMockCanvas({
         submissions: [strayUser],
         answersBySubmission: {
-          103: [{ id: '10', quiz_id: '1', answer: 'Ghost answer', flagged: false }],
+          103: [{ id: '10', quiz_id: '1', correct: 'undefined', flagged: false }],
         },
         students: [alice, bob], // user 99 absent
       })
@@ -455,16 +714,16 @@ describe('quizQuestionResponseTools', () => {
     // First-seen order (7002 before 7001) deliberately differs from id order.
     const bankAnswers: Record<number, CanvasQuizSubmissionQuestion[]> = {
       100: [
-        { id: '10', quiz_id: '1', answer: 'Alice essay', correct: null, flagged: false },
-        { id: '7002', quiz_id: '1', answer: '3', correct: true, flagged: false },
+        { id: '10', quiz_id: '1', correct: 'undefined', flagged: false },
+        { id: '7002', quiz_id: '1', correct: true, flagged: false },
       ],
       101: [
-        { id: '10', quiz_id: '1', answer: 'Bob essay', correct: null, flagged: false },
-        { id: '7001', quiz_id: '1', answer: 'Bob bank essay', correct: null, flagged: true },
+        { id: '10', quiz_id: '1', correct: 'undefined', flagged: false },
+        { id: '7001', quiz_id: '1', correct: 'undefined', flagged: false },
       ],
       102: [
-        { id: '10', quiz_id: '1', answer: 'Carol essay', correct: null, flagged: false },
-        { id: '7002', quiz_id: '1', answer: '4', correct: false, flagged: false },
+        { id: '10', quiz_id: '1', correct: 'undefined', flagged: false },
+        { id: '7002', quiz_id: '1', correct: false, flagged: false },
       ],
     }
     const attemptQuestions: Record<number, CanvasQuizQuestion[]> = {
@@ -472,6 +731,20 @@ describe('quizQuestionResponseTools', () => {
       101: [fixedInAttempt, bankEssay],
       102: [fixedInAttempt, bankMc],
     }
+    const bankSubmissionHistory: CanvasSubmission[] = [
+      historySubmission('5', 1, [
+        { question_id: '10', correct: 'undefined', text: 'Alice essay' },
+        { question_id: '7002', correct: true, text: '3', answer_id: '601' },
+      ]),
+      historySubmission('6', 2, [
+        { question_id: '10', correct: 'undefined', text: 'Bob essay' },
+        { question_id: '7001', correct: 'undefined', text: 'Bob bank essay' },
+      ]),
+      historySubmission('7', 1, [
+        { question_id: '10', correct: 'undefined', text: 'Carol essay' },
+        { question_id: '7002', correct: false, text: '4', answer_id: '602' },
+      ]),
+    ]
 
     function bankCanvas(overrides: Partial<MockOpts> = {}): CanvasClient {
       return buildMockCanvas({
@@ -480,6 +753,7 @@ describe('quizQuestionResponseTools', () => {
         answersBySubmission: bankAnswers,
         attemptQuestionsImpl: (subId) => Promise.resolve(attemptQuestions[subId] ?? []),
         students: [alice, bob, carol],
+        assignmentSubmissions: bankSubmissionHistory,
         ...overrides,
       })
     }
@@ -509,9 +783,9 @@ describe('quizQuestionResponseTools', () => {
             user_name: 'Bob Brown',
             quiz_submission_id: '101',
             attempt: 2,
-            answer: 'Bob bank essay',
-            correct: null,
-            flagged: true,
+            answer: { text: 'Bob bank essay' },
+            correct: 'undefined',
+            scoring_state: 'awaiting_manual_grading',
           },
         ],
       })
@@ -519,8 +793,8 @@ describe('quizQuestionResponseTools', () => {
       const mc = result.questions.find((q) => q.question_id === '7002')!
       expect(mc.needs_manual_grading).toBe(false)
       expect(mc.responses.map((r) => [r.quiz_submission_id, r.user_name, r.answer])).toEqual([
-        ['100', 'Alice Anderson', '3'],
-        ['102', 'Carol Chen', '4'],
+        ['100', 'Alice Anderson', { text: '3', answer_id: '601' }],
+        ['102', 'Carol Chen', { text: '4', answer_id: '602' }],
       ])
 
       // The fixed question keeps its listQuestions metadata and all three responses.
@@ -618,10 +892,15 @@ describe('quizQuestionResponseTools', () => {
         submissions: [subComplete],
         answersBySubmission: {
           100: [
-            { id: '999', quiz_id: '1', answer: 'orphan answer', flagged: false },
-            { id: '10', quiz_id: '1', answer: 'real essay answer', correct: null, flagged: false },
+            { id: '999', quiz_id: '1', correct: 'undefined', flagged: false },
+            { id: '10', quiz_id: '1', correct: 'undefined', flagged: false },
           ],
         },
+        assignmentSubmissions: [
+          historySubmission('5', 1, [
+            { question_id: '10', correct: 'undefined', text: 'real essay answer' },
+          ]),
+        ],
         // The attempt lookup succeeds but does not know id 999 either.
         attemptQuestionsImpl: () => Promise.resolve([q1Essay]),
       })
@@ -629,7 +908,7 @@ describe('quizQuestionResponseTools', () => {
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
 
       const essay = result.questions.find((q) => q.question_id === '10')!
-      expect(essay.responses.map((r) => r.answer)).toEqual(['real essay answer'])
+      expect(essay.responses.map((r) => r.answer)).toEqual([{ text: 'real essay answer' }])
       expect(result.questions.some((q) => q.question_id === '999')).toBe(false)
       expect(result.unmatched_question_ids).toEqual(['999'])
       expect(result.unmatched_response_count).toBe(1)
@@ -656,8 +935,8 @@ describe('quizQuestionResponseTools', () => {
         submissions: [subComplete],
         answersBySubmission: {
           100: [
-            { id: '7002', quiz_id: '1', answer: 'orphan A', flagged: false },
-            { id: '999', quiz_id: '1', answer: 'orphan B', flagged: false },
+            { id: '7002', quiz_id: '1', correct: 'undefined', flagged: false },
+            { id: '999', quiz_id: '1', correct: 'undefined', flagged: false },
           ],
         },
         attemptQuestionsImpl: () => Promise.resolve([]),
@@ -682,11 +961,17 @@ describe('quizQuestionResponseTools', () => {
       const canvas = buildMockCanvas({
         submissions: [attempt1, attempt2],
         answersBySubmission: {
-          100: [{ id: '10', quiz_id: '1', answer: 'first attempt', correct: null, flagged: false }],
-          101: [
-            { id: '10', quiz_id: '1', answer: 'second attempt', correct: null, flagged: false },
-          ],
+          100: [{ id: '10', quiz_id: '1', correct: 'undefined', flagged: false }],
+          101: [{ id: '10', quiz_id: '1', correct: 'undefined', flagged: false }],
         },
+        assignmentSubmissions: [
+          historySubmission('5', 1, [
+            { question_id: '10', correct: 'undefined', text: 'first attempt' },
+          ]),
+          historySubmission('5', 2, [
+            { question_id: '10', correct: 'undefined', text: 'second attempt' },
+          ]),
+        ],
       })
       const tool = getTool(canvas)
       const result = (await tool.handler({ course_id: '1', quiz_id: '1' })) as Result
@@ -694,6 +979,10 @@ describe('quizQuestionResponseTools', () => {
       const essay = result.questions.find((q) => q.question_id === '10')!
       expect(essay.responses.map((r) => r.quiz_submission_id)).toEqual(['100', '101'])
       expect(essay.responses.map((r) => r.attempt)).toEqual([1, 2])
+      expect(essay.responses.map((r) => r.answer)).toEqual([
+        { text: 'first attempt' },
+        { text: 'second attempt' },
+      ])
       // Both rows resolve to the same student identity.
       expect(essay.responses.every((r) => r.user_name === 'Alice Anderson')).toBe(true)
     })

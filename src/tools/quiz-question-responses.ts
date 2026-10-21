@@ -1,7 +1,10 @@
 import type { CanvasClient } from '../canvas'
 import type {
+  CanvasQuiz,
+  CanvasQuizCorrectness,
   CanvasQuizQuestion,
   CanvasQuizSubmission,
+  CanvasQuizSubmissionHistoryEntry,
   CanvasQuizSubmissionQuestion,
 } from '../canvas/types'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
@@ -23,14 +26,61 @@ const MANUALLY_GRADED_QUESTION_TYPES = new Set(['essay_question', 'file_upload_q
 // core case for this tool — so it must be included, not excluded.
 const RESPONDED_WORKFLOW_STATES = new Set(['complete', 'pending_review'])
 
+// Fields the submission-history join must not surface as "the student's answer":
+// `question_id` is the join key, `correct`/`points` are grading data already
+// sourced from getSubmissionAnswers (the censored quiz_submission_questions
+// payload), kept as the single source of truth for scoring rather than
+// trusting two serializers to agree. Everything else in the entry IS the
+// submitted value (`text`, `answer_id`, `attachment_ids`, or a per-type
+// dynamic key) — see CanvasQuizSubmissionHistoryAnswer.
+const HISTORY_ANSWER_METADATA_KEYS = new Set(['question_id', 'correct', 'points'])
+
+// Derived from CanvasQuizCorrectness so an LLM caller is not left interpreting
+// the raw Canvas string "undefined" (every essay's pre-grading value) as a
+// scoring outcome. See BRU-3080 §8 item 2.
+type QuizAnswerScoringState =
+  | 'correct'
+  | 'incorrect'
+  | 'partial'
+  | 'not_scored'
+  | 'awaiting_manual_grading'
+  | 'graded'
+  | 'unscored'
+
+function deriveScoringState(correct: CanvasQuizCorrectness | undefined): QuizAnswerScoringState {
+  if (correct === undefined) return 'unscored' // no graded entry for this question at all
+  if (correct === true) return 'correct'
+  if (correct === false) return 'incorrect'
+  switch (correct) {
+    case 'partial':
+      return 'partial'
+    case 'no_score':
+      return 'not_scored'
+    case 'undefined': // the literal Canvas STRING, not the JS value
+      return 'awaiting_manual_grading'
+    case 'defined':
+      return 'graded'
+    default: {
+      // Exhaustiveness guard: a future CanvasQuizCorrectness member must fail
+      // to compile here rather than silently fall through.
+      const exhaustive: never = correct
+      return exhaustive
+    }
+  }
+}
+
+// Why the extra Canvas call is skipped, surfaced to the caller rather than
+// silently leaving every `answer` null. See BRU-3080 §8 item 3 / §5 scope limit.
+type AnswerTextUnavailableReason = 'no_assignment' | 'anonymous_survey' | 'history_fetch_failed'
+
 interface QuestionResponse {
   user_id: CanvasId
   user_name: string | null
   quiz_submission_id: CanvasId
   attempt: number
-  answer: CanvasQuizSubmissionQuestion['answer']
-  correct: boolean | null
-  flagged: boolean
+  answer: Record<string, unknown> | null
+  correct: CanvasQuizCorrectness | null
+  scoring_state: QuizAnswerScoringState
 }
 
 interface QuestionGroup {
@@ -135,6 +185,71 @@ async function resolveAttemptQuestions(
   return [...resolved.values()]
 }
 
+/**
+ * A completed attempt's answer text lives in the Submissions API's quiz
+ * branch, not in getSubmissionAnswers (see CanvasQuizSubmissionHistoryEntry).
+ * Fetched once per quiz call (one paginated sweep, every visible student's
+ * every attempt), then indexed by `${user_id}:${attempt}` -> question_id ->
+ * answer_details for O(1) lookup while pivoting responses.
+ *
+ * Three cases make the lookup unavailable rather than attempted: no
+ * assignment backs the quiz (practice_quiz, or an ungraded survey — no
+ * submissions route exists), the quiz is an anonymous survey (Canvas's own
+ * `anonymous_survey?` gate on the serializer), or the fetch itself failed.
+ * Each is surfaced in the result rather than left to look like "nobody
+ * answered."
+ */
+async function buildSubmissionHistoryIndex(
+  canvas: CanvasClient,
+  courseId: CanvasId,
+  quiz: CanvasQuiz,
+): Promise<{
+  index: Map<string, Map<CanvasId, Record<string, unknown>>>
+  unavailableReason: AnswerTextUnavailableReason | null
+}> {
+  if (quiz.assignment_id == null) {
+    return { index: new Map(), unavailableReason: 'no_assignment' }
+  }
+  if (quiz.anonymous_submissions === true) {
+    return { index: new Map(), unavailableReason: 'anonymous_survey' }
+  }
+
+  try {
+    const submissions = await canvas.submissions.list(courseId, quiz.assignment_id, {
+      include: ['submission_history'],
+    })
+    const index = new Map<string, Map<CanvasId, Record<string, unknown>>>()
+    for (const submission of submissions) {
+      // Not a CanvasSubmission[] despite the field name on the wire: Canvas
+      // substitutes quiz_submission_attempt_json entries for a quiz
+      // assignment. See CanvasQuizSubmissionHistoryEntry.
+      const history = submission.submission_history as
+        CanvasQuizSubmissionHistoryEntry[] | undefined
+      for (const attemptEntry of history ?? []) {
+        const byQuestion = new Map<CanvasId, Record<string, unknown>>()
+        for (const entry of attemptEntry.submission_data ?? []) {
+          const details: Record<string, unknown> = {}
+          for (const [key, value] of Object.entries(entry)) {
+            if (!HISTORY_ANSWER_METADATA_KEYS.has(key)) details[key] = value
+          }
+          if (Object.keys(details).length > 0) {
+            byQuestion.set(entry.question_id, details)
+          }
+        }
+        index.set(`${submission.user_id}:${attemptEntry.attempt}`, byQuestion)
+      }
+    }
+    return { index, unavailableReason: null }
+  } catch (error) {
+    console.error(
+      `get_quiz_question_responses: failed fetching submission history for quiz ${quiz.id} ` +
+        `(course ${courseId}, assignment ${quiz.assignment_id}):`,
+      error,
+    )
+    return { index: new Map(), unavailableReason: 'history_fetch_failed' }
+  }
+}
+
 export function quizQuestionResponseTools(
   canvas: CanvasClient,
   pseudonymizer?: Pseudonymizer,
@@ -153,12 +268,19 @@ export function quizQuestionResponseTools(
         'file-upload questions) and points_possible. Questions drawn from a question bank are ' +
         "included: Canvas stores each draw as a generated question that the quiz's question list " +
         "omits, so they are resolved from the students' own attempts, listed after the quiz's " +
-        'fixed questions, and report position: null. Scans one Canvas API call per completed or pending-review ' +
-        'submission, plus one per attempt needed to resolve such questions. A failed ' +
-        'per-submission fetch is recorded in submissions_failed, and a response whose question ' +
-        'cannot be resolved is counted in unmatched_response_count and unmatched_question_ids, ' +
-        'rather than aborting the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, ' +
-        'student names are replaced with stable pseudonyms.',
+        'fixed questions, and report position: null. Each response reports the raw Canvas ' +
+        'correctness value plus a derived scoring_state (correct / incorrect / partial / ' +
+        'not_scored / awaiting_manual_grading / graded / unscored) so "undefined" is never read ' +
+        'as an answer. Scans one Canvas API call per completed or pending-review submission, ' +
+        'plus one per attempt needed to resolve bank-drawn questions, plus one paginated call to ' +
+        "fetch every student's submitted answer text for the quiz (skipped, with " +
+        'answer_text_available: false and a reason, when the quiz has no assignment, is an ' +
+        'anonymous survey, or the fetch fails). A failed per-submission answers fetch is ' +
+        'recorded in submissions_failed, and a response whose question cannot be resolved is ' +
+        'counted in unmatched_response_count and unmatched_question_ids, rather than aborting ' +
+        'the whole call. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, student names are ' +
+        'replaced with stable pseudonyms; essay/short-answer prose is student-authored text and ' +
+        'may itself contain a real name, which pseudonymization of structured fields cannot strip.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         quiz_id: canvasIdInput().describe('The Canvas quiz ID (Classic Quizzes only)'),
@@ -213,6 +335,12 @@ export function quizQuestionResponseTools(
             ? await pseudonymizer.anonymizeUsers(courseId, students)
             : students
         const nameById = new Map(anonymizedStudents.map((u) => [u.id, u.name]))
+
+        // One paginated sweep for every submitted answer's actual text, keyed by
+        // (user_id, attempt, question_id). Independent of the per-submission
+        // answers fetch below, which still supplies `correct`.
+        const { index: answerTextIndex, unavailableReason: answerTextUnavailableReason } =
+          await buildSubmissionHistoryIndex(canvas, courseId, quiz)
 
         // One answer-fetch per submission, tolerating individual failures: a single
         // broken submission must not blank out the whole grade-by-question view.
@@ -304,9 +432,12 @@ export function quizQuestionResponseTools(
               user_name: nameById.get(submission.user_id) ?? null,
               quiz_submission_id: submission.id,
               attempt: submission.attempt,
-              answer: answer.answer,
+              answer:
+                answerTextIndex
+                  .get(`${submission.user_id}:${submission.attempt}`)
+                  ?.get(answerKey) ?? null,
               correct: answer.correct ?? null,
-              flagged: answer.flagged,
+              scoring_state: deriveScoringState(answer.correct),
             })
           }
         }
@@ -322,6 +453,8 @@ export function quizQuestionResponseTools(
           // `a - b` would round both operands above 2**53 and can report two
           // distinct ids as equal (BRU-2730 §4.4).
           unmatched_question_ids: [...unmatchedQuestionIds].sort(compareCanvasIds),
+          answer_text_available: answerTextUnavailableReason === null,
+          answer_text_unavailable_reason: answerTextUnavailableReason,
         }
       },
     },

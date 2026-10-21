@@ -77,7 +77,6 @@
   "get_profile": ["R1", "R2"],
   "get_quiz": ["R1", "R2"],
   "get_quiz_question_responses": ["R2"],
-  "get_quiz_submission_answers": ["R1", "R2"],
   "get_quiz_submission_events": ["R2"],
   "get_root_outcome_group": ["R1", "R2"],
   "get_rubric": ["R2"],

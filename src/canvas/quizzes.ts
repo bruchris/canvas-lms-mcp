@@ -78,6 +78,24 @@ export class QuizzesModule {
     )
   }
 
+  /**
+   * `GET /quiz_submissions/:id/questions` — per Canvas's own API doc header,
+   * "answering and flagging questions in a quiz-taking session". It serves
+   * two unrelated shapes depending on attempt state (`lib/api/v1/quiz_submission_question.rb:89-110`,
+   * pinned SHA 1c9f0bb8013ed69c4f2efe11fd483025469b7e6c):
+   *
+   * - `untaken` (in progress): `submission_data` is a Hash; the response
+   *   includes the student's live `answer` and a real `flagged` state.
+   * - `complete` / `pending_review` (submitted): `submission_data` is an
+   *   Array; `answer` is NEVER assigned, `flagged` is hardcoded `false` (or
+   *   omitted if Canvas has no graded entry for the question at all), and
+   *   `correct` carries the real {@link CanvasQuizCorrectness} domain.
+   *
+   * For a submitted attempt's actual answer text, use the Submissions API's
+   * `include[]=submission_history` instead (see
+   * `src/tools/quiz-question-responses.ts` and BRU-3080) — this method alone
+   * cannot surface it.
+   */
   async getSubmissionAnswers(quizSubmissionId: CanvasId): Promise<CanvasQuizSubmissionQuestion[]> {
     return this.client.paginateEnvelope<CanvasQuizSubmissionQuestion>(
       `/api/v1/quiz_submissions/${quizSubmissionId}/questions`,
