@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.8.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.1...canvas-lms-mcp-v2.8.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **quizzes:** surface real answer values for completed Classic Quiz attempts (BRU-3085) ([#450](https://github.com/bruchris/canvas-lms-mcp/issues/450)) ([77ded9f](https://github.com/bruchris/canvas-lms-mcp/commit/77ded9f676d7e5debe5e3bab7713996e15b33aa9))
+
+
+### Documentation
+
+* **outcomes:** rewrite TDQS descriptions and routing guidance (BRU-3073) ([#452](https://github.com/bruchris/canvas-lms-mcp/issues/452)) ([57f861d](https://github.com/bruchris/canvas-lms-mcp/commit/57f861da525f1f9b3f1f1838118fcfae73c3c2ed))
+
 ## [2.8.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.0...canvas-lms-mcp-v2.8.1) (2026-10-21)
 
 
