@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.2...canvas-lms-mcp-v2.8.3) (2026-10-21)
+
+
+### Documentation
+
+* **discovery:** rewrite Phase 1E discussion tool descriptions (BRU-3090) ([#453](https://github.com/bruchris/canvas-lms-mcp/issues/453)) ([b3c7cec](https://github.com/bruchris/canvas-lms-mcp/commit/b3c7cecb736ffaa8e33a4c67df6739c8afe6a84a))
+
 ## [2.8.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.1...canvas-lms-mcp-v2.8.2) (2026-10-21)
 
 
