@@ -20,7 +20,13 @@ export function outcomeTools(
     {
       name: 'get_root_outcome_group',
       title: 'Get Root Outcome Group',
-      description: 'Get the root outcome group for an account or course context.',
+      description:
+        'Get the root outcome group for an account or course context, the entry point into the ' +
+        'outcome tree. Returns the top-level outcome group (id, title, subgroups_url, ' +
+        'outcomes_url); walk from there with list_outcome_group_subgroups for its child groups ' +
+        'and list_outcome_group_outcomes for outcomes linked directly under a group, or use ' +
+        'list_outcome_groups for a flat listing of every group in the context instead of walking ' +
+        'the tree.',
       inputSchema: {
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
@@ -37,7 +43,12 @@ export function outcomeTools(
     {
       name: 'list_outcome_groups',
       title: 'List Outcome Groups',
-      description: 'List all outcome groups for an account or course context.',
+      description:
+        'List every outcome group in an account or course context as a flat array, not a tree. ' +
+        "Fetches every page (100 per request) and fails with a 'Results are incomplete' error " +
+        'instead of silently truncating. Use get_root_outcome_group plus ' +
+        'list_outcome_group_subgroups to walk the hierarchy instead, or get_outcome_group to ' +
+        "fetch one group's details by ID.",
       inputSchema: {
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
@@ -54,7 +65,14 @@ export function outcomeTools(
     {
       name: 'list_outcome_group_links',
       title: 'List Outcome Group Links',
-      description: 'List all outcome links in an account or course context.',
+      description:
+        'List every outcome link in an account or course context — the many-to-many join ' +
+        'between outcome groups and the outcomes they contain, read from the context root, not ' +
+        "one specific group. Fetches every page (100 per request) and fails with a 'Results are " +
+        "incomplete' error instead of silently truncating. Each link nests its outcome_group and " +
+        'outcome (full detail when outcome_style="full" / outcome_group_style="full", abbreviated ' +
+        'otherwise); use list_outcome_group_outcomes instead to list only the outcomes linked ' +
+        'directly under one specific outcome_group_id.',
       inputSchema: {
         context_type: z
           .enum(OUTCOME_CONTEXT_TYPES)
@@ -85,7 +103,12 @@ export function outcomeTools(
     {
       name: 'get_outcome_group',
       title: 'Get Outcome Group',
-      description: 'Get details for a specific outcome group in an account or course context.',
+      description:
+        'Get the full details for one outcome group by outcome_group_id within an account or ' +
+        'course context, including its subgroups_url and outcomes_url. The ID comes from ' +
+        'list_outcome_groups, list_outcome_group_subgroups, or get_root_outcome_group; use ' +
+        'list_outcome_group_outcomes to list the outcomes linked under this group and ' +
+        "list_outcome_group_subgroups to list this group's child groups.",
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
         context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
@@ -102,7 +125,13 @@ export function outcomeTools(
     {
       name: 'list_outcome_group_outcomes',
       title: 'List Outcome Group Outcomes',
-      description: 'List the linked outcomes directly under a specific outcome group.',
+      description:
+        'List the outcomes linked directly under one outcome group (outcome_group_id), not its ' +
+        "subgroups' outcomes. Fetches every page (100 per request) and fails with a 'Results are " +
+        "incomplete' error instead of silently truncating. Each link nests the outcome (full " +
+        'detail when outcome_style="full", abbreviated otherwise); use ' +
+        'list_outcome_group_subgroups to descend into child groups first, or get_outcome for one ' +
+        "outcome's full detail by outcome_id.",
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
         context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
@@ -126,7 +155,13 @@ export function outcomeTools(
     {
       name: 'list_outcome_group_subgroups',
       title: 'List Outcome Group Subgroups',
-      description: 'List the immediate child outcome groups under a specific outcome group.',
+      description:
+        'List the immediate child outcome groups under one outcome group (outcome_group_id) — ' +
+        'one level of the tree, not a recursive walk. Fetches every page (100 per request) and ' +
+        "fails with a 'Results are incomplete' error instead of silently truncating. Call this " +
+        "again with each returned group's id to descend further, or use " +
+        'list_outcome_group_outcomes on the same outcome_group_id to list outcomes linked ' +
+        'directly under it instead of its child groups.',
       inputSchema: {
         context_type: z.enum(OUTCOME_CONTEXT_TYPES).describe('The outcome group context type.'),
         context_id: canvasIdInput().describe('The Canvas account ID or course ID for the context.'),
@@ -143,7 +178,12 @@ export function outcomeTools(
     {
       name: 'get_outcome',
       title: 'Get Outcome',
-      description: 'Get the full details for a specific learning outcome by ID.',
+      description:
+        'Get the full details for one learning outcome by outcome_id, including its rating ' +
+        'criteria, mastery_points, and calculation_method. The outcome_id comes from ' +
+        "list_outcome_group_outcomes, list_outcome_group_links, or get_outcome_results' / " +
+        "get_outcome_rollups' linked.outcomes; use get_outcome_alignments to see which " +
+        'assignments align to it in a course.',
       inputSchema: {
         outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
         add_defaults: z
@@ -161,7 +201,12 @@ export function outcomeTools(
       name: 'get_outcome_alignments',
       title: 'Get Outcome Alignments',
       description:
-        'Get outcome alignments for a course, optionally filtered to a specific student or assignment.',
+        'Get the assignments aligned to outcomes in a course, optionally filtered to one ' +
+        "student_id or assignment_id. Returns each alignment's assignment_id and title, but not " +
+        'the outcome_id it maps to — pair it with list_outcome_group_links or get_outcome_results, ' +
+        'which nest linked.alignments, to connect an alignment back to its outcome. Use ' +
+        "get_outcome_contributing_scores to see the assignment scores that produced an outcome's " +
+        'results instead of just the links.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         student_id: canvasIdInput()
@@ -182,7 +227,13 @@ export function outcomeTools(
       name: 'get_outcome_results',
       title: 'Get Outcome Results',
       description:
-        'Get per-student outcome results for a course, with optional outcome, student, and alignment filters.',
+        'Get raw per-student, per-alignment outcome results for a course (one score per assessed ' +
+        'alignment, not aggregated), optionally filtered by user_ids, outcome_ids, and ' +
+        'include_hidden. Set include_alignments to nest the matching alignments under ' +
+        'linked.alignments. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, linked.users entries ' +
+        'are anonymized; use resolve_pseudonym to map one back to a real user. Use ' +
+        'get_outcome_rollups instead for aggregated scores per student and outcome, or ' +
+        'get_outcome_contributing_scores for the assignment or quiz scores behind one outcome.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         user_ids: canvasIdList({ prefixes: ['sis_user_id'] })
@@ -221,7 +272,14 @@ export function outcomeTools(
       name: 'get_outcome_rollups',
       title: 'Get Outcome Rollups',
       description:
-        'Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.',
+        'Get aggregated outcome rollups for a course — one score per student per outcome, or, ' +
+        'with aggregate="course", a single course-level mean or median — optionally filtered by ' +
+        "user_ids and outcome_ids and sorted by student or by one outcome's score. Set " +
+        'include_courses to nest course details under linked.courses. When ' +
+        'CANVAS_PSEUDONYMIZE_STUDENTS is enabled, linked.users entries are anonymized; use ' +
+        'resolve_pseudonym to map one back to a real user. Use get_outcome_results instead for ' +
+        'the raw per-alignment scores behind a rollup, or get_outcome_mastery_distribution for a ' +
+        'mastery-level histogram across students.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         aggregate: z
@@ -290,7 +348,11 @@ export function outcomeTools(
       name: 'get_outcome_contributing_scores',
       title: 'Get Outcome Contributing Scores',
       description:
-        'Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.',
+        "Get the assignment or quiz scores that contributed to one outcome_id's results for one " +
+        'or more students in a course, optionally restricted to assignment alignments only or ' +
+        'including unpublished assignments. Use get_outcome_results instead for the final ' +
+        'per-alignment outcome score rather than the scores that fed it, or get_outcome_alignments ' +
+        'to list which assignments align to an outcome without their scores.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         outcome_id: canvasIdInput().describe('The Canvas outcome ID.'),
@@ -326,7 +388,12 @@ export function outcomeTools(
       name: 'get_outcome_mastery_distribution',
       title: 'Get Outcome Mastery Distribution',
       description:
-        'Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.',
+        'Get a mastery-level histogram for outcomes in a course — how many students fall into ' +
+        'each rating band — optionally filtered by outcome_ids and student_ids and excluding ' +
+        'missing user rollups or missing outcome results. Set include_alignment_distributions to ' +
+        'also break down scores by contributing alignment. Use get_outcome_rollups instead for ' +
+        "each student's individual aggregated score, or get_outcome_results for the raw " +
+        'per-alignment scores.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID.'),
         exclude: z

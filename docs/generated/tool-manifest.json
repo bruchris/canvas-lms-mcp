@@ -1724,7 +1724,7 @@
       "name": "get_root_outcome_group",
       "title": "Get Root Outcome Group",
       "domain": "outcomes",
-      "description": "Get the root outcome group for an account or course context.",
+      "description": "Get the root outcome group for an account or course context, the entry point into the outcome tree. Returns the top-level outcome group (id, title, subgroups_url, outcomes_url); walk from there with list_outcome_group_subgroups for its child groups and list_outcome_group_outcomes for outcomes linked directly under a group, or use list_outcome_groups for a flat listing of every group in the context instead of walking the tree.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1738,7 +1738,7 @@
       "name": "list_outcome_groups",
       "title": "List Outcome Groups",
       "domain": "outcomes",
-      "description": "List all outcome groups for an account or course context.",
+      "description": "List every outcome group in an account or course context as a flat array, not a tree. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use get_root_outcome_group plus list_outcome_group_subgroups to walk the hierarchy instead, or get_outcome_group to fetch one group's details by ID.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1752,7 +1752,7 @@
       "name": "list_outcome_group_links",
       "title": "List Outcome Group Links",
       "domain": "outcomes",
-      "description": "List all outcome links in an account or course context.",
+      "description": "List every outcome link in an account or course context — the many-to-many join between outcome groups and the outcomes they contain, read from the context root, not one specific group. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Each link nests its outcome_group and outcome (full detail when outcome_style=\"full\" / outcome_group_style=\"full\", abbreviated otherwise); use list_outcome_group_outcomes instead to list only the outcomes linked directly under one specific outcome_group_id.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1766,7 +1766,7 @@
       "name": "get_outcome_group",
       "title": "Get Outcome Group",
       "domain": "outcomes",
-      "description": "Get details for a specific outcome group in an account or course context.",
+      "description": "Get the full details for one outcome group by outcome_group_id within an account or course context, including its subgroups_url and outcomes_url. The ID comes from list_outcome_groups, list_outcome_group_subgroups, or get_root_outcome_group; use list_outcome_group_outcomes to list the outcomes linked under this group and list_outcome_group_subgroups to list this group's child groups.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1780,7 +1780,7 @@
       "name": "list_outcome_group_outcomes",
       "title": "List Outcome Group Outcomes",
       "domain": "outcomes",
-      "description": "List the linked outcomes directly under a specific outcome group.",
+      "description": "List the outcomes linked directly under one outcome group (outcome_group_id), not its subgroups' outcomes. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Each link nests the outcome (full detail when outcome_style=\"full\", abbreviated otherwise); use list_outcome_group_subgroups to descend into child groups first, or get_outcome for one outcome's full detail by outcome_id.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1794,7 +1794,7 @@
       "name": "list_outcome_group_subgroups",
       "title": "List Outcome Group Subgroups",
       "domain": "outcomes",
-      "description": "List the immediate child outcome groups under a specific outcome group.",
+      "description": "List the immediate child outcome groups under one outcome group (outcome_group_id) — one level of the tree, not a recursive walk. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Call this again with each returned group's id to descend further, or use list_outcome_group_outcomes on the same outcome_group_id to list outcomes linked directly under it instead of its child groups.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1808,7 +1808,7 @@
       "name": "get_outcome",
       "title": "Get Outcome",
       "domain": "outcomes",
-      "description": "Get the full details for a specific learning outcome by ID.",
+      "description": "Get the full details for one learning outcome by outcome_id, including its rating criteria, mastery_points, and calculation_method. The outcome_id comes from list_outcome_group_outcomes, list_outcome_group_links, or get_outcome_results' / get_outcome_rollups' linked.outcomes; use get_outcome_alignments to see which assignments align to it in a course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1822,7 +1822,7 @@
       "name": "get_outcome_alignments",
       "title": "Get Outcome Alignments",
       "domain": "outcomes",
-      "description": "Get outcome alignments for a course, optionally filtered to a specific student or assignment.",
+      "description": "Get the assignments aligned to outcomes in a course, optionally filtered to one student_id or assignment_id. Returns each alignment's assignment_id and title, but not the outcome_id it maps to — pair it with list_outcome_group_links or get_outcome_results, which nest linked.alignments, to connect an alignment back to its outcome. Use get_outcome_contributing_scores to see the assignment scores that produced an outcome's results instead of just the links.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1836,7 +1836,7 @@
       "name": "get_outcome_results",
       "title": "Get Outcome Results",
       "domain": "outcomes",
-      "description": "Get per-student outcome results for a course, with optional outcome, student, and alignment filters.",
+      "description": "Get raw per-student, per-alignment outcome results for a course (one score per assessed alignment, not aggregated), optionally filtered by user_ids, outcome_ids, and include_hidden. Set include_alignments to nest the matching alignments under linked.alignments. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, linked.users entries are anonymized; use resolve_pseudonym to map one back to a real user. Use get_outcome_rollups instead for aggregated scores per student and outcome, or get_outcome_contributing_scores for the assignment or quiz scores behind one outcome.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1850,7 +1850,7 @@
       "name": "get_outcome_rollups",
       "title": "Get Outcome Rollups",
       "domain": "outcomes",
-      "description": "Get outcome rollups for a course, optionally aggregated or filtered by students, outcomes, and sort options.",
+      "description": "Get aggregated outcome rollups for a course — one score per student per outcome, or, with aggregate=\"course\", a single course-level mean or median — optionally filtered by user_ids and outcome_ids and sorted by student or by one outcome's score. Set include_courses to nest course details under linked.courses. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, linked.users entries are anonymized; use resolve_pseudonym to map one back to a real user. Use get_outcome_results instead for the raw per-alignment scores behind a rollup, or get_outcome_mastery_distribution for a mastery-level histogram across students.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1864,7 +1864,7 @@
       "name": "get_outcome_contributing_scores",
       "title": "Get Outcome Contributing Scores",
       "domain": "outcomes",
-      "description": "Get assignment or quiz scores that contributed to a specific outcome for one or more students in a course.",
+      "description": "Get the assignment or quiz scores that contributed to one outcome_id's results for one or more students in a course, optionally restricted to assignment alignments only or including unpublished assignments. Use get_outcome_results instead for the final per-alignment outcome score rather than the scores that fed it, or get_outcome_alignments to list which assignments align to an outcome without their scores.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1878,7 +1878,7 @@
       "name": "get_outcome_mastery_distribution",
       "title": "Get Outcome Mastery Distribution",
       "domain": "outcomes",
-      "description": "Get mastery distribution analytics for outcomes in a course, optionally filtered by students or outcomes.",
+      "description": "Get a mastery-level histogram for outcomes in a course — how many students fall into each rating band — optionally filtered by outcome_ids and student_ids and excluding missing user rollups or missing outcome results. Set include_alignment_distributions to also break down scores by contributing alignment. Use get_outcome_rollups instead for each student's individual aggregated score, or get_outcome_results for the raw per-alignment scores.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
