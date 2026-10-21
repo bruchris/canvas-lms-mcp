@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.8.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.0...canvas-lms-mcp-v2.8.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **groups:** pseudonymize group leaders on both group-listing tools ([#441](https://github.com/bruchris/canvas-lms-mcp/issues/441)) ([#449](https://github.com/bruchris/canvas-lms-mcp/issues/449)) ([91e57e1](https://github.com/bruchris/canvas-lms-mcp/commit/91e57e1017e327699025349cfd6c0a2359ffdd76))
+
+
+### Documentation
+
+* **tools:** rewrite TDQS descriptions for create_assignment, create_peer_review, update_discussion (BRU-3057) ([#447](https://github.com/bruchris/canvas-lms-mcp/issues/447)) ([2176bf4](https://github.com/bruchris/canvas-lms-mcp/commit/2176bf47d7841ad063c904d2843d5e4802b59966))
+
 ## [2.8.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.7.0...canvas-lms-mcp-v2.8.0) (2026-10-20)
 
 
