@@ -22,7 +22,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - uses: googleapis/release-please-action@0b6b3fc0186a2f7118bfd88fab9ea481e1839504 # main@2026-05-28, bundles release-please 17.6.1 (GraphQL batch-size backoff fix, no v5.x tag yet)
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
