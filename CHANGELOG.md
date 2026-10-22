@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.9.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.4...canvas-lms-mcp-v2.9.0) (2026-10-22)
+
+
+### Features
+
+* **canvas:** type module completion requirements and discussion requirement fields (BRU-3103) ([#457](https://github.com/bruchris/canvas-lms-mcp/issues/457)) ([ab7ded7](https://github.com/bruchris/canvas-lms-mcp/commit/ab7ded7c60cb0e1464b53c90a5715060dcd3fef8))
+* **skills:** add canvas-course-requirements, the student planning workflow (BRU-3103) ([#465](https://github.com/bruchris/canvas-lms-mcp/issues/465)) ([3b24c4b](https://github.com/bruchris/canvas-lms-mcp/commit/3b24c4b2647f83e929b0783f481bda95d8a692c1))
+* **student:** add get_my_course_requirements, the student requirement graph (BRU-3103) ([#463](https://github.com/bruchris/canvas-lms-mcp/issues/463)) ([522f949](https://github.com/bruchris/canvas-lms-mcp/commit/522f9493e4a6a7696c54df3a84c4529e7f40ef45))
+* **tools:** add Canvas-grounded disambiguation params to dashboard, peer reviews, and accounts (BRU-3127) ([#474](https://github.com/bruchris/canvas-lms-mcp/issues/474)) ([ce6cfd6](https://github.com/bruchris/canvas-lms-mcp/commit/ce6cfd6717c4af998b9350e5837dd5d6b79bfc3a))
+* **tools:** add opt-in Canvas toolsets and read-only startup controls (BRU-3128) ([#475](https://github.com/bruchris/canvas-lms-mcp/issues/475)) ([c346180](https://github.com/bruchris/canvas-lms-mcp/commit/c346180048d994582a305ee32609acd2d1eb1d8e))
+* **tools:** add sections and assignment-group completeness tools (BRU-3129) ([#476](https://github.com/bruchris/canvas-lms-mcp/issues/476)) ([f18b52a](https://github.com/bruchris/canvas-lms-mcp/commit/f18b52a908a9fce29d4ea374007a018358df4dd9))
+* **tools:** add the pure requirement-state engine and its fixtures (BRU-3103) ([#459](https://github.com/bruchris/canvas-lms-mcp/issues/459)) ([fefcac9](https://github.com/bruchris/canvas-lms-mcp/commit/fefcac94b6337ce3fca10ee3bda7a3dbff3a84bc))
+* **tools:** expose account notifications to shared audiences (BRU-3133) ([#478](https://github.com/bruchris/canvas-lms-mcp/issues/478)) ([22449b5](https://github.com/bruchris/canvas-lms-mcp/commit/22449b5e948751cdd0de2cf9b5a952f398944eaf))
+
+
+### Bug Fixes
+
+* **pseudonym:** pseudonymize send_conversation participants (BRU-3126) ([#473](https://github.com/bruchris/canvas-lms-mcp/issues/473)) ([9ab1fbb](https://github.com/bruchris/canvas-lms-mcp/commit/9ab1fbbf24de7c79ab91c48eaf031f32eaeb0a18))
+* **pseudonym:** pseudonymize submit_rubric_assessment's assessor and group fan-out (BRU-3123) ([#471](https://github.com/bruchris/canvas-lms-mcp/issues/471)) ([159f758](https://github.com/bruchris/canvas-lms-mcp/commit/159f758bbb4949a423a87508f99e28eba38c070e))
+
+
+### Documentation
+
+* **tools:** rewrite Accounts TDQS descriptions and routing (BRU-3108) ([#461](https://github.com/bruchris/canvas-lms-mcp/issues/461)) ([155e06b](https://github.com/bruchris/canvas-lms-mcp/commit/155e06b4e4f24ddc52365939a077299168160613))
+* **tools:** rewrite Appointment Groups and Conversations TDQS descriptions (BRU-3124) ([#472](https://github.com/bruchris/canvas-lms-mcp/issues/472)) ([a45d03e](https://github.com/bruchris/canvas-lms-mcp/commit/a45d03ed41fb209baac0c32b4f159c9ce90ae285))
+* **tools:** rewrite Assignments and Files TDQS descriptions and routing (BRU-3113) ([#466](https://github.com/bruchris/canvas-lms-mcp/issues/466)) ([a97a621](https://github.com/bruchris/canvas-lms-mcp/commit/a97a6218168c6634712ecb31819611300ecea745))
+* **tools:** rewrite Calendar and Enrollments TDQS descriptions and routing ([#462](https://github.com/bruchris/canvas-lms-mcp/issues/462)) ([f1f6e1a](https://github.com/bruchris/canvas-lms-mcp/commit/f1f6e1aff50f887f0cc1fe47c94c813217e0af1e))
+* **tools:** rewrite Classic Quiz TDQS descriptions and routing (BRU-3107) ([#460](https://github.com/bruchris/canvas-lms-mcp/issues/460)) ([6fbf9b1](https://github.com/bruchris/canvas-lms-mcp/commit/6fbf9b141a0bcabe48c5764a11d82c3444d2e69d))
+* **tools:** rewrite New Quizzes TDQS descriptions and routing (BRU-3117) ([#467](https://github.com/bruchris/canvas-lms-mcp/issues/467)) ([a35e319](https://github.com/bruchris/canvas-lms-mcp/commit/a35e31925cc63a7bf8c1d6f31620b557a170ffcb))
+* **tools:** rewrite Pages TDQS descriptions and routing (BRU-3112) ([#464](https://github.com/bruchris/canvas-lms-mcp/issues/464)) ([e588330](https://github.com/bruchris/canvas-lms-mcp/commit/e5883303254efa2e22ee8332d63e73f11f543223))
+* **tools:** rewrite Peer Reviews TDQS descriptions and routing (BRU-3119) ([#468](https://github.com/bruchris/canvas-lms-mcp/issues/468)) ([1d472e1](https://github.com/bruchris/canvas-lms-mcp/commit/1d472e1aa0f521e961b2879bc404e46b05aba4a0))
+* **tools:** rewrite Rubrics and Courses TDQS descriptions and routing (BRU-3122) ([#470](https://github.com/bruchris/canvas-lms-mcp/issues/470)) ([6493e94](https://github.com/bruchris/canvas-lms-mcp/commit/6493e94bc3902eb4f3c54b34a9fde176f5c4a617))
+* **tools:** rewrite Submissions and Users TDQS descriptions and routing (BRU-3120) ([#469](https://github.com/bruchris/canvas-lms-mcp/issues/469)) ([357113b](https://github.com/bruchris/canvas-lms-mcp/commit/357113b88cddf355974e7457b51ef852f00d608c))
+
 ## [2.8.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.3...canvas-lms-mcp-v2.8.4) (2026-10-22)
 
 
