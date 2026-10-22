@@ -63,6 +63,47 @@ describe('DashboardModule', () => {
     expect(result).toEqual([])
   })
 
+  it('filters upcoming events by type client-side without sending a query param', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce([
+      { id: 1, title: 'Lecture', start_at: null, type: 'event', context_code: 'course_1' },
+      {
+        id: 'assignment_9729',
+        title: 'Essay',
+        start_at: null,
+        type: 'assignment',
+        context_code: 'course_1',
+      },
+      {
+        id: 'sub_assignment_5',
+        title: 'Peer Review',
+        start_at: null,
+        type: 'sub_assignment',
+        context_code: 'course_1',
+      },
+    ])
+    const result = await dashboard.getUpcomingEvents({ type: 'assignment' })
+    expect(result).toEqual([
+      {
+        id: 'assignment_9729',
+        title: 'Essay',
+        start_at: null,
+        type: 'assignment',
+        context_code: 'course_1',
+      },
+    ])
+    expect(client.request).toHaveBeenCalledWith('/api/v1/users/self/upcoming_events')
+  })
+
+  it('returns every item when no type filter is given', async () => {
+    const events = [
+      { id: 1, title: 'Lecture', start_at: null, type: 'event', context_code: 'course_1' },
+      { id: 2, title: 'Essay', start_at: null, type: 'assignment', context_code: 'course_1' },
+    ]
+    vi.spyOn(client, 'request').mockResolvedValueOnce(events)
+    const result = await dashboard.getUpcomingEvents({})
+    expect(result).toEqual(events)
+  })
+
   it('fetches missing submissions', async () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([
       {

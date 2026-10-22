@@ -32,8 +32,14 @@ const COURSE_USER_INCLUDE = [
   'current_grading_period_scores',
   'uuid',
 ] as const
-const USER_SORT = ['username', 'email', 'sis_id', 'integration_id', 'last_login'] as const
-const SEARCH_USER_INCLUDE = ['email', 'last_login', 'avatar_url', 'time_zone', 'uuid'] as const
+export const USER_SORT = ['username', 'email', 'sis_id', 'integration_id', 'last_login'] as const
+export const SEARCH_USER_INCLUDE = [
+  'email',
+  'last_login',
+  'avatar_url',
+  'time_zone',
+  'uuid',
+] as const
 
 export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
   return [

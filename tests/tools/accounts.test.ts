@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { z } from 'zod'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -203,7 +204,39 @@ describe('accountTools', () => {
       const canvas = buildMockCanvas()
       const tool = accountTools(canvas).find((t) => t.name === 'list_account_users')!
       await tool.handler({ account_id: '1' })
-      expect(canvas.accounts.listUsers).toHaveBeenCalledWith('1', { search_term: undefined })
+      expect(canvas.accounts.listUsers).toHaveBeenCalledWith('1', {
+        search_term: undefined,
+        sort: undefined,
+        order: undefined,
+        include: undefined,
+      })
+    })
+
+    it('passes sort, order, and include through to canvas.accounts.listUsers', async () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_users')!
+      await tool.handler({
+        account_id: '1',
+        sort: 'id',
+        order: 'desc',
+        include: ['email', 'uuid'],
+      })
+      expect(canvas.accounts.listUsers).toHaveBeenCalledWith('1', {
+        search_term: undefined,
+        sort: 'id',
+        order: 'desc',
+        include: ['email', 'uuid'],
+      })
+    })
+
+    it('rejects a sort value Canvas does not support on this endpoint', () => {
+      const canvas = buildMockCanvas()
+      const tool = accountTools(canvas).find((t) => t.name === 'list_account_users')!
+      const schema = z.object(tool.inputSchema)
+      expect(schema.safeParse({ account_id: 1, sort: 'not_a_real_field' }).success).toBe(false)
+      expect(schema.safeParse({ account_id: 1, sort: 'id' }).success).toBe(true)
+      expect(schema.safeParse({ account_id: 1, include: ['not_a_field'] }).success).toBe(false)
+      expect(schema.safeParse({ account_id: 1, include: ['uuid'] }).success).toBe(true)
     })
   })
 

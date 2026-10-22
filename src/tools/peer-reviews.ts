@@ -12,12 +12,20 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
         "each review's id, assessor_id (the reviewer), user_id (the reviewee whose submission is " +
         "being reviewed), asset_id, and workflow_state ('assigned' or 'completed'). Fetches every " +
         "page (100 per request) and fails with a 'Results are incomplete' error instead of " +
-        'silently truncating. Use get_submission_peer_reviews to scope the results to one ' +
-        'submission instead of the whole assignment, create_peer_review to assign a new reviewer, ' +
-        'and delete_peer_review to remove one.',
+        'silently truncating. Pass submission_id to scope the results to the reviews assigned ' +
+        'to that one submission instead of the whole assignment — the same result ' +
+        'get_submission_peer_reviews returns, kept here as a shortcut. Omit it to see every ' +
+        'review across the assignment. Use create_peer_review to assign a new reviewer, and ' +
+        'delete_peer_review to remove one.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
+        submission_id: canvasIdInput()
+          .optional()
+          .describe(
+            'Optional Canvas submission ID. When provided, scopes results to the peer reviews ' +
+              'assigned to this submission instead of every peer review on the assignment.',
+          ),
       },
       annotations: {
         readOnlyHint: true,
@@ -26,6 +34,10 @@ export function peerReviewTools(canvas: CanvasClient): ToolDefinition[] {
       handler: async (params) => {
         const course_id = params.course_id as CanvasId
         const assignment_id = params.assignment_id as CanvasId
+        const submission_id = params.submission_id as CanvasId | undefined
+        if (submission_id !== undefined) {
+          return canvas.peerReviews.listForSubmission(course_id, assignment_id, submission_id)
+        }
         return canvas.peerReviews.listForAssignment(course_id, assignment_id)
       },
     },

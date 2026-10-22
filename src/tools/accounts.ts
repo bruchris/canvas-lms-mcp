@@ -1,8 +1,13 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
+import type { AccountUserSort } from '../canvas/accounts'
+import type { SearchUserInclude } from '../canvas/users'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
+import { SEARCH_USER_INCLUDE, USER_SORT } from './users'
+
+const ACCOUNT_USER_SORT = [...USER_SORT, 'id'] as const
 
 export function accountTools(
   canvas: CanvasClient,
@@ -77,10 +82,19 @@ export function accountTools(
       name: 'list_account_users',
       title: 'List Account Users',
       description:
-        "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `search_users` instead when you need extra fields like email, last_login, avatar_url, time_zone, or uuid via its `include` parameter, and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
+        "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `include` to add email, last_login, avatar_url, time_zone, or uuid to each returned user, `sort`/`order` to control result ordering (`sort: \"id\"` is Canvas's recommended choice when paging through many results), and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().optional().describe('Search users by name, email, or login'),
+        sort: z
+          .enum(ACCOUNT_USER_SORT)
+          .optional()
+          .describe('Sort field. Use "id" for efficient pagination through many pages of results.'),
+        order: z.enum(['asc', 'desc']).optional().describe('Sort order'),
+        include: z
+          .array(z.enum(SEARCH_USER_INCLUDE))
+          .optional()
+          .describe('Extra fields to include on each user (Canvas include[] param)'),
       },
       annotations: {
         readOnlyHint: true,
@@ -90,6 +104,9 @@ export function accountTools(
         const account_id = params.account_id as CanvasId
         const users = await canvas.accounts.listUsers(account_id, {
           search_term: params.search_term as string | undefined,
+          sort: params.sort as AccountUserSort | undefined,
+          order: params.order as 'asc' | 'desc' | undefined,
+          include: params.include as ReadonlyArray<SearchUserInclude> | undefined,
         })
         if (!pseudonymizer?.isEnabled()) return users
         // Account-scoped; no course context. Use account_id as map key.

@@ -1488,7 +1488,7 @@
       "name": "list_peer_reviews",
       "title": "List Peer Reviews",
       "domain": "peer_reviews",
-      "description": "List every peer review assigned on an assignment, across every submission, returning each review's id, assessor_id (the reviewer), user_id (the reviewee whose submission is being reviewed), asset_id, and workflow_state ('assigned' or 'completed'). Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use get_submission_peer_reviews to scope the results to one submission instead of the whole assignment, create_peer_review to assign a new reviewer, and delete_peer_review to remove one.",
+      "description": "List every peer review assigned on an assignment, across every submission, returning each review's id, assessor_id (the reviewer), user_id (the reviewee whose submission is being reviewed), asset_id, and workflow_state ('assigned' or 'completed'). Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Pass submission_id to scope the results to the reviews assigned to that one submission instead of the whole assignment — the same result get_submission_peer_reviews returns, kept here as a shortcut. Omit it to see every review across the assignment. Use create_peer_review to assign a new reviewer, and delete_peer_review to remove one.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1600,7 +1600,7 @@
       "name": "list_account_users",
       "title": "List Account Users",
       "domain": "accounts",
-      "description": "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `search_users` instead when you need extra fields like email, last_login, avatar_url, time_zone, or uuid via its `include` parameter, and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
+      "description": "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `include` to add email, last_login, avatar_url, time_zone, or uuid to each returned user, `sort`/`order` to control result ordering (`sort: \"id\"` is Canvas's recommended choice when paging through many results), and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -2072,7 +2072,7 @@
       "name": "get_upcoming_events",
       "title": "Get Upcoming Events",
       "domain": "dashboard",
-      "description": "Get the current user's upcoming calendar events and assignments. Canvas caps this endpoint at roughly the next 1 week and at most 20 events server-side — neither limit is adjustable, and results silently stop there even if more events fall later. For a longer or specific date range, use `list_calendar_events` with explicit `start_date`/`end_date` instead.",
+      "description": "Get the current user's upcoming calendar events and assignments. Canvas caps this endpoint at roughly the next 1 week and at most 20 events server-side — neither limit is adjustable, and results silently stop there even if more events fall later. For a longer or specific date range, use `list_calendar_events` with explicit `start_date`/`end_date` instead. Canvas does not support filtering this endpoint server-side; `type` filters the returned items client-side by their own `type` field (\"event\", \"assignment\", or \"sub_assignment\") instead.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

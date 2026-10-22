@@ -56,6 +56,22 @@ describe('peerReviewTools', () => {
       expect(tool.description).toContain('get_submission_peer_reviews')
       expect(tool.description).toMatch(/every page|pagin/i)
     })
+
+    it('routes to canvas.peerReviews.listForSubmission when submission_id is given', async () => {
+      const canvas = buildMockCanvas()
+      const tool = peerReviewTools(canvas).find((t) => t.name === 'list_peer_reviews')!
+      await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3' })
+      expect(canvas.peerReviews.listForSubmission).toHaveBeenCalledWith('1', '2', '3')
+      expect(canvas.peerReviews.listForAssignment).not.toHaveBeenCalled()
+    })
+
+    it('still routes to canvas.peerReviews.listForAssignment when submission_id is omitted', async () => {
+      const canvas = buildMockCanvas()
+      const tool = peerReviewTools(canvas).find((t) => t.name === 'list_peer_reviews')!
+      await tool.handler({ course_id: '1', assignment_id: '2' })
+      expect(canvas.peerReviews.listForAssignment).toHaveBeenCalledWith('1', '2')
+      expect(canvas.peerReviews.listForSubmission).not.toHaveBeenCalled()
+    })
   })
 
   describe('get_submission_peer_reviews', () => {

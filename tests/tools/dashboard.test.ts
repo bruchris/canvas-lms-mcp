@@ -54,11 +54,18 @@ describe('dashboardTools', () => {
   })
 
   describe('get_upcoming_events', () => {
-    it('delegates to canvas.dashboard.getUpcomingEvents', async () => {
+    it('delegates to canvas.dashboard.getUpcomingEvents with no type by default', async () => {
       const canvas = buildMockCanvas()
       const tool = dashboardTools(canvas).find((t) => t.name === 'get_upcoming_events')!
       await tool.handler({})
-      expect(canvas.dashboard.getUpcomingEvents).toHaveBeenCalled()
+      expect(canvas.dashboard.getUpcomingEvents).toHaveBeenCalledWith({ type: undefined })
+    })
+
+    it('passes the type filter through to canvas.dashboard.getUpcomingEvents', async () => {
+      const canvas = buildMockCanvas()
+      const tool = dashboardTools(canvas).find((t) => t.name === 'get_upcoming_events')!
+      await tool.handler({ type: 'assignment' })
+      expect(canvas.dashboard.getUpcomingEvents).toHaveBeenCalledWith({ type: 'assignment' })
     })
   })
 

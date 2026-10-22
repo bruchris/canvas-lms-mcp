@@ -57,6 +57,36 @@ describe('AccountsModule', () => {
     expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', undefined)
   })
 
+  it('lists users under an account with sort, order, and include', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await accounts.listUsers(1, {
+      sort: 'id',
+      order: 'desc',
+      include: ['email', 'last_login'],
+    })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', {
+      sort: 'id',
+      order: 'desc',
+      include: ['email', 'last_login'],
+    })
+  })
+
+  it('lists users under an account with search_term and sort combined', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await accounts.listUsers(1, { search_term: 'math', sort: 'username', order: 'asc' })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', {
+      search_term: 'math',
+      sort: 'username',
+      order: 'asc',
+    })
+  })
+
+  it('omits include from the query when the array is empty', async () => {
+    vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+    await accounts.listUsers(1, { include: [] })
+    expect(client.paginate).toHaveBeenCalledWith('/api/v1/accounts/1/users', undefined)
+  })
+
   it('gets available report types for an account', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce([
       { report: 'grade_export_csv', title: 'Grade Export' },
