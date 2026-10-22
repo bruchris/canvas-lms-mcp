@@ -133,15 +133,26 @@ describe('newQuizTools', () => {
       'delete_new_quiz_item',
     ])
     const REWRITTEN_READ_TOOLS = new Set(['list_new_quiz_items', 'get_new_quiz_item'])
-    // Classic Quiz siblings these descriptions route to, registered in
+    // Classic Quiz siblings create_new_quiz legitimately routes to (checking
+    // for an already-created quiz by title before retrying), registered in
     // src/tools/quizzes.ts rather than this file.
     const CLASSIC_QUIZ_SIBLINGS = new Set(['list_quizzes', 'get_quiz', 'delete_quiz'])
+    // New Quiz assignment_id discovery siblings (BRU-3118): list_assignments /
+    // get_assignment, filtered on is_quiz_lti_assignment, registered in
+    // src/tools/assignments.ts rather than this file. Classic quizzes.next
+    // stub rows carry no usable assignment_id — see
+    // docs/superpowers/specs/2026-07-01-issue-227-quiz-link-audit.md.
+    const ASSIGNMENT_ID_SIBLINGS = new Set(['list_assignments', 'get_assignment'])
 
     it.each([...REWRITTEN_WRITE_TOOLS, ...REWRITTEN_READ_TOOLS])(
       '%s names a registered sibling tool and clears the length floor',
       (name) => {
         const tools = newQuizTools(buildMockCanvas())
-        const names = new Set([...tools.map((t) => t.name), ...CLASSIC_QUIZ_SIBLINGS])
+        const names = new Set([
+          ...tools.map((t) => t.name),
+          ...CLASSIC_QUIZ_SIBLINGS,
+          ...ASSIGNMENT_ID_SIBLINGS,
+        ])
         const tool = tools.find((t) => t.name === name)!
         const minLen = REWRITTEN_WRITE_TOOLS.has(name) ? 200 : 150
         expect(tool.description.length).toBeGreaterThanOrEqual(minLen)
@@ -149,6 +160,23 @@ describe('newQuizTools', () => {
           (sibling) => sibling !== name && tool.description.includes(sibling),
         )
         expect(mentionsSibling).toBe(true)
+      },
+    )
+
+    it.each([
+      'update_new_quiz',
+      'list_new_quiz_items',
+      'get_new_quiz_item',
+      'delete_new_quiz_item',
+    ])(
+      '%s routes assignment_id discovery through list_assignments/get_assignment ' +
+        '(filtered on is_quiz_lti_assignment), not list_quizzes/get_quiz (BRU-3118)',
+      (name) => {
+        const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === name)!
+        expect(tool.description).toMatch(/list_assignments|get_assignment/)
+        expect(tool.description).toMatch(/is_quiz_lti_assignment/)
+        expect(tool.description).not.toMatch(/\blist_quizzes\b/)
+        expect(tool.description).not.toMatch(/\bget_quiz\b/)
       },
     )
 

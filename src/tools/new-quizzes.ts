@@ -121,7 +121,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update New Quiz',
       description:
         'Update an existing New Quiz (LTI) in a Canvas course, found by its assignment_id (from ' +
-        'list_quizzes, get_quiz, or create_new_quiz — not a Classic Quiz ID). Only the fields you ' +
+        'list_assignments or get_assignment, filtered on is_quiz_lti_assignment, or from ' +
+        'create_new_quiz — not a Classic Quiz ID). Only the fields you ' +
         'pass change; omitted fields keep their current value, so a repeated call with the same ' +
         'payload leaves the quiz unchanged. Pass null for due_at, unlock_at, or lock_at to clear ' +
         'that date. Returns the updated quiz (id, title, points_possible, due_at, unlock_at, ' +
@@ -186,8 +187,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'List every item (question or stimulus) in a New Quiz (LTI), in quiz order, returning ' +
         "each item's id, position, points_possible, entry_type, and full entry body — including " +
         'interaction_data and scoring_data, so the correct answer is visible in the result. Find ' +
-        "the assignment_id with list_quizzes or get_quiz (a New Quiz's id column; Classic Quiz " +
-        'IDs do not work here). Use get_new_quiz_item to refetch a single item by id, ' +
+        'the assignment_id with list_assignments or get_assignment, filtered on ' +
+        'is_quiz_lti_assignment (not a Classic Quiz ID). Use get_new_quiz_item to refetch a single item by id, ' +
         'create_new_quiz_item to add one, update_new_quiz_item to change one, and ' +
         'delete_new_quiz_item to remove one. Fetches every page (100 per request) and fails with ' +
         "a 'Results are incomplete' error instead of silently truncating.",
@@ -211,8 +212,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'and scoring_data, so the response reveals the correct answer. Find item_id with ' +
         'list_new_quiz_items, which also lists every item at once; use this tool only to refetch ' +
         'one item, such as right after create_new_quiz_item or update_new_quiz_item. ' +
-        'assignment_id identifies the New Quiz (from list_quizzes or get_quiz), not a Classic ' +
-        'Quiz ID.',
+        'assignment_id identifies the New Quiz (from list_assignments or get_assignment, ' +
+        'filtered on is_quiz_lti_assignment), not a Classic Quiz ID.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
@@ -290,7 +291,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'Returns { success: true }; Canvas does not hand back the deleted item. Find item_id ' +
         'with list_new_quiz_items or get_new_quiz_item. Use delete_new_quiz instead to remove the ' +
         'whole quiz, or update_new_quiz_item if you only need to change the item rather than ' +
-        'remove it. assignment_id identifies the New Quiz (from list_quizzes or get_quiz), not a ' +
+        'remove it. assignment_id identifies the New Quiz (from list_assignments or ' +
+        'get_assignment, filtered on is_quiz_lti_assignment), not a ' +
         'Classic Quiz ID. Requires permission to manage quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
