@@ -52,7 +52,15 @@ export function enrollmentTools(
       name: 'list_enrollments',
       title: 'List Enrollments',
       description:
-        'List all enrollments for the authenticated user across courses. Optional filters and includes mirror Canvas `GET /users/self/enrollments`.',
+        'List every enrollment the authenticated user holds across all of their Canvas ' +
+        "courses — the caller's own enrollments only. Use `list_course_enrollments` for a " +
+        "single course's full roster, including a `user_id` filter to focus on one person. " +
+        'Optional `type`, `state`, and `role` filters and the `include` array mirror ' +
+        "Canvas's own `GET /users/self/enrollments` endpoint. Fetches every page (100 per " +
+        "request) and fails with a 'Results are incomplete' error instead of silently " +
+        "truncating. When pseudonymization is enabled, each enrollment's nested `user` " +
+        "object is replaced with that course's pseudonym and `sis_user_id` is cleared " +
+        'before the result is returned.',
       inputSchema: {
         type: z
           .array(z.enum(ENROLLMENT_TYPE))
@@ -152,7 +160,18 @@ export function enrollmentTools(
     {
       name: 'enroll_user',
       title: 'Enroll User',
-      description: 'Enroll a user in a course with a specified role.',
+      description:
+        'Enroll a user in a course with a given role (Student, Teacher, Ta, Observer, or ' +
+        'DesignerEnrollment) and return the created enrollment object, including its `id` ' +
+        'and `enrollment_state`. Use `list_course_enrollments` with a `user_id` filter to ' +
+        "check a user's existing enrollments before enrolling them again, and " +
+        '`remove_enrollment` to conclude, deactivate, or permanently delete this ' +
+        'enrollment afterward — `enroll_user` itself has no way to undo what it creates. ' +
+        'Omitting ' +
+        '`enrollment_state` leaves it at Canvas\'s documented default of "invited", so the ' +
+        'user must accept a course invitation before the enrollment becomes active; pass ' +
+        '`enrollment_state: "active"` to skip that step. Requires permission to manage ' +
+        'enrollments in the course; Canvas rejects the call otherwise.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         user_id: canvasIdInput().describe('The Canvas user ID to enroll'),
