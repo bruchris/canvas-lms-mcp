@@ -12,7 +12,11 @@ import { formatError } from '../../src/tools/errors'
  * `/groups/:group_id` — Canvas's routes.rb wires both scopes to the identical
  * controller actions — so the 404 reclassification applies to group topics too.
  */
-type ListedTopic = CanvasDiscussionTopic & { anonymous_state?: string | null }
+/**
+ * `anonymous_state` moved onto `CanvasDiscussionTopic` itself in BRU-3103 Stage 1
+ * (2026-10-22), so the local intersection this alias used to carry is gone.
+ */
+type ListedTopic = CanvasDiscussionTopic
 
 const baseTopic: ListedTopic = {
   id: '7',

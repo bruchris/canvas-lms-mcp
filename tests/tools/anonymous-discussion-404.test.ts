@@ -7,11 +7,16 @@ import { formatError } from '../../src/tools/errors'
 
 /**
  * `anonymous_state` is serialized by Canvas's discussion-topic index
- * (`ALLOWED_TOPIC_FIELDS` in `lib/api/v1/discussion_topics.rb`) but is not part of
- * our published `CanvasDiscussionTopic` type — the runtime discriminator reads it
- * defensively so no shared public type has to change. Tests model the same shape.
+ * (`ALLOWED_TOPIC_FIELDS` in `lib/api/v1/discussion_topics.rb`).
+ *
+ * ~~but is not part of our published `CanvasDiscussionTopic` type — the runtime
+ * discriminator reads it defensively so no shared public type has to change. Tests
+ * model the same shape.~~ Superseded 2026-10-22 (BRU-3103 Stage 1): the field is now
+ * declared on `CanvasDiscussionTopic`, so the local intersection that used to stand in
+ * for it is gone. An inline intersection admitting a field the shared type denies is a
+ * tell that the type is lying about the payload, and it was.
  */
-type ListedTopic = CanvasDiscussionTopic & { anonymous_state?: string | null }
+type ListedTopic = CanvasDiscussionTopic
 
 const baseTopic: ListedTopic = {
   id: '7',

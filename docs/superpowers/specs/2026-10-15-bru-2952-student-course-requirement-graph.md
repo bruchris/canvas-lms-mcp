@@ -526,6 +526,43 @@ Each step is independently reviewable and independently valuable. Step 1 is a pr
 
 Follow-ups from §10 are their own tasks and are **not** part of this sequence.
 
+### 12.1 Corrections to PR 1's scope, found while implementing it (2026-10-22, BRU-3103)
+
+Two of PR 1's listed deliverables were already on `origin/main` when this document was
+written. Both claims in the PR 1 row above are struck through rather than deleted, so a
+reviewer holding the original text can see what changed and why.
+
+1. ~~"a `listWithItems` variant"~~ — `ModulesModule.listWithItems` **already existed** at
+   this document's own baseline `ae64c77`, sending `include[]=items` for
+   `check_course_setup`. Stage 1 therefore *extends* it with an opt-in
+   `{ contentDetails: true }` and adds the same option to `listItems` (the §5.1 recovery
+   path), rather than adding a method. Existing callers keep a byte-identical request.
+2. ~~"and an explicit `per_page`"~~ — nothing to add. `CanvasHttpClient.paginate` sets
+   `per_page=100` whenever the caller did not, and has since the initial commit
+   `82627e3`; it did so at `ae64c77` too. So the §5.2 bound was already met at the client
+   layer, and Stage 1 asserts it at the wire
+   (`tests/canvas/requirement-graph-types.test.ts`) instead of adding a redundant
+   parameter. The `Api::PER_PAGE = 10` hazard §5.2 cites from `src/canvas/planner.ts` is a
+   *Canvas-side* hazard whose stated mitigation is exactly `paginate()`.
+
+Neither correction widens the contract or changes a state, a precedence rule, or a bound,
+so no spec amendment was requested under the task's hand-back clause.
+
+**Canvas re-derivation at implementation time.** Every Canvas file PR 1 depends on was
+re-fetched at `master` on 2026-10-22 and byte-compared against the pinned
+`1c9f0bb8013ed69c4f2efe11fd483025469b7e6c`: `lib/api/v1/context_module.rb` (10039 bytes),
+`lib/api/v1/discussion_topics.rb` (18869 bytes) and `lib/api.rb` (29877 bytes) are all
+**identical**. No drift. Stages 2–4 owe their own re-derivation of
+`app/models/context_module.rb`, `app/models/context_module_progression.rb`,
+`app/models/discussion_topic.rb` and `lib/api/v1/locked.rb` before relying on §4 and §5.
+
+**Stage 1 deliberately did not add** a runtime array or type guard for
+`CanvasCompletionRequirementType`. Nothing in Stage 1 consumes it, and shipping unused
+runtime code from a types-only PR is worse than Stage 2 declaring it next to the state
+function that switches on it. The six-member union is instead policed by a source-level
+guard, because this repo's `tsconfig.json` excludes `tests/`, so a type-level assertion
+written in a test is never typechecked by CI.
+
 ## 13. Open questions for CTO / board
 
 Decisions this design deliberately does not make, because they change user-visible behaviour or commit scope.

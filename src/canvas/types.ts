@@ -803,15 +803,143 @@ export interface CanvasGroupMembership {
 
 // --- Modules ---
 
+/**
+ * The completion-requirement types Canvas validates. There are **six**, not the five
+ * the Canvas documentation page foregrounds: `min_percentage` is in
+ * `ContextModule#validate_completion_requirements`'s
+ * `scoreable_types = %w[must_submit min_score min_percentage]` and is serialized under
+ * its own key, separate from `min_score`
+ * (`app/models/context_module.rb`, `lib/api/v1/context_module.rb`).
+ *
+ * Canvas enforces the set on write — `validate_completion_requirements` drops anything
+ * outside it — so a value outside this union can only arrive from a newer Canvas than
+ * the one this union was derived against. Consumers must still carry an unrecognized
+ * arm rather than assume exhaustiveness at runtime.
+ */
+export type CanvasCompletionRequirementType =
+  | 'must_view'
+  | 'must_contribute'
+  | 'must_submit'
+  | 'must_mark_done'
+  | 'min_score'
+  | 'min_percentage'
+
+/**
+ * A module item's completion requirement, as `module_item_json` emits it
+ * (`lib/api/v1/context_module.rb`).
+ *
+ * `completed` is **optional on purpose, and its absence is not `false`.** The
+ * serializer attaches it only when a progression object was passed:
+ *
+ * ```ruby
+ * ch["completed"] = !!(progression.requirements_met.present? && …) if progression
+ * ```
+ *
+ * and a progression exists only when the controllers' `find_student` resolved a
+ * student — either `params[:student_id]`, or the caller being able to
+ * `participate_as_student`. So a teacher, a TA, an admin, or an unauthenticated reader
+ * of a public course receives requirement objects with **no `completed` key at all**.
+ * Reading `completed === false` as "not satisfied" reports an entire course as
+ * incomplete for those callers. Treat absence as *unknown*, never as unsatisfied.
+ *
+ * `min_score` is present only when `type === 'min_score'`, and `min_percentage` only
+ * when `type === 'min_percentage'`; they are separate keys, not one threshold field.
+ */
+export interface CanvasCompletionRequirement {
+  type: CanvasCompletionRequirementType
+  /** Threshold for `type === 'min_score'` only. */
+  min_score?: number
+  /** Threshold for `type === 'min_percentage'` only. Absent when `type` is `min_score`. */
+  min_percentage?: number
+  /** Absent when no progression was loaded — see the interface doc. Never default to `false`. */
+  completed?: boolean
+}
+
+/**
+ * `content_details` on a module item, from `include[]=content_details`
+ * (`Api::V1::ContextModule#content_details`).
+ *
+ * Two traps are modelled here rather than commented at the call site:
+ *
+ * 1. **Every field below is dropped when falsy.** The serializer copies with
+ *    `if (val = item.try(attr))`, a truthiness test — so `locked: false` and
+ *    `points_possible: 0` are omitted from the hash entirely. Absence of `locked` must
+ *    not be read as "not locked"; absence of `points_possible` must not be read as
+ *    "no points".
+ * 2. **`locked_for_user` is the authoritative lock signal, not `locked`.** It comes from
+ *    `locked_json`, which always sets `locked_for_user` and adds `lock_info` /
+ *    `lock_explanation` only when locked (`lib/api/v1/locked.rb`). `locked_for_user` is
+ *    therefore the only one of the two that is reliably present.
+ *
+ * `due_at`, `unlock_at` and `lock_at` are the **effective** dates for the calling user:
+ * `content_details` applies `item.overridden_for(current_user)` before reading them, so
+ * they already carry the caller's assignment overrides and must not be reconstructed
+ * from the overrides endpoints.
+ *
+ * `lock_explanation` is server-generated text with interpolated course content, so it is
+ * Canvas-authored untrusted content for fencing purposes.
+ *
+ * Indexed so a field a newer Canvas adds survives rather than being a type error.
+ */
+export interface CanvasModuleItemContentDetails {
+  /** Always present: `locked_json` sets it unconditionally. */
+  locked_for_user?: boolean
+  /** Present only when locked. Shape is Canvas's `locked_for?` return value. */
+  lock_info?: Record<string, unknown>
+  /** Present only when locked. Untrusted Canvas-authored text. */
+  lock_explanation?: string
+  /** Dropped when `false` — absence is not "unlocked". Prefer `locked_for_user`. */
+  locked?: boolean
+  /** Dropped when `false`. */
+  hidden?: boolean
+  /** Effective due date for the calling user (overrides already applied). */
+  due_at?: string | null
+  unlock_at?: string | null
+  lock_at?: string | null
+  /** Dropped when `0` — absence is not "no points". */
+  points_possible?: number
+  display_name?: string
+  usage_rights?: Record<string, unknown>
+  thumbnail_url?: string
+  [key: string]: unknown
+}
+
 export interface CanvasModule {
   id: CanvasId
   name: string
   position: number
   items_count: number
   items_url?: string
+  /**
+   * The caller's own progression `workflow_state`, emitted only `if progression` —
+   * absent for a caller `find_student` could not resolve to a student. Same gate as
+   * `CanvasCompletionRequirement.completed`, so absence here is unknown, not "unlocked".
+   */
   state?: string
+  /** Emitted only `if progression`, alongside `state`. */
+  completed_at?: string | null
   published?: boolean
   unlock_at?: string | null
+  /**
+   * Whether the module's requirements are conjunctive. Derived and serialized
+   * unconditionally: `(completion_requirements.present? && requirement_count == 1) ? "one" : "all"`.
+   *
+   * Under `'one'` the module completes when **any single** requirement is met, so a
+   * module with five unsatisfied rows and one satisfied row is a *completed* module.
+   * Branch on this field, never on the presence of `requirement_count`.
+   */
+  requirement_type?: 'all' | 'one'
+  /**
+   * The count behind `requirement_type`. Serialized only when
+   * `opts[:can_have_requirement_count]` is set from `@context.requirement_count_api_enabled?`,
+   * so the integer can be withheld while `requirement_type` is still readable.
+   */
+  requirement_count?: number | null
+  /** Serialized unconditionally. The progression's `current_position` is **not** exposed. */
+  require_sequential_progress?: boolean
+  /** Serialized unconditionally; `context_module` prerequisites only. */
+  prerequisite_module_ids?: CanvasId[]
+  publish_final_grade?: boolean
 }
 
 export interface CanvasModuleItem {
@@ -826,7 +954,9 @@ export interface CanvasModuleItem {
   indent?: number
   published?: boolean
   external_url?: string
-  content_details?: Record<string, unknown>
+  /** Present only when the item carries a completion requirement. */
+  completion_requirement?: CanvasCompletionRequirement
+  content_details?: CanvasModuleItemContentDetails
 }
 
 export interface CanvasCourseStructureModule {
@@ -889,6 +1019,61 @@ export interface CanvasDiscussionTopic {
    * must check this field rather than assume the request was honored.
    */
   is_announcement?: boolean
+  /**
+   * Whether the topic requires an initial post before the student can read others'
+   * posts. Serialized unconditionally in `serialize_additional_topic_fields`
+   * (`lib/api/v1/discussion_topics.rb`), paired with `user_can_see_posts`.
+   */
+  require_initial_post?: boolean
+  /**
+   * `topic.user_can_see_posts?(user)`, serialized unconditionally. Its predicate is
+   *
+   * ```ruby
+   * !require_initial_post? || grants_right?(user, session, :read_as_admin) ||
+   *   ([user.id] + associated_user_ids).intersect?(user_ids_who_have_posted_and_admins)
+   * ```
+   *
+   * so with `require_initial_post === true` this field is **positive evidence** about
+   * whether the caller has posted — not an inference from silence.
+   *
+   * **It is only valid when the caller's own enrollment in the course is a student
+   * enrollment.** `read_as_admin` short-circuits the predicate to `true`, and
+   * `user_ids_who_have_posted_and_admins` counts admins as having posted, so for a
+   * teacher, TA, admin or account-level token this field always reads `true` and says
+   * nothing about anyone's posting. Gate any derivation on the caller being a student.
+   */
+  user_can_see_posts?: boolean
+  /** `topic.locked?`, serialized unconditionally. */
+  locked?: boolean
+  /**
+   * IDs of the per-group child topics of a group discussion, from
+   * `topic.child_topics.active.pluck(:id, :context_id)` on a root topic; `[]` otherwise.
+   */
+  topic_children?: CanvasId[]
+  /** The same child topics as `topic_children`, paired with the group that owns each. */
+  group_topic_children?: Array<{ id: CanvasId; group_id: CanvasId }>
+  /**
+   * Emitted **only** `if topic.checkpoints?`, together with
+   * `reply_to_entry_required_count`. Absence means "not checkpointed".
+   */
+  is_checkpointed?: boolean
+  /**
+   * How many replies-to-entries the topic *requires*. Emitted only `if topic.checkpoints?`.
+   *
+   * This is a **required** count and never a **completed** one: Canvas exposes no
+   * per-student "replies made" counter on the topic or on the planner item. The
+   * checkable half lives in the two checkpoint sub-assignments
+   * (`CheckpointLabels::REPLY_TO_TOPIC` / `REPLY_TO_ENTRY`), each with its own
+   * submission. Rendering "2 of 3 replies done" from this field would be fabrication.
+   */
+  reply_to_entry_required_count?: number
+  /** Anonymity mode of the topic. When set, `author` is nulled by the serializer. */
+  anonymous_state?: string | null
+  // `author` (`user_display_json(topic.user, …)`) is deliberately NOT modelled here.
+  // It is a third-party user display object — exactly the shape BRU-2863 and BRU-2864
+  // leaked through — and nothing that reads a topic for requirement evidence has any
+  // use for it. Leaving it off the type keeps it from being passed through by default;
+  // a consumer that genuinely needs it must route through the pseudonymizer and say so.
 }
 
 export interface CanvasDiscussionEntry {

@@ -35,15 +35,33 @@ export class ModulesModule {
   /**
    * List a course's modules with each module's items inlined via `include[]=items`.
    * Unlike `getCourseStructure`, this returns the raw Canvas shapes (including the
-   * `published` state on every module and item, even unpublished ones), which the
-   * course-setup health check needs to detect unpublished content.
+   * `published` state on every module and item, and each item's
+   * `completion_requirement`, all of which `getCourseStructure` projects away), which
+   * the course-setup health check needs to detect unpublished content.
+   *
+   * **`items` can be absent, and absent is not empty.** `module_json` inlines items
+   * only when `includes.include?("items") && count <= Api::MAX_PER_PAGE`, with
+   * `Api::MAX_PER_PAGE = 100` (`lib/api.rb`). A module with 101 or more items comes back
+   * with **no `items` key at all** — not a truncated array, not an error. Compare
+   * `items.length` against `items_count` and fall back to `listItems` for that module;
+   * `items ?? []` silently reports a large module as empty.
+   *
+   * `per_page` needs no argument here: `CanvasHttpClient.paginate` sets `per_page=100`
+   * whenever the caller did not, so this never falls back to Canvas's
+   * `Api::PER_PAGE = 10` default.
+   *
+   * @param opts.contentDetails adds `include[]=content_details`, which is the only way
+   *   to see `locked_for_user` and the caller's override-applied effective `due_at` per
+   *   item. Off by default so existing callers keep their current response size.
    */
   async listWithItems(
     courseId: CanvasId,
+    opts: { contentDetails?: boolean } = {},
   ): Promise<(CanvasModule & { items?: CanvasModuleItem[] })[]> {
+    const include = opts.contentDetails ? ['items', 'content_details'] : ['items']
     return this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
       `/api/v1/courses/${courseId}/modules`,
-      { include: ['items'] },
+      { include },
     )
   }
 
@@ -51,10 +69,26 @@ export class ModulesModule {
     return this.client.request<CanvasModule>(`/api/v1/courses/${courseId}/modules/${moduleId}`)
   }
 
-  async listItems(courseId: CanvasId, moduleId: CanvasId): Promise<CanvasModuleItem[]> {
-    return this.client.paginate<CanvasModuleItem>(
-      `/api/v1/courses/${courseId}/modules/${moduleId}/items`,
-    )
+  /**
+   * List one module's items. This is the paginating endpoint, so it is also the recovery
+   * path for the `include[]=items` cliff documented on {@link listWithItems}: a module
+   * with more than 100 items has to be read here.
+   *
+   * @param opts.contentDetails adds `include[]=content_details`, so a module recovered
+   *   through this path carries the same `locked_for_user` and effective-date evidence
+   *   as one inlined by `listWithItems({ contentDetails: true })`. Off by default.
+   */
+  async listItems(
+    courseId: CanvasId,
+    moduleId: CanvasId,
+    opts: { contentDetails?: boolean } = {},
+  ): Promise<CanvasModuleItem[]> {
+    const endpoint = `/api/v1/courses/${courseId}/modules/${moduleId}/items`
+    // Branch rather than pass `undefined`: the query argument is omitted entirely in
+    // the default case, so the request this has always made is byte-identical.
+    return opts.contentDetails
+      ? this.client.paginate<CanvasModuleItem>(endpoint, { include: ['content_details'] })
+      : this.client.paginate<CanvasModuleItem>(endpoint)
   }
 
   async create(
