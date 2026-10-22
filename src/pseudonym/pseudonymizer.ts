@@ -23,6 +23,8 @@ import type {
   CanvasOutcomeResultsResponse,
   CanvasOutcomeRollupsResponse,
   CanvasPlannerItem,
+  CanvasRelatedGroupSubmissionAssessment,
+  CanvasRubricAssessment,
   CanvasSubmission,
   CanvasSubmissionComment,
   CanvasSubmissionDiscussionEntry,
@@ -269,6 +271,98 @@ export class Pseudonymizer {
     }
 
     return out
+  }
+
+  /**
+   * Pseudonymize the response to `submit_rubric_assessment` (BRU-3123).
+   *
+   * The top-level `assessor_name` is always the caller's OWN name — Canvas
+   * only lets you assess as yourself (`RubricAssociation#assess(assessor:
+   * current_user, ...)`) — but `RubricAssociation#user_can_assess_for?` lets
+   * that caller be a peer-reviewing student, not only a grader, so it is
+   * resolved through the same unknown-fails-closed path as everything else.
+   *
+   * The real cross-student leak is `related_group_submissions_and_assessments`:
+   * on a group-graded assignment Canvas fans out every OTHER group member's
+   * submission plus each of THEIR OWN rubric assessments, each carrying its
+   * own `assessor_name` — recursed into here (same bug class as #438/#441
+   * `list_groups`). `artifact` is the caller's graded submission; reusing
+   * {@link anonymizeSubmission} on it covers `artifact.user` and
+   * `artifact.submission_comments[].author_name` for free, and keeps a
+   * student who shows up both here and via `list_submissions` on one stable
+   * pseudonym.
+   */
+  async anonymizeRubricAssessment(
+    courseId: number | string,
+    assessment: CanvasRubricAssessment,
+  ): Promise<CanvasRubricAssessment> {
+    if (!this.isEnabled() || !this.host) return assessment
+
+    const out: CanvasRubricAssessment = { ...assessment }
+
+    if (typeof assessment.assessor_name === 'string' && assessment.assessor_name.length > 0) {
+      out.assessor_name = await this.resolveAssessorName(
+        courseId,
+        assessment.assessor_id,
+        assessment.assessor_name,
+      )
+      if (assessment.assessor_avatar_url !== undefined) out.assessor_avatar_url = null
+    }
+
+    if (assessment.artifact) {
+      out.artifact = await this.anonymizeSubmission(courseId, assessment.artifact)
+    }
+
+    if (assessment.related_group_submissions_and_assessments?.length) {
+      out.related_group_submissions_and_assessments = await Promise.all(
+        assessment.related_group_submissions_and_assessments.map((entry) =>
+          this.anonymizeRelatedGroupSubmissionAssessment(courseId, entry),
+        ),
+      )
+    }
+
+    return out
+  }
+
+  /**
+   * One entry of `related_group_submissions_and_assessments`. `submission` is
+   * a raw ActiveRecord dump with no nested `user` object, so only the nested
+   * `rubric_assessments[].assessor_name` carries a name to resolve.
+   */
+  private async anonymizeRelatedGroupSubmissionAssessment(
+    courseId: number | string,
+    entry: CanvasRelatedGroupSubmissionAssessment,
+  ): Promise<CanvasRelatedGroupSubmissionAssessment> {
+    if (!entry.rubric_assessments?.length) return entry
+    const rubric_assessments = await Promise.all(
+      entry.rubric_assessments.map(async (ra) => {
+        if (typeof ra.assessor_name !== 'string' || ra.assessor_name.length === 0) return ra
+        return {
+          ...ra,
+          assessor_name: await this.resolveAssessorName(courseId, ra.assessor_id, ra.assessor_name),
+        }
+      }),
+    )
+    return { ...entry, rubric_assessments }
+  }
+
+  /**
+   * Resolve a bare `{assessor_id, assessor_name}` pair through
+   * {@link anonymizeUser}. No `assessor_id` means nothing to key a stable
+   * pseudonym on, so the name is withheld outright — the same fail-closed
+   * reading used for every other identifier-less name in this file.
+   */
+  private async resolveAssessorName(
+    scope: number | string,
+    assessorId: CanvasId | undefined,
+    assessorName: string,
+  ): Promise<string> {
+    if (assessorId === undefined || assessorId === null) return WITHHELD_AUTHOR_NAME
+    const resolved = await this.anonymizeUser(scope, {
+      id: assessorId,
+      name: assessorName,
+    } as CanvasUser)
+    return resolved.name
   }
 
   /**

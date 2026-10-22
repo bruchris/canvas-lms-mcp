@@ -469,6 +469,38 @@ export interface CanvasRubricAssessment {
     points: number
     comments: string
   }>
+  // The following are present ONLY on the response to submit_rubric_assessment
+  // (POST .../rubric_assessments, RubricAssessmentsController#update) — never on
+  // list_rubrics / get_rubric / get_rubric_assessment, which serialize through
+  // the narrower API_ALLOWED_RUBRIC_ASSESSMENT_OUTPUT_FIELDS allowlist
+  // (assessor_id only, no name). See BRU-3123.
+  assessor_id?: CanvasId
+  /** `RubricAssessment#assessor_name` — the submitting caller's own display name. */
+  assessor_name?: string
+  assessor_avatar_url?: string | null
+  /** The graded submission (or provisional grade), serialized via `Submission.json_serialization_full_parameters`. */
+  artifact?: CanvasSubmission
+  /**
+   * Group-graded assignments only: every OTHER group member's submission plus
+   * each of THEIR rubric assessments — `RubricAssessment#related_group_submissions_and_assessments`.
+   * Each nested assessment carries its own `assessor_name`, which may be a
+   * peer-reviewing student rather than a grader.
+   */
+  related_group_submissions_and_assessments?: CanvasRelatedGroupSubmissionAssessment[]
+}
+
+/**
+ * One entry of `CanvasRubricAssessment.related_group_submissions_and_assessments`.
+ * `submission` is a raw ActiveRecord `.as_json` dump (no nested `user` object),
+ * so only the nested `rubric_assessments[].assessor_name` carries a real name.
+ */
+export interface CanvasRelatedGroupSubmissionAssessment {
+  submission?: Record<string, unknown>
+  rubric_assessments?: Array<{
+    assessor_id?: CanvasId
+    assessor_name?: string
+    [key: string]: unknown
+  }>
 }
 
 // --- Quizzes ---

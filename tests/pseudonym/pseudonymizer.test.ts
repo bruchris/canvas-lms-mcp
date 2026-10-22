@@ -5,7 +5,12 @@ import { join } from 'node:path'
 import { Pseudonymizer, WITHHELD_AUTHOR_NAME } from '../../src/pseudonym/pseudonymizer'
 import { mapFilePath } from '../../src/pseudonym/paths'
 import type { CourseMap } from '../../src/pseudonym/store'
-import type { CanvasEnrollment, CanvasSubmission, CanvasUser } from '../../src/canvas/types'
+import type {
+  CanvasEnrollment,
+  CanvasRubricAssessment,
+  CanvasSubmission,
+  CanvasUser,
+} from '../../src/canvas/types'
 import {
   FIXTURE_PLANNER_ASSIGNMENT,
   FIXTURE_PLANNER_NOTE,
@@ -384,6 +389,94 @@ describe('anonymizeSubmission', () => {
     expect(out.submission_comments?.[0]?.author_name).toBe('Student 1')
     // Author 99 has no pseudonym in the map — pass through unchanged.
     expect(out.submission_comments?.[1]?.author_name).toBe('Prof Jones')
+  })
+})
+
+describe('anonymizeRubricAssessment', () => {
+  it('pseudonymizes the top-level assessor and the group peer-review fan-out (BRU-3123)', async () => {
+    const p = make()
+    // Pre-allocate Student 1 for the submitter (id 1) so the artifact assertion
+    // below is deterministic regardless of assessor-resolution order.
+    await p.anonymizeUser(COURSE_ID, student(1, 'Alice'))
+    const assessment: CanvasRubricAssessment = {
+      id: 500,
+      rubric_id: 1,
+      score: 25,
+      data: [{ criterion_id: 'c1', points: 25, comments: 'Good thesis' }],
+      assessor_id: 7,
+      assessor_name: 'Carol Peer',
+      assessor_avatar_url: 'https://canvas.example/avatars/carol.png',
+      artifact: {
+        id: 10,
+        assignment_id: 5,
+        user_id: 1,
+        submitted_at: '2026-05-20T00:00:00Z',
+        score: 25,
+        grade: '25',
+        body: null,
+        url: null,
+        attempt: 1,
+        workflow_state: 'graded',
+        user: student(1, 'Alice'),
+        submission_comments: [
+          {
+            id: 60,
+            author_id: 1,
+            author_name: 'Alice',
+            comment: 'My work',
+            created_at: '2026-05-20T00:00:00Z',
+          },
+        ],
+      },
+      related_group_submissions_and_assessments: [
+        {
+          submission: { id: 11, user_id: 2, assignment_id: 5, score: 25, grade: '25' },
+          rubric_assessments: [{ id: 501, assessor_id: 8, assessor_name: 'Dave Peer', score: 25 }],
+        },
+      ],
+    }
+
+    const out = await p.anonymizeRubricAssessment(COURSE_ID, assessment)
+
+    expect(out.assessor_name).toMatch(/^Student \d+$/)
+    expect(out.assessor_name).not.toBe('Carol Peer')
+    expect(out.assessor_avatar_url).toBeNull()
+
+    expect(out.artifact?.user?.name).toBe('Student 1')
+    expect(out.artifact?.submission_comments?.[0]?.author_name).toBe('Student 1')
+
+    const relatedAssessment =
+      out.related_group_submissions_and_assessments?.[0]?.rubric_assessments?.[0]
+    expect(relatedAssessment?.assessor_name).toMatch(/^Student \d+$/)
+    expect(relatedAssessment?.assessor_name).not.toBe('Dave Peer')
+    // Identifiers survive untouched — only the name is masked.
+    expect(out.related_group_submissions_and_assessments?.[0]?.submission?.id).toBe(11)
+  })
+
+  it('passes everything through unchanged when disabled', async () => {
+    const p = make({ env: {} })
+    const assessment: CanvasRubricAssessment = {
+      id: 500,
+      rubric_id: 1,
+      score: 25,
+      data: [],
+      assessor_id: 7,
+      assessor_name: 'Carol Peer',
+    }
+    const out = await p.anonymizeRubricAssessment(COURSE_ID, assessment)
+    expect(out).toBe(assessment)
+  })
+
+  it('leaves an assessment with no assessor_name untouched', async () => {
+    const p = make()
+    const assessment: CanvasRubricAssessment = {
+      id: 500,
+      rubric_id: 1,
+      score: 25,
+      data: [],
+    }
+    const out = await p.anonymizeRubricAssessment(COURSE_ID, assessment)
+    expect(out).toEqual(assessment)
   })
 })
 

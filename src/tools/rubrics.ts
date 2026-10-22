@@ -8,6 +8,7 @@ import type {
   RubricCreateInput,
   RubricInclude,
 } from '../canvas/rubrics'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 
@@ -21,7 +22,7 @@ const RUBRIC_INCLUDE = [
   'account_associations',
 ] as const
 
-export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
+export function rubricTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
   return [
     {
       name: 'list_rubrics',
@@ -119,7 +120,9 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
           points: number
           comments: string
         }>
-        return canvas.rubrics.submitAssessment(course_id, association_id, data)
+        const assessment = await canvas.rubrics.submitAssessment(course_id, association_id, data)
+        if (!pseudonymizer?.isEnabled()) return assessment
+        return pseudonymizer.anonymizeRubricAssessment(course_id, assessment)
       },
     },
     {

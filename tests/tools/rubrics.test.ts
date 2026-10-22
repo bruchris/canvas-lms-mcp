@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { CanvasClient, type CanvasRubricCreateResult } from '../../src/canvas'
 import { registerAllTools } from '../../src/tools'
 import type { CanvasRubric, CanvasRubricAssessment, CanvasSubmission } from '../../src/canvas/types'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { rubricTools } from '../../src/tools/rubrics'
 
 describe('rubricTools', () => {
@@ -151,6 +155,102 @@ describe('rubricTools', () => {
       const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
       await tool.handler({ course_id: '1', association_id: '10', data })
       expect(canvas.rubrics.submitAssessment).toHaveBeenCalledWith('1', '10', data)
+    })
+
+    describe('pseudonymization (BRU-3123)', () => {
+      const assessmentWithPeerFanOut: CanvasRubricAssessment = {
+        id: 1,
+        rubric_id: 1,
+        score: 25,
+        data: [{ criterion_id: 'c1', points: 25, comments: 'Good thesis' }],
+        assessor_id: 7,
+        assessor_name: 'Carol Peer',
+        assessor_avatar_url: 'https://canvas.example/avatars/carol.png',
+        artifact: {
+          id: 10,
+          assignment_id: 5,
+          user_id: 1,
+          submitted_at: null,
+          score: 25,
+          grade: '25',
+          body: null,
+          url: null,
+          attempt: 1,
+          workflow_state: 'graded',
+        },
+        related_group_submissions_and_assessments: [
+          {
+            submission: { id: 11, user_id: 2, assignment_id: 5 },
+            rubric_assessments: [
+              { id: 501, assessor_id: 8, assessor_name: 'Dave Peer', score: 25 },
+            ],
+          },
+        ],
+      }
+
+      function buildCanvasWithPeerFanOut(): CanvasClient {
+        return {
+          rubrics: {
+            submitAssessment: vi.fn().mockResolvedValue(assessmentWithPeerFanOut),
+          },
+        } as unknown as CanvasClient
+      }
+
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'rubric-tool-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      it('masks the assessor and the group peer-review fan-out when enabled', async () => {
+        const canvas = buildCanvasWithPeerFanOut()
+        const tool = rubricTools(canvas, makePseudonymizer()).find(
+          (t) => t.name === 'submit_rubric_assessment',
+        )!
+        const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
+        const result = (await tool.handler({
+          course_id: '1',
+          association_id: '10',
+          data,
+        })) as CanvasRubricAssessment
+
+        expect(result.assessor_name).toMatch(/^Student \d+$/)
+        expect(result.assessor_name).not.toBe('Carol Peer')
+        const relatedAssessorName =
+          result.related_group_submissions_and_assessments?.[0]?.rubric_assessments?.[0]
+            ?.assessor_name
+        expect(relatedAssessorName).toMatch(/^Student \d+$/)
+        expect(relatedAssessorName).not.toBe('Dave Peer')
+      })
+
+      it('passes real names through when disabled', async () => {
+        const canvas = buildCanvasWithPeerFanOut()
+        const tool = rubricTools(canvas, makePseudonymizer(false)).find(
+          (t) => t.name === 'submit_rubric_assessment',
+        )!
+        const data = [{ criterion_id: 'c1', points: 25, comments: 'Good' }]
+        const result = (await tool.handler({
+          course_id: '1',
+          association_id: '10',
+          data,
+        })) as CanvasRubricAssessment
+
+        expect(result.assessor_name).toBe('Carol Peer')
+        expect(
+          result.related_group_submissions_and_assessments?.[0]?.rubric_assessments?.[0]
+            ?.assessor_name,
+        ).toBe('Dave Peer')
+      })
     })
   })
 

@@ -18,6 +18,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_course_enrollments',
   'list_submissions',
   'get_submission',
+  'submit_rubric_assessment',
   'list_course_submission_files',
   'list_submissions_awaiting_grading',
   'list_conversations',
