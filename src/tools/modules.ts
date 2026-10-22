@@ -140,7 +140,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_module',
       title: 'Create Module',
       description:
-        'Create a new module in a course. Returns the created module, including its new Canvas ID. Each call creates a separate module — calling it twice with the same name makes two modules, not one — so check `list_modules` first if you want to avoid duplicates. New modules are created unpublished; use `update_module` with `published: true` to make one visible to students. `prerequisite_module_ids` must reference modules that already exist. Once created, add content with `create_module_item`. Requires manage-content permission in the course (teacher, TA, or admin).',
+        'Create a new module in a course. Returns the created module, including its new Canvas ID. Each call creates a separate module — calling it twice with the same name makes two modules, not one — so check `list_modules` first if you want to avoid duplicates. New modules are always created unpublished, regardless of any other field; use `update_module` with `published: true` to make one visible to students. `prerequisite_module_ids` silently drops any ID that is not an existing module positioned before this one in the course — Canvas does not error on an invalid ID, it just ignores it. Once created, add content with `create_module_item`. Requires instructor/TA permission to manage course content.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         name: z.string().describe('Name of the module'),
@@ -169,7 +169,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'update_module',
       title: 'Update Module',
       description:
-        "Update an existing module's name, position or published state. Returns the updated module. Only the fields you pass are changed; anything you omit keeps its current value. Toggling `published` does not cascade to the items inside — each item keeps its own published state, set separately via `update_module_item`. Find the module_id via `list_modules` first. Requires manage-content permission in the course (teacher, TA, or admin).",
+        "Update an existing module's name, position or published state, and return the updated module object. Only the fields you pass are changed — anything you omit keeps its current value. Setting `published: true` publishes the module AND every item inside it (items Canvas couldn't publish come back as `publish_warning_items`); `published: false` unpublishes the module and every item inside it the same way — there is no way to change a module's published state without it cascading to its items. Use `get_module` to check the current state first, and `list_modules` to find the module_id. Requires instructor/TA permission to manage course content.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         module_id: canvasIdInput().describe('The Canvas module ID'),
@@ -215,7 +215,7 @@ export function moduleTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_module_item',
       title: 'Create Module Item',
       description:
-        'Add an item to a module: Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool or SubHeader. Returns the created module item, including its new Canvas ID. Each call adds a new item — calling it twice with the same title adds two items, not one. Which identifying field to pass depends on `type`: `page_url` for Page (addressed by slug, not ID), `content_id` for File, Discussion, Assignment or Quiz, `external_url` for ExternalUrl or ExternalTool, and neither for SubHeader. Use `list_module_items` to see what is already in the module, and `update_module_item` or `delete_module_item` to change or remove an item afterward. Requires manage-content permission in the course (teacher, TA, or admin).',
+        'Add an item to a module: Assignment, Page, Quiz, File, Discussion, ExternalUrl, ExternalTool or SubHeader. Returns the created module item, including its new Canvas ID. Each call adds a new item — calling it twice with the same title adds two items, not one. Which identifying field to pass depends on `type`: `page_url` for Page (addressed by slug, not ID), `content_id` for File, Discussion, Assignment or Quiz, `external_url` for ExternalUrl or ExternalTool, and neither for SubHeader. Use `list_module_items` to see what is already in the module, and `update_module_item` or `delete_module_item` to change or remove an item afterward. Requires instructor/TA permission to manage course content.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         module_id: canvasIdInput().describe('The Canvas module ID'),
