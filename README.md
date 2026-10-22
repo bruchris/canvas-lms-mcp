@@ -574,8 +574,8 @@ Three roles, plus the default of "unset = every tool":
 | `CANVAS_ROLE` | Tools exposed | Typical use |
 |---------------|---------------|-------------|
 | _(unset)_ | all (~187) | default; backwards-compatible |
-| `student` | ~65 | a student's own courses, grades, submissions, and read-only course content |
-| `teacher` | ~163 | grading, roster, content authoring, analytics |
+| `student` | ~67 | a student's own courses, grades, submissions, and read-only course content |
+| `teacher` | ~165 | grading, roster, content authoring, analytics |
 | `admin` | ~175 | everything `teacher` sees plus account-level tools (`enroll_user`, `list_account_users`, …) |
 
 Notes:

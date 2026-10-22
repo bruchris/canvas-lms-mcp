@@ -132,6 +132,7 @@ export function accountTools(
     {
       name: 'list_account_notifications',
       title: 'List Account Notifications',
+      audience: 'shared',
       description:
         'List active global institution-wide announcements for the current user (maintenance windows, term deadlines, policy notices).',
       inputSchema: {
@@ -155,6 +156,7 @@ export function accountTools(
       // fields, this tool MUST be added to PSEUDONYMIZER_WRAPPED_TOOLS and wrapped.
       name: 'view_account_notifications',
       title: 'View Account Notifications',
+      audience: 'shared',
       description:
         'Interactive panel of active institution-wide announcements. Returns the same payload as `list_account_notifications` and additionally links to an MCP Apps UI resource that renders scannable announcement cards with type filters and search. Hosts that do not support MCP Apps fall back to the JSON payload (same as `list_account_notifications`).',
       inputSchema: {

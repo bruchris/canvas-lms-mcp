@@ -544,6 +544,19 @@ describe('getAllTools', () => {
     expect(teacherTools).toContain('get_quiz_submission_events')
   })
 
+  it('exposes list_account_notifications and view_account_notifications to the student role (shared audience)', () => {
+    // #442 Phase 1T (BRU-3133): these return the current user's institution-wide
+    // notices, not account-admin data, so despite living in the `accounts`
+    // domain (admin by default) they are tagged `shared` and must survive
+    // student-role filtering.
+    const studentTools = getAllTools(buildFullMockCanvas(), undefined, 'student').map((t) => t.name)
+    expect(studentTools).toContain('list_account_notifications')
+    expect(studentTools).toContain('view_account_notifications')
+    const teacherTools = getAllTools(buildFullMockCanvas(), undefined, 'teacher').map((t) => t.name)
+    expect(teacherTools).toContain('list_account_notifications')
+    expect(teacherTools).toContain('view_account_notifications')
+  })
+
   it('read tools have readOnlyHint: true', () => {
     const writeToolNames = new Set([
       'create_assignment',

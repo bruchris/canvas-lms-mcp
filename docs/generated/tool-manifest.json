@@ -1793,7 +1793,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "admin",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false,
       "toolset": "account"
@@ -1808,7 +1808,7 @@
         "openWorldHint": true
       },
       "access": "read",
-      "primaryAudience": "admin",
+      "primaryAudience": "shared",
       "relatedWorkflows": [],
       "structuredOutput": false,
       "toolset": "account"
