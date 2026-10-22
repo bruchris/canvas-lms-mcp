@@ -670,7 +670,7 @@ describe('§5.4 a checkpointed discussion is two rows, and never "N of M replies
     const rows = deriveCheckpointRows({
       endpoint: TOPICS_ENDPOINT,
       replyToEntryRequiredCount: 3,
-      replyToTopicSubmission: submission({ workflow_state: 'submitted' }),
+      replyToTopicSubmission: { submitted_at: '2026-10-01T09:00:00Z', score: null },
       replyToEntrySubmission: null,
     })
     expect(rows).toHaveLength(2)
@@ -683,7 +683,7 @@ describe('§5.4 a checkpointed discussion is two rows, and never "N of M replies
       endpoint: TOPICS_ENDPOINT,
       replyToEntryRequiredCount: 3,
       replyToTopicSubmission: null,
-      replyToEntrySubmission: submission({ workflow_state: 'graded', attempt: 1 }),
+      replyToEntrySubmission: { submitted_at: '2026-10-02T09:00:00Z', score: 10 },
     })
     const entryRow = rows[1]
     expect(entryRow.state).toBe('satisfied')
@@ -691,17 +691,48 @@ describe('§5.4 a checkpointed discussion is two rows, and never "N of M replies
     expect(entryRow.provenance.caveat).toMatch(/3/)
   })
 
-  it('CARVE-OUT: a hand-entered grade with attempt:null DOES satisfy a checkpoint', () => {
+  it('CARVE-OUT: a grade with no submitted_at DOES satisfy a checkpoint', () => {
     // The §4.4 exception, in reverse. `tag.content_type_discussion? &&
     // tag.content&.assignment&.checkpoints_parent?` disables the manual-grade
-    // exclusion.
+    // exclusion. Read off `score` rather than `workflow_state`/`attempt`, which
+    // `sub_assignment_submission_json`'s 17-key slice does not serialize.
     const rows = deriveCheckpointRows({
       endpoint: TOPICS_ENDPOINT,
       replyToEntryRequiredCount: 1,
-      replyToTopicSubmission: submission({ workflow_state: 'graded', attempt: null }),
+      replyToTopicSubmission: { submitted_at: null, score: 8 },
       replyToEntrySubmission: null,
     })
     expect(rows[0].state).toBe('satisfied')
+    expect(rows[0].provenance.field).toBe('sub_assignment_submissions.score')
+    expect(rows[0].provenance.caveat).toMatch(/hand-entered grade/)
+  })
+
+  it('the slice carries no workflow_state, so no row ever cites one', () => {
+    // The Stage 3 source finding (§12.3), pinned: `sub_assignment_submission_json`
+    // slices to 17 keys and `workflow_state` is not among them. A provenance
+    // string naming it would be a claim about a field Canvas never sends.
+    const rows = deriveCheckpointRows({
+      endpoint: TOPICS_ENDPOINT,
+      replyToEntryRequiredCount: 2,
+      replyToTopicSubmission: { submitted_at: '2026-10-01T09:00:00Z' },
+      replyToEntrySubmission: { submitted_at: null, score: null },
+    })
+    expect(rows.map((r) => r.state)).toEqual(['satisfied', 'unsatisfied'])
+    expect(JSON.stringify(rows)).not.toContain('workflow_state')
+    expect(JSON.stringify(rows)).not.toContain('attempt')
+  })
+
+  it('an EXCUSED checkpoint is satisfied with nothing posted, and says so', () => {
+    // §4.1 reaches the checkpoint too: `excused` survives the slice.
+    const rows = deriveCheckpointRows({
+      endpoint: TOPICS_ENDPOINT,
+      replyToEntryRequiredCount: 1,
+      replyToTopicSubmission: { submitted_at: null, score: null, excused: true },
+      replyToEntrySubmission: null,
+    })
+    expect(rows[0].state).toBe('satisfied')
+    expect(rows[0].provenance.field).toBe('sub_assignment_submissions.excused')
+    expect(rows[0].provenance.caveat).toMatch(/EXCUSED/)
   })
 
   it('PAIR: the same shape on a NON-checkpointed item stays unsatisfied', () => {

@@ -1069,6 +1069,15 @@ export interface CanvasDiscussionTopic {
   reply_to_entry_required_count?: number
   /** Anonymity mode of the topic. When set, `author` is nulled by the serializer. */
   anonymous_state?: string | null
+  /**
+   * The graded topic's assignment, when it has one; `null` for an ungraded topic.
+   * In `ALLOWED_TOPIC_FIELDS`, so serialized unconditionally.
+   *
+   * This is the only join from a `Discussion` module item (whose `content_id` is the
+   * TOPIC id) to the caller's submission (keyed by `assignment_id`) — and therefore the
+   * only route to a checkpointed topic's `sub_assignment_submissions`.
+   */
+  assignment_id?: CanvasId | null
   // `author` (`user_display_json(topic.user, …)`) is deliberately NOT modelled here.
   // It is a third-party user display object — exactly the shape BRU-2863 and BRU-2864
   // leaked through — and nothing that reads a topic for requirement evidence has any

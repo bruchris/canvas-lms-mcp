@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 183,
+  "toolCount": 184,
   "tools": [
     {
       "name": "health_check",
@@ -2005,6 +2005,20 @@
       "primaryAudience": "student",
       "relatedWorkflows": [],
       "structuredOutput": false
+    },
+    {
+      "name": "get_my_course_requirements",
+      "title": "Get My Course Requirements",
+      "domain": "student",
+      "description": "What the authenticated student still has to DO in one course: a per-module requirement graph where every row names the Canvas endpoint and field its verdict came from. Richer than list_modules plus list_module_items, which return a raw `completion_requirement` without the cross-references that make it truthful; for grade outcomes use project_grade or explain_grade instead, and for cross-course context list_my_planner_items. Five things to read before acting on the output: (1) `unknown` is a real state and is NOT \"unsatisfied\" — Canvas attaches `completion_requirement.completed` only where it loaded a module progression, which happens only for a student caller, so an educator or admin token gets `unknown` on every row rather than a course full of incomplete work. (2) A module with `requirement_type: \"one\"` is COMPLETE as soon as any single requirement is met, so counting its unsatisfied rows invents work. (3) `summary` gives five counts and never one \"things left to do\" number: that number cannot be computed honestly across mixed `requirement_type` values and a non-zero `unknown` count. (4) Numeric threshold rows are re-evaluated by Canvas on every pass and can revert from met to unmet with no student action (a regrade, a posting-policy change); the other four requirement types latch. (5) `canvas_state` and `derived_state` are both reported and a mismatch is flagged in `state_disagreement` rather than resolved. Read-only and current-user-only: no student_id parameter, no attempt started, no LTI launch, nothing marked as viewed or done.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "student",
+      "relatedWorkflows": [],
+      "structuredOutput": true
     },
     {
       "name": "find_student_across_courses",

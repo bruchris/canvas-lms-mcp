@@ -936,6 +936,9 @@ describe('field registry coverage', () => {
     'list_pages',
     'get_syllabus',
     'list_my_planner_items',
+    // The student course requirement graph (BRU-2952 §6.4). Fences the four
+    // Canvas-authored fields its projection keeps, `lock_explanation` included.
+    'get_my_course_requirements',
     // The UI-bound surfaces §8.3 deferred, graduated by BRU-2183 once the
     // widgets learned to strip markers.
     'get_course_structure',
@@ -944,9 +947,9 @@ describe('field registry coverage', () => {
     'view_account_notifications',
   ])
 
-  it('matches the canonical list — 19 read tools', () => {
+  it('matches the canonical list — 20 read tools', () => {
     expect(new Set(Object.keys(UNTRUSTED_FIELDS))).toEqual(EXPECTED_FENCED_TOOLS)
-    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(19)
+    expect(Object.keys(UNTRUSTED_FIELDS)).toHaveLength(20)
   })
 
   // A `view_*` tool is a separate definition with its own handler that returns

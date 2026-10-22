@@ -53,16 +53,26 @@ export class ModulesModule {
    * @param opts.contentDetails adds `include[]=content_details`, which is the only way
    *   to see `locked_for_user` and the caller's override-applied effective `due_at` per
    *   item. Off by default so existing callers keep their current response size.
+   * @param opts.maxItems stops after this many MODULES. Pass `limit + 1` to probe for
+   *   truncation: `paginate()` reports what it accumulated, never whether more was
+   *   waiting, so asking for exactly `limit` makes "there are exactly `limit`" and
+   *   "there are more" indistinguishable. Off by default.
    */
   async listWithItems(
     courseId: CanvasId,
-    opts: { contentDetails?: boolean } = {},
+    opts: { contentDetails?: boolean; maxItems?: number } = {},
   ): Promise<(CanvasModule & { items?: CanvasModuleItem[] })[]> {
     const include = opts.contentDetails ? ['items', 'content_details'] : ['items']
-    return this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
-      `/api/v1/courses/${courseId}/modules`,
-      { include },
-    )
+    const endpoint = `/api/v1/courses/${courseId}/modules`
+    // Branch rather than pass `undefined`: a caller that supplies no `maxItems`
+    // must reach `paginate` with the same arity it always has.
+    return opts.maxItems === undefined
+      ? this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(endpoint, { include })
+      : this.client.paginate<CanvasModule & { items?: CanvasModuleItem[] }>(
+          endpoint,
+          { include },
+          { maxItems: opts.maxItems },
+        )
   }
 
   async get(courseId: CanvasId, moduleId: CanvasId): Promise<CanvasModule> {

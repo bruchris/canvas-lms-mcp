@@ -333,7 +333,11 @@ This is strictly better than probing the entries endpoint, which costs a request
 
 So a checkpointed discussion is **two rows**, not one:
 
-- *reply to topic* — satisfied from the `REPLY_TO_TOPIC` sub-assignment's submission state.
+- *reply to topic* — ~~satisfied from the `REPLY_TO_TOPIC` sub-assignment's submission
+  state~~. **Amended 2026-10-22 (Stage 3, §12.3): the sub-assignment submission carries no
+  `workflow_state`.** `sub_assignment_submission_json` slices it to 17 keys and omits both
+  `workflow_state` and `attempt`, so the evidence is `submitted_at` (plus `excused` and
+  `score` for the §4.1 and §4.4-in-reverse cases).
 - *reply to entries* — requires N replies, where N is `reply_to_entry_required_count`. **Canvas does not expose a per-student "replies made" counter on either the topic or the planner item.** The sub-assignment's submission state answers "has the student met the checkpoint" as a binary; the count is the requirement, never the progress.
 
 **Rule.** Emit the count as the requirement, emit the sub-assignment's submission state as the evidence, and never render "2 of 3 replies done" — that figure does not exist in the API and would be fabricated. Where the sub-assignment submission is not reachable, `unknown`. And note that §4.4's carve-out applies here in reverse: on a checkpointed discussion, a hand-entered grade *does* satisfy `must_submit`.
@@ -640,6 +644,155 @@ assertions, 5 source-level-guard assertions (which includes the guard's own two 
 scored zero — deleting the `must_view` arm of the `completed === false` switch — because the only
 `must_view` caveat assertion reached the `completed === true` branch instead; a fixture was added
 for the unsatisfied path and the row now scores 1.
+
+### 12.3 Stage 3 implementation record (2026-10-22, BRU-3103)
+
+**Scope audit against the baseline.** §12.1's lesson was that a stage list can name
+deliverables that already exist, so each of PR 3's was checked against `origin/main` at
+`6fbf9b1` with `git show` before any code was written. None existed: no
+`get_my_course_requirements`, no output contract or `OUTPUT_FIXTURES` entry for it, no
+fencing-registry entry, no `audience` tag, no wire test and no request-count assertion.
+The stage list is accurate as written and nothing is struck through here. Two *additions*
+the list did not name were needed and are called out below (a `maxItems` option on the
+modules read, and a `/users/self/groups` client method).
+
+**Canvas re-derivation.** §12.1 obliged Stages 2-4 to re-derive the four files §4 and §5
+rest on. All four, plus the four Stage 1 / §5.1 files, were re-fetched at `master` on
+2026-10-22 and byte-compared against the pinned
+`1c9f0bb8013ed69c4f2efe11fd483025469b7e6c`: `app/models/context_module.rb` (44028 bytes),
+`app/models/context_module_progression.rb` (17382), `app/models/discussion_topic.rb`
+(91839), `lib/api/v1/locked.rb` (1201), `lib/api/v1/context_module.rb` (10039),
+`lib/api/v1/discussion_topics.rb` (18869), `lib/api.rb` (29877) and
+`app/models/content_tag.rb` (31384) are all **identical**. No drift. Stage 3 additionally
+read `lib/api/v1/submission.rb`, `lib/api/v1/course_json.rb`,
+`app/controllers/courses_controller.rb` and `app/models/enrollment.rb` at the same SHA,
+which is where the three findings below come from.
+
+**Three source findings.** The first invalidates a sentence of §5.4 and is amended inline
+above; none adds a state, a row, a bound or a parameter, so no amendment was requested
+under the task's hand-back clause.
+
+1. **A checkpoint sub-assignment's submission has no `workflow_state`.**
+   `Api::V1::Submission#sub_assignment_submission_json` serializes a 17-key slice, with
+   the stated intent of "keeping the sub assignment submission json as minimal as
+   possible":
+
+   ```ruby
+   sub_assignment_json = json.slice(
+     "seconds_late", "custom_grade_status_id", "late_policy_status", "late",
+     "missing", "excused", "entered_grade", "entered_score", "grade", "score",
+     "user_id", "grade_matches_current_submission", "submitted_at", "points_deducted")
+   sub_assignment_json["sub_assignment_tag"] = assignment.sub_assignment_tag
+   ```
+
+   Neither `workflow_state` nor `attempt` is in it, so the "submission state" §5.4 names
+   is not on the wire and Stage 2's `SUBMITTED_WORKFLOW_STATES` test cannot be applied to
+   a checkpoint. Stage 3 therefore narrowed Stage 2's `CheckpointEvidence` to a dedicated
+   `CheckpointSubmissionEvidence` (`submitted_at` / `score` / `excused`), and each
+   checkpoint row's `provenance.field` now names the field actually read. The rejected
+   alternative was to synthesize a `workflow_state` in Stage 3 and feed the old shape: the
+   verdicts would have been identical and the row would have shipped a provenance string
+   asserting a field Canvas never sends, which is the defect class this design exists to
+   prevent. Two consequences: §4.1's excusal rule reaches the checkpoint (it is the one
+   field in the slice that settles it outright), and §4.4-in-reverse is read off `score`
+   rather than `attempt === null`.
+
+2. **`caller_is_student` needs no request of its own.** `CoursesController#show`
+   unconditionally passes `enrollments = @course.current_enrollments.where(user_id:
+   @current_user).to_a` to `course_json`, and `CourseJson#to_hash` sets
+   `@hash["enrollments"] = extract_enrollments(@enrollments)` unconditionally
+   (`clear_unneeded_fields` drops the key only when the value is `nil`). So one
+   `GET /api/v1/courses/:id` answers both the course name and §5.3's gate, and §5.2's
+   budget is one request lighter than the design assumed. The trap in the same five lines:
+   `default_enrollment_attributes` emits `type: enrollment.sis_type`, and
+   `Enrollment::SIS_TYPES["StudentEnrollment"] == "student"` — the lowercase short form,
+   not the class name the enrollments endpoints emit. An implementation reading only
+   `'StudentEnrollment'` would gate on a vocabulary this endpoint never uses and report
+   every student as a non-student. Both spellings are accepted. Note also that
+   `Enrollment.sis_type` falls back to `'student'` for any type outside `SIS_TYPES`, so
+   the gate additionally requires `enrollment_state === 'active'` —
+   `participate_as_student`, the right `find_student` grants, is not granted by an invited
+   or inactive enrollment.
+
+3. **§5.3's group path must read the caller's own groups, not the course's.** §5.2 budgets
+   "1 call for the student's groups" without naming the endpoint.
+   `/api/v1/courses/:id/groups` is gated on `:read_roster`, which students ordinarily
+   have, and returns **every** group in the course — so matching
+   `group_topic_children[].group_id` against that list would attribute another group's
+   child topic to the caller and report a stranger's posting state as theirs.
+   `/api/v1/users/self/groups` returns only the caller's memberships and carries
+   `course_id` for local filtering, so it stays one request. This needed one new client
+   method (`GroupsModule.listMine`).
+
+**Decisions Stage 3 made that the design left implicit.** Each is reversible in one place.
+
+1. **Discussion-derived rows are reported but excluded from the module rollup.** The §5.3
+   initial-post row and the §5.4 checkpoint rows are obligations on the *topic*, not
+   module completion requirements — Canvas's own `evaluate_requirements_met` never sees
+   them. Feeding them to the rollup would make `derived_state` disagree with
+   `canvas_state` on every course that uses either feature. Each row carries
+   `counts_toward_module` so the exclusion is visible rather than implied, and the
+   excluded rows are still counted in `summary`: the student does owe the post.
+2. **Submission evidence is attached to `Assignment` and `Quiz` items only**, carrying
+   forward QA's constraint from the Stage 2 review. A `Discussion` item's `content_id` is
+   the *topic* id, so there is no sound join to a submission without the topic, and §4.4
+   says to report Canvas's own `must_submit` verdict verbatim rather than re-derive it. A
+   `Quiz` item's `content_id` is the *quiz* id while a submission is keyed by
+   `assignment_id`, so the submissions read sends `include[]=assignment` and indexes by
+   `assignment.quiz_id` as well — matching on `content_id` alone would silently drop every
+   quiz's evidence, which is where `min_score` most often lives.
+3. **Prerequisite satisfaction is read from Canvas's own module `state`, never from this
+   tool's rollup**, and an absent state is `undefined` rather than `false`. Using our
+   rollup would be circular (a `blocked` row would depend on a rollup that depends on
+   `blocked` rows), and reading an absent prerequisite state as "not completed" would
+   report every item behind it as `blocked` for an educator caller and for any student
+   whose first module fell outside `max_modules`. This is §1.3's discipline one level up.
+4. **A module whose items could not be read is `unknown` with no rows, and `rollUpModule`
+   is not consulted for it.** The rollup reads zero requirement rows as a *satisfied*
+   module, which is correct for a module that genuinely has none and would be an assertion
+   of completion from an absence of evidence here.
+5. **Every closed set in the output contract is advertised as `z.string()`, not
+   `z.enum`.** An enum is a promise the set never grows, and this design's own history is
+   the counter-example: the brief specified five states and §3.1 needed a sixth before a
+   line was written. `requirement_type` makes the point sharper still — it is Canvas's own
+   derived value, so pinning it to `all | one` would be a constraint on data this server
+   does not produce, which is what `tests/tools/output-contract.test.ts` bans. The
+   vocabularies are documented in the tool description and in the engine's exported types,
+   where a client can read them without being broken by them.
+6. **The envelope is `z.strictObject` throughout**, including the `context` subtree, with
+   only Canvas's `submission_status` union left unconstrained. Every key of the response is
+   projected by the handler, so there is no Canvas-authored shape to tolerate drift in and
+   an undeclared key means a bug in this server. This is why the tool's `OUTPUT_FIXTURES`
+   entry declares `readUndeclared: null`; the complementary property — an undeclared
+   top-level key is *rejected* — is asserted directly instead.
+7. **`include_context` is implemented** (§8 lists it; §5.2 budgets it at zero requests by
+   default). §3.2's invariant that context can never promote a row is structural rather
+   than conventional: the engine's derive functions take only the evidence subtree, and
+   `context` is attached to the row after `deriveItemRow` has returned.
+
+**Two additions the §12 PR 3 row did not name**, both forced rather than chosen:
+`ModulesModule.listWithItems` gained an opt-in `maxItems`, because §5.2 requires the
+`limit + 1` truncation probe on the modules read and `paginate` reports what it
+accumulated rather than whether more was waiting; and `GroupsModule.listMine` exists for
+finding 3 above. Both branch rather than pass `undefined`, so every existing caller's
+request is byte-identical.
+
+**One cost the §5.2 budget does buy, stated rather than hidden.** §5.2 skips the
+submissions call entirely unless an unsatisfied numeric row or a checkpointed topic needs
+it. The consequence is that an *excused* requirement Canvas already records as met reads as
+a bare `satisfied` with no caveat, because the excusal is only visible in the submission.
+§4.1 already judged a bare `satisfied` there "defensible and useless"; buying the
+explanation would mean a submissions request on every course with any satisfied
+requirement at all. A characterization test pins the trade-off so it is a decision a
+reviewer can overrule rather than a surprise.
+
+**§11.2's three deferred fixtures all land here**, as §12.2 said they must: the oversized
+module (`items_count: 142`, no `items` key) now drives the §5.1 per-module fallback rather
+than only asserting the shape at the wire; its empty-module nearest neighbour
+(`items_count: 0`, `items: []`) asserts the *other* branch and that it costs no extra
+request; and the group child topic exercises §5.3's group path, with a root topic whose
+`user_can_see_posts` disagrees with the child's so that reading the root would produce the
+opposite verdict.
 
 ## 13. Open questions for CTO / board
 

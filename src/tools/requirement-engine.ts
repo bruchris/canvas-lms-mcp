@@ -134,14 +134,22 @@ export type RequirementState = 'satisfied' | 'unsatisfied' | 'unknown' | 'blocke
 /** A module rollup is never `not_required`: a module with no requirements is vacuously satisfied. */
 export type ModuleDerivedState = 'satisfied' | 'unsatisfied' | 'unknown' | 'blocked'
 
-export type ProvenanceSource =
-  | 'module_item.completion_requirement'
-  | 'discussion_topic.user_can_see_posts'
-  | 'submission.workflow_state'
-  | 'checkpoint_submission'
-  | 'module_item.content_details.locked_for_user'
-  | 'module.state'
-  | 'module.prerequisite'
+/**
+ * §3.2's seven sources, as a value as well as a type: Stage 3 advertises them as
+ * the output contract's `provenance.source` enum, and a second hand-maintained
+ * copy there would be free to drift.
+ */
+export const PROVENANCE_SOURCES = [
+  'module_item.completion_requirement',
+  'discussion_topic.user_can_see_posts',
+  'submission.workflow_state',
+  'checkpoint_submission',
+  'module_item.content_details.locked_for_user',
+  'module.state',
+  'module.prerequisite',
+] as const
+
+export type ProvenanceSource = (typeof PROVENANCE_SOURCES)[number]
 
 export interface Provenance {
   source: ProvenanceSource
@@ -253,14 +261,45 @@ export interface InitialPostEvidence {
   userCanSeePosts?: boolean
 }
 
+/**
+ * A checkpoint sub-assignment's submission, which is a **narrower shape than a
+ * submission** — and deliberately not {@link SubmissionEvidence}.
+ *
+ * `Api::V1::Submission#sub_assignment_submission_json` slices the serialized
+ * submission down to a fixed allowlist, with the stated intent of "keeping the
+ * sub assignment submission json as minimal as possible":
+ *
+ * ```ruby
+ * sub_assignment_json = json.slice(
+ *   "seconds_late", "custom_grade_status_id", "late_policy_status", "late",
+ *   "missing", "excused", "entered_grade", "entered_score", "grade", "score",
+ *   "user_id", "grade_matches_current_submission", "submitted_at", "points_deducted")
+ * sub_assignment_json["sub_assignment_tag"] = assignment.sub_assignment_tag
+ * ```
+ *
+ * **`workflow_state` and `attempt` are not in it.** §5.4's prose ("satisfied
+ * from the sub-assignment's submission state") names a field the API withholds,
+ * found while implementing Stage 3 — see §12.3. `submitted_at` is the only
+ * positive submission signal the slice carries, so it is the one this reads, and
+ * the row's `provenance.field` names it rather than a field Canvas never sends.
+ */
+export interface CheckpointSubmissionEvidence {
+  /** The only positive submission signal in the slice. `null` ⇒ no attempt recorded. */
+  submitted_at: string | null
+  /** From the slice. A score with no `submitted_at` is the §4.4-in-reverse manual grade. */
+  score?: number | null
+  /** From the slice. Excusal satisfies the checkpoint without any submission (§4.1). */
+  excused?: boolean | null
+}
+
 export interface CheckpointEvidence {
   endpoint: string
   /** `reply_to_entry_required_count`: the requirement, never the progress. */
   replyToEntryRequiredCount?: number
   /** `CheckpointLabels::REPLY_TO_TOPIC`'s sub-assignment submission. Absent ⇒ not reachable. */
-  replyToTopicSubmission?: SubmissionEvidence | null
+  replyToTopicSubmission?: CheckpointSubmissionEvidence | null
   /** `CheckpointLabels::REPLY_TO_ENTRY`'s sub-assignment submission. Absent ⇒ not reachable. */
-  replyToEntrySubmission?: SubmissionEvidence | null
+  replyToEntrySubmission?: CheckpointSubmissionEvidence | null
 }
 
 export interface ModuleRollupInput {
@@ -799,13 +838,19 @@ export function deriveInitialPostRow(evidence: InitialPostEvidence): Requirement
  * discussion a hand-entered grade *does* satisfy the checkpoint, because
  * `tag.content_type_discussion? && tag.content&.assignment&.checkpoints_parent?`
  * disables the exclusion.
+ *
+ * The evidence is {@link CheckpointSubmissionEvidence}, not
+ * {@link SubmissionEvidence}: `sub_assignment_submission_json` serializes a
+ * 17-key slice that omits `workflow_state` and `attempt`, so the submission
+ * *state* §5.4's prose names is not on the wire. See that interface's doc and
+ * §12.3 of the design.
  */
 export function deriveCheckpointRows(evidence: CheckpointEvidence): RequirementRow[] {
   const { endpoint, replyToEntryRequiredCount, replyToTopicSubmission, replyToEntrySubmission } =
     evidence
 
   const checkpointRow = (
-    submission: SubmissionEvidence | null | undefined,
+    submission: CheckpointSubmissionEvidence | null | undefined,
     extra: string | null,
   ): RequirementRow => {
     if (submission === undefined) {
@@ -831,21 +876,56 @@ export function deriveCheckpointRows(evidence: CheckpointEvidence): RequirementR
         join('The student has no submission for this checkpoint.', extra),
       )
     }
-    const submitted = (SUBMITTED_WORKFLOW_STATES as readonly string[]).includes(
-      submission.workflow_state,
-    )
+    // §4.1's excusal rule reaches the checkpoint too, and before any other
+    // field: `excused` survives the slice, and an excused sub-assignment is met
+    // with nothing submitted.
+    if (submission.excused === true) {
+      return row(
+        'satisfied',
+        null,
+        'checkpoint_submission',
+        endpoint,
+        'sub_assignment_submissions.excused',
+        join(
+          'Satisfied because the checkpoint is EXCUSED, not because anything was posted. Canvas marks an excused submission as meeting the requirement before the requirement type is examined.',
+          extra,
+        ),
+      )
+    }
+    if (submission.submitted_at !== null && submission.submitted_at !== undefined) {
+      return row(
+        'satisfied',
+        null,
+        'checkpoint_submission',
+        endpoint,
+        'sub_assignment_submissions.submitted_at',
+        extra,
+      )
+    }
+    // No attempt, but a score: §4.4's manual-grade carve-out, in reverse. On a
+    // checkpointed discussion `tag.content_type_discussion? &&
+    // tag.content&.assignment&.checkpoints_parent?` disables the exclusion, so a
+    // hand-entered grade DOES count here where it would not on an assignment.
+    if (submission.score !== null && submission.score !== undefined) {
+      return row(
+        'satisfied',
+        null,
+        'checkpoint_submission',
+        endpoint,
+        'sub_assignment_submissions.score',
+        join(
+          'Satisfied by a grade entered without a submission: on a checkpointed discussion Canvas disables the manual-grade carve-out, so a hand-entered grade does count.',
+          extra,
+        ),
+      )
+    }
     return row(
-      submitted ? 'satisfied' : 'unsatisfied',
+      'unsatisfied',
       null,
       'checkpoint_submission',
       endpoint,
-      'sub_assignment_submissions.workflow_state',
-      join(
-        submitted && submission.attempt === null
-          ? 'Satisfied by a grade entered without an attempt: on a checkpointed discussion Canvas disables the manual-grade carve-out, so a hand-entered grade does count.'
-          : null,
-        extra,
-      ),
+      'sub_assignment_submissions.submitted_at',
+      join('Canvas records no submission and no grade for this checkpoint.', extra),
     )
   }
 

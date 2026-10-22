@@ -15,6 +15,25 @@ export interface CreateGroupParams {
 export class GroupsModule {
   constructor(private client: CanvasHttpClient) {}
 
+  /**
+   * The groups the CALLING user is a member of, optionally narrowed to course
+   * contexts. This is deliberately not `list(courseId)`: `/courses/:id/groups`
+   * is gated on `:read_roster` and returns every group in the course, so a
+   * student with roster access reads back groups they are not in. Attributing a
+   * per-group discussion's child topic to one of those would report another
+   * group's state as the caller's own.
+   *
+   * `course_id` is on each group (`context_type: 'Course'`), so the caller
+   * filters locally rather than per-course fan-out.
+   */
+  async listMine(opts: { contextType?: 'Course' | 'Account' } = {}): Promise<CanvasGroup[]> {
+    return opts.contextType === undefined
+      ? this.client.paginate<CanvasGroup>('/api/v1/users/self/groups')
+      : this.client.paginate<CanvasGroup>('/api/v1/users/self/groups', {
+          context_type: opts.contextType,
+        })
+  }
+
   async list(courseId: CanvasId): Promise<CanvasGroup[]> {
     return this.client.paginate<CanvasGroup>(`/api/v1/courses/${courseId}/groups`)
   }

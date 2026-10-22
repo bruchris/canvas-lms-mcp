@@ -190,8 +190,8 @@ describe('studentTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 8 tool definitions', () => {
-    expect(studentTools(buildMockCanvas())).toHaveLength(8)
+  it('returns an array with 9 tool definitions', () => {
+    expect(studentTools(buildMockCanvas())).toHaveLength(9)
   })
 
   it('exports tools with correct names', () => {
@@ -205,6 +205,7 @@ describe('studentTools', () => {
       'get_my_activity_stream_summary',
       'get_my_activity_stream',
       'list_my_planner_items',
+      'get_my_course_requirements',
     ])
   })
 

@@ -7,6 +7,7 @@ import { submissionCommentAuthorKey } from '../pseudonym/pseudonymizer'
 import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
+import { requirementGraphTools } from './requirement-graph'
 
 const MY_SUBMISSION_FEEDBACK_INCLUDE = [
   'submission_comments',
@@ -605,5 +606,9 @@ export function studentTools(
         }
       },
     },
+    // The student course requirement graph (BRU-2952 design, §12 PR 3). Its own
+    // file because it is a composite read over four Canvas domains, and it joins
+    // this domain rather than taking a new one so no domain count moves.
+    ...requirementGraphTools(canvas),
   ]
 }

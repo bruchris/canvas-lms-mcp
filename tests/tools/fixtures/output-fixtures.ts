@@ -100,7 +100,72 @@ export interface OutputFixture {
   pseudonymization: PseudonymizationModeFixture | null
 }
 
+/**
+ * `get_my_course_requirements` (BRU-3103 Stage 3). A one-module course with one
+ * requirement already met and one item carrying no requirement, which is enough
+ * for the round-trip: both of the response's recursive shapes (a module, a row)
+ * are populated and `summary` is non-trivial.
+ *
+ * `enrollments` on the course is load-bearing, not decoration —
+ * `CourseJson#to_hash` emits it unconditionally and the tool reads the §5.3
+ * `caller_is_student` gate off it.
+ */
+export function buildRequirementGraphCanvas(): CanvasClient {
+  return {
+    courses: {
+      get: vi.fn().mockResolvedValue({
+        id: '7',
+        name: 'Intro to Fjords',
+        course_code: 'FJORD-101',
+        workflow_state: 'available',
+        enrollments: [{ type: 'student', enrollment_state: 'active', user_id: '55' }],
+      }),
+    },
+    modules: {
+      listWithItems: vi.fn().mockResolvedValue([
+        {
+          id: '1',
+          name: 'Week 1',
+          position: 1,
+          items_count: 2,
+          state: 'started',
+          requirement_type: 'all',
+          items: [
+            { id: '100', module_id: '1', title: 'Course welcome', position: 1, type: 'Page' },
+            {
+              id: '101',
+              module_id: '1',
+              title: 'Read the syllabus',
+              position: 2,
+              type: 'Assignment',
+              content_id: '501',
+              completion_requirement: { type: 'must_view', completed: true },
+            },
+          ],
+        },
+      ]),
+      listItems: vi.fn().mockResolvedValue([]),
+    },
+    discussions: { list: vi.fn().mockResolvedValue([]), getForGroup: vi.fn() },
+    groups: { listMine: vi.fn().mockResolvedValue([]) },
+    submissions: { listMy: vi.fn().mockResolvedValue([]) },
+    planner: { listItems: vi.fn().mockResolvedValue([]) },
+  } as unknown as CanvasClient
+}
+
 export const OUTPUT_FIXTURES: Record<string, OutputFixture> = {
+  get_my_course_requirements: {
+    args: { course_id: '7' },
+    buildCanvas: buildRequirementGraphCanvas,
+    envelopeKey: null,
+    // Null on purpose, and for the reason this field documents: every key of
+    // this response is projected by the handler, so there is no Canvas-authored
+    // top-level shape to tolerate drift in. `tests/tools/requirement-graph.test.ts`
+    // asserts the complementary property directly — an undeclared top-level key
+    // is REJECTED, which is what "strict where we author the shape" means.
+    readUndeclared: null,
+    pseudonymization: null,
+  },
   list_pages: {
     args: { course_id: '1' },
     buildCanvas: () => buildPagesCanvas(),

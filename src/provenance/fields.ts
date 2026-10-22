@@ -71,6 +71,30 @@ export const UNTRUSTED_FIELDS: Readonly<Record<string, UntrustedFieldLabels>> = 
   list_my_planner_items: {
     description: 'calendar event description',
   },
+  // The student course requirement graph. Its response is projected entirely by
+  // the handler, so the Canvas-authored text in it is exactly four fields:
+  // `course_name`, each module's `name`, each row's `item.title`, and
+  // `lock_explanation`.
+  //
+  // `lock_explanation` is the one that is easy to miss and the most dangerous:
+  // it is SERVER-generated prose with interpolated course content (`locked_json`
+  // adds it only when the item is locked), so it reads as infrastructure text
+  // while carrying a teacher's words.
+  //
+  // Three deliberate omissions. `caveat` is NOT fenced: every caveat string is
+  // authored by `src/tools/requirement-engine.ts` and no Canvas value is ever
+  // interpolated into one — fencing it would mark our own prose as untrusted.
+  // `endpoint` and `field` are likewise server-authored literals. And nothing
+  // under `context` is fenced: the planner slice this tool copies
+  // (`plannable_type`, `plannable_date`, `submissions`) carries no free text at
+  // all — `lib/api/v1/planner_item.rb` drops a discussion's `message` before the
+  // planner response is built.
+  get_my_course_requirements: {
+    course_name: 'course name',
+    name: 'module name',
+    title: 'module item title',
+    lock_explanation: 'content lock explanation',
+  },
 
   // Rank 2 — any enrolled student can author a discussion message, and
   // `post_discussion_entry` / `update_discussion` publish as the operator.
