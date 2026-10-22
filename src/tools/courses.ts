@@ -133,7 +133,8 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'get_syllabus',
       title: 'Get Syllabus',
-      description: 'Get the syllabus HTML body for a course.',
+      description:
+        "Get just the syllabus HTML body for a course, returning { course_id, syllabus_body } where syllabus_body is null if the course has none set. Use get_course with include: ['syllabus_body'] instead when you also need other course fields in the same call, or update_course to change the syllabus body. If the course has public_syllabus or public_syllabus_to_auth enabled, the body may be readable even by callers without an enrollment in the course.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -151,7 +152,8 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_course',
       title: 'Create Course',
       audience: 'admin',
-      description: 'Create a new course in a Canvas account. Returns the created course object.',
+      description:
+        "Create a new course in a Canvas account and return the created Canvas course object (id, name, course_code, workflow_state, and the fields passed in). Not idempotent: calling it again with the same name creates a second, separate course rather than reusing or updating the first — use update_course afterward to change it, or list_courses first to check whether a matching course already exists. Canvas silently drops start_at and end_at unless the course also restricts enrollment to course dates, which this tool does not expose, so the dates you pass may not take effect; set them with update_course if they don't. Requires the account-level permission to create courses.",
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID to create the course in'),
         name: z.string().describe('The name of the course'),
@@ -187,7 +189,7 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Update Course',
       audience: 'educator',
       description:
-        'Update an existing course. Only provided fields are changed; omitted fields are left as-is.',
+        'Update an existing course and return the updated Canvas course object. Only the fields you pass are changed; omitted fields are left as-is, and calling it again with the same values leaves the course in the same state (idempotent). Requires permission to update course details; a caller who has only that lesser permission (not full course update rights) can still change syllabus_body through this same call, but every other field they pass is silently dropped rather than erroring. Use create_course for a new course, or get_course to see the current values before changing them.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID to update'),
         name: z.string().optional().describe('New course name'),

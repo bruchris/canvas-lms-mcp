@@ -49,7 +49,7 @@
       "name": "get_syllabus",
       "title": "Get Syllabus",
       "domain": "courses",
-      "description": "Get the syllabus HTML body for a course.",
+      "description": "Get just the syllabus HTML body for a course, returning { course_id, syllabus_body } where syllabus_body is null if the course has none set. Use get_course with include: ['syllabus_body'] instead when you also need other course fields in the same call, or update_course to change the syllabus body. If the course has public_syllabus or public_syllabus_to_auth enabled, the body may be readable even by callers without an enrollment in the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -63,7 +63,7 @@
       "name": "create_course",
       "title": "Create Course",
       "domain": "courses",
-      "description": "Create a new course in a Canvas account. Returns the created course object.",
+      "description": "Create a new course in a Canvas account and return the created Canvas course object (id, name, course_code, workflow_state, and the fields passed in). Not idempotent: calling it again with the same name creates a second, separate course rather than reusing or updating the first — use update_course afterward to change it, or list_courses first to check whether a matching course already exists. Canvas silently drops start_at and end_at unless the course also restricts enrollment to course dates, which this tool does not expose, so the dates you pass may not take effect; set them with update_course if they don't. Requires the account-level permission to create courses.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -77,7 +77,7 @@
       "name": "update_course",
       "title": "Update Course",
       "domain": "courses",
-      "description": "Update an existing course. Only provided fields are changed; omitted fields are left as-is.",
+      "description": "Update an existing course and return the updated Canvas course object. Only the fields you pass are changed; omitted fields are left as-is, and calling it again with the same values leaves the course in the same state (idempotent). Requires permission to update course details; a caller who has only that lesser permission (not full course update rights) can still change syllabus_body through this same call, but every other field they pass is silently dropped rather than erroring. Use create_course for a new course, or get_course to see the current values before changing them.",
       "annotations": {
         "destructiveHint": true,
         "idempotentHint": true,
@@ -275,7 +275,7 @@
       "name": "list_rubrics",
       "title": "List Rubrics",
       "domain": "rubrics",
-      "description": "List all rubrics in a course.",
+      "description": "List every rubric defined in a course, returning each rubric's title, points_possible, and criteria/ratings. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use get_rubric to fetch one rubric by ID once you have it, get_rubric_assessment for a specific student's completed assessment rather than the rubric definition, or create_rubric to add a new one. Requires the manage_rubrics permission in the course, so most students cannot call this.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -289,7 +289,7 @@
       "name": "get_rubric",
       "title": "Get Rubric",
       "domain": "rubrics",
-      "description": "Get details for a single rubric by ID, including criteria. Use include=[\"assignment_associations\"] to retrieve the rubric association IDs needed for rubric assessment writes.",
+      "description": "Get a single rubric's definition (title, points_possible, criteria, and rating levels) by ID. Use list_rubrics to find the rubric_id for a course first. Pass include=[\"assignment_associations\"] to also retrieve the rubric association IDs that submit_rubric_assessment needs, or include=[\"assessments\"|\"graded_assessments\"|\"peer_assessments\"] for assessor_id-only assessment summaries (no assessor name is returned). This returns the rubric's structure, not any one student's completed assessment — use get_rubric_assessment for that. Requires the manage_rubrics permission in the course, so most students cannot call this.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -305,7 +305,7 @@
       "name": "get_rubric_assessment",
       "title": "Get Rubric Assessment",
       "domain": "rubrics",
-      "description": "Get the rubric assessment for a specific student submission on an assignment.",
+      "description": "Get one student's submission for an assignment with the Canvas rubric_assessment attached, keyed by criterion_id (rating_id, comments, points per criterion) — this does not carry the assessor's name or any grader identity. This is the same full submission object (score, grade, workflow_state, submitted_at) that get_submission returns, requested here with `include[]=rubric_assessment` instead of get_submission's default `submission_comments`; use get_submission when you also need comments or the submitted text/URL. Use submit_rubric_assessment to post a rubric assessment for a student rather than read one back.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true

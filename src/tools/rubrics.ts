@@ -26,7 +26,8 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_rubrics',
       title: 'List Rubrics',
-      description: 'List all rubrics in a course.',
+      description:
+        "List every rubric defined in a course, returning each rubric's title, points_possible, and criteria/ratings. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use get_rubric to fetch one rubric by ID once you have it, get_rubric_assessment for a specific student's completed assessment rather than the rubric definition, or create_rubric to add a new one. Requires the manage_rubrics permission in the course, so most students cannot call this.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -43,7 +44,7 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'get_rubric',
       title: 'Get Rubric',
       description:
-        'Get details for a single rubric by ID, including criteria. Use include=["assignment_associations"] to retrieve the rubric association IDs needed for rubric assessment writes.',
+        'Get a single rubric\'s definition (title, points_possible, criteria, and rating levels) by ID. Use list_rubrics to find the rubric_id for a course first. Pass include=["assignment_associations"] to also retrieve the rubric association IDs that submit_rubric_assessment needs, or include=["assessments"|"graded_assessments"|"peer_assessments"] for assessor_id-only assessment summaries (no assessor name is returned). This returns the rubric\'s structure, not any one student\'s completed assessment — use get_rubric_assessment for that. Requires the manage_rubrics permission in the course, so most students cannot call this.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         rubric_id: canvasIdInput().describe('The Canvas rubric ID'),
@@ -70,7 +71,8 @@ export function rubricTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'get_rubric_assessment',
       title: 'Get Rubric Assessment',
-      description: 'Get the rubric assessment for a specific student submission on an assignment.',
+      description:
+        "Get one student's submission for an assignment with the Canvas rubric_assessment attached, keyed by criterion_id (rating_id, comments, points per criterion) — this does not carry the assessor's name or any grader identity. This is the same full submission object (score, grade, workflow_state, submitted_at) that get_submission returns, requested here with `include[]=rubric_assessment` instead of get_submission's default `submission_comments`; use get_submission when you also need comments or the submitted text/URL. Use submit_rubric_assessment to post a rubric assessment for a student rather than read one back.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
