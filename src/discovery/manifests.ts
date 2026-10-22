@@ -1,6 +1,7 @@
 import type { CanvasClient } from '../canvas'
 import { toolDomainCatalog, type ToolDomainRegistration } from '../tools/catalog'
 import type { ToolAnnotations, ToolAudience, ToolDefinition } from '../tools/types'
+import type { CanvasToolset } from '../tools/toolsets'
 import { resolveTitle } from '../tools/titles'
 import { createRegistryProbeClient } from '../tools/registry-probe'
 import { workflowCatalog, type WorkflowCatalogEntry } from './catalog'
@@ -21,11 +22,22 @@ export interface ToolManifestEntry {
    * carry a machine-readable contract. Added in schema version 1.1.
    */
   structuredOutput: boolean
+  /**
+   * The toolset this tool's domain belongs to (schema 1.2, GH #442 Phase 1).
+   *
+   * Published so a consumer can compute the surface `CANVAS_TOOLSETS=<x>`
+   * yields without reimplementing the mapping, and so the documented
+   * per-toolset counts have a generated oracle instead of a hand-kept number.
+   */
+  toolset: CanvasToolset
 }
 
 export interface ToolManifestDocument {
-  /** 1.1 added `structuredOutput` to every tool entry. Additive; 1.0 readers keep working. */
-  schemaVersion: '1.1'
+  /**
+   * 1.1 added `structuredOutput` to every tool entry; 1.2 added `toolset`.
+   * Both additive — a 1.0 or 1.1 reader keeps working.
+   */
+  schemaVersion: '1.2'
   packageName: 'canvas-lms-mcp'
   toolCount: number
   tools: ToolManifestEntry[]
@@ -41,6 +53,7 @@ interface RegisteredToolContext {
   tool: ToolDefinition
   domain: string
   defaultPrimaryAudience: ToolAudience
+  toolset: CanvasToolset
 }
 
 export interface ManifestBuildOptions {
@@ -62,6 +75,7 @@ function getRegisteredToolContexts(
       tool,
       domain: registration.domain,
       defaultPrimaryAudience: registration.defaultPrimaryAudience,
+      toolset: registration.toolset,
     })),
   )
 }
@@ -140,7 +154,7 @@ export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManif
 
   assertWorkflowLinksExist(toolNames, options.workflowCatalog)
 
-  const tools = registeredTools.map(({ tool, domain, defaultPrimaryAudience }) => ({
+  const tools = registeredTools.map(({ tool, domain, defaultPrimaryAudience, toolset }) => ({
     name: tool.name,
     title: resolveTitle(tool.name, tool.title),
     domain,
@@ -150,10 +164,11 @@ export function buildToolManifest(options: ManifestBuildOptions = {}): ToolManif
     primaryAudience: getPrimaryAudience(tool, defaultPrimaryAudience),
     relatedWorkflows: getRelatedWorkflowIds(tool.name, options.workflowCatalog),
     structuredOutput: tool.output !== undefined,
+    toolset,
   }))
 
   return {
-    schemaVersion: '1.1',
+    schemaVersion: '1.2',
     packageName: 'canvas-lms-mcp',
     toolCount: tools.length,
     tools,

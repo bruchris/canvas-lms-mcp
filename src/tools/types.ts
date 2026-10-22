@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import type { DestructiveToolsMode } from './destructive-policy'
+import type { CanvasToolset } from './toolsets'
 import type { ToolOutputContract } from './output/contract'
 
 /**
@@ -53,6 +54,19 @@ export interface ToolFeatureFlags {
    * become a domain gate key (see `ToolDomainGateKey` in `catalog.ts`).
    */
   writeTools?: WriteToolsMode
+  /**
+   * CANVAS_TOOLSETS / --toolsets / X-Canvas-Toolsets (GH #442 Phase 1,
+   * BRU-3128). When set, only domains in one of these toolsets register.
+   * Unset — and an empty set — register everything, which is today's behaviour
+   * byte-for-byte; `parseToolsets` never produces an empty set, so "no filter"
+   * has one representation on the configured path.
+   *
+   * Lives here rather than as yet another positional parameter on
+   * `getAllTools`/`registerAllTools`, which already carry six between them.
+   * Being set-valued it can never be read as a domain `gate` — see
+   * `ToolDomainGateKey` in `catalog.ts`, which admits only boolean-valued keys.
+   */
+  toolsets?: ReadonlySet<CanvasToolset>
 }
 
 /** `allow` = every tool the other policies permit; `block` = read-only tools only. */

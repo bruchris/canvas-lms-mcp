@@ -21,6 +21,8 @@ async function main() {
     role: config.role,
     enableAssignmentSubmission: config.enableAssignmentSubmission,
     destructiveTools: config.destructiveTools,
+    toolsets: config.toolsets,
+    readOnly: config.readOnly,
     // One process, one user, one token: the pseudonym map belongs to the same
     // person who can read the roster anyway, so reverse lookup stays available
     // here. Stated explicitly because the factory refuses to guess (BRU-2515).

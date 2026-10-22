@@ -180,8 +180,9 @@ export function registerAllPrompts(
   server: McpServer,
   role?: CanvasRole,
   skills?: readonly GeneratedSkill[],
+  availableToolNames?: ReadonlySet<string>,
 ): void {
-  const definitions = buildPromptDefinitions(role, skills)
+  const definitions = buildPromptDefinitions(role, skills, availableToolNames)
   // No prompts means no `prompts` capability at all, so capability negotiation
   // stays honest rather than advertising an empty surface. It also leaves the
   // surface untouched for an embedder that wants to own it outright.

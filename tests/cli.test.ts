@@ -40,6 +40,7 @@ describe('parseArgs', () => {
       authProfile: 'local_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
+      readOnly: false,
       credentials: 'present',
     })
   })
@@ -250,6 +251,7 @@ describe('parseArgs', () => {
       authProfile: 'remote_static_token',
       enableAssignmentSubmission: false,
       destructiveTools: 'allow',
+      readOnly: false,
       credentials: 'present',
     })
   })

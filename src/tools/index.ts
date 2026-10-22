@@ -34,6 +34,11 @@ const PSEUDONYM_META_NOTE =
  * backwards-compatible behaviour). Domains with a `gate` are excluded unless the
  * corresponding flag is enabled in `features`.
  *
+ * `features.toolsets` narrows by domain (GH #442 Phase 1). It composes with the
+ * role filter as an intersection — the toolset filter drops whole domains, then
+ * the role filter drops audiences — so `CANVAS_TOOLSETS` can only ever remove
+ * tools a role would otherwise have seen, never add one back.
+ *
  * This is also the single choke point for the destructive-tools policy
  * (BRU-2444): `registerAllTools` builds its registration list from here, so
  * `features.destructiveTools === 'block'` removes the twelve irreversible
@@ -46,13 +51,25 @@ export function getAllTools(
   role?: CanvasRole,
   features?: ToolFeatureFlags,
 ): ToolDefinition[] {
+  // An empty set reaches the same branch as "unset" deliberately: a filter that
+  // narrows to nothing would serve zero tools, and for a UX filter that is the
+  // one failure a client cannot distinguish from a broken server.
+  const selected = features?.toolsets?.size ? features.toolsets : undefined
   const domainTools = toolDomainCatalog
     .filter((registration) => !registration.gate || features?.[registration.gate])
+    .filter((registration) => !selected || selected.has(registration.toolset))
     .flatMap((registration) =>
       registration
         .getTools(canvas, pseudonymizer)
         .map(tagAudience(registration.defaultPrimaryAudience)),
     )
+  // `resolve_pseudonym` belongs to no domain, so the toolset filter — which
+  // selects domains — does not reach it. That is the intended answer rather
+  // than an oversight: it is a server capability rather than a Canvas area, it
+  // is already conditional on the deployer enabling reverse lookup, and
+  // removing it under a narrow toolset would hand a caller pseudonymised names
+  // with no way to resolve them. It still carries `audience: 'educator'`, so
+  // the role filter applies to it exactly as before.
   const conditional = pseudonymizer ? pseudonymTools(pseudonymizer) : []
   const policed = applyDestructiveToolsPolicy(
     [...domainTools, ...conditional].map(tagTitle()),
@@ -183,7 +200,7 @@ export function registerAllTools(
   role?: CanvasRole,
   features?: ToolFeatureFlags,
   toolCallGate?: ToolCallGate,
-): void {
+): ToolDefinition[] {
   // Before the first `registerTool` call, which is what makes `McpServer`
   // install the `tools/list` handler this wraps (issue #341). Installed here
   // rather than in `createCanvasMCPServer` so that every server carrying these
@@ -232,5 +249,12 @@ export function registerAllTools(
   if (toolCallGate && tools.length > 0) {
     installToolCallGateHandler(server, toolCallGate)
   }
+
+  // Returned so a caller can filter *other* surfaces against what was actually
+  // registered instead of re-deriving it. `registerAllPrompts` uses this to
+  // hide a workflow whose tools are not registered (BRU-3128); re-calling
+  // `getAllTools` with the same arguments would work today and drift the day
+  // the two argument lists diverge.
+  return tools
 }
 export { formatError } from './errors'

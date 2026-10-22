@@ -17,6 +17,17 @@ export interface GeneratedSkill {
   audience: ToolAudience
   /** Registered tools with destructiveHint that the body names. Sorted, deduped. */
   writeTools: readonly string[]
+  /**
+   * **Every** registered tool the body names, sorted and deduped — a superset
+   * of {@link writeTools}, derived from the same scan so the two cannot
+   * disagree.
+   *
+   * This is what lets a prompt be hidden when a tool it drives is not
+   * registered (BRU-3128): before it existed only the *destructive* names were
+   * derivable, so a workflow's read tools could not be compared against the
+   * registry at all.
+   */
+  tools: readonly string[]
   /** The markdown body with frontmatter removed, verbatim. */
   body: string
 }

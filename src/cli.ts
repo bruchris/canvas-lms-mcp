@@ -1,6 +1,7 @@
 import { isEnvTruthy } from './env'
 import { DOCTOR_HINT } from './auth/credential-gate'
 import { parseRole } from './tools/roles'
+import { parseToolsets, unknownToolsetWarning, type CanvasToolset } from './tools/toolsets'
 import { parseDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole } from './tools/types'
 import { profileRequiresStaticToken, resolveAuthProfile, type AuthProfile } from './auth/profile'
@@ -42,6 +43,22 @@ export interface CliConfig {
    * an invalid value *of the winning source* stops startup.
    */
   destructiveTools: DestructiveToolsMode
+  /**
+   * Selected toolsets, or `undefined` for the full surface (GH #442 Phase 1).
+   * Resolved from `--toolsets` / `CANVAS_TOOLSETS`; the flag wins when present,
+   * and an unparseable value on the winning source falls back to the full
+   * surface with a warning rather than stopping startup — the opposite of
+   * `destructiveTools`, because a toolset typo fails *open* into more tools,
+   * never into a surface the operator did not ask to lose.
+   */
+  toolsets?: ReadonlySet<CanvasToolset>
+  /**
+   * Operator-declared read-only mode (`--read-only` / `CANVAS_READ_ONLY`).
+   * Registers only `readOnlyHint: true` tools, through the existing
+   * `writeTools: 'block'` policy. Additive and one-way: there is no
+   * `--no-read-only`, and `CANVAS_READ_ONLY=false` is simply not read-only.
+   */
+  readOnly: boolean
   /**
    * Whether this process holds a usable Canvas credential.
    *
@@ -114,6 +131,11 @@ export function parseArgs(args: string[]): CliConfig {
   // Omitting the keys makes the compiler demand them at every `return`, so a
   // resolution cannot be dropped, and leaves no placeholder here that could
   // survive and fail *open*.
+  const envToolsets = parseToolsets(process.env.CANVAS_TOOLSETS)
+  if (envToolsets.unknown.length > 0) {
+    console.warn(unknownToolsetWarning('CANVAS_TOOLSETS', envToolsets.unknown))
+  }
+
   const config: Omit<CliConfig, 'destructiveTools' | 'authProfile' | 'credentials'> = {
     token: process.env.CANVAS_API_TOKEN ?? '',
     baseUrl: process.env.CANVAS_BASE_URL ?? '',
@@ -122,6 +144,11 @@ export function parseArgs(args: string[]): CliConfig {
     allowedOrigin: process.env.CANVAS_ALLOWED_ORIGIN ?? 'http://localhost:3000',
     role: envRole.role,
     enableAssignmentSubmission: isEnvTruthy(process.env.CANVAS_ENABLE_ASSIGNMENT_SUBMISSION),
+    ...(envToolsets.toolsets ? { toolsets: envToolsets.toolsets } : {}),
+    // Permissive parsing is the safe direction here, unlike a kill switch:
+    // every value this accepts turns a restriction *on*, so a stray `TRUE` or
+    // `1` fails closed. Shared with the other opt-in env flags above.
+    readOnly: isEnvTruthy(process.env.CANVAS_READ_ONLY),
   }
 
   /** Set only when `--destructive-tools` appears in argv; `undefined` = no flag. */
@@ -171,6 +198,24 @@ export function parseArgs(args: string[]): CliConfig {
       continue
     }
 
+    // `--toolsets=a,b` and `--toolsets a,b`. A missing value is still fatal
+    // (`takeFlagValue`), because a flag swallowing the next argument would
+    // silently reinterpret it; an unknown *name*, by contrast, only widens the
+    // surface, so it warns and registers everything.
+    const toolsetsValue = takeFlagValue('--toolsets', arg, args, index)
+    if (toolsetsValue !== undefined) {
+      const parsed = parseToolsets(toolsetsValue)
+      if (parsed.unknown.length > 0) {
+        console.warn(unknownToolsetWarning('--toolsets', parsed.unknown))
+      }
+      // The flag is the winning source either way: a valid value overrides the
+      // environment, and an invalid one clears it, mirroring `--role`. Leaving
+      // the env selection in place would serve a surface the operator's own
+      // command line contradicted.
+      config.toolsets = parsed.toolsets
+      continue
+    }
+
     switch (arg) {
       case '--token':
         config.token = args[++index.i] ?? ''
@@ -201,6 +246,9 @@ export function parseArgs(args: string[]): CliConfig {
       }
       case '--enable-assignment-submission':
         config.enableAssignmentSubmission = true
+        break
+      case '--read-only':
+        config.readOnly = true
         break
     }
   }

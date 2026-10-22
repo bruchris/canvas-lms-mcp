@@ -135,15 +135,33 @@ export function parseSkillFile(fileName: string, raw: string): ParsedSkillFile {
  *   silently un-marking `canvas-office-hours` as a workflow that deletes.
  */
 export function collectWriteToolNames(): Set<string> {
+  return new Set(
+    collectRegistryTools()
+      .filter((tool) => tool.annotations.destructiveHint === true)
+      .map((tool) => tool.name),
+  )
+}
+
+/**
+ * The pinned registry both derivations read.
+ *
+ * No pseudonymizer is passed, so `resolve_pseudonym` is deliberately absent:
+ * it is conditional on a deployer enabling reverse lookup, not on anything a
+ * skill can know, so a body naming it must stay inert text rather than become
+ * a requirement that hides the workflow from every other deployment.
+ */
+function collectRegistryTools() {
   // Throwing probe, shared with manifest generation: building a ToolDefinition
   // must not touch Canvas, and a permissive proxy would hide it if one did.
-  const tools = getAllTools(createRegistryProbeClient('Prompt generation'), undefined, undefined, {
+  return getAllTools(createRegistryProbeClient('Prompt generation'), undefined, undefined, {
     assignmentSubmission: true,
     destructiveTools: 'allow',
   })
-  return new Set(
-    tools.filter((tool) => tool.annotations.destructiveHint === true).map((tool) => tool.name),
-  )
+}
+
+/** Every registered tool name, under the same pinning as {@link collectWriteToolNames}. */
+export function collectAllToolNames(): Set<string> {
+  return new Set(collectRegistryTools().map((tool) => tool.name))
 }
 
 /**
@@ -155,12 +173,28 @@ export function collectWriteToolNames(): Set<string> {
  * normal content, not drift.
  */
 export function deriveWriteTools(body: string, writeToolNames: ReadonlySet<string>): string[] {
+  return deriveNamedTools(body, writeToolNames)
+}
+
+/**
+ * Registered tool names a skill body names, sorted and deduped.
+ *
+ * Unresolvable identifiers are ignored on purpose. Three skills deliberately
+ * name tools that do not exist — "there is no `list_discussion_entries` tool" —
+ * to steer the model away from them, so an identifier that does not resolve is
+ * normal content, not drift.
+ *
+ * One scan, two outputs: `writeTools` and `tools` differ only in the set they
+ * are filtered against, so one cannot pick up an identifier the other misses.
+ */
+export function deriveNamedTools(body: string, knownNames: ReadonlySet<string>): string[] {
   const ticked = new Set([...body.matchAll(/`([a-z][a-z0-9_]*)`/g)].map((match) => match[1]!))
-  return [...ticked].filter((name) => writeToolNames.has(name)).sort()
+  return [...ticked].filter((name) => knownNames.has(name)).sort()
 }
 
 export function buildGeneratedSkills(skillsDir = resolve('skills')): GeneratedSkill[] {
   const writeToolNames = collectWriteToolNames()
+  const allToolNames = collectAllToolNames()
   return readdirSync(skillsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
@@ -181,7 +215,8 @@ export function buildGeneratedSkills(skillsDir = resolve('skills')): GeneratedSk
         description: parsed.description,
         argumentNames: parsed.argumentNames,
         audience: parsed.audience,
-        writeTools: deriveWriteTools(parsed.body, writeToolNames),
+        writeTools: deriveNamedTools(parsed.body, writeToolNames),
+        tools: deriveNamedTools(parsed.body, allToolNames),
         body: parsed.body,
       }
     })

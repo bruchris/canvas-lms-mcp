@@ -36,16 +36,25 @@ function describeArguments(skill: GeneratedSkill): PromptArgumentDescriptor[] {
  * `isAudienceVisibleForRole` predicate and the same visibility table
  * `getAllTools` applies to a tool's audience. That is the whole of it.
  *
- * It deliberately does *not* check the tools a skill body names, so it cannot
- * promise that every tool a visible workflow reaches is itself visible. Two
- * reasons it is not implemented: `GeneratedSkill` only derives the body's
- * *destructive* tools (`writeTools`), so the read tools a body names are not
- * available to compare at all; and a skill whose own audience were narrowed to
- * the intersection of its tools' audiences would disappear from roles the skill
- * is written for. Today no visible skill names a write tool its role cannot see
- * — measured across student/teacher/admin, 0 mismatches — but nothing enforces
- * that, and a skill tagged `shared` or `student` that reached an educator-only
- * tool would be visible anyway.
+ * ~~It deliberately does *not* check the tools a skill body names~~ —
+ * superseded 2026-10-22 (BRU-3128). It now also drops any skill that names a
+ * registered tool which is **not** in `availableToolNames`, which is how
+ * "no prompt advertises a tool this server does not serve" holds across every
+ * narrowing control at once: toolsets, read-only, the destructive gate, the
+ * opt-in domain gates, and role. One mechanism rather than one per control,
+ * and derived from the set actually registered rather than a parallel map.
+ *
+ * The original objection — that narrowing a skill to the intersection of its
+ * tools' audiences would make it disappear from roles it is written for — was
+ * measured rather than inherited: across student/teacher/admin, 0 of the 30
+ * visible skills name a registered tool their role cannot see, and no skill
+ * names either default-off submission tool. So the default and all three role
+ * surfaces are unchanged, and the filter bites only when an operator asks for
+ * a narrower surface.
+ *
+ * Omitting `availableToolNames` skips the tool check entirely, which is what
+ * keeps `buildPromptDefinitions()` usable as "every skill" for the docs and
+ * count tests.
  *
  * Like the tool filter, this is UX and context reduction, not a security
  * boundary: Canvas enforces permissions server-side, and a prompt is inert text.
@@ -54,9 +63,13 @@ function describeArguments(skill: GeneratedSkill): PromptArgumentDescriptor[] {
 export function buildPromptDefinitions(
   role?: CanvasRole,
   skills: readonly GeneratedSkill[] = GENERATED_SKILLS,
+  availableToolNames?: ReadonlySet<string>,
 ): PromptDefinition[] {
   return skills
     .filter((skill) => !role || isAudienceVisibleForRole(skill.audience, role))
+    .filter(
+      (skill) => !availableToolNames || skill.tools.every((name) => availableToolNames.has(name)),
+    )
     .map((skill) => ({
       name: skill.name,
       title: skill.title,

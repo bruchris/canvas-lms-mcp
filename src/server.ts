@@ -6,6 +6,8 @@ import { isEnvTruthy } from './env'
 import { registerAllTools } from './tools'
 import type { CanvasRole, ToolFeatureFlags, WriteToolsMode } from './tools/types'
 import { resolveDestructiveToolsMode, type DestructiveToolsMode } from './tools/destructive-policy'
+import { resolveWriteToolsMode } from './tools/write-policy'
+import type { CanvasToolset } from './tools/toolsets'
 import type { ToolCallGate } from './auth/credential-gate'
 import { registerAllResources } from './resources'
 import { registerAllPrompts } from './prompts'
@@ -88,6 +90,28 @@ export interface CanvasMCPServerConfig {
    * Unset = `allow`, today's behaviour.
    */
   writeTools?: WriteToolsMode
+  /**
+   * Opt-in toolset selection (GH #442 Phase 1, BRU-3128). When set, only tool
+   * domains in one of these toolsets are registered, and any prompt whose
+   * workflow names a tool that is consequently absent is not advertised.
+   *
+   * Intersects with {@link role} rather than overriding it, and narrows only:
+   * unset — and an empty set — register every tool, today's behaviour
+   * byte-for-byte. Set from `CANVAS_TOOLSETS` / `--toolsets` /
+   * `X-Canvas-Toolsets`; a UX filter, never an authority change.
+   */
+  toolsets?: ReadonlySet<CanvasToolset>
+  /**
+   * Operator-declared read-only mode (`CANVAS_READ_ONLY` / `--read-only`,
+   * GH #442 Phase 1). Registers only tools with `readOnlyHint: true`, via the
+   * same `writeTools: 'block'` path the OAuth profile already uses — no new
+   * filtering mechanism, just an operator-facing way to reach the existing one.
+   *
+   * A floor, so it composes safely with {@link writeTools}: whichever source
+   * says `block` wins, and a caller's `canvas:write` scope cannot widen a
+   * server the operator started read-only.
+   */
+  readOnly?: boolean
   /**
    * When set, **every** tool call returns this gate message instead of
    * running — before any argument is read and before any network I/O.
@@ -181,20 +205,47 @@ export function createCanvasMCPServer(config: CanvasMCPServerConfig): CanvasMCPS
     version,
   })
 
+  // `block` from either source wins, so an operator's read-only floor cannot be
+  // widened by a caller credential that carries write scope. Resolved once:
+  // `undefined` means neither source narrows, and the key then stays absent so
+  // the default is reached exactly as it is today rather than by an explicit
+  // `'allow'`.
+  const writeTools = resolveWriteToolsMode({
+    readOnly: config.readOnly,
+    scopeAllowsWrite: config.writeTools === undefined ? undefined : config.writeTools === 'allow',
+  })
+
   const features: ToolFeatureFlags = {
     assignmentSubmission: config.enableAssignmentSubmission,
     destructiveTools: resolveDestructiveToolsMode(
       config.destructiveTools,
       process.env.CANVAS_DESTRUCTIVE_TOOLS,
     ),
-    ...(config.writeTools ? { writeTools: config.writeTools } : {}),
+    ...(writeTools ? { writeTools } : {}),
+    ...(config.toolsets ? { toolsets: config.toolsets } : {}),
   }
-  registerAllTools(server, canvas, pseudonymizer, config.role, features, config.toolCallGate)
+  const registeredTools = registerAllTools(
+    server,
+    canvas,
+    pseudonymizer,
+    config.role,
+    features,
+    config.toolCallGate,
+  )
   registerAllResources(server, canvas)
-  // The 16 Agent Skills, served as MCP prompts so a host without a skill-file
+  // The Agent Skills, served as MCP prompts so a host without a skill-file
   // loader can still discover the Canvas workflows. Inert templates the user
   // chooses: this adds no tool authority the caller did not already have.
-  registerAllPrompts(server, config.role)
+  //
+  // Filtered against the tools actually registered above, so a narrowed surface
+  // never advertises a workflow whose tools are absent. With no narrowing
+  // control set this is the full registry, so the prompt list is unchanged.
+  registerAllPrompts(
+    server,
+    config.role,
+    undefined,
+    new Set(registeredTools.map((tool) => tool.name)),
+  )
 
   return { server, canvas, pseudonymizer }
 }

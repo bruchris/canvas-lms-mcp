@@ -20,6 +20,15 @@ directories can read its tool list, but then every tool call fails):
   --token <t>         Canvas API token (or CANVAS_API_TOKEN)
   --base-url <u>      Canvas base URL, origin only (or CANVAS_BASE_URL)
 
+Tool surface (all opt-in; with none set, every tool and prompt is registered):
+  --toolsets <list>   Comma-separated Canvas areas (or CANVAS_TOOLSETS):
+                      core, grading, quizzes, people, communication,
+                      outcomes, course_ops, account, student. "all" = no filter
+  --read-only         Register only read-only tools (or CANVAS_READ_ONLY)
+  --role <r>          student | teacher | admin (or CANVAS_ROLE)
+  --destructive-tools=<mode>
+                      allow (default) or block (or CANVAS_DESTRUCTIVE_TOOLS)
+
 Options:
   -h, --help          Show this help and exit
 `

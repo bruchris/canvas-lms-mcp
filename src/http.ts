@@ -5,6 +5,7 @@ import { createCanvasMCPServer } from './server'
 import { parseArgs } from './cli'
 import { isEnvTruthy } from './env'
 import { parseRole } from './tools/roles'
+import { parseToolsets, type CanvasToolset } from './tools/toolsets'
 import type { DestructiveToolsMode } from './tools/destructive-policy'
 import type { CanvasRole, WriteToolsMode } from './tools/types'
 import { AuthorizationServer } from './auth/oauth/authorization-server'
@@ -32,6 +33,14 @@ export interface HttpHandlerConfig {
   role?: CanvasRole
   enableAssignmentSubmission?: boolean
   destructiveTools?: DestructiveToolsMode
+  /** Selected toolsets, or undefined for the full surface. Overridable per request by `X-Canvas-Toolsets`. */
+  toolsets?: ReadonlySet<CanvasToolset>
+  /**
+   * Operator-declared read-only mode. A floor: it is applied on top of
+   * whatever the caller's OAuth scopes allow, so a token carrying
+   * `canvas:write` cannot widen a server started read-only.
+   */
+  readOnly?: boolean
   /**
    * Defaults to `remote_static_token`, today's behaviour: the Canvas token
    * arrives in `X-Canvas-Token` or is the configured default. Documented as
@@ -173,7 +182,7 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Canvas-Token, X-Canvas-Role, Mcp-Protocol-Version',
+      'Content-Type, Authorization, X-Canvas-Token, X-Canvas-Role, X-Canvas-Toolsets, Mcp-Protocol-Version',
     )
     res.setHeader('Access-Control-Expose-Headers', 'Mcp-Protocol-Version, WWW-Authenticate')
 
@@ -269,6 +278,25 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
       }
     }
 
+    // Per-request toolsets: same precedence and same fallback as `X-Canvas-Role`
+    // above. A header naming an unknown toolset falls back to the *configured*
+    // selection rather than to the full surface, because the typo is the
+    // client's and the operator's own configuration is the better default —
+    // widening to everything here would let a misconfigured client reveal a
+    // surface the operator deliberately narrowed.
+    let toolsets = defaultConfig.toolsets
+    const rawToolsets = firstHeader(req, 'x-canvas-toolsets')
+    if (rawToolsets !== undefined && rawToolsets.trim() !== '') {
+      const parsed = parseToolsets(rawToolsets)
+      if (parsed.unknown.length > 0) {
+        console.warn(
+          `Unknown X-Canvas-Toolsets value(s) '${parsed.unknown.join("', '")}'; falling back to the configured toolsets.`,
+        )
+      } else {
+        toolsets = parsed.toolsets
+      }
+    }
+
     // `!pseudonymizer` is equivalent to `!baseUrl` today; asserting it here
     // narrows the type so the `createCanvasMCPServer` call below cannot fall
     // back to the factory's own non-shared default.
@@ -298,6 +326,8 @@ export function createHttpHandler(defaultConfig: HttpHandlerConfig) {
       // client can do, so letting the client pick the mode would defeat it.
       destructiveTools: defaultConfig.destructiveTools,
       ...(writeTools ? { writeTools } : {}),
+      ...(toolsets ? { toolsets } : {}),
+      readOnly: defaultConfig.readOnly,
     })
 
     try {
@@ -395,6 +425,8 @@ async function main() {
       role: config.role,
       enableAssignmentSubmission: config.enableAssignmentSubmission,
       destructiveTools: config.destructiveTools,
+      toolsets: config.toolsets,
+      readOnly: config.readOnly,
       authProfile: oauthProfile ? 'oauth_brokered' : 'remote_static_token',
       ...(oauthProfile ? { oauth: config.oauth, oauthStore } : {}),
     }),

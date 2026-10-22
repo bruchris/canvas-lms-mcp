@@ -317,6 +317,8 @@ const courses = await canvas.courses.list()
 | `--issuer` | `CANVAS_MCP_ISSUER` | (required in `oauth_brokered`) | Public URL of this server; OAuth issuer and resource prefix |
 | `doctor` | -- | -- | Print an identity-safe setup report (also `auth status`); exit 1 when something is missing |
 | `--role` | `CANVAS_ROLE` | (all tools) | Filter tools by Canvas role: `student`, `teacher`, or `admin` (see [Role-based tool filtering](#role-based-tool-filtering)) |
+| `--toolsets <list>` | `CANVAS_TOOLSETS` | (all tools) | Comma-separated Canvas areas to expose: `core`, `grading`, `quizzes`, `people`, `communication`, `outcomes`, `course_ops`, `account`, `student` (see [Toolset filtering](#toolset-filtering)) |
+| `--read-only` | `CANVAS_READ_ONLY` | `false` | Register only `readOnlyHint` tools (see [Read-only mode](#read-only-mode)) |
 | `--destructive-tools=<mode>` | `CANVAS_DESTRUCTIVE_TOOLS` | `allow` | `allow` or `block`. `block` unregisters the twelve irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 
 ## Environment Variables
@@ -344,6 +346,8 @@ const courses = await canvas.courses.list()
 | `CANVAS_PSEUDONYM_DIR` | No | Absolute path that overrides the default pseudonym map directory |
 | `CANVAS_PSEUDONYM_AUDIT_LOG` | No | Path to an append-only file that mirrors `resolve_pseudonym` audit lines (stderr is always written) |
 | `CANVAS_PROVENANCE_FENCING` | No | **On by default.** Set to exactly `false` to disable [provenance fencing](#provenance-fencing-untrusted-canvas-content) |
+| `CANVAS_TOOLSETS` | No | Comma-separated Canvas areas to expose; unset or `all` exposes every tool (see [Toolset filtering](#toolset-filtering)) |
+| `CANVAS_READ_ONLY` | No | Set truthy to register only `readOnlyHint` tools (see [Read-only mode](#read-only-mode)) |
 | `CANVAS_DESTRUCTIVE_TOOLS` | No | `allow` (default) or `block`. Set to exactly `block` to unregister the twelve irreversible delete tools (see [Destructive tool policy](#destructive-tool-policy)) |
 | `CANVAS_STRING_IDS` | No | **Off by default.** Set to exactly `true` to request Canvas identifiers as JSON strings instead of numbers (see [64-bit Canvas identifiers](#64-bit-canvas-identifiers-opt-in-string-ids)) |
 
@@ -584,6 +588,70 @@ Notes:
 - Tool counts above are a snapshot and grow as tools are added — the authoritative guarantee is that every tool resolves to exactly one audience (enforced by `tests/tools/audience-coverage.test.ts`).
 
 Design rationale in [BRU-1530](https://github.com/bruchris/canvas-lms-mcp) (role taxonomy, why three roles, auto-detect deferred to v2).
+
+## Toolset filtering
+
+Where a role answers *who is calling*, a toolset answers *what they are here to do*. Selecting one or more narrows the tool list to whole Canvas areas, which is the cheaper lever when a client's context budget is the constraint. Like roles this is a **client-side UX / context-reduction filter only** — asking for a toolset grants nothing, and Canvas still enforces permissions server-side.
+
+```bash
+# stdio: env var or --toolsets flag (flag wins)
+CANVAS_TOOLSETS=grading canvas-lms-mcp --base-url https://school.instructure.com
+canvas-lms-mcp --base-url https://school.instructure.com --toolsets core,grading
+```
+
+Nine toolsets, plus the default of "unset = every tool". Every tool domain belongs to exactly **one** of them, so a selection is a partition rather than a set of overlapping tags:
+
+| `CANVAS_TOOLSETS` | Covers |
+|-------------------|--------|
+| _(unset, or `all`)_ | every tool — the default, backwards-compatible surface |
+| `core` | courses, assignments, modules, pages, files, health check |
+| `grading` | submissions, rubrics, peer reviews, gradebook history, grade explanation and projection, analytics |
+| `quizzes` | Classic and New Quizzes, quiz responses, quiz accommodations |
+| `people` | users, groups, enrollments, cross-course student search |
+| `communication` | discussions, announcements, conversations |
+| `outcomes` | outcomes, outcome groups, rollups, mastery |
+| `course_ops` | course setup, content exports and migrations, calendar, appointment groups, link and accessibility audits |
+| `account` | account and sub-account administration |
+| `student` | the caller-is-a-student surface: my courses, grades, submissions, planner, dashboard |
+
+Notes:
+
+- **Counts are derived, not documented.** `docs/generated/tool-manifest.json` carries a `toolset` field on every entry (schema 1.2), so the exact surface for any selection is computable from the generated artifact instead of a number in this file that can go stale.
+- Values are **case-insensitive**, comma-separated, and union together: `--toolsets core,grading` exposes both.
+- `all` is an explicit "no filter", accepted anywhere in the list.
+- **An unrecognised name discards the whole selection**, logs a warning to stderr, and registers all tools. A typo therefore fails towards *more* tools, never towards a narrower surface than you asked for — the one outcome a misconfigured client cannot detect from the result. (Same rule as `CANVAS_ROLE`.)
+- **Prompts are filtered to match.** A workflow that names a tool this server did not register is not advertised, so no prompt points the model at a tool it cannot call. Most workflows span two to four toolsets, so a single narrow selection can leave **no** prompts at all — the server then declares no `prompts` capability, rather than advertising an empty list. Select the toolsets a workflow needs (for example `core,grading` for `canvas-grading-pass`) to keep it.
+- **HTTP transport:** read per request from the `X-Canvas-Toolsets` header, falling back to `CANVAS_TOOLSETS` from the server config. A valid header (or `all`) overrides the configured default; an invalid header is ignored with a warning and the configured selection is kept.
+
+## Read-only mode
+
+`CANVAS_READ_ONLY=true` (or `--read-only`) registers only tools annotated `readOnlyHint: true`. Nothing that writes to Canvas is registered at all, so there is no write handler for a model to reach.
+
+```bash
+CANVAS_READ_ONLY=true canvas-lms-mcp --base-url https://school.instructure.com
+canvas-lms-mcp --base-url https://school.instructure.com --read-only
+```
+
+- This is not a new mechanism: it exposes the write-tool policy the OAuth profile already applies to a token without the `canvas:write` scope.
+- **It is a floor.** On the OAuth HTTP profile it is applied on top of the caller's scopes, so a token that carries `canvas:write` cannot widen a server the operator started read-only. A scope-blocked token still blocks exactly as before.
+- Server configuration only — there is deliberately **no** request header, for the same reason `CANVAS_DESTRUCTIVE_TOOLS` has none: a client that could pick the value could switch the restriction off.
+- `false`, `0`, `off`, `no` and unset all preserve the default write surface. The flag is one-way; there is no `--no-read-only`.
+- Write workflows are hidden from `prompts/list` too, since their tools are absent.
+
+## How the four tool-surface filters compose
+
+All four are **opt-in**. With none of them set, the registered surface is every tool and every prompt — the default this package has always shipped.
+
+| Control | Selects by | Narrows to | Client-overridable (HTTP)? | Real boundary? |
+|---------|-----------|-----------|---------------------------|----------------|
+| `CANVAS_ROLE` | who is calling | audiences that role can see | yes, `X-Canvas-Role` | no — UX filter |
+| `CANVAS_TOOLSETS` | what they are doing | domains in the selected toolsets | yes, `X-Canvas-Toolsets` | no — UX filter |
+| `CANVAS_READ_ONLY` | operator policy | `readOnlyHint: true` tools | no | yes — handler never registered |
+| `CANVAS_DESTRUCTIVE_TOOLS=block` | operator policy | drops the twelve irreversible deletes | no | yes — handler never registered |
+
+They **intersect**, in that order of concern: a tool is registered only if every active control admits it. So no control can add back a tool another removed, and the surface can only ever shrink as you add controls. The two client-overridable filters narrow what a caller sees; the two operator policies bound what any caller can do, which is why neither has a header.
+
+Prompts follow the result rather than being filtered separately: a workflow is advertised only when every tool it names survives all four.
 
 ## Development
 
