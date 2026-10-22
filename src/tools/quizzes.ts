@@ -9,7 +9,16 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'list_quizzes',
       title: 'List Quizzes',
       audience: 'shared',
-      description: 'List all quizzes in a course.',
+      description:
+        'List every quiz row in a course, including the New Quiz stub Canvas mixes into the ' +
+        'same list (quiz_type: quizzes.next, with no question or submission detail of its own). ' +
+        'Use quiz_type to tell Classic Quizzes (assignment, practice_quiz, graded_survey, ' +
+        "survey) apart from New Quizzes, and list_new_quiz_items for a New Quiz's actual " +
+        "questions. Returns each quiz's title, quiz_type, points_possible, question_count, " +
+        'due_at and published state. Use get_quiz to fetch one quiz by ID, list_quiz_questions ' +
+        'for its fixed questions, and list_quiz_submissions for student attempts. Fetches every ' +
+        "page (100 per request) and fails with a 'Results are incomplete' error instead of " +
+        'silently truncating.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -26,7 +35,13 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'get_quiz',
       title: 'Get Quiz',
       audience: 'shared',
-      description: 'Get details for a single quiz by ID.',
+      description:
+        'Get one quiz by ID, found with list_quizzes. If the ID belongs to a New Quiz, Canvas ' +
+        'returns only its stub row (quiz_type: quizzes.next) — use list_new_quiz_items for the ' +
+        'actual question content. Returns title, quiz_type, points_possible, question_count, ' +
+        'due_at, published state, and assignment_id (the graded assignment Canvas created for ' +
+        'this quiz; null for an ungraded survey or practice quiz). Use list_quiz_questions for ' +
+        "a Classic quiz's fixed questions and list_quiz_submissions for student attempts.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         quiz_id: canvasIdInput().describe('The Canvas quiz ID'),
@@ -44,7 +59,15 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_quiz_submissions',
       title: 'List Quiz Submissions',
-      description: 'List all submissions for a quiz.',
+      description:
+        "List every submission (one row per student's attempt history) for a Classic quiz, " +
+        "including each submission's score, kept_score, workflow_state, and any extra_time / " +
+        'extra_attempts accommodation Canvas has recorded for that student. Find the quiz_id ' +
+        "with list_quizzes or get_quiz. To see a submission's actual answers, use " +
+        'get_quiz_submission_answers for an in-progress attempt or get_quiz_question_responses ' +
+        'for a submitted one; to change a score use score_quiz_question. Fetches every page ' +
+        "(100 per request) and fails with a 'Results are incomplete' error instead of silently " +
+        'truncating.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         quiz_id: canvasIdInput().describe('The Canvas quiz ID'),
@@ -62,7 +85,16 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_quiz_questions',
       title: 'List Quiz Questions',
-      description: 'List all questions in a quiz.',
+      description:
+        'List the fixed questions defined on a Classic quiz — id, position, question_text, ' +
+        "question_type, points_possible, and answers — in quiz order. This is the quiz's " +
+        'static question list only: it does not include the generated questions Canvas serves ' +
+        'per attempt when a question-bank draw is configured, and it carries no student answer ' +
+        'data. Find the quiz_id with list_quizzes or get_quiz. Use get_quiz_question_responses ' +
+        'to see what each student was actually served and answered, including bank-drawn ' +
+        'questions, and score_quiz_question to grade an answer. Fetches every page (100 per ' +
+        "request) and fails with a 'Results are incomplete' error instead of silently " +
+        'truncating.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         quiz_id: canvasIdInput().describe('The Canvas quiz ID'),
@@ -102,7 +134,14 @@ export function quizTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'score_quiz_question',
       title: 'Score Quiz Question',
       description:
-        'Score a specific question in a quiz submission. Specify attempt to score a particular attempt (omit for latest). Requires grading permissions.',
+        "Set the score and an optional feedback comment for one question in one student's " +
+        'Classic quiz submission, overwriting any existing score for that question on the ' +
+        "chosen attempt — it replaces the question's recorded score rather than adding to it, " +
+        'so calling again with the same score and comment leaves the submission unchanged. ' +
+        'Omit attempt to score the latest attempt. Find submission_id with ' +
+        'list_quiz_submissions and question_id with list_quiz_questions or ' +
+        'get_quiz_question_responses. Returns { success: true }; Canvas does not hand back the ' +
+        'updated submission to this endpoint. Requires grading permission in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         quiz_id: canvasIdInput().describe('The Canvas quiz ID'),
