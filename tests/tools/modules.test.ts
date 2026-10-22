@@ -70,6 +70,51 @@ describe('moduleTools', () => {
     ])
   })
 
+  describe('description quality (BRU-3094)', () => {
+    // Guards against the six Glama-flagged tools regressing to a one-line
+    // CRUD restatement; semantic checks only, no brittle full-prose
+    // snapshots. The mechanical floor is also enforced by the
+    // description-quality.test.ts CI ratchet now that these six are no
+    // longer in the baseline.
+    const REWRITTEN_WRITE_TOOLS = new Set(['create_module', 'update_module', 'create_module_item'])
+
+    it.each([
+      'list_modules',
+      'get_module',
+      'list_module_items',
+      'create_module',
+      'update_module',
+      'create_module_item',
+    ])('%s names a registered sibling tool and clears the length floor', (name) => {
+      const tools = moduleTools(buildMockCanvas())
+      const names = new Set(tools.map((t) => t.name))
+      const tool = tools.find((t) => t.name === name)!
+      const minLen = REWRITTEN_WRITE_TOOLS.has(name) ? 200 : 150
+      expect(tool.description.length).toBeGreaterThanOrEqual(minLen)
+      const mentionsSibling = [...names].some(
+        (sibling) => sibling !== name && tool.description.includes(sibling),
+      )
+      expect(mentionsSibling).toBe(true)
+    })
+
+    it('list tools state pagination behavior', () => {
+      const tools = moduleTools(buildMockCanvas())
+      for (const name of ['list_modules', 'list_module_items']) {
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description).toMatch(/every page|pagin|truncat/i)
+      }
+    })
+
+    it('write tools state their return value and required permission', () => {
+      const tools = moduleTools(buildMockCanvas())
+      for (const name of REWRITTEN_WRITE_TOOLS) {
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description).toMatch(/\breturns?\b/i)
+        expect(tool.description).toMatch(/requires?|permission/i)
+      }
+    })
+  })
+
   describe('list_modules', () => {
     it('has read-only annotations', () => {
       const tool = moduleTools(buildMockCanvas()).find((t) => t.name === 'list_modules')!
