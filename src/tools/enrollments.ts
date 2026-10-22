@@ -58,9 +58,10 @@ export function enrollmentTools(
         'Optional `type`, `state`, and `role` filters and the `include` array mirror ' +
         "Canvas's own `GET /users/self/enrollments` endpoint. Fetches every page (100 per " +
         "request) and fails with a 'Results are incomplete' error instead of silently " +
-        "truncating. When pseudonymization is enabled, each enrollment's nested `user` " +
-        "object is replaced with that course's pseudonym and `sis_user_id` is cleared " +
-        'before the result is returned.',
+        'truncating. When pseudonymization is enabled, each enrollment classified as ' +
+        "student or unknown has its nested `user` object replaced with that course's " +
+        'pseudonym and `sis_user_id` cleared before the result is returned; staff ' +
+        'enrollments (TeacherEnrollment, TaEnrollment, DesignerEnrollment) are left as-is.',
       inputSchema: {
         type: z
           .array(z.enum(ENROLLMENT_TYPE))
@@ -161,9 +162,10 @@ export function enrollmentTools(
       name: 'enroll_user',
       title: 'Enroll User',
       description:
-        'Enroll a user in a course with a given role (Student, Teacher, Ta, Observer, or ' +
-        'DesignerEnrollment) and return the created enrollment object, including its `id` ' +
-        'and `enrollment_state`. Use `list_course_enrollments` with a `user_id` filter to ' +
+        'Enroll a user in a course with a given role (StudentEnrollment, TeacherEnrollment, ' +
+        'TaEnrollment, ObserverEnrollment, or DesignerEnrollment) and return the created ' +
+        'enrollment object, including its `id` and `enrollment_state`. Use ' +
+        '`list_course_enrollments` with a `user_id` filter to ' +
         "check a user's existing enrollments before enrolling them again, and " +
         '`remove_enrollment` to conclude, deactivate, or permanently delete this ' +
         'enrollment afterward — `enroll_user` itself has no way to undo what it creates. ' +
