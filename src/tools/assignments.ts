@@ -143,7 +143,7 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Get Assignment',
       audience: 'shared',
       description:
-        'Get details for a single assignment by ID. Use `include` to request submission, overrides, all_dates, score_statistics, and other optional fields.',
+        'Get the full assignment record for one assignment by ID, including every `include` extra requested. Get the assignment_id from list_assignments, which also supports fields="slim" for scanning many assignments before fetching one here in full. `include` adds submission (the current user\'s own), assignment_visibility, overrides, observed_users, can_edit, and score_statistics — each omitted from the response unless requested.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
@@ -323,7 +323,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'update_assignment',
       title: 'Update Assignment',
-      description: 'Update an existing assignment in a course.',
+      description:
+        "Update an existing assignment in a course, changing only the fields you pass — anything omitted keeps its current value — and return the updated assignment object. Calling this again with the same arguments leaves the assignment in the same state, unlike create_assignment, which always makes a new one; use delete_assignment to remove this assignment instead. due_at, lock_at, and unlock_at set here apply to every student without an override; use create_assignment_override for a different date for one section, group, or set of students, or set_student_assignment_dates to fan one student's date change across many assignments at once. lock_at must stay after due_at and unlock_at before due_at when both are set. Requires instructor/TA permission to manage assignments and quizzes in the course.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
@@ -390,7 +391,8 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'delete_assignment',
       title: 'Delete Assignment',
-      description: 'Delete an assignment from a course. This action is permanent.',
+      description:
+        'Permanently delete an assignment from a course; this cannot be undone. Returns no assignment object, only an acknowledgement that the deletion succeeded. Use update_assignment instead to change the assignment rather than remove it, or create_assignment afterward to make a new one — Canvas assigns it a new ID rather than reusing the deleted one. Requires instructor/TA permission to manage assignments and quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID to delete'),

@@ -91,7 +91,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_files',
       title: 'List Files',
-      description: 'List all files in a course.',
+      description:
+        "List every file in a course's Files area, returning metadata only — name, size, content type, folder_id, and the Canvas-hosted download URL — not the file's content. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use download_file to fetch a file's actual content, get_file to refetch a single file's metadata by ID, list_folders for the folder tree these files sit in, and find_duplicate_files to spot same-name-and-size copies left over from course copies.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -107,7 +108,8 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'list_folders',
       title: 'List Folders',
-      description: 'List all folders in a course.',
+      description:
+        "List every folder in a course's Files area, including each folder's name, full path, parent_folder_id, and file/subfolder counts, but not the files or subfolders inside each one. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use list_files to see the files inside a folder, and upload_file's `parent_folder_path` to place a file in — and implicitly create — a folder path that doesn't exist yet; Canvas creates any missing segment along the way rather than requiring it to already exist.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -143,7 +145,7 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       title: 'Upload File',
       audience: 'educator',
       description:
-        'Upload a file to a course. Content must be base64-encoded. Canvas performs a multi-step upload internally.',
+        "Upload a new file to a course's Files area from base64-encoded content, and return the created file object (id, display_name, size, content_type, download url). Each call performs a new upload; check list_files first if you want to avoid creating a duplicate, and use delete_file to remove a file afterward. Canvas handles the upload as a multi-step hand-off to its storage backend (S3 or local Canvas storage), transparent to the caller. `parent_folder_path` places the file in that folder, creating any missing folder segment along the way; see list_folders for what already exists. Requires permission to manage files in the course.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         name: z.string().describe('File name including extension'),
@@ -171,12 +173,14 @@ export function fileTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'delete_file',
       title: 'Delete File',
       audience: 'educator',
-      description: 'Delete a file by ID. This action is permanent.',
+      description:
+        'Permanently delete a file by ID, and return the deleted file object (its last known metadata) — the content is gone and there is no undelete. Use upload_file to put a replacement back afterward; Canvas assigns the new file a different ID rather than reusing the deleted one. Requires permission to manage files in the course.',
       inputSchema: {
         file_id: canvasIdInput().describe('The Canvas file ID'),
       },
       annotations: {
         destructiveHint: true,
+        idempotentHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {

@@ -153,7 +153,11 @@ describe('fileTools', () => {
   describe('delete_file', () => {
     it('has destructive annotations', () => {
       const tool = fileTools(buildMockCanvas()).find((t) => t.name === 'delete_file')!
-      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
     })
 
     it('delegates to canvas.files.delete and returns the deleted file', async () => {
