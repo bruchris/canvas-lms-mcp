@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.4](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.3...canvas-lms-mcp-v2.8.4) (2026-10-22)
+
+
+### Documentation
+
+* **tools:** rewrite Modules TDQS descriptions and sibling routing ([#455](https://github.com/bruchris/canvas-lms-mcp/issues/455)) ([7637a2e](https://github.com/bruchris/canvas-lms-mcp/commit/7637a2e5155ba21d7ebef0fb84fcca9de2b86bdc))
+
 ## [2.8.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.2...canvas-lms-mcp-v2.8.3) (2026-10-21)
 
 
