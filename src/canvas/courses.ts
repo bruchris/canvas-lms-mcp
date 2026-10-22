@@ -1,6 +1,11 @@
 import type { CanvasHttpClient } from './client'
 import type { CanvasQueryParams } from './query'
-import type { CanvasCourse, CreateCourseParams, UpdateCourseParams } from './types'
+import type {
+  CanvasCourse,
+  CanvasCourseSection,
+  CreateCourseParams,
+  UpdateCourseParams,
+} from './types'
 import type { CanvasId } from './id'
 
 export type CourseEnrollmentState = 'active' | 'invited_or_pending' | 'completed'
@@ -47,6 +52,24 @@ export interface GetCourseOptions {
   teacher_limit?: number
 }
 
+/**
+ * `include[]` values `SectionsController#index` documents.
+ *
+ * `students`, `enrollments` and `avatar_url` are deliberately absent: the first
+ * makes Canvas embed a capped list of `User` objects in every section (student
+ * names, and avatar URLs when `avatar_url` rides along), and this server has a
+ * dedicated, pseudonymized roster surface already (`list_course_users` /
+ * `list_students`). `passback_status` is omitted as SIS grade-passback plumbing
+ * unrelated to the section-identification job this tool exists for.
+ */
+export type CourseSectionInclude = 'total_students' | 'permissions'
+
+export interface ListCourseSectionsOptions {
+  include?: ReadonlyArray<CourseSectionInclude>
+  /** Canvas requires at least 2 characters; shorter terms are ignored, not an error. */
+  search_term?: string
+}
+
 const DEFAULT_LIST_INCLUDE: ReadonlyArray<CourseListInclude> = ['term']
 const DEFAULT_GET_INCLUDE: ReadonlyArray<CourseGetInclude> = ['term', 'total_students']
 
@@ -70,6 +93,26 @@ export class CoursesModule {
     const query: CanvasQueryParams = { include }
     if (opts.teacher_limit !== undefined) query.teacher_limit = opts.teacher_limit
     return this.client.request<CanvasCourse>(`/api/v1/courses/${courseId}`, { query })
+  }
+
+  /**
+   * `GET /api/v1/courses/:course_id/sections` — a paginated, flat array of
+   * `Section` objects (no root envelope).
+   *
+   * `SectionsController#index` nulls `params[:include]` entirely unless the
+   * caller holds one of `:read_roster`, `:view_all_grades` or `:manage_grades`
+   * on the course, so a caller with only `:read` gets the base section fields
+   * whatever is requested here — the call succeeds, the extras are silently
+   * dropped.
+   */
+  async listSections(
+    courseId: CanvasId,
+    opts: ListCourseSectionsOptions = {},
+  ): Promise<CanvasCourseSection[]> {
+    const params: CanvasQueryParams = {}
+    if (opts.include && opts.include.length > 0) params.include = opts.include
+    if (opts.search_term !== undefined) params.search_term = opts.search_term
+    return this.client.paginate<CanvasCourseSection>(`/api/v1/courses/${courseId}/sections`, params)
   }
 
   async getSyllabus(courseId: CanvasId): Promise<string | null> {

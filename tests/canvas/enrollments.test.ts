@@ -97,6 +97,75 @@ describe('EnrollmentsModule', () => {
     })
   })
 
+  // BRU-3129 / GH #442 — the two optional `enrollment[...]` fields. The two
+  // tests above are the byte-exact regression guard: they assert the request
+  // body for a call that passes neither, so a plumbing change that leaked an
+  // `undefined` key, or reordered the envelope, fails there.
+  it('adds course_section_id to the enrollment envelope when given', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 12, type: 'StudentEnrollment' })
+
+    await enrollments.enroll(100, 5, 'StudentEnrollment', undefined, { course_section_id: 4021 })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({
+        enrollment: { user_id: 5, type: 'StudentEnrollment', course_section_id: 4021 },
+      }),
+    })
+  })
+
+  it('adds both options alongside enrollment_state', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 13, type: 'TaEnrollment' })
+
+    await enrollments.enroll(100, 5, 'TaEnrollment', 'active', {
+      course_section_id: '4021',
+      limit_privileges_to_course_section: true,
+    })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({
+        enrollment: {
+          user_id: 5,
+          type: 'TaEnrollment',
+          enrollment_state: 'active',
+          course_section_id: '4021',
+          limit_privileges_to_course_section: true,
+        },
+      }),
+    })
+  })
+
+  it('forwards limit_privileges_to_course_section: false rather than dropping it', async () => {
+    // `false` is the value a truthiness check would silently swallow, which
+    // would turn an explicit "do not limit this teacher" into Canvas's own
+    // default. It is also the only one of the two fields where the dropped and
+    // the honoured request differ in meaning to the caller.
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 14, type: 'TeacherEnrollment' })
+
+    await enrollments.enroll(100, 5, 'TeacherEnrollment', undefined, {
+      limit_privileges_to_course_section: false,
+    })
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({
+        enrollment: {
+          user_id: 5,
+          type: 'TeacherEnrollment',
+          limit_privileges_to_course_section: false,
+        },
+      }),
+    })
+  })
+
+  it('an explicitly empty options object produces the pre-existing body', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce({ id: 15, type: 'StudentEnrollment' })
+
+    await enrollments.enroll(100, 5, 'StudentEnrollment', undefined, {})
+    expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/enrollments', {
+      method: 'POST',
+      body: JSON.stringify({ enrollment: { user_id: 5, type: 'StudentEnrollment' } }),
+    })
+  })
+
   it('removes an enrollment', async () => {
     const mockEnrollment = {
       id: 10,

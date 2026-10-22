@@ -15,6 +15,13 @@
 // "Tools that surface student PII" for the original audit.
 
 export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
+  // src/tools/courses.ts
+  // Fail-closed only: `list_sections` never requests Canvas's student roster
+  // include, so its payload carries no names today. It is wrapped — and listed
+  // here — so that widening the include, or a Canvas instance that returns
+  // `students` unasked, cannot leak names silently (BRU-3129).
+  'list_sections',
+
   // src/tools/users.ts
   'list_students',
   'get_user',

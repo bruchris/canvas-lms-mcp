@@ -56,6 +56,23 @@ export interface ListUserEnrollmentsOptions {
   enrollment_term_id?: CanvasId
 }
 
+/**
+ * The two optional `enrollment[...]` fields `enroll` forwards beyond
+ * role and state.
+ *
+ * `course_section_id` is the section to enroll into; Canvas ignores it on the
+ * section-scoped URL variant, which this client does not use.
+ * `limit_privileges_to_course_section` confines the user to that section — for
+ * teachers and TAs that includes grading privileges, and a section-limited
+ * student sees no user (teachers included) outside their own sections. Canvas
+ * documents it as taking effect relative to `course_section_id`, so passing it
+ * without a section restricts the user to whichever section Canvas picks.
+ */
+export interface EnrollUserOptions {
+  course_section_id?: CanvasId
+  limit_privileges_to_course_section?: boolean
+}
+
 function buildParams(opts: object): CanvasQueryParams {
   const params: CanvasQueryParams = {}
   for (const [key, value] of Object.entries(opts)) {
@@ -94,17 +111,31 @@ export class EnrollmentsModule {
     )
   }
 
+  /**
+   * `POST /api/v1/courses/:course_id/enrollments`, under the `enrollment[...]`
+   * envelope Canvas documents.
+   *
+   * `opts` keys are spread last and only when present, so a call that omits
+   * them produces the same request body as before they existed.
+   */
   async enroll(
     courseId: CanvasId,
     userId: CanvasId,
     type: string,
     enrollmentState?: string,
+    opts: EnrollUserOptions = {},
   ): Promise<CanvasEnrollment> {
     const body: Record<string, unknown> = {
       enrollment: {
         user_id: userId,
         type,
         ...(enrollmentState ? { enrollment_state: enrollmentState } : {}),
+        ...(opts.course_section_id !== undefined
+          ? { course_section_id: opts.course_section_id }
+          : {}),
+        ...(opts.limit_privileges_to_course_section !== undefined
+          ? { limit_privileges_to_course_section: opts.limit_privileges_to_course_section }
+          : {}),
       },
     }
     return this.client.request<CanvasEnrollment>(`/api/v1/courses/${courseId}/enrollments`, {

@@ -1,7 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { CanvasClient } from '../../src/canvas'
 import type { CanvasCourse } from '../../src/canvas/types'
 import { courseTools } from '../../src/tools/courses'
+import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
+import {
+  FIXTURE_SECTION_PLAIN,
+  FIXTURE_SECTION_WITH_STUDENTS,
+  SECTION_REAL_NAMES,
+} from '../fixtures/sections'
 
 describe('courseTools', () => {
   const mockCourse: CanvasCourse = {
@@ -19,6 +28,7 @@ describe('courseTools', () => {
         list: vi.fn().mockResolvedValue([mockCourse]),
         get: vi.fn().mockResolvedValue(mockCourse),
         getSyllabus: vi.fn().mockResolvedValue('<p>Welcome to the course</p>'),
+        listSections: vi.fn().mockResolvedValue([FIXTURE_SECTION_PLAIN]),
         create: vi.fn().mockResolvedValue(mockCourse),
         update: vi.fn().mockResolvedValue(mockCourse),
       },
@@ -26,10 +36,10 @@ describe('courseTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 5 tool definitions', () => {
+  it('returns an array with 6 tool definitions', () => {
     const canvas = buildMockCanvas()
     const tools = courseTools(canvas)
-    expect(tools).toHaveLength(5)
+    expect(tools).toHaveLength(6)
   })
 
   it('exports tools with correct names', () => {
@@ -39,6 +49,7 @@ describe('courseTools', () => {
     expect(names).toContain('list_courses')
     expect(names).toContain('get_course')
     expect(names).toContain('get_syllabus')
+    expect(names).toContain('list_sections')
     expect(names).toContain('create_course')
     expect(names).toContain('update_course')
   })
@@ -385,6 +396,100 @@ describe('courseTools', () => {
       const canvas = buildMockCanvas()
       const tool = courseTools(canvas).find((t) => t.name === 'update_course')!
       expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('list_sections', () => {
+    // A real on-disk root, never the default: the default resolves to the
+    // user's own state directory, which both pollutes it and makes the
+    // `Student N` counter depend on whatever else has run on this machine.
+    let tmpRoot: string
+
+    beforeEach(async () => {
+      tmpRoot = await mkdtemp(join(tmpdir(), 'list-sections-tool-'))
+    })
+
+    afterEach(async () => {
+      await rm(tmpRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    })
+
+    function sectionsTool(canvas: CanvasClient, ps?: Pseudonymizer) {
+      return courseTools(canvas, ps).find((t) => t.name === 'list_sections')!
+    }
+
+    it('is read-only and open-world', () => {
+      const tool = sectionsTool(buildMockCanvas())
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true })
+    })
+
+    it('delegates to canvas.courses.listSections with empty opts', async () => {
+      const canvas = buildMockCanvas()
+      const result = await sectionsTool(canvas).handler({ course_id: '7' })
+      expect(canvas.courses.listSections).toHaveBeenCalledWith('7', {})
+      expect(result).toEqual([FIXTURE_SECTION_PLAIN])
+    })
+
+    it('forwards include[] and search_term', async () => {
+      const canvas = buildMockCanvas()
+      await sectionsTool(canvas).handler({
+        course_id: '7',
+        include: ['total_students', 'permissions'],
+        search_term: 'Mon',
+      })
+      expect(canvas.courses.listSections).toHaveBeenCalledWith('7', {
+        include: ['total_students', 'permissions'],
+        search_term: 'Mon',
+      })
+    })
+
+    it('exposes only the two non-PII include[] values Canvas documents', () => {
+      // The roster includes (`students`, `enrollments`, `avatar_url`) are
+      // deliberately absent: requesting them would embed `user_json` objects in
+      // every section. A widening of this enum is the change that makes the
+      // Pseudonymizer wrap below load-bearing, so pin the enum here.
+      const tool = sectionsTool(buildMockCanvas())
+      const include = tool.inputSchema.include as unknown as {
+        safeParse: (v: unknown) => { success: boolean }
+      }
+      expect(include.safeParse(['total_students', 'permissions']).success).toBe(true)
+      expect(include.safeParse(['students']).success).toBe(false)
+      expect(include.safeParse(['enrollments']).success).toBe(false)
+      expect(include.safeParse(['avatar_url']).success).toBe(false)
+    })
+
+    it('pseudonymizes a students payload when the flag is on (fail-closed wrap)', async () => {
+      // Canvas cannot produce this payload for the request this tool makes, so
+      // the fixture stands in for a widened include[] or an instance that
+      // returns the field unasked. Without this the wrap would be untested.
+      const canvas = buildMockCanvas({
+        courses: {
+          listSections: vi.fn().mockResolvedValue([FIXTURE_SECTION_WITH_STUDENTS]),
+        },
+      } as unknown as Partial<CanvasClient>)
+      const ps = new Pseudonymizer({
+        baseUrl: 'https://school.instructure.com/api/v1',
+        rootDir: tmpRoot,
+        env: { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' },
+        auditLog: () => undefined,
+      })
+
+      const result = await sectionsTool(canvas, ps).handler({ course_id: '7' })
+      const serialized = JSON.stringify(result)
+      for (const name of SECTION_REAL_NAMES) {
+        expect(serialized, `"${name}" survived pseudonymization`).not.toContain(name)
+      }
+      expect(serialized).toContain('Student 1')
+    })
+
+    it('control: the same payload keeps its names with no pseudonymizer', async () => {
+      const canvas = buildMockCanvas({
+        courses: {
+          listSections: vi.fn().mockResolvedValue([FIXTURE_SECTION_WITH_STUDENTS]),
+        },
+      } as unknown as Partial<CanvasClient>)
+
+      const result = await sectionsTool(canvas).handler({ course_id: '7' })
+      expect(JSON.stringify(result)).toContain('Priya Raman')
     })
   })
 })

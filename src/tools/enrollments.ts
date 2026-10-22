@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type {
+  EnrollUserOptions,
   EnrollmentInclude,
   EnrollmentState,
   EnrollmentType,
@@ -172,7 +173,13 @@ export function enrollmentTools(
         'Omitting ' +
         '`enrollment_state` leaves it at Canvas\'s documented default of "invited", so the ' +
         'user must accept a course invitation before the enrollment becomes active; pass ' +
-        '`enrollment_state: "active"` to skip that step. Requires permission to manage ' +
+        '`enrollment_state: "active"` to skip that step. Omitting `course_section_id` leaves ' +
+        "Canvas to place the enrollment in the course's default section — read " +
+        '`list_sections` for the ID of a specific one. `limit_privileges_to_course_section` ' +
+        'confines the user to that section: for teachers and TAs that includes grading ' +
+        'privileges, and a section-limited student sees no user outside their own sections, ' +
+        'teachers included. Both are left entirely unset when omitted, so the request is ' +
+        'unchanged from a call that does not pass them. Requires permission to manage ' +
         'enrollments in the course; Canvas rejects the call otherwise.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
@@ -190,18 +197,46 @@ export function enrollmentTools(
           .enum(['active', 'invited', 'inactive'])
           .optional()
           .describe('Initial enrollment state (defaults to invited)'),
+        course_section_id: canvasIdInput()
+          .optional()
+          .describe(
+            "The section to enroll the user into (from `list_sections`); omitted = the course's default section",
+          ),
+        limit_privileges_to_course_section: z
+          .boolean()
+          .optional()
+          .describe(
+            'Restrict the user to seeing and interacting with users in course_section_id only',
+          ),
       },
       annotations: {
         destructiveHint: true,
         openWorldHint: true,
       },
       handler: async (params) => {
-        return canvas.enrollments.enroll(
-          params.course_id as CanvasId,
-          params.user_id as CanvasId,
-          params.type as string,
-          params.enrollment_state as string | undefined,
-        )
+        const opts: EnrollUserOptions = {}
+        if (params.course_section_id !== undefined)
+          opts.course_section_id = params.course_section_id as CanvasId
+        if (params.limit_privileges_to_course_section !== undefined)
+          opts.limit_privileges_to_course_section =
+            params.limit_privileges_to_course_section as boolean
+        // Pass the options object only when one of the two new fields is set, so
+        // a call that omits both reaches the client with the exact argument list
+        // it had before they existed.
+        return Object.keys(opts).length > 0
+          ? canvas.enrollments.enroll(
+              params.course_id as CanvasId,
+              params.user_id as CanvasId,
+              params.type as string,
+              params.enrollment_state as string | undefined,
+              opts,
+            )
+          : canvas.enrollments.enroll(
+              params.course_id as CanvasId,
+              params.user_id as CanvasId,
+              params.type as string,
+              params.enrollment_state as string | undefined,
+            )
       },
     },
     {

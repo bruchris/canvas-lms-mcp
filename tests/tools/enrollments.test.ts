@@ -167,6 +167,80 @@ describe('enrollmentTools', () => {
     })
   })
 
+  // BRU-3129 / GH #442. The two tests above assert the pre-existing 4-argument
+  // call exactly, so they are the regression guard for "existing behaviour is
+  // unchanged when the new options are omitted": passing an options object
+  // unconditionally would make both fail on arity.
+  describe('enroll_user — optional section restrictions', () => {
+    function enrollTool(canvas: CanvasClient) {
+      return enrollmentTools(canvas).find((t) => t.name === 'enroll_user')!
+    }
+
+    it('passes course_section_id through as an options object', async () => {
+      const canvas = buildMockCanvas()
+      await enrollTool(canvas).handler({
+        course_id: '1',
+        user_id: '5',
+        type: 'StudentEnrollment',
+        course_section_id: '4021',
+      })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(
+        '1',
+        '5',
+        'StudentEnrollment',
+        undefined,
+        {
+          course_section_id: '4021',
+        },
+      )
+    })
+
+    it('passes both options alongside enrollment_state', async () => {
+      const canvas = buildMockCanvas()
+      await enrollTool(canvas).handler({
+        course_id: '1',
+        user_id: '5',
+        type: 'TaEnrollment',
+        enrollment_state: 'active',
+        course_section_id: '4021',
+        limit_privileges_to_course_section: true,
+      })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith('1', '5', 'TaEnrollment', 'active', {
+        course_section_id: '4021',
+        limit_privileges_to_course_section: true,
+      })
+    })
+
+    it('forwards limit_privileges_to_course_section: false rather than treating it as absent', async () => {
+      const canvas = buildMockCanvas()
+      await enrollTool(canvas).handler({
+        course_id: '1',
+        user_id: '5',
+        type: 'TeacherEnrollment',
+        limit_privileges_to_course_section: false,
+      })
+      expect(canvas.enrollments.enroll).toHaveBeenCalledWith(
+        '1',
+        '5',
+        'TeacherEnrollment',
+        undefined,
+        {
+          limit_privileges_to_course_section: false,
+        },
+      )
+    })
+
+    it('still calls with four arguments when both options are omitted', async () => {
+      // Stated explicitly as well as implied by the two older tests, because
+      // this is the acceptance criterion: the previous request shape survives.
+      const canvas = buildMockCanvas()
+      await enrollTool(canvas).handler({ course_id: '1', user_id: '5', type: 'StudentEnrollment' })
+      const call = (canvas.enrollments.enroll as unknown as { mock: { calls: unknown[][] } }).mock
+        .calls[0]!
+      expect(call).toHaveLength(4)
+    })
+  })
+
   describe('remove_enrollment', () => {
     it('has destructive annotations', () => {
       const tool = enrollmentTools(buildMockCanvas()).find((t) => t.name === 'remove_enrollment')!

@@ -9,6 +9,11 @@ import { getAllTools } from '../../src/tools'
 // developer wires up a new tool that returns CanvasUser / participants /
 // user_name and forgets to update either list, CI fails here.
 const EXPECTED_PII_BEARING_TOOLS = new Set([
+  // Fail-closed wrap: `list_sections` never asks Canvas for the student
+  // roster include, so no name reaches the client today. Wrapped so that a
+  // widening of that include cannot leak silently — see
+  // `Pseudonymizer#anonymizeSections`.
+  'list_sections',
   'list_students',
   'get_user',
   'search_users',
@@ -49,8 +54,24 @@ function buildMinimalCanvas(): CanvasClient {
   const noop = async () => ({})
   const list = async () => []
   return {
-    courses: { list, get: noop, getSyllabus: noop, create: noop, update: noop },
-    assignments: { list, get: noop, listGroups: list, create: noop, update: noop, delete: noop },
+    courses: {
+      list,
+      get: noop,
+      getSyllabus: noop,
+      listSections: list,
+      create: noop,
+      update: noop,
+    },
+    assignments: {
+      list,
+      get: noop,
+      listGroups: list,
+      createGroup: noop,
+      updateGroup: noop,
+      create: noop,
+      update: noop,
+      delete: noop,
+    },
     submissions: {
       list,
       get: noop,

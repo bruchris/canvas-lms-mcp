@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CoursesModule } from '../../src/canvas/courses'
-import { CanvasHttpClient } from '../../src/canvas/client'
+import { CanvasApiError, CanvasHttpClient } from '../../src/canvas/client'
 import type { CanvasCourse } from '../../src/canvas/types'
 
 describe('CoursesModule', () => {
@@ -284,6 +284,50 @@ describe('CoursesModule', () => {
           course: { apply_assignment_group_weights: false, hide_final_grades: true },
         }),
       })
+    })
+  })
+
+  // BRU-3129 / GH #442. `GET /api/v1/courses/:course_id/sections` is a
+  // paginated, flat array of `Section` objects with no root envelope
+  // (`SectionsController#index` -> `render json: sections_json(...)`).
+  describe('listSections', () => {
+    it('paginates the documented endpoint with no query params by default', async () => {
+      const mockSections = [
+        { id: '4021', name: 'Section A', course_id: '7' },
+        { id: '4022', name: 'Section B', course_id: '7' },
+      ]
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce(mockSections)
+
+      const result = await courses.listSections(7)
+      expect(result).toEqual(mockSections)
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/7/sections', {})
+    })
+
+    it('forwards include[] and search_term', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+
+      await courses.listSections('7', {
+        include: ['total_students', 'permissions'],
+        search_term: 'Mon',
+      })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/7/sections', {
+        include: ['total_students', 'permissions'],
+        search_term: 'Mon',
+      })
+    })
+
+    it('omits an empty include[] rather than sending include=', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
+
+      await courses.listSections(7, { include: [] })
+      expect(client.paginate).toHaveBeenCalledWith('/api/v1/courses/7/sections', {})
+    })
+
+    it('propagates a Canvas error rather than swallowing it', async () => {
+      vi.spyOn(client, 'paginate').mockRejectedValueOnce(
+        new CanvasApiError('Not Found', 404, '/api/v1/courses/7/sections'),
+      )
+      await expect(courses.listSections(7)).rejects.toThrow(CanvasApiError)
     })
   })
 })

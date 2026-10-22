@@ -19,6 +19,7 @@ import type {
   CanvasConversation,
   CanvasConversationDetail,
   CanvasConversationParticipant,
+  CanvasCourseSection,
   CanvasEnrollment,
   CanvasGroup,
   CanvasOutcomeResultsResponse,
@@ -457,6 +458,58 @@ export class Pseudonymizer {
     if (group.leader) next.leader = await this.anonymizeDisplayUser(scope, group.leader)
     if (group.users?.length) next.users = await this.anonymizeUsers(scope, group.users)
     return next
+  }
+
+  /**
+   * Pseudonymize the one PII arm of `GET /courses/:id/sections`.
+   *
+   * **Scope.** Sections belong to exactly one course, so the course the caller
+   * asked about is the scope key — a student listed here therefore carries the
+   * same `Student N` label `list_course_users` and `list_submissions` give them
+   * in that course.
+   *
+   * **The arm.** `Api::V1::Section#section_json` embeds a capped list of
+   * `user_json` objects under `students` when `include[]=students` is
+   * requested, with each student's section enrollment nested under
+   * `students[].enrollments` when `include[]=enrollments` rides along. Nothing
+   * else the serializer emits is a name or an identity: the base fields are
+   * section metadata, `total_students` is a count, and `permissions` is a
+   * boolean map.
+   *
+   * **Why this exists even though `list_sections` never asks for students.**
+   * The tool deliberately omits those `include[]` values
+   * (`CourseSectionInclude` in `src/canvas/courses.ts`), so on today's code
+   * path `students` is always absent. This method is the fail-closed half: if a
+   * later change exposes the include — or a Canvas instance returns the field
+   * unasked — the names are pseudonymized rather than leaking silently, which
+   * is exactly the class of regression BRU-2863 and BRU-2864 shipped.
+   *
+   * A student entry with no `id` has nothing to key a stable pseudonym on, so
+   * its name is withheld outright, the same fail-closed reading the activity
+   * stream and rubric-assessor arms already use.
+   */
+  async anonymizeSections(
+    courseId: number | string,
+    sections: ReadonlyArray<CanvasCourseSection>,
+  ): Promise<CanvasCourseSection[]> {
+    if (!this.isEnabled() || !this.host) return [...sections]
+    const out: CanvasCourseSection[] = []
+    for (const section of sections) {
+      if (!section.students?.length) {
+        out.push(section)
+        continue
+      }
+      const students: CanvasUser[] = []
+      for (const student of section.students) {
+        students.push(
+          student.id == null
+            ? applyPseudonymToUser(student, WITHHELD_AUTHOR_NAME)
+            : await this.anonymizeUser(courseId, student),
+        )
+      }
+      out.push({ ...section, students })
+    }
+    return out
   }
 
   /**

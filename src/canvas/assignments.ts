@@ -4,8 +4,10 @@ import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
   CanvasAssignmentOverride,
+  CreateAssignmentGroupParams,
   CreateAssignmentOverrideParams,
   CreateAssignmentParams,
+  UpdateAssignmentGroupParams,
   UpdateAssignmentParams,
 } from './types'
 import type { CanvasId } from './id'
@@ -117,6 +119,47 @@ export class AssignmentsModule {
     return this.client.paginate<CanvasAssignmentGroup>(
       `/api/v1/courses/${courseId}/assignment_groups`,
       toQuery(opts),
+    )
+  }
+
+  /**
+   * `POST /api/v1/courses/:course_id/assignment_groups`.
+   *
+   * Top-level params, not an `assignment_group[...]` envelope — see
+   * {@link CreateAssignmentGroupParams}. Returns the created group.
+   */
+  async createGroup(
+    courseId: CanvasId,
+    params: CreateAssignmentGroupParams,
+  ): Promise<CanvasAssignmentGroup> {
+    return this.client.request<CanvasAssignmentGroup>(
+      `/api/v1/courses/${courseId}/assignment_groups`,
+      {
+        method: 'POST',
+        body: JSON.stringify(params),
+      },
+    )
+  }
+
+  /**
+   * `PUT /api/v1/courses/:course_id/assignment_groups/:assignment_group_id`.
+   *
+   * A partial update: Canvas assigns only the attributes present in the request
+   * (`update_assignment_group` -> `assignment_group.attributes = ...`), so
+   * omitted fields keep their current value and repeating the same call leaves
+   * the same state.
+   */
+  async updateGroup(
+    courseId: CanvasId,
+    assignmentGroupId: CanvasId,
+    params: UpdateAssignmentGroupParams,
+  ): Promise<CanvasAssignmentGroup> {
+    return this.client.request<CanvasAssignmentGroup>(
+      `/api/v1/courses/${courseId}/assignment_groups/${assignmentGroupId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(params),
+      },
     )
   }
 

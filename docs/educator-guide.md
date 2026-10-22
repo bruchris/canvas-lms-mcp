@@ -66,7 +66,7 @@ Posts a reply to a discussion topic. Supports HTML formatting.
 
 ## Write Operations Reference
 
-The server includes 60 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
+The server includes 62 write tools. All require appropriate Canvas permissions. They are grouped below by domain; the grading tools you'll use most often are listed first.
 
 ### Grading & Feedback
 
@@ -95,6 +95,8 @@ The server includes 60 write tools. All require appropriate Canvas permissions. 
 | Create an assignment | `create_assignment` | Creates a new assignment in a course | Yes (call `delete_assignment`) |
 | Update an assignment | `update_assignment` | Updates an existing assignment; only provided fields change | Yes (call again to revert fields) |
 | Delete an assignment | `delete_assignment` | Deletes an assignment from a course | No -- permanent; removes the assignment and its submissions/grades |
+| Create an assignment group | `create_assignment_group` | Creates a gradebook category (e.g. Homework) in a course | Yes (no delete tool; set its weight to 0 and move assignments out with `update_assignment`) |
+| Update an assignment group | `update_assignment_group` | Changes a group's name, position, weight or drop rules; only provided fields change | Yes (call again to revert fields) |
 
 ### Rubrics
 

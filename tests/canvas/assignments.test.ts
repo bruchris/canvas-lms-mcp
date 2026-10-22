@@ -476,4 +476,116 @@ describe('AssignmentsModule', () => {
       ).rejects.toBeInstanceOf(CanvasApiError)
     })
   })
+
+  // BRU-3129 / GH #442. `AssignmentGroupsApiController#create` and `#update`
+  // both call `update_assignment_group(@assignment_group, params)`, which
+  // permits `API_ALLOWED_ASSIGNMENT_GROUP_INPUT_FIELDS` straight off `params` —
+  // so these requests carry the fields at the TOP LEVEL, with no
+  // `assignment_group[...]` envelope. That is the one thing a wrong
+  // implementation would get silently wrong (Canvas would ignore every field
+  // and create a nameless group), so every test here asserts the exact body.
+  const MOCK_GROUP: CanvasAssignmentGroup = {
+    id: '770',
+    name: 'Homework',
+    position: 2,
+    group_weight: 40,
+  }
+
+  describe('createGroup', () => {
+    it('POSTs the fields at the top level, not under an assignment_group key', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(MOCK_GROUP)
+
+      const result = await assignments.createGroup(100, {
+        name: 'Homework',
+        position: 2,
+        group_weight: 40,
+      })
+
+      expect(result).toEqual(MOCK_GROUP)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Homework', position: 2, group_weight: 40 }),
+      })
+    })
+
+    it('sends only the fields passed', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(MOCK_GROUP)
+
+      await assignments.createGroup('100', { name: 'Exams' })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Exams' }),
+      })
+    })
+
+    it('forwards group_weight: 0 rather than dropping a falsy value', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(MOCK_GROUP)
+
+      await assignments.createGroup(100, { name: 'Ungraded', group_weight: 0 })
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Ungraded', group_weight: 0 }),
+      })
+    })
+
+    it('propagates a Canvas validation error unchanged', async () => {
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError(
+          'Invalid integration data',
+          400,
+          '/api/v1/courses/100/assignment_groups',
+        ),
+      )
+
+      await expect(assignments.createGroup(100, { name: 'X' })).rejects.toBeInstanceOf(
+        CanvasApiError,
+      )
+    })
+  })
+
+  describe('updateGroup', () => {
+    it('PUTs to the group endpoint with the fields at the top level', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(MOCK_GROUP)
+
+      const result = await assignments.updateGroup(100, 770, { group_weight: 40 })
+
+      expect(result).toEqual(MOCK_GROUP)
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups/770', {
+        method: 'PUT',
+        body: JSON.stringify({ group_weight: 40 }),
+      })
+    })
+
+    it('sends rules as a nested hash, the form rules_hash= accepts', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce(MOCK_GROUP)
+
+      await assignments.updateGroup('100', '770', {
+        rules: { drop_lowest: 1, drop_highest: 1, never_drop: ['1001', '1002'] },
+      })
+
+      expect(client.request).toHaveBeenCalledWith('/api/v1/courses/100/assignment_groups/770', {
+        method: 'PUT',
+        body: JSON.stringify({
+          rules: { drop_lowest: 1, drop_highest: 1, never_drop: ['1001', '1002'] },
+        }),
+      })
+    })
+
+    it('propagates the authorization error Canvas raises for a closed grading period', async () => {
+      // `can_update_assignment_group?` returns false when group_weight or rules
+      // change and any assignment sits in a closed grading period, and the
+      // controller answers `render_unauthorized_action` — a 401, not a 422.
+      vi.spyOn(client, 'request').mockRejectedValueOnce(
+        new CanvasApiError(
+          'user not authorized to perform that action',
+          401,
+          '/api/v1/courses/100/assignment_groups/770',
+        ),
+      )
+
+      await expect(assignments.updateGroup(100, 770, { group_weight: 50 })).rejects.toBeInstanceOf(
+        CanvasApiError,
+      )
+    })
+  })
 })

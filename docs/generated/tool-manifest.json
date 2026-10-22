@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.2",
   "packageName": "canvas-lms-mcp",
-  "toolCount": 184,
+  "toolCount": 187,
   "tools": [
     {
       "name": "health_check",
@@ -53,6 +53,21 @@
       "title": "Get Syllabus",
       "domain": "courses",
       "description": "Get just the syllabus HTML body for a course, returning { course_id, syllabus_body } where syllabus_body is null if the course has none set. Use get_course with include: ['syllabus_body'] instead when you also need other course fields in the same call, or update_course to change the syllabus body. If the course has public_syllabus or public_syllabus_to_auth enabled, the body may be readable even by callers without an enrollment in the course.",
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": true
+      },
+      "access": "read",
+      "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false,
+      "toolset": "core"
+    },
+    {
+      "name": "list_sections",
+      "title": "List Course Sections",
+      "domain": "courses",
+      "description": "List the sections of a course, returning each section's id, name, course_id, start_at, end_at and restrict_enrollments_to_section_dates. Use it to resolve the section ID that `create_assignment_override` needs for a section-specific due date, that `enroll_user` takes as `course_section_id`, and that the `needs_grading_count_by_section` option on `list_assignments` reports against; use `list_course_enrollments` or `list_course_users` for the people in a section rather than the sections themselves, or `get_course` with include: ['sections'] when you also need other course fields in the same call. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. This tool never requests Canvas's student roster include, so no student names are returned. The SIS fields (sis_section_id, sis_course_id, integration_id) appear only for callers with SIS read permission, and Canvas silently drops the total_students and permissions extras — rather than erroring — unless the caller can read the course roster or grades. search_term must be at least 2 characters; Canvas ignores shorter ones. Requires read access to the course.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -139,6 +154,37 @@
       },
       "access": "read",
       "primaryAudience": "shared",
+      "relatedWorkflows": [],
+      "structuredOutput": false,
+      "toolset": "core"
+    },
+    {
+      "name": "create_assignment_group",
+      "title": "Create Assignment Group",
+      "domain": "assignments",
+      "description": "Create a new assignment group (a gradebook category such as Homework or Exams) in a course and return the created Canvas assignment group object, including its `id`, `name`, `position` and `group_weight`. Not idempotent: each call makes another group even when the name matches an existing one, so read `list_assignment_groups` first and use `update_assignment_group` to change a group that already exists; the new group starts empty, and assignments move into it through `create_assignment` or `update_assignment`'s assignment_group_id. `group_weight` is the group's percent of the final grade, and it changes nothing unless the course is set to weight its final grade by assignment group — a course setting `update_course` can turn on. Canvas coerces a missing or non-numeric `group_weight` to 0. Drop rules are deliberately not accepted here: Canvas validates them against the number of active assignments in the group, which is 0 for a group that does not exist yet, so set them with `update_assignment_group` once the group has assignments. Requires permission to manage assignments in the course.",
+      "annotations": {
+        "destructiveHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
+      "relatedWorkflows": [],
+      "structuredOutput": false,
+      "toolset": "core"
+    },
+    {
+      "name": "update_assignment_group",
+      "title": "Update Assignment Group",
+      "domain": "assignments",
+      "description": "Update an existing assignment group in a course and return the updated Canvas assignment group object. Only the fields passed are changed — anything omitted keeps its current value, so repeating the same call leaves the group in the same state, unlike `create_assignment_group`, which always makes a new group. Use it to repair a weighted gradebook: `group_weight` sets the group's percent of the final grade (which changes nothing unless the course is set to weight its final grade by assignment group — a course setting `update_course` can turn on), and `rules` drops the lowest or highest scores in the group, with never_drop exempting specific assignments. Canvas rejects a drop rule larger than the number of active assignments in the group, and refuses a `group_weight` or `rules` change with an authorization error — not a validation error — when any assignment in the group falls inside a closed grading period, unless the caller is an account admin. Read `list_assignment_groups` for the current values and the group ID first. Requires permission to manage assignments in the course.",
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "access": "write",
+      "primaryAudience": "educator",
       "relatedWorkflows": [],
       "structuredOutput": false,
       "toolset": "core"
@@ -1077,7 +1123,7 @@
       "name": "enroll_user",
       "title": "Enroll User",
       "domain": "enrollments",
-      "description": "Enroll a user in a course with a given role (StudentEnrollment, TeacherEnrollment, TaEnrollment, ObserverEnrollment, or DesignerEnrollment) and return the created enrollment object, including its `id` and `enrollment_state`. Use `list_course_enrollments` with a `user_id` filter to check a user's existing enrollments before enrolling them again, and `remove_enrollment` to conclude, deactivate, or permanently delete this enrollment afterward — `enroll_user` itself has no way to undo what it creates. Omitting `enrollment_state` leaves it at Canvas's documented default of \"invited\", so the user must accept a course invitation before the enrollment becomes active; pass `enrollment_state: \"active\"` to skip that step. Requires permission to manage enrollments in the course; Canvas rejects the call otherwise.",
+      "description": "Enroll a user in a course with a given role (StudentEnrollment, TeacherEnrollment, TaEnrollment, ObserverEnrollment, or DesignerEnrollment) and return the created enrollment object, including its `id` and `enrollment_state`. Use `list_course_enrollments` with a `user_id` filter to check a user's existing enrollments before enrolling them again, and `remove_enrollment` to conclude, deactivate, or permanently delete this enrollment afterward — `enroll_user` itself has no way to undo what it creates. Omitting `enrollment_state` leaves it at Canvas's documented default of \"invited\", so the user must accept a course invitation before the enrollment becomes active; pass `enrollment_state: \"active\"` to skip that step. Omitting `course_section_id` leaves Canvas to place the enrollment in the course's default section — read `list_sections` for the ID of a specific one. `limit_privileges_to_course_section` confines the user to that section: for teachers and TAs that includes grading privileges, and a section-limited student sees no user outside their own sections, teachers included. Both are left entirely unset when omitted, so the request is unchanged from a call that does not pass them. Requires permission to manage enrollments in the course; Canvas rejects the call otherwise.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true

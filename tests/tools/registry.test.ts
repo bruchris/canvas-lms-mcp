@@ -228,7 +228,7 @@ describe('getAllTools', () => {
     expect(Array.isArray(tools)).toBe(true)
   })
 
-  it('returns all 182 default tools across all domains (184 with assignmentSubmission)', () => {
+  it('returns all 185 default tools across all domains (187 with assignmentSubmission)', () => {
     const tools = getAllTools(buildFullMockCanvas())
     const names = tools.map((t) => t.name)
 
@@ -446,14 +446,14 @@ describe('getAllTools', () => {
     expect(names).toContain('list_appointment_group_groups')
     expect(names).toContain('next_appointment')
 
-    expect(tools).toHaveLength(182)
+    expect(tools).toHaveLength(185)
   })
 
-  it('returns 184 tools when assignmentSubmission feature flag is enabled', () => {
+  it('returns 187 tools when assignmentSubmission feature flag is enabled', () => {
     const tools = getAllTools(buildFullMockCanvas(), undefined, undefined, {
       assignmentSubmission: true,
     })
-    expect(tools).toHaveLength(184)
+    expect(tools).toHaveLength(187)
     expect(tools.map((t) => t.name)).toContain('submit_assignment')
     expect(tools.map((t) => t.name)).toContain('upload_submission_file')
   })
@@ -521,6 +521,8 @@ describe('getAllTools', () => {
       'set_student_quiz_accommodation',
       'set_student_new_quiz_accommodation',
       'create_assignment_override',
+      'create_assignment_group',
+      'update_assignment_group',
       'set_student_assignment_dates',
       'create_appointment_group',
       'update_appointment_group',
@@ -598,6 +600,8 @@ describe('getAllTools', () => {
       'set_student_quiz_accommodation',
       'set_student_new_quiz_accommodation',
       'create_assignment_override',
+      'create_assignment_group',
+      'update_assignment_group',
       'set_student_assignment_dates',
       'create_appointment_group',
       'update_appointment_group',

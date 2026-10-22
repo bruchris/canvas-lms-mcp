@@ -28,6 +28,8 @@ describe('assignmentTools', () => {
       assignments: {
         list: vi.fn().mockResolvedValue([mockAssignment]),
         get: vi.fn().mockResolvedValue(mockAssignment),
+        createGroup: vi.fn().mockResolvedValue(mockGroup),
+        updateGroup: vi.fn().mockResolvedValue(mockGroup),
         listGroups: vi.fn().mockResolvedValue([mockGroup]),
         create: vi.fn().mockResolvedValue(mockAssignment),
         update: vi.fn().mockResolvedValue(mockAssignment),
@@ -37,10 +39,10 @@ describe('assignmentTools', () => {
     } as unknown as CanvasClient
   }
 
-  it('returns an array with 6 tool definitions', () => {
+  it('returns an array with 8 tool definitions', () => {
     const canvas = buildMockCanvas()
     const tools = assignmentTools(canvas)
-    expect(tools).toHaveLength(6)
+    expect(tools).toHaveLength(8)
   })
 
   it('exports tools with correct names', () => {
@@ -50,6 +52,8 @@ describe('assignmentTools', () => {
     expect(names).toContain('list_assignments')
     expect(names).toContain('get_assignment')
     expect(names).toContain('list_assignment_groups')
+    expect(names).toContain('create_assignment_group')
+    expect(names).toContain('update_assignment_group')
     expect(names).toContain('create_assignment')
     expect(names).toContain('update_assignment')
     expect(names).toContain('delete_assignment')
@@ -523,6 +527,91 @@ describe('assignmentTools', () => {
       const canvas = buildMockCanvas()
       const tool = assignmentTools(canvas).find((t) => t.name === 'delete_assignment')!
       expect(tool.description).toBeTruthy()
+    })
+  })
+
+  describe('create_assignment_group', () => {
+    function groupTool(canvas: CanvasClient) {
+      return assignmentTools(canvas).find((t) => t.name === 'create_assignment_group')!
+    }
+
+    it('is a write tool that is NOT idempotent', () => {
+      // Each POST makes another group, so `idempotentHint` must stay absent —
+      // the opposite of `update_assignment_group` below.
+      expect(groupTool(buildMockCanvas()).annotations).toEqual({
+        destructiveHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('strips course_id and forwards the remaining fields', async () => {
+      const canvas = buildMockCanvas()
+      const result = await groupTool(canvas).handler({
+        course_id: '1',
+        name: 'Homework',
+        position: 2,
+        group_weight: 40,
+        sis_source_id: 'SIS-HW',
+      })
+      expect(canvas.assignments.createGroup).toHaveBeenCalledWith('1', {
+        name: 'Homework',
+        position: 2,
+        group_weight: 40,
+        sis_source_id: 'SIS-HW',
+      })
+      expect(result).toEqual(mockGroup)
+    })
+
+    it('rejects `rules` on create, which Canvas cannot accept on a new group', () => {
+      // `validate_assignment_group_rules` compares a drop rule against the
+      // group's active assignment count, which is 0 before the group exists, so
+      // any positive rule here would be a guaranteed 400. The schema is where
+      // that is enforced rather than in prose.
+      const tool = groupTool(buildMockCanvas())
+      expect(tool.inputSchema).not.toHaveProperty('rules')
+    })
+  })
+
+  describe('update_assignment_group', () => {
+    function groupTool(canvas: CanvasClient) {
+      return assignmentTools(canvas).find((t) => t.name === 'update_assignment_group')!
+    }
+
+    it('declares idempotency, matching the partial-update prose', () => {
+      expect(groupTool(buildMockCanvas()).annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
+    })
+
+    it('strips course_id and assignment_group_id and forwards the rest', async () => {
+      const canvas = buildMockCanvas()
+      const result = await groupTool(canvas).handler({
+        course_id: '1',
+        assignment_group_id: '10',
+        group_weight: 40,
+      })
+      expect(canvas.assignments.updateGroup).toHaveBeenCalledWith('1', '10', { group_weight: 40 })
+      expect(result).toEqual(mockGroup)
+    })
+
+    it('forwards nested drop rules', async () => {
+      const canvas = buildMockCanvas()
+      await groupTool(canvas).handler({
+        course_id: '1',
+        assignment_group_id: '10',
+        rules: { drop_lowest: 1, never_drop: ['101'] },
+      })
+      expect(canvas.assignments.updateGroup).toHaveBeenCalledWith('1', '10', {
+        rules: { drop_lowest: 1, never_drop: ['101'] },
+      })
+    })
+
+    it('accepts an empty update, so no field is implicitly required', async () => {
+      const canvas = buildMockCanvas()
+      await groupTool(canvas).handler({ course_id: '1', assignment_group_id: '10' })
+      expect(canvas.assignments.updateGroup).toHaveBeenCalledWith('1', '10', {})
     })
   })
 })

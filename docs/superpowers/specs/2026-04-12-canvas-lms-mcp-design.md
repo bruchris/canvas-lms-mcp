@@ -304,23 +304,26 @@ All errors returned as structured MCP content, never thrown:
 |------|------|-------------|
 | `health_check` | read | Verify Canvas API connectivity and token validity |
 
-#### Courses (5 tools)
+#### Courses (6 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_courses` | read | User's courses with optional term/enrollment filtering |
 | `get_course` | read | Single course details |
 | `get_syllabus` | read | Course syllabus content |
+| `list_sections` | read | Course sections, for section IDs used by overrides and enrollment scoping |
 | `create_course` | write | Create a course in a Canvas account |
 | `update_course` | write | Update an existing course |
 
-#### Assignments (6 tools)
+#### Assignments (8 tools)
 
 | Tool | Type | Description |
 |------|------|-------------|
 | `list_assignments` | read | Assignments for a course |
 | `get_assignment` | read | Single assignment with rubric settings |
 | `list_assignment_groups` | read | Grouped assignments with weights/rules |
+| `create_assignment_group` | write | Create a gradebook category for assignments |
+| `update_assignment_group` | write | Update a group's name, position, weight or drop rules |
 | `create_assignment` | write | Create a new assignment |
 | `update_assignment` | write | Update an existing assignment |
 | `delete_assignment` | write | Delete an assignment |
@@ -694,7 +697,7 @@ New Quizzes is the modern LTI-backed quiz engine in Canvas — distinct from Cla
 | `upload_submission_file` | write | Upload a file to the authenticated student's own submission area for one assignment, as step 1 of an online_upload submission (step 2: pass the returned file id to submit_assignment). Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. Content must be base64-encoded. This uploads only — nothing is submitted until submit_assignment is called. |
 | `submit_assignment` | write | Submit the authenticated student's own work to an assignment. Opt-in tool: only available when the server was started with CANVAS_ENABLE_ASSIGNMENT_SUBMISSION. IMPORTANT: before calling, show the user exactly what will be submitted (assignment name, submission type, and full content/URL/file list) and get their explicit confirmation — submissions cannot be retracted and may consume a limited attempt. Submits as the token holder only; submitting on behalf of another user is not supported. For online_upload, first upload each file with upload_submission_file and pass the returned file ids. |
 
-**Totals: 184 tools (124 read, 60 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 185th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 184.
+**Totals: 187 tools (125 read, 62 write).** On the stdio transport, when both `CANVAS_PSEUDONYMIZE_STUDENTS=true` and `CANVAS_PSEUDONYMIZE_REVERSE_LOOKUP=true` are set, `resolve_pseudonym` adds a 188th tool (read). The HTTP transport never registers it (BRU-2511), so its ceiling stays 187.
 
 > **Maintenance reminder:** These counts are derived from `pnpm generate:manifests` (see `manifest.json`). When adding new tools, update the per-domain table above and re-run `pnpm generate:manifests` — do **not** update the count by hand. After updating the base count, also update the conditional-tool ordinal in the FERPA Mode section below: it must always equal **base + 1** (the `resolve_pseudonym` tool is never included in the base total).
 
@@ -1097,8 +1100,10 @@ as the un-annotated part of each line. Two caveats on reading it as a historical
 - OAuth 2.0 flow — **shipped in 1.30.0** as the `oauth_brokered` profile
 
 ### Deliberate constraints
-- Destructive write operations are opt-out, not opt-in: 60 write tools ship, including 14 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 12 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
+- Destructive write operations are opt-out, not opt-in: 62 write tools ship, including 14 `delete_*` tools, but `CANVAS_DESTRUCTIVE_TOOLS=block` (v1.29.0, PR #337) makes the server refuse to register 12 of those deletes at all — "a real boundary, not a UX filter". The other two (`delete_peer_review`, `delete_module_item`) stay registered by design and are named as such in the README, so the gap is visible rather than implied (see [Destructive tool policy](../../../README.md#destructive-tool-policy)). All three numbers are CI-gated against the generated manifest (BRU-2695) — do not hand-edit them
 - ~~No account-level admin tools~~ — **false since 0.5.0**: `list_accounts`, `get_account`, `list_account_users`, `list_account_courses` and `list_account_notifications` all ship. Unlike the exclusions above, this list is written in the present tense, so the line is struck rather than annotated (BRU-2695)
+- No Canvas user CRUD, deliberately: Canvas exposes `POST /accounts/:id/users`, `PUT /users/:id` and `DELETE /accounts/:id/users/:id`, and this server wraps none of them. Creating, renaming or deleting a Canvas *account* is identity-provider work — on most instances it is SIS- or LDAP-driven, it is root-account-admin-only, and a deleted user cannot be restored through the API. The server reads users (`get_user`, `search_users`, `list_account_users`) and manages the reversible layer above them, course membership, through `enroll_user` and `remove_enrollment` (BRU-3129)
+- No Classic-quiz authoring, deliberately — author in New Quizzes instead: there is no Classic quiz-creation or quiz-question-authoring tool, because Instructure's own direction is Quizzes.Next, so the authoring surface this server ships is `create_new_quiz` and `create_new_quiz_item`. Classic quizzes stay fully readable and gradeable (`list_quizzes`, `get_quiz`, `list_quiz_questions`, `list_quiz_submissions`, `score_quiz_question`), and the two Classic deletes are gated by `CANVAS_DESTRUCTIVE_TOOLS=block` like every other irreversible delete (BRU-3129)
 - Canvas is not the sole permission authority: the MCP server makes its own access-control decisions in two places — `CANVAS_DESTRUCTIVE_TOOLS=block` above, and `Pseudonymizer({ sharedAcrossCallers: true })` (PR #344), which makes the server refuse to register `resolve_pseudonym` on the HTTP transport regardless of configuration
 
 ## Versioning Roadmap

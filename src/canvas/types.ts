@@ -73,9 +73,29 @@ export interface CanvasCourse {
   grading_standard_id?: CanvasId | null
 }
 
+/**
+ * A Canvas course section, as `Api::V1::Section#section_json` serializes it.
+ *
+ * The unconditional fields are exactly that serializer's `only:` list
+ * (`id name course_id nonxlist_course_id start_at end_at
+ * restrict_enrollments_to_section_dates created_at`). Everything below them is
+ * conditional:
+ *
+ * - `sis_section_id` / `sis_course_id` / `integration_id` appear only for a
+ *   caller with `:read_sis` or `:manage_sis` on the course, and `sis_import_id`
+ *   only with `:manage_sis` — absent, not null, for everyone else.
+ * - `total_students` and `permissions` appear only when asked for via
+ *   `include[]`.
+ * - `students` is PII and is never requested by this server's `list_sections`
+ *   tool (see `src/tools/courses.ts`). It is declared here because
+ *   `section_json` *can* emit it — so the Pseudonymizer's section path has a
+ *   typed field to guard rather than an unmodelled one. Note Canvas sets it to
+ *   `null`, not `[]`, when the section has no student enrollments.
+ */
 export interface CanvasCourseSection {
   id: CanvasId
   name: string
+  course_id?: CanvasId
   start_at?: string | null
   end_at?: string | null
   created_at?: string
@@ -83,6 +103,11 @@ export interface CanvasCourseSection {
   nonxlist_course_id?: CanvasId | null
   sis_section_id?: string | null
   sis_course_id?: string | null
+  integration_id?: string | null
+  sis_import_id?: CanvasId | null
+  total_students?: number
+  permissions?: Record<string, boolean>
+  students?: CanvasUser[] | null
 }
 
 export interface CanvasCourseProgress {
@@ -246,6 +271,46 @@ export interface CanvasAssignmentGroup {
   }
   assignments?: CanvasAssignment[]
   any_assignment_in_closed_grading_period?: boolean
+}
+
+/**
+ * Drop rules for an assignment group, in the hash form
+ * `AssignmentGroup#rules_hash=` accepts (`drop_lowest`, `drop_highest`,
+ * `never_drop`). Canvas stores them as a newline-delimited string and serializes
+ * them back as this hash.
+ */
+export interface AssignmentGroupRules {
+  drop_lowest?: number
+  drop_highest?: number
+  never_drop?: ReadonlyArray<CanvasId>
+}
+
+/**
+ * `POST /api/v1/courses/:course_id/assignment_groups`.
+ *
+ * Canvas reads these at the **top level** of the request — there is no
+ * `assignment_group[...]` envelope (`AssignmentGroupsApiController#create` calls
+ * `update_assignment_group(@assignment_group, params)`, which permits
+ * `API_ALLOWED_ASSIGNMENT_GROUP_INPUT_FIELDS` straight off `params`).
+ *
+ * `rules` is deliberately absent: the shared helper does accept it, but
+ * `validate_assignment_group_rules` rejects any drop rule higher than the
+ * group's active assignment count, which is 0 for a group that does not exist
+ * yet. Set drop rules with {@link UpdateAssignmentGroupParams} once the group
+ * has assignments. `integration_data` is also omitted — it is SIS plumbing
+ * unrelated to weighted grading, and Canvas answers a malformed value with a
+ * bare `"Invalid integration data"` 400.
+ */
+export interface CreateAssignmentGroupParams {
+  name?: string
+  position?: number
+  group_weight?: number
+  sis_source_id?: string
+}
+
+/** `PUT /api/v1/courses/:course_id/assignment_groups/:assignment_group_id`. */
+export interface UpdateAssignmentGroupParams extends CreateAssignmentGroupParams {
+  rules?: AssignmentGroupRules
 }
 
 export interface CanvasUpcomingEvent {

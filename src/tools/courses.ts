@@ -4,10 +4,13 @@ import type {
   CourseEnrollmentState,
   CourseGetInclude,
   CourseListInclude,
+  CourseSectionInclude,
   CourseWorkflowState,
   GetCourseOptions,
+  ListCourseSectionsOptions,
   ListCoursesOptions,
 } from '../canvas/courses'
+import type { Pseudonymizer } from '../pseudonym/pseudonymizer'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 
@@ -42,7 +45,9 @@ const COURSE_WORKFLOW_STATE = ['unpublished', 'available', 'completed', 'deleted
 
 const COURSE_ENROLLMENT_STATE = ['active', 'invited_or_pending', 'completed'] as const
 
-export function courseTools(canvas: CanvasClient): ToolDefinition[] {
+const COURSE_SECTION_INCLUDE = ['total_students', 'permissions'] as const
+
+export function courseTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): ToolDefinition[] {
   return [
     {
       name: 'list_courses',
@@ -146,6 +151,54 @@ export function courseTools(canvas: CanvasClient): ToolDefinition[] {
         const course_id = params.course_id as CanvasId
         const syllabus_body = await canvas.courses.getSyllabus(course_id)
         return { course_id, syllabus_body }
+      },
+    },
+    {
+      name: 'list_sections',
+      title: 'List Course Sections',
+      description:
+        "List the sections of a course, returning each section's id, name, course_id, " +
+        'start_at, end_at and restrict_enrollments_to_section_dates. Use it to resolve the ' +
+        'section ID that `create_assignment_override` needs for a section-specific due date, ' +
+        'that `enroll_user` takes as `course_section_id`, and that the ' +
+        '`needs_grading_count_by_section` option on `list_assignments` reports against; use ' +
+        '`list_course_enrollments` or `list_course_users` for the people in a section rather ' +
+        "than the sections themselves, or `get_course` with include: ['sections'] when you " +
+        'also need other course fields in the same call. Fetches every page (100 per request) ' +
+        "and fails with a 'Results are incomplete' error instead of silently truncating. This " +
+        "tool never requests Canvas's student roster include, so no student names are " +
+        'returned. The SIS fields (sis_section_id, sis_course_id, integration_id) appear only ' +
+        'for callers with SIS read permission, and Canvas silently drops the total_students ' +
+        'and permissions extras — rather than erroring — unless the caller can read the course ' +
+        'roster or grades. search_term must be at least 2 characters; Canvas ignores shorter ' +
+        'ones. Requires read access to the course.',
+      inputSchema: {
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        include: z
+          .array(z.enum(COURSE_SECTION_INCLUDE))
+          .optional()
+          .describe('Extra fields to include on each section (Canvas include[] param)'),
+        search_term: z
+          .string()
+          .optional()
+          .describe('Return only sections whose name matches this term (at least 2 characters)'),
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const course_id = params.course_id as CanvasId
+        const opts: ListCourseSectionsOptions = {}
+        if (params.include !== undefined)
+          opts.include = params.include as ReadonlyArray<CourseSectionInclude>
+        if (params.search_term !== undefined) opts.search_term = params.search_term as string
+        const sections = await canvas.courses.listSections(course_id, opts)
+        // Fail-closed: today's `include` union cannot produce `students`, but a
+        // Canvas instance that returns it unasked — or a later widening of that
+        // union — must not leak names. See `Pseudonymizer#anonymizeSections`.
+        if (!pseudonymizer?.isEnabled()) return sections
+        return pseudonymizer.anonymizeSections(course_id, sections)
       },
     },
     {

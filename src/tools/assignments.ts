@@ -10,6 +10,7 @@ import type {
   ListAssignmentGroupsOptions,
   ListAssignmentsOptions,
 } from '../canvas/assignments'
+import type { AssignmentGroupRules } from '../canvas/types'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 
@@ -238,6 +239,123 @@ export function assignmentTools(canvas: CanvasClient): ToolDefinition[] {
         if (params.scope_assignments_to_student !== undefined)
           opts.scope_assignments_to_student = params.scope_assignments_to_student as boolean
         return canvas.assignments.listGroups(params.course_id as CanvasId, opts)
+      },
+    },
+    {
+      name: 'create_assignment_group',
+      title: 'Create Assignment Group',
+      description:
+        'Create a new assignment group (a gradebook category such as Homework or Exams) in a ' +
+        'course and return the created Canvas assignment group object, including its `id`, ' +
+        '`name`, `position` and `group_weight`. Not idempotent: each call makes another group ' +
+        'even when the name matches an existing one, so read `list_assignment_groups` first and ' +
+        'use `update_assignment_group` to change a group that already exists; the new group ' +
+        'starts empty, and assignments move into it through `create_assignment` or ' +
+        "`update_assignment`'s assignment_group_id. `group_weight` is the group's percent of " +
+        'the final grade, and it changes nothing unless the course is set to weight its final ' +
+        'grade by assignment group — a course setting `update_course` can turn on. Canvas ' +
+        'coerces a missing or non-numeric `group_weight` to 0. Drop rules are deliberately not ' +
+        'accepted here: Canvas validates them against the number of active assignments in the ' +
+        'group, which is 0 for a group that does not exist yet, so set them with ' +
+        '`update_assignment_group` once the group has assignments. Requires permission to ' +
+        'manage assignments in the course.',
+      inputSchema: {
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        name: z.string().optional().describe('The assignment group name (e.g. Homework)'),
+        position: z
+          .number()
+          .int()
+          .optional()
+          .describe('1-based position of this group relative to the other assignment groups'),
+        group_weight: z
+          .number()
+          .optional()
+          .describe("The group's percent of the total grade (e.g. 40 for 40%)"),
+        sis_source_id: z.string().optional().describe('The SIS source ID for the group'),
+      },
+      annotations: {
+        destructiveHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const { course_id, ...rest } = params as {
+          course_id: CanvasId
+          name?: string
+          position?: number
+          group_weight?: number
+          sis_source_id?: string
+        }
+        return canvas.assignments.createGroup(course_id, rest)
+      },
+    },
+    {
+      name: 'update_assignment_group',
+      title: 'Update Assignment Group',
+      description:
+        'Update an existing assignment group in a course and return the updated Canvas ' +
+        'assignment group object. Only the fields passed are changed — anything omitted keeps ' +
+        'its current value, so repeating the same call leaves the group in the same state, ' +
+        'unlike `create_assignment_group`, which always makes a new group. Use it to repair a ' +
+        "weighted gradebook: `group_weight` sets the group's percent of the final grade (which " +
+        'changes nothing unless the course is set to weight its final grade by assignment ' +
+        'group — a course setting `update_course` can turn on), and `rules` drops the lowest or ' +
+        'highest scores in the group, with never_drop exempting specific assignments. Canvas ' +
+        'rejects a drop rule larger than the number of active assignments in the group, and ' +
+        'refuses a `group_weight` or `rules` change with an authorization error — not a ' +
+        'validation error — when any assignment in the group falls inside a closed grading ' +
+        'period, unless the caller is an account admin. Read `list_assignment_groups` for the ' +
+        'current values and the group ID first. Requires permission to manage assignments in ' +
+        'the course.',
+      inputSchema: {
+        course_id: canvasIdInput().describe('The Canvas course ID'),
+        assignment_group_id: canvasIdInput().describe('The Canvas assignment group ID to update'),
+        name: z.string().optional().describe('New assignment group name'),
+        position: z
+          .number()
+          .int()
+          .optional()
+          .describe('New 1-based position relative to the other assignment groups'),
+        group_weight: z
+          .number()
+          .optional()
+          .describe("The group's percent of the total grade (e.g. 40 for 40%)"),
+        sis_source_id: z.string().optional().describe('The SIS source ID for the group'),
+        rules: z
+          .object({
+            drop_lowest: z
+              .number()
+              .int()
+              .optional()
+              .describe('Number of lowest scores in this group to drop'),
+            drop_highest: z
+              .number()
+              .int()
+              .optional()
+              .describe('Number of highest scores in this group to drop'),
+            never_drop: z
+              .array(canvasIdInput())
+              .optional()
+              .describe('Assignment IDs that the drop rules must never discard'),
+          })
+          .optional()
+          .describe('Drop rules for the group; replaces the existing rules wholesale'),
+      },
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+      handler: async (params) => {
+        const { course_id, assignment_group_id, ...rest } = params as {
+          course_id: CanvasId
+          assignment_group_id: CanvasId
+          name?: string
+          position?: number
+          group_weight?: number
+          sis_source_id?: string
+          rules?: AssignmentGroupRules
+        }
+        return canvas.assignments.updateGroup(course_id, assignment_group_id, rest)
       },
     },
     {
