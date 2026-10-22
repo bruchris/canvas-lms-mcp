@@ -86,7 +86,11 @@ describe('pageTools', () => {
   describe('update_page', () => {
     it('has destructive annotations', () => {
       const tool = pageTools(buildMockCanvas()).find((t) => t.name === 'update_page')!
-      expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
+      expect(tool.annotations).toEqual({
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      })
     })
 
     it('delegates to canvas.pages.update', async () => {
