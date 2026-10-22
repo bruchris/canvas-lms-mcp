@@ -50,6 +50,12 @@ describe('peerReviewTools', () => {
       await tool.handler({ course_id: '1', assignment_id: '2' })
       expect(canvas.peerReviews.listForAssignment).toHaveBeenCalledWith('1', '2')
     })
+
+    it('routes to get_submission_peer_reviews for the per-submission view and documents pagination', () => {
+      const tool = peerReviewTools(buildMockCanvas()).find((t) => t.name === 'list_peer_reviews')!
+      expect(tool.description).toContain('get_submission_peer_reviews')
+      expect(tool.description).toMatch(/every page|pagin/i)
+    })
   })
 
   describe('get_submission_peer_reviews', () => {
@@ -65,6 +71,13 @@ describe('peerReviewTools', () => {
       const tool = peerReviewTools(canvas).find((t) => t.name === 'get_submission_peer_reviews')!
       await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3' })
       expect(canvas.peerReviews.listForSubmission).toHaveBeenCalledWith('1', '2', '3')
+    })
+
+    it('routes to list_peer_reviews for the whole-assignment view', () => {
+      const tool = peerReviewTools(buildMockCanvas()).find(
+        (t) => t.name === 'get_submission_peer_reviews',
+      )!
+      expect(tool.description).toContain('list_peer_reviews')
     })
   })
 
@@ -83,7 +96,7 @@ describe('peerReviewTools', () => {
   })
 
   describe('delete_peer_review', () => {
-    it('has destructive and openWorld annotations', () => {
+    it('has destructive and openWorld annotations, with no idempotentHint claim', () => {
       const tool = peerReviewTools(buildMockCanvas()).find((t) => t.name === 'delete_peer_review')!
       expect(tool.annotations).toEqual({ destructiveHint: true, openWorldHint: true })
     })
@@ -93,6 +106,32 @@ describe('peerReviewTools', () => {
       const tool = peerReviewTools(canvas).find((t) => t.name === 'delete_peer_review')!
       await tool.handler({ course_id: '1', assignment_id: '2', submission_id: '3', user_id: '5' })
       expect(canvas.peerReviews.delete).toHaveBeenCalledWith('1', '2', '3', '5')
+    })
+
+    it('returns undefined from the handler, matching the "Operation completed successfully" ack path', async () => {
+      const canvas = buildMockCanvas()
+      const tool = peerReviewTools(canvas).find((t) => t.name === 'delete_peer_review')!
+      const result = await tool.handler({
+        course_id: '1',
+        assignment_id: '2',
+        submission_id: '3',
+        user_id: '5',
+      })
+      expect(result).toBeUndefined()
+    })
+
+    it('describes removal as a reversible relationship removal, not an irreversible delete', () => {
+      const tool = peerReviewTools(buildMockCanvas()).find((t) => t.name === 'delete_peer_review')!
+      expect(tool.description).not.toMatch(/action is permanent/i)
+      expect(tool.description).toMatch(/reversible/i)
+      expect(tool.description).toContain('create_peer_review')
+    })
+
+    it('names the required permission and the sibling tools used to find the user_id', () => {
+      const tool = peerReviewTools(buildMockCanvas()).find((t) => t.name === 'delete_peer_review')!
+      expect(tool.description).toMatch(/requires?/i)
+      expect(tool.description).toContain('list_peer_reviews')
+      expect(tool.description).toContain('get_submission_peer_reviews')
     })
   })
 })

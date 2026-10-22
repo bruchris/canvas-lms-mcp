@@ -1488,7 +1488,7 @@
       "name": "list_peer_reviews",
       "title": "List Peer Reviews",
       "domain": "peer_reviews",
-      "description": "List all peer reviews for an assignment in a course.",
+      "description": "List every peer review assigned on an assignment, across every submission, returning each review's id, assessor_id (the reviewer), user_id (the reviewee whose submission is being reviewed), asset_id, and workflow_state ('assigned' or 'completed'). Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use get_submission_peer_reviews to scope the results to one submission instead of the whole assignment, create_peer_review to assign a new reviewer, and delete_peer_review to remove one.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1502,7 +1502,7 @@
       "name": "get_submission_peer_reviews",
       "title": "Get Submission Peer Reviews",
       "domain": "peer_reviews",
-      "description": "List peer reviews assigned to a specific submission.",
+      "description": "List the peer reviews assigned to one submission within an assignment — a single submission can have more than one assigned reviewer — returning each review's id, assessor_id (the reviewer), user_id (the reviewee), asset_id, and workflow_state ('assigned' or 'completed'). Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use list_peer_reviews instead to see every review assigned across the whole assignment rather than one submission, create_peer_review to assign another reviewer to this submission, and delete_peer_review to remove one.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1530,7 +1530,7 @@
       "name": "delete_peer_review",
       "title": "Delete Peer Review",
       "domain": "peer_reviews",
-      "description": "Remove a peer review assignment from a submission. This action is permanent.",
+      "description": "Remove a peer-review assignment — identified by its assessor_id/user_id pairing — from one submission, unassigning that reviewer; the submission and the assignment itself are untouched, only the peer-review relationship goes away. Returns a confirmation message; Canvas's own response body is discarded. This is a reversible relationship removal, not an irreversible content delete: re-create the assignment with create_peer_review, though the new review gets a new id and workflow_state starts over at \"assigned\". Find the reviewer's user_id to remove with list_peer_reviews or get_submission_peer_reviews. Requires instructor/TA permission in the course.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
