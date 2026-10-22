@@ -50,7 +50,18 @@ export function calendarTools(canvas: CanvasClient): ToolDefinition[] {
     {
       name: 'create_calendar_event',
       title: 'Create Calendar Event',
-      description: 'Create a new calendar event in Canvas.',
+      description:
+        'Create a new calendar event and return the created event object, including its ' +
+        '`id`, `start_at`, `end_at`, and `workflow_state`. `context_code` can target any ' +
+        'Canvas context the caller has permission to create events in — a course ' +
+        '(`course_123`), group, user, or account context, not only courses, despite the ' +
+        'course-shaped example. Each call creates a new event; calling it again with the ' +
+        'same title and times does not update anything, it adds a duplicate, so check ' +
+        '`list_calendar_events` for what already exists and use `update_calendar_event` ' +
+        'with the returned `id` to change this event afterward. The event is saved and ' +
+        "immediately part of that context's calendar — there is no separate draft or " +
+        'publish step. Requires permission to create events in the target context; Canvas ' +
+        'rejects the call otherwise.',
       inputSchema: {
         context_code: z
           .string()

@@ -12,6 +12,7 @@ import type {
 } from '../../src/canvas/types'
 import { Pseudonymizer } from '../../src/pseudonym/pseudonymizer'
 import { accountTools } from '../../src/tools/accounts'
+import { getAllTools } from '../../src/tools'
 
 describe('accountTools', () => {
   const mockAccount: CanvasAccount = {
@@ -75,6 +76,59 @@ describe('accountTools', () => {
 
   it('returns 8 tool definitions', () => {
     expect(accountTools(buildMockCanvas())).toHaveLength(8)
+  })
+
+  describe('description quality (BRU-3108)', () => {
+    // Guards against the five Glama-flagged tools regressing to a one-line
+    // restatement; semantic checks only, no brittle full-prose snapshots.
+    // The mechanical floor is also enforced by the description-quality.test.ts
+    // CI ratchet now that these five are no longer in the baseline.
+    const REWRITTEN_LIST_TOOLS = ['list_sub_accounts', 'list_account_courses', 'list_account_users']
+
+    // These descriptions route to tools outside accounts.ts (search_users,
+    // list_course_users, resolve_pseudonym), so the sibling check needs the
+    // full server-wide registry, not just this domain's 8 tools.
+    function registeredToolNames(): Set<string> {
+      const deep: unknown = new Proxy(function () {}, {
+        get: () => deep,
+        apply: () => deep,
+      })
+      return new Set(getAllTools(deep as CanvasClient).map((t) => t.name))
+    }
+
+    it.each(['get_account', ...REWRITTEN_LIST_TOOLS, 'get_account_reports'])(
+      '%s names a registered sibling tool and clears the length floor',
+      (name) => {
+        const tools = accountTools(buildMockCanvas())
+        const names = registeredToolNames()
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description.length).toBeGreaterThanOrEqual(150)
+        const mentionsSibling = [...names].some(
+          (sibling) => sibling !== name && tool.description.includes(sibling),
+        )
+        expect(mentionsSibling).toBe(true)
+      },
+    )
+
+    it('list tools state pagination behavior', () => {
+      const tools = accountTools(buildMockCanvas())
+      for (const name of REWRITTEN_LIST_TOOLS) {
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description).toMatch(/every page|pagin|truncat/i)
+      }
+    })
+
+    it('get_account_reports does not imply it starts or downloads a report', () => {
+      const tool = accountTools(buildMockCanvas()).find((t) => t.name === 'get_account_reports')!
+      expect(tool.description).toMatch(/does not start|not start, re-run/i)
+    })
+
+    it("list_account_users' description states pseudonymization semantics", () => {
+      const tool = accountTools(buildMockCanvas()).find((t) => t.name === 'list_account_users')!
+      expect(tool.description).toMatch(/CANVAS_PSEUDONYMIZE_STUDENTS/)
+      expect(tool.description).toMatch(/pseudonym/i)
+      expect(tool.description).toContain('resolve_pseudonym')
+    })
   })
 
   it('exports tools with correct names', () => {

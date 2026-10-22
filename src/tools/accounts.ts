@@ -12,7 +12,8 @@ export function accountTools(
     {
       name: 'get_account',
       title: 'Get Account',
-      description: 'Get details for a Canvas account by ID.',
+      description:
+        'Get a single Canvas account by ID, including its name, parent and root account IDs, UUID, default storage quotas, and workflow state. Find the account_id via `list_accounts`, or `list_sub_accounts` on a parent account to find one of its children. Requires an admin role on the account.',
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
       },
@@ -40,7 +41,8 @@ export function accountTools(
     {
       name: 'list_sub_accounts',
       title: 'List Sub-Accounts',
-      description: 'List sub-accounts under a given Canvas account.',
+      description:
+        "List the direct child accounts nested under a given Canvas account — one level deep, not grandchildren or deeper descendants. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `get_account` to fetch one sub-account's full details by ID, or call this tool again with a child's ID as `account_id` to walk further down the tree. Requires an admin role on the account.",
       inputSchema: {
         account_id: canvasIdInput().describe('The parent Canvas account ID'),
       },
@@ -55,7 +57,8 @@ export function accountTools(
     {
       name: 'list_account_courses',
       title: 'List Account Courses',
-      description: 'List courses under a given Canvas account.',
+      description:
+        "List every course in a Canvas account, optionally filtered by `search_term` matching course name or course code. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `list_sub_accounts` first if you want one sub-account's courses rather than this account's own, and `list_courses` instead for the courses the authenticated user is enrolled in or can access, rather than a full account inventory. Requires an admin role on the account.",
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().optional().describe('Search courses by name or course code'),
@@ -73,7 +76,8 @@ export function accountTools(
     {
       name: 'list_account_users',
       title: 'List Account Users',
-      description: 'List users in a Canvas account.',
+      description:
+        "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `search_users` instead when you need extra fields like email, last_login, avatar_url, time_zone, or uuid via its `include` parameter, and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().optional().describe('Search users by name, email, or login'),
@@ -95,7 +99,8 @@ export function accountTools(
     {
       name: 'get_account_reports',
       title: 'Get Account Reports',
-      description: 'List available report types for a Canvas account.',
+      description:
+        'List the report types a Canvas account supports — csv/grade exports, SIS imports, and institution-specific types — each with its report key, title, expected parameters, and the most recent `last_run` status if one was ever generated. This only lists what can be run; it does not start, re-run, or download a report, and there is no report-running tool registered on this server. Use `get_account` to confirm the account first. Requires an admin role on the account.',
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
       },

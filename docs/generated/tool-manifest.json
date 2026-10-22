@@ -979,7 +979,7 @@
       "name": "list_enrollments",
       "title": "List Enrollments",
       "domain": "enrollments",
-      "description": "List all enrollments for the authenticated user across courses. Optional filters and includes mirror Canvas `GET /users/self/enrollments`.",
+      "description": "List every enrollment the authenticated user holds across all of their Canvas courses — the caller's own enrollments only. Use `list_course_enrollments` for a single course's full roster, including a `user_id` filter to focus on one person. Optional `type`, `state`, and `role` filters and the `include` array mirror Canvas's own `GET /users/self/enrollments` endpoint. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. When pseudonymization is enabled, each enrollment classified as student or unknown has its nested `user` object replaced with that course's pseudonym and `sis_user_id` cleared before the result is returned; staff enrollments (TeacherEnrollment, TaEnrollment, DesignerEnrollment) are left as-is.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1007,7 +1007,7 @@
       "name": "enroll_user",
       "title": "Enroll User",
       "domain": "enrollments",
-      "description": "Enroll a user in a course with a specified role.",
+      "description": "Enroll a user in a course with a given role (StudentEnrollment, TeacherEnrollment, TaEnrollment, ObserverEnrollment, or DesignerEnrollment) and return the created enrollment object, including its `id` and `enrollment_state`. Use `list_course_enrollments` with a `user_id` filter to check a user's existing enrollments before enrolling them again, and `remove_enrollment` to conclude, deactivate, or permanently delete this enrollment afterward — `enroll_user` itself has no way to undo what it creates. Omitting `enrollment_state` leaves it at Canvas's documented default of \"invited\", so the user must accept a course invitation before the enrollment becomes active; pass `enrollment_state: \"active\"` to skip that step. Requires permission to manage enrollments in the course; Canvas rejects the call otherwise.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -1318,7 +1318,7 @@
       "name": "list_pages",
       "title": "List Pages",
       "domain": "pages",
-      "description": "List all wiki pages in a course.",
+      "description": "List every wiki page in a course, returning page stubs — title, url slug, published state and editing_roles — without the HTML body; the paginated list endpoint omits body entirely. Use get_page to fetch one page's full body by its url slug, or search_course_content to search page content across the whole course. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1332,7 +1332,7 @@
       "name": "get_page",
       "title": "Get Page",
       "domain": "pages",
-      "description": "Get a single wiki page by its URL slug.",
+      "description": "Get one wiki page by its page_url slug — not a numeric ID — obtained from list_pages. Returns the page's title, published state, editing_roles and full HTML body, unlike the list endpoint's body-less stubs. Use list_pages to discover a course's pages and find a page_url, and update_page to edit this page's title, body, published state or editing_roles afterward.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1346,7 +1346,7 @@
       "name": "create_page",
       "title": "Create Page",
       "domain": "pages",
-      "description": "Create a new wiki page in a course.",
+      "description": "Create a new wiki page in a course with a title and optional HTML body, published state and editing_roles, and return the created page — including its url slug, used as page_url by get_page, update_page and delete_page. Not idempotent: each call creates another page; Canvas does not deduplicate by title, so check list_pages first to avoid creating a duplicate. Use update_page to edit an existing page instead of creating a new one, and create_module_item's page_url parameter (with type Page) to place this page inside a module. Requires permission to manage wiki content in the course.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -1360,9 +1360,10 @@
       "name": "update_page",
       "title": "Update Page",
       "domain": "pages",
-      "description": "Update an existing wiki page.",
+      "description": "Update an existing wiki page's title, body, published state or editing_roles. Only the fields you pass are sent to Canvas; omitted fields are left unchanged. body is not merged — it replaces the entire HTML body, so read the current content with get_page first and send back the full edited body, not just the changed part. Returns the updated page. Idempotent: calling it again with the same fields produces the same resulting page. Use create_page to make a new page instead, delete_page to remove this one, and update_course's syllabus_body parameter to edit the course syllabus, which is not a wiki page editable here. Requires permission to manage wiki content in the course.",
       "annotations": {
         "destructiveHint": true,
+        "idempotentHint": true,
         "openWorldHint": true
       },
       "access": "write",
@@ -1402,7 +1403,7 @@
       "name": "create_calendar_event",
       "title": "Create Calendar Event",
       "domain": "calendar",
-      "description": "Create a new calendar event in Canvas.",
+      "description": "Create a new calendar event and return the created event object, including its `id`, `start_at`, `end_at`, and `workflow_state`. `context_code` can target any Canvas context the caller has permission to create events in — a course (`course_123`), group, user, or account context, not only courses, despite the course-shaped example. Each call creates a new event; calling it again with the same title and times does not update anything, it adds a duplicate, so check `list_calendar_events` for what already exists and use `update_calendar_event` with the returned `id` to change this event afterward. The event is saved and immediately part of that context's calendar — there is no separate draft or publish step. Requires permission to create events in the target context; Canvas rejects the call otherwise.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
@@ -1542,7 +1543,7 @@
       "name": "get_account",
       "title": "Get Account",
       "domain": "accounts",
-      "description": "Get details for a Canvas account by ID.",
+      "description": "Get a single Canvas account by ID, including its name, parent and root account IDs, UUID, default storage quotas, and workflow state. Find the account_id via `list_accounts`, or `list_sub_accounts` on a parent account to find one of its children. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1570,7 +1571,7 @@
       "name": "list_sub_accounts",
       "title": "List Sub-Accounts",
       "domain": "accounts",
-      "description": "List sub-accounts under a given Canvas account.",
+      "description": "List the direct child accounts nested under a given Canvas account — one level deep, not grandchildren or deeper descendants. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `get_account` to fetch one sub-account's full details by ID, or call this tool again with a child's ID as `account_id` to walk further down the tree. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1584,7 +1585,7 @@
       "name": "list_account_courses",
       "title": "List Account Courses",
       "domain": "accounts",
-      "description": "List courses under a given Canvas account.",
+      "description": "List every course in a Canvas account, optionally filtered by `search_term` matching course name or course code. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `list_sub_accounts` first if you want one sub-account's courses rather than this account's own, and `list_courses` instead for the courses the authenticated user is enrolled in or can access, rather than a full account inventory. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1598,7 +1599,7 @@
       "name": "list_account_users",
       "title": "List Account Users",
       "domain": "accounts",
-      "description": "List users in a Canvas account.",
+      "description": "List every user in a Canvas account — every role the account contains, not only students — optionally filtered by `search_term` matching name, email, or login. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use `search_users` instead when you need extra fields like email, last_login, avatar_url, time_zone, or uuid via its `include` parameter, and `list_course_users` to scope the roster to one course rather than the whole account. When CANVAS_PSEUDONYMIZE_STUDENTS is enabled, every returned user's name and contact info is replaced with a stable pseudonym — this tool has no enrollment data to tell students from staff, so every row is masked the same way; use `resolve_pseudonym` to map one back to a real user_id. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
@@ -1612,7 +1613,7 @@
       "name": "get_account_reports",
       "title": "Get Account Reports",
       "domain": "accounts",
-      "description": "List available report types for a Canvas account.",
+      "description": "List the report types a Canvas account supports — csv/grade exports, SIS imports, and institution-specific types — each with its report key, title, expected parameters, and the most recent `last_run` status if one was ever generated. This only lists what can be run; it does not start, re-run, or download a report, and there is no report-running tool registered on this server. Use `get_account` to confirm the account first. Requires an admin role on the account.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
