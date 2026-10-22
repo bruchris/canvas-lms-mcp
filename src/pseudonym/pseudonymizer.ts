@@ -18,6 +18,7 @@ import type {
   CanvasCalendarEvent,
   CanvasConversation,
   CanvasConversationDetail,
+  CanvasConversationParticipant,
   CanvasEnrollment,
   CanvasGroup,
   CanvasOutcomeResultsResponse,
@@ -379,11 +380,15 @@ export class Pseudonymizer {
     const participants = await Promise.all(
       conversation.participants.map(async (p) => {
         const pseudonym = await this.assignConversationPseudonym(this.host as string, p.id)
-        return { ...p, name: pseudonym }
+        return applyPseudonymToConversationParticipant(p, pseudonym)
       }),
     )
 
-    return { ...conversation, participants } as T
+    const out = { ...conversation, participants } as T
+    // `conversation.avatar_url` is the other participant's face on a two-person
+    // thread, so it survives a masked name unless it is cleared too.
+    if (conversation.avatar_url !== undefined) out.avatar_url = null
+    return out
   }
 
   /**
@@ -1025,6 +1030,32 @@ function applyPseudonymToDisplay(display: CanvasUserDisplay, pseudonym: string):
   const out: CanvasUserDisplay = { ...display, display_name: pseudonym }
   if (display.avatar_image_url !== undefined) out.avatar_image_url = null
   if (display.pronouns !== undefined) out.pronouns = null
+  return out
+}
+
+/**
+ * The conversation-participant counterpart of {@link applyPseudonymToUser}.
+ *
+ * Canvas's `conversation_user_json` emits two real-name fields — `name`
+ * (`user.short_name`) and `full_name` (`user.name`) — so rewriting `name` alone
+ * leaves the person's full name sitting in the same array. Both become the
+ * pseudonym, and the identity siblings beside a masked name (`pronouns`,
+ * `avatar_url`) are nulled, exactly as {@link applyPseudonymToUser} and
+ * {@link applyPseudonymToDisplay} already do.
+ *
+ * `id` is preserved because nothing in this layer rewrites an id.
+ * `common_courses` / `common_groups` are preserved because they are keyed by
+ * course and group id and their values are enrollment type names, not person
+ * names.
+ */
+function applyPseudonymToConversationParticipant(
+  participant: CanvasConversationParticipant,
+  pseudonym: string,
+): CanvasConversationParticipant {
+  const out: CanvasConversationParticipant = { ...participant, name: pseudonym }
+  if (participant.full_name !== undefined) out.full_name = pseudonym
+  if (participant.pronouns !== undefined) out.pronouns = null
+  if (participant.avatar_url !== undefined) out.avatar_url = null
   return out
 }
 

@@ -1197,13 +1197,40 @@ export interface CanvasAppointmentGroup {
 
 // --- Conversations ---
 
+/**
+ * One entry of a conversation's `participants`, as emitted by Canvas's
+ * `conversation_user_json` (`lib/api/v1/conversation.rb`).
+ *
+ * It carries TWO real-name fields — `name` is `user.short_name` and `full_name`
+ * is `user.name` — plus `pronouns`, and, on the branches that request avatars
+ * and contexts, `avatar_url`, `common_courses` and `common_groups`. They are
+ * declared here rather than left off the type so that the pseudonymizer's
+ * handling of each one is compiler-enforced instead of optional.
+ */
+export interface CanvasConversationParticipant {
+  id: CanvasId
+  name: string
+  full_name?: string
+  pronouns?: string | null
+  avatar_url?: string | null
+  /** Keyed by course id; values are enrollment type names, not person names. */
+  common_courses?: Record<string, string[]>
+  /** Keyed by group id; values are membership type names, not person names. */
+  common_groups?: Record<string, string[]>
+}
+
 export interface CanvasConversation {
   id: CanvasId
   subject: string
   last_message: string
   last_message_at: string
   message_count: number
-  participants: Array<{ id: CanvasId; name: string }>
+  /**
+   * `avatar_url_for(conversation, participants)`: on a two-person thread this is
+   * the *other* participant's avatar, so it re-identifies a masked name.
+   */
+  avatar_url?: string | null
+  participants: CanvasConversationParticipant[]
 }
 
 export interface CanvasConversationMessage {

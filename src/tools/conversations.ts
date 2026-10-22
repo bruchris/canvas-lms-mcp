@@ -99,7 +99,9 @@ export function conversationTools(
         const recipients = params.recipients as string[]
         const subject = params.subject as string
         const body = params.body as string
-        return canvas.conversations.send(recipients, subject, body)
+        const conversations = await canvas.conversations.send(recipients, subject, body)
+        if (!pseudonymizer?.isEnabled()) return conversations
+        return Promise.all(conversations.map((c) => pseudonymizer.anonymizeConversation(c)))
       },
     },
   ]
