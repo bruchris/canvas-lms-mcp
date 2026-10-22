@@ -59,6 +59,18 @@ describe('skill-count consistency', () => {
         ).toBe(SKILL_COUNT)
       }
     })
+
+    // README carries the skill count twice, and only the claim above was gated, so the
+    // prompt sentence was free to drift on its own. Its own `it` so that an injection
+    // attributes to one copy rather than to "README".
+    it('the "same N workflows" prompt sentence', () => {
+      const m = readme.match(/The same (\d+) workflows are also served over MCP/)
+      expect(m, 'README.md "The same N workflows are also served over MCP" not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `README.md says "The same ${m![1]} workflows" but skills/ has ${SKILL_COUNT} directories with a SKILL.md — update README.md`,
+      ).toBe(SKILL_COUNT)
+    })
   })
 
   describe('docs/index.html', () => {

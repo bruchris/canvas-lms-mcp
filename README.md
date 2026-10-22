@@ -38,7 +38,7 @@ Click a badge to open Cursor or VS Code with canvas-lms-mcp pre-configured (plac
 /plugin install canvas-lms-mcp
 ```
 
-Installs the MCP server (via `npx canvas-lms-mcp`) and all 16 [Agent Skills](#agent-skills) in a single step, versioned and updatable through Claude Code's plugin manager. On enable, Claude Code prompts for your Canvas API token and base URL (and the optional FERPA pseudonymization settings). See the [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference) for how marketplaces and plugin manifests work.
+Installs the MCP server (via `npx canvas-lms-mcp`) and all 17 [Agent Skills](#agent-skills) in a single step, versioned and updatable through Claude Code's plugin manager. On enable, Claude Code prompts for your Canvas API token and base URL (and the optional FERPA pseudonymization settings). See the [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference) for how marketplaces and plugin manifests work.
 
 ## Comparison
 
@@ -89,7 +89,7 @@ npx skills add bruchris/canvas-lms-mcp
 
 Skills are markdown workflow files (no extra dependencies). They work with the MCP server you already have installed. See the [`skills/` directory](./skills/) for the full list.
 
-The same 16 workflows are also served over MCP as [prompts](https://modelcontextprotocol.io/docs/concepts/prompts), so a host without a skill-file loader — Claude Desktop, ChatGPT, or an application embedding this server in-process — can list them with `prompts/list` and fetch one with `prompts/get`. Each prompt advertises optional `course_id`-style arguments a host can prefill, and marks the workflows that reach write tools. Prompts are inert templates the user chooses: selecting one grants the model no tool authority it did not already have.
+The same 17 workflows are also served over MCP as [prompts](https://modelcontextprotocol.io/docs/concepts/prompts), so a host without a skill-file loader — Claude Desktop, ChatGPT, or an application embedding this server in-process — can list them with `prompts/list` and fetch one with `prompts/get`. Each prompt advertises optional `course_id`-style arguments a host can prefill, and marks the workflows that reach write tools. Prompts are inert templates the user chooses: selecting one grants the model no tool authority it did not already have.
 
 ## Example Prompts
 

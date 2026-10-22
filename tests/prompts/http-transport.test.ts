@@ -101,6 +101,7 @@ describe('prompts over the HTTP transport', () => {
     const { prompts } = await client.listPrompts()
 
     expect(prompts.map((prompt) => prompt.name).sort()).toEqual([
+      'canvas-course-requirements',
       'canvas-student-todo',
       'canvas-week-plan',
     ])
@@ -110,6 +111,6 @@ describe('prompts over the HTTP transport', () => {
     const client = await connect(await startServer('student'))
     const { prompts } = await client.listPrompts()
 
-    expect(prompts).toHaveLength(2)
+    expect(prompts).toHaveLength(3)
   })
 })

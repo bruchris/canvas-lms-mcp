@@ -171,8 +171,8 @@ describe('role filtering', () => {
   // these numbers are what make a mis-tag fail. The per-skill audience table
   // lives in tests/prompts/generate.test.ts.
   it.each([
-    [undefined, 16],
-    ['student', 2],
+    [undefined, 17],
+    ['student', 3],
     ['teacher', 13],
     ['admin', 14],
   ] as const)('role %s sees %i prompts', async (role, expected) => {
@@ -232,6 +232,7 @@ describe('createCanvasMCPServer', () => {
     const { prompts } = await client.listPrompts()
 
     expect(prompts.map((prompt) => prompt.name).sort()).toEqual([
+      'canvas-course-requirements',
       'canvas-student-todo',
       'canvas-week-plan',
     ])

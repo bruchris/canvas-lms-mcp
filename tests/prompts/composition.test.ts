@@ -167,6 +167,7 @@ describe('invariants survive composition', () => {
     const { prompts } = await client.listPrompts()
 
     expect(prompts.map((prompt) => prompt.name).sort()).toEqual([
+      'canvas-course-requirements',
       'canvas-student-todo',
       'canvas-week-plan',
       CUSTOM,

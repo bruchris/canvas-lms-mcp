@@ -3,7 +3,7 @@
   "name": "canvas-lms-mcp",
   "displayName": "Canvas LMS",
   "version": "2.8.4",
-  "description": "Canvas LMS MCP server plus 16 educator/student workflow skills — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows.",
+  "description": "Canvas LMS MCP server plus 17 educator/student workflow skills — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows.",
   "author": {
     "name": "Christian Bru",
     "url": "https://github.com/bruchris"

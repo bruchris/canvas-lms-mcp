@@ -9,7 +9,7 @@
     {
       "name": "canvas-lms-mcp",
       "source": "./",
-      "description": "MCP server for Canvas LMS — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows — plus 16 educator/student workflow skills.",
+      "description": "MCP server for Canvas LMS — courses, assignments, grading, gradebook history, quizzes, discussions, and admin workflows — plus 17 educator/student workflow skills.",
       "author": {
         "name": "Christian Bru",
         "url": "https://github.com/bruchris"
