@@ -231,7 +231,7 @@
       "name": "comment_on_submission",
       "title": "Comment on Submission",
       "domain": "submissions",
-      "description": "Add a text comment to a submission and return the updated Canvas submission object, with the new entry appended to `submission_comments`. Not idempotent: each call posts another comment rather than editing or replacing a prior one, so a retried call leaves duplicate comments behind instead of one. This only adds a comment — it never changes `grade` or `score`; use grade_submission for that, on the same course_id/assignment_id/user_id. Use list_submission_comments_needing_attention to find submissions where the student's most recent comment has not yet been answered by staff. Requires the same grading permission as grade_submission, since both send a PUT to the same submission endpoint — one with a `comment` body, the other with `submission`.",
+      "description": "Add a text comment to a submission and return the updated Canvas submission object, with the new entry appended to `submission_comments`. Not idempotent: each call posts another comment rather than editing or replacing a prior one, so a retried call leaves duplicate comments behind instead of one. This only adds a comment — it never changes `grade` or `score`; use grade_submission for that, on the same course_id/assignment_id/user_id. Use list_submission_comments_needing_attention to find submissions where the student's most recent comment has not yet been answered by staff. Permission is looser than grade_submission's: the submission's own student and any peer reviewer assigned to it can comment without grading rights; anyone who can grade can also comment.",
       "annotations": {
         "destructiveHint": true,
         "openWorldHint": true
