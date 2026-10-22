@@ -82,6 +82,19 @@ describe('skill-count consistency', () => {
         `docs/index.html says "${m![1]} agent skills installed" but skills/ has ${SKILL_COUNT} directories with a SKILL.md — update docs/index.html`,
       ).toBe(SKILL_COUNT)
     })
+
+    // docs/index.html carries the skill count twice (the terminal demo above, and this
+    // ledger row), and only the terminal demo was gated, so the ledger row was free to
+    // drift on its own. Its own `it` so that an injection attributes to one copy rather
+    // than to "docs/index.html".
+    it('ledger row "Agent skills ... N shipped"', () => {
+      const m = indexHtml.match(/Agent skills<\/span><span class="v">(\d+) shipped<\/span>/)
+      expect(m, 'docs/index.html "Agent skills ... N shipped" ledger row not found').toBeTruthy()
+      expect(
+        Number(m![1]),
+        `docs/index.html ledger row says "${m![1]} shipped" but skills/ has ${SKILL_COUNT} directories with a SKILL.md — update docs/index.html`,
+      ).toBe(SKILL_COUNT)
+    })
   })
 
   describe('MCP prompt surface', () => {
