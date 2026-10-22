@@ -119,6 +119,67 @@ describe('newQuizTools', () => {
     })
   })
 
+  // ── Description quality (BRU-3117) ──────────────────────────────────────────
+
+  describe('description quality (BRU-3117)', () => {
+    // Guards against the four Glama-flagged tools, plus create_new_quiz's
+    // fixed create_quiz reference, regressing to a one-line CRUD restatement.
+    // Semantic checks only, no brittle full-prose snapshots. The mechanical
+    // floor is also enforced by the description-quality.test.ts CI ratchet
+    // now that these five are no longer in the baseline.
+    const REWRITTEN_WRITE_TOOLS = new Set([
+      'create_new_quiz',
+      'update_new_quiz',
+      'delete_new_quiz_item',
+    ])
+    const REWRITTEN_READ_TOOLS = new Set(['list_new_quiz_items', 'get_new_quiz_item'])
+    // Classic Quiz siblings these descriptions route to, registered in
+    // src/tools/quizzes.ts rather than this file.
+    const CLASSIC_QUIZ_SIBLINGS = new Set(['list_quizzes', 'get_quiz', 'delete_quiz'])
+
+    it.each([...REWRITTEN_WRITE_TOOLS, ...REWRITTEN_READ_TOOLS])(
+      '%s names a registered sibling tool and clears the length floor',
+      (name) => {
+        const tools = newQuizTools(buildMockCanvas())
+        const names = new Set([...tools.map((t) => t.name), ...CLASSIC_QUIZ_SIBLINGS])
+        const tool = tools.find((t) => t.name === name)!
+        const minLen = REWRITTEN_WRITE_TOOLS.has(name) ? 200 : 150
+        expect(tool.description.length).toBeGreaterThanOrEqual(minLen)
+        const mentionsSibling = [...names].some(
+          (sibling) => sibling !== name && tool.description.includes(sibling),
+        )
+        expect(mentionsSibling).toBe(true)
+      },
+    )
+
+    it('list_new_quiz_items states pagination behavior', () => {
+      const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === 'list_new_quiz_items')!
+      expect(tool.description).toMatch(/every page|pagin|truncat/i)
+    })
+
+    it('write tools state their return value and required permission', () => {
+      const tools = newQuizTools(buildMockCanvas())
+      for (const name of REWRITTEN_WRITE_TOOLS) {
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description).toMatch(/\breturns?\b/i)
+        expect(tool.description).toMatch(/requires?|permission/i)
+      }
+    })
+
+    it('create_new_quiz and update_new_quiz make assignment_id vs Classic Quiz ID explicit', () => {
+      const tools = newQuizTools(buildMockCanvas())
+      for (const name of ['create_new_quiz', 'update_new_quiz']) {
+        const tool = tools.find((t) => t.name === name)!
+        expect(tool.description).toMatch(/assignment_id/)
+      }
+    })
+
+    it('create_new_quiz never names the unregistered create_quiz tool', () => {
+      const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === 'create_new_quiz')!
+      expect(tool.description).not.toMatch(/\bcreate_quiz\b/)
+    })
+  })
+
   // ── Handler delegation ──────────────────────────────────────────────────────
 
   describe('create_new_quiz', () => {
