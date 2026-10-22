@@ -40,7 +40,8 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     {
       name: 'list_students',
       title: 'List Students',
-      description: 'List all students enrolled in a course.',
+      description:
+        "List every student enrolled in a course (enrollment_type=student only), returning Canvas user objects (id, name, email, login_id) without grades or enrollment details. Fetches every page (100 per request) and fails with a 'Results are incomplete' error instead of silently truncating. Use list_course_users for every role in the course (teachers, TAs, observers) or to filter users by enrollment_state, and list_course_enrollments when you need the enrollment/grade objects themselves (score, grade, enrollment workflow_state) rather than user profile fields. In pseudonymized mode every returned user's name and email are anonymized, since this endpoint carries no enrollment data for role classification to tell staff apart.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
       },
@@ -58,7 +59,8 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
     {
       name: 'get_user',
       title: 'Get User',
-      description: 'Get details for a single user by ID.',
+      description:
+        'Get a single Canvas user by numeric ID, returning the full Canvas user object (name, email, login_id, time_zone, bio, pronouns) when the caller is permitted to see it. Use get_profile instead when the target is the caller\'s own account, search_users to find a user when you only know their name, login, or email in an account, or list_course_users to see every user enrolled in a specific course. Because a bare ID lookup carries no enrollment data, pseudonymized mode cannot tell staff from students here and conservatively anonymizes the name and email on every call; list_course_users only keeps a real name when it is also called with `include: ["enrollments"]` and Canvas reports a teacher, TA, or designer enrollment for that user.',
       inputSchema: {
         user_id: canvasIdInput().describe('The Canvas user ID'),
       },
@@ -93,7 +95,7 @@ export function userTools(canvas: CanvasClient, pseudonymizer?: Pseudonymizer): 
       name: 'search_users',
       title: 'Search Users',
       description:
-        'Search for users in a Canvas account by name, login, or email. Use `include` to request email, last_login, avatar_url, time_zone, or uuid in the response.',
+        "Search for users in a single Canvas account by name, login, or email, returning matching Canvas user objects. Use `include` to add email, last_login, avatar_url, time_zone, or uuid to each result, and `sort`/`order` to control the ordering. This is one account-scoped search — to check whether one student is enrolled anywhere across an educator's own active and concluded courses, use find_student_across_courses instead; to list every user in one course without a search term, use list_course_users; to list an entire account's users unfiltered, use list_account_users. Because results carry no enrollment data, pseudonymized mode cannot tell staff from students and anonymizes every returned user's name and email.",
       inputSchema: {
         account_id: canvasIdInput().describe('The Canvas account ID'),
         search_term: z.string().describe('The search term (name, login, or email)'),

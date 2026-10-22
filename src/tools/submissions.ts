@@ -106,7 +106,7 @@ export function submissionTools(
       name: 'get_submission',
       title: 'Get Submission',
       description:
-        'Get a single submission for a specific user on an assignment. Defaults to including submission_comments. Pass `include` to add rubric_assessment, submission_history, visibility, course, user, or read_status.',
+        "Get one student's submission for an assignment by user_id, returning the Canvas submission object (score, grade, workflow_state, submitted_at, body/url, submission_comments). user_id can be any user in the course, not only the caller's own. Use list_submissions to fetch every student's submission for the assignment in a single call instead of one get_submission call per student, or get_my_submissions when the caller wants their own submissions across a whole course rather than one assignment. Defaults to including submission_comments; pass `include` to add submission_history, rubric_assessment, visibility, course, user, or read_status instead.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
@@ -140,7 +140,8 @@ export function submissionTools(
     {
       name: 'grade_submission',
       title: 'Grade Submission',
-      description: 'Post or update a grade for a submission. Requires grading permissions.',
+      description:
+        "Post or update the grade for one student's submission on a regular assignment and return the updated Canvas submission object (score, grade, workflow_state, graded_at). Only `grade` is sent; nothing else on the submission changes. Idempotent: calling it again with the same grade string overwrites the previous `posted_grade` rather than creating a second grade. This sets only the top-level grade — for a rubric-based assignment use submit_rubric_assessment to score each criterion instead, and for a Classic Quiz use score_quiz_question to grade one question at a time rather than the assignment as a whole. Requires grading permission in the course.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),
@@ -163,7 +164,8 @@ export function submissionTools(
     {
       name: 'comment_on_submission',
       title: 'Comment on Submission',
-      description: 'Add a text comment to a submission.',
+      description:
+        "Add a text comment to a submission and return the updated Canvas submission object, with the new entry appended to `submission_comments`. Not idempotent: each call posts another comment rather than editing or replacing a prior one, so a retried call leaves duplicate comments behind instead of one. This only adds a comment — it never changes `grade` or `score`; use grade_submission for that, on the same course_id/assignment_id/user_id. Use list_submission_comments_needing_attention to find submissions where the student's most recent comment has not yet been answered by staff. Requires the same grading permission as grade_submission, since both send a PUT to the same submission endpoint — one with a `comment` body, the other with `submission`.",
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The Canvas assignment ID'),

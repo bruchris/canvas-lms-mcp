@@ -40,7 +40,8 @@ describe('tool manifest generation', () => {
       name: 'grade_submission',
       title: 'Grade Submission',
       domain: 'submissions',
-      description: 'Post or update a grade for a submission. Requires grading permissions.',
+      description:
+        "Post or update the grade for one student's submission on a regular assignment and return the updated Canvas submission object (score, grade, workflow_state, graded_at). Only `grade` is sent; nothing else on the submission changes. Idempotent: calling it again with the same grade string overwrites the previous `posted_grade` rather than creating a second grade. This sets only the top-level grade — for a rubric-based assignment use submit_rubric_assessment to score each criterion instead, and for a Classic Quiz use score_quiz_question to grade one question at a time rather than the assignment as a whole. Requires grading permission in the course.",
       annotations: {
         destructiveHint: true,
         idempotentHint: true,
