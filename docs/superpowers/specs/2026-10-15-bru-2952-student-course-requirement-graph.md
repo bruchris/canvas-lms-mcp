@@ -563,6 +563,84 @@ function that switches on it. The six-member union is instead policed by a sourc
 guard, because this repo's `tsconfig.json` excludes `tests/`, so a type-level assertion
 written in a test is never typechecked by CI.
 
+### 12.2 Stage 2 implementation record (2026-10-22, BRU-3103)
+
+**Scope audit against the baseline.** Unlike PR 1, none of PR 2's listed deliverables already
+existed: `origin/main` at `ab7ded7` carries no state engine, no requirement fixtures and no
+`src/tools/requirement-engine.ts`. The stage list is accurate as written and nothing is struck
+through here.
+
+**Canvas re-derivation.** §12.1 obliged Stages 2-4 to re-derive the four files §4 and §5 rest on
+before relying on them. All four were re-fetched at `master` on 2026-10-22 and byte-compared
+against the pinned `1c9f0bb8013ed69c4f2efe11fd483025469b7e6c`:
+`app/models/context_module.rb` (44028 bytes), `app/models/context_module_progression.rb`
+(17382), `app/models/discussion_topic.rb` (91839) and `lib/api/v1/locked.rb` (1201) are all
+**identical**. No drift. Every quoted excerpt in §4.1-§4.5, §5.3, §5.4 and §5.5 was re-grepped
+and matches verbatim.
+
+**Two source findings that refine §4's prose.** Neither adds a state, a row, a bound or a
+parameter, so neither is a contract widening and no amendment was requested under the task's
+hand-back clause.
+
+1. **§4.1 understates excusal's reach.** The prose says "`must_submit`, `min_score`, and
+   `min_percentage` all read `completed: true` on an excused assignment". The gate in
+   `evaluate_uncompleted_requirements` is `subs = get_submissions(tag) if tag.scoreable?`, and
+   `ContentTag#scoreable?` is `content_type_quiz? || graded?` with `graded?` true for
+   `content_type == "Assignment"` (`app/models/content_tag.rb`). `scoreable?` is therefore a
+   property of the **content tag**, not of the requirement type, and the excusal branch runs
+   before `req[:type]` is examined at all. So an excused submission satisfies **any** of the six
+   types on an assignment or quiz tag, `must_view` and `must_mark_done` included. Stage 2
+   implements the source behaviour (excusal unconditional on type) rather than the prose, and a
+   fixture covers the `must_view` case specifically. Having a submission for the item is itself
+   evidence the tag was scoreable, so no separate scoreable check is needed.
+2. **§4.2's three-way rule has a fourth, unreproducible corner for `min_percentage`.**
+   `validate_min_percentage_requirement` is `return unless points_possible && points_possible.to_f > 0`
+   before dividing. §5.5's truthiness guard separately omits `points_possible` from
+   `content_details` when it is `0`. So on a `min_percentage` row with a posted score and no
+   usable `points_possible`, Canvas can never mark the requirement met and we cannot reproduce
+   the comparison either. Reporting "score X below threshold Y%" there would fabricate a
+   percentage. Stage 2 reports Canvas's verdict verbatim (`unsatisfied`) with a caveat naming
+   `points_possible` as the reason the comparison is unavailable, and a fixture asserts no
+   percentage figure appears.
+
+**Decisions Stage 2 made that the design left implicit.** Each is flagged for review rather than
+buried in the code; all four are reversible in one place.
+
+1. **Row precedence order.** Stated as a table in the engine's header comment. Two orderings are
+   decisions, not transcriptions: excusal and `completed === true` are both resolved **before**
+   `blocked`, because a requirement already met needs no action and reporting `blocked` would
+   tell a student they still owe work behind a lock they have cleared; and `not_required`
+   precedes `blocked`, because a block presupposes a requirement to block.
+2. **A `blocked` row contributes to the rollup as `unknown`.** The block hides whatever the
+   underlying evidence said, so claiming either `satisfied` or `unsatisfied` would invent a fact.
+   §4.5 names only three row states and does not say.
+3. **An `unknown` module rollup never raises `state_disagreement`.** An absence of fact cannot
+   contradict `canvas_state`. Without this, every educator caller would see a disagreement flag
+   on every module, because §1.3 makes all their rows `unknown`.
+4. **`submission` absent and `submission: null` are different facts.** Absent means the lookup
+   was not performed, so §4.2's disambiguation is unavailable and an unsatisfied numeric row is
+   `unknown`; `null` means the lookup found none, which is positive evidence of
+   `unsatisfied`. This is §1.3's discipline one layer out, and it matters because §5.2 lets
+   Stage 3 skip the submissions call entirely.
+
+**§11.2 fixtures deferred to Stage 3, with reasons.** Three rows of the fixture table are fan-out
+concerns rather than state concerns and cannot be exercised by a pure function: the oversized
+module (`items_count: 142`, no `items` key) and its empty-module nearest neighbour, which drive
+the §5.1 per-module fallback; and the group child topic, which needs the §5.3 group path. Stage 1
+already asserted the oversized/empty pair at the wire in
+`tests/canvas/requirement-graph-types.test.ts`, so what Stage 3 owes is the fallback behaviour,
+not the shape. Every other row of §11.2 has a fixture in
+`tests/tools/requirement-engine.test.ts`.
+
+**Proof.** 77 tests. Against a no-op stub, **57 are red** and 20 pass — 2 constant-set
+assertions, 5 source-level-guard assertions (which includes the guard's own two injections),
+3 PII-sweep assertions that the stub satisfies by returning nothing, and 10 that expect
+`unknown`, which is what the stub returns. An injection matrix reverts each rule singly across
+**22 injections, every one scoring non-zero** with disjoint attribution. One injection initially
+scored zero — deleting the `must_view` arm of the `completed === false` switch — because the only
+`must_view` caveat assertion reached the `completed === true` branch instead; a fixture was added
+for the unsatisfied path and the row now scores 1.
+
 ## 13. Open questions for CTO / board
 
 Decisions this design deliberately does not make, because they change user-visible behaviour or commit scope.
