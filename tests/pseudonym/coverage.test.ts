@@ -23,6 +23,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_submissions_awaiting_grading',
   'list_conversations',
   'get_conversation',
+  'send_conversation',
   'list_gradebook_history_submissions',
   'get_gradebook_history_feed',
   'get_outcome_results',

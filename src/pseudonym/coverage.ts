@@ -44,6 +44,7 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
   // src/tools/conversations.ts
   'list_conversations',
   'get_conversation',
+  'send_conversation',
 
   // src/tools/gradebook-history.ts
   'list_gradebook_history_submissions',
