@@ -32,6 +32,7 @@ import type {
   CanvasSubmission,
 } from '../canvas/types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
+import { hasCompleteInlinedItems } from '../canvas/modules'
 import type { ToolDefinition } from './types'
 import { objectOutput } from './output/contract'
 import {
@@ -471,10 +472,11 @@ export function requirementGraphTools(canvas: CanvasClient): ToolDefinition[] {
 
         // ── 3. §5.1 recovery. `include[]=items` is served only when
         // `count <= Api::MAX_PER_PAGE` (100), and a module past that comes back
-        // with NO `items` key — not a truncated array, not an error. So the test
-        // is `items.length !== items_count`, never `items ?? []`: an `items: []`
-        // module with `items_count: 0` is a genuinely empty module and takes the
-        // other branch, because `[]` is truthy.
+        // with NO `items` key — not a truncated array, not an error. The completeness
+        // test (`hasCompleteInlinedItems`, shared with `getCourseStructure` and
+        // `check_course_setup` per BRU-3145 so the three do not drift) is never
+        // `items ?? []`: an `items: []` module with `items_count: 0` is a genuinely
+        // empty module and takes the other branch, because `[]` is truthy.
         const itemsByModule = new Map<string, CanvasModuleItem[] | null>()
         const endpointByModule = new Map<string, string>()
         let recoveries = 0
@@ -482,8 +484,8 @@ export function requirementGraphTools(canvas: CanvasClient): ToolDefinition[] {
           const key = String(mod.id)
           const inlined = mod.items
           const expected = typeof mod.items_count === 'number' ? mod.items_count : null
-          if (inlined !== undefined && expected !== null && inlined.length === expected) {
-            itemsByModule.set(key, inlined)
+          if (hasCompleteInlinedItems(mod)) {
+            itemsByModule.set(key, inlined as CanvasModuleItem[])
             endpointByModule.set(key, MODULES_WITH_ITEMS_ENDPOINT(courseId))
             continue
           }

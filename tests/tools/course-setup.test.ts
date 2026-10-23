@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CanvasClient } from '../../src/canvas'
 import { CanvasApiError } from '../../src/canvas/client'
+import { MAX_OVERSIZED_MODULE_RECOVERIES } from '../../src/canvas/modules'
 import { courseSetupTools } from '../../src/tools/course-setup'
 
 interface SetupFinding {
@@ -86,6 +87,7 @@ const DEFAULT_MODULES = [
     id: 1,
     name: 'Week 1',
     published: true,
+    items_count: 2,
     items: [
       { id: 10, module_id: 1, title: 'Reading', type: 'Page', position: 1, published: true },
       { id: 11, module_id: 1, title: 'Quiz', type: 'Quiz', position: 2, published: false },
@@ -95,6 +97,7 @@ const DEFAULT_MODULES = [
     id: 2,
     name: 'Week 2 (Draft)',
     published: false,
+    items_count: 1,
     items: [
       { id: 20, module_id: 2, title: 'Lecture', type: 'Page', position: 1, published: false },
     ],
@@ -107,6 +110,7 @@ function buildMockCanvas(
     assignments?: unknown[]
     groups?: unknown[]
     modules?: unknown[]
+    moduleItemsById?: Record<number, unknown[]>
   } = {},
 ): CanvasClient {
   return {
@@ -119,6 +123,11 @@ function buildMockCanvas(
     },
     modules: {
       listWithItems: vi.fn().mockResolvedValue(overrides.modules ?? DEFAULT_MODULES),
+      listItems: vi
+        .fn()
+        .mockImplementation((_courseId: number, moduleId: number) =>
+          Promise.resolve(overrides.moduleItemsById?.[moduleId] ?? []),
+        ),
     },
   } as unknown as CanvasClient
 }
@@ -286,6 +295,7 @@ describe('courseSetupTools', () => {
             id: 1,
             name: 'Week 1',
             published: true,
+            items_count: 1,
             items: [
               {
                 id: 10,
@@ -307,6 +317,74 @@ describe('courseSetupTools', () => {
       const canvas = buildMockCanvas()
       await run(canvas, { course_id: 10, checks: ['missing_due_dates'] })
       expect(canvas.modules.listWithItems).not.toHaveBeenCalled()
+    })
+
+    it('falls back to listItems for a module Canvas omits the items key for, instead of reporting it clean', async () => {
+      const oversizedModule = {
+        id: 5,
+        name: 'Huge Module',
+        published: true,
+        items_count: 142,
+        // No `items` key — Canvas's behavior past the 100-item inline cliff.
+      }
+      const canvas = buildMockCanvas({
+        modules: [oversizedModule],
+        moduleItemsById: {
+          5: [
+            {
+              id: 50,
+              module_id: 5,
+              title: 'Draft Page',
+              type: 'Page',
+              position: 1,
+              published: false,
+            },
+            {
+              id: 51,
+              module_id: 5,
+              title: 'Live Page',
+              type: 'Page',
+              position: 2,
+              published: true,
+            },
+          ],
+        },
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'unpublished_items')
+      expect(items).toContainEqual(
+        expect.objectContaining({ type: 'module_item', id: 50, name: 'Draft Page' }),
+      )
+      expect(canvas.modules.listItems).toHaveBeenCalledWith(10, 5)
+    })
+
+    it('treats items: [] with items_count: 0 as a genuinely empty module and makes no listItems call', async () => {
+      const canvas = buildMockCanvas({
+        modules: [{ id: 6, name: 'Empty Module', published: true, items_count: 0, items: [] }],
+      })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'unpublished_items')
+      expect(items.some((i) => i.type === 'module' || i.type === 'module_item')).toBe(false)
+      expect(canvas.modules.listItems).not.toHaveBeenCalled()
+    })
+
+    it('flags a module as needing re-check rather than falsely clean once the recovery cap is reached', async () => {
+      const totalModules = MAX_OVERSIZED_MODULE_RECOVERIES + 1
+      const oversizedModules = Array.from({ length: totalModules }, (_, i) => ({
+        id: i + 1,
+        name: `Module ${i + 1}`,
+        published: true,
+        items_count: 101,
+        // No `items` key — every module here is past the inline cliff.
+      }))
+      const canvas = buildMockCanvas({ modules: oversizedModules })
+      const report = await run(canvas, { course_id: 10 })
+      const items = itemsFor(report, 'unpublished_items')
+      // The last module could not be re-read within the cap — it must be flagged as
+      // needing attention, never silently reported with zero unpublished items.
+      const lastModuleId = totalModules
+      expect(items).toContainEqual(expect.objectContaining({ type: 'module', id: lastModuleId }))
+      expect(canvas.modules.listItems).toHaveBeenCalledTimes(MAX_OVERSIZED_MODULE_RECOVERIES)
     })
   })
 

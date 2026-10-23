@@ -1062,6 +1062,12 @@ export interface CanvasCourseStructureModule {
   position: number
   state: string
   unlock_at: string | null | undefined
+  /**
+   * `null` only when the module is past Canvas's 100-item inline cliff AND the
+   * per-call recovery cap ({@link MAX_OVERSIZED_MODULE_RECOVERIES}) was already spent —
+   * never `[]` for a module whose items are simply unknown. Check `items_truncated`
+   * before trusting an empty array as "this module has no items."
+   */
   items: Array<
     Pick<
       CanvasModuleItem,
@@ -1075,7 +1081,9 @@ export interface CanvasCourseStructureModule {
       | 'content_id'
       | 'content_details'
     >
-  >
+  > | null
+  /** True when `items` is `null` because the recovery cap was reached for this module. */
+  items_truncated: boolean
 }
 
 export interface CanvasCourseStructure {
@@ -1084,6 +1092,8 @@ export interface CanvasCourseStructure {
     total_modules: number
     total_items: number
     items_by_type: Record<string, number>
+    /** True when any module's `items` came back `null` — `total_items` is a lower bound. */
+    items_truncated: boolean
   }
 }
 

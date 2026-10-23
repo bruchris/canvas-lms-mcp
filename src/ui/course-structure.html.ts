@@ -251,9 +251,11 @@ ${PROVENANCE_STRIP_JS}
     });
 
     // Summary header.
+    var itemsLabel = (summary.total_items || 0) + ' items';
+    if (summary.items_truncated) itemsLabel += ' (some modules truncated)';
     var summaryEl = el('div', { class: 'summary' }, [
       el('strong', { text: (summary.total_modules || 0) + ' modules' }),
-      el('span', { text: (summary.total_items || 0) + ' items' }),
+      el('span', { text: itemsLabel }),
     ]);
     if (typeChips.length) {
       var byType = typeChips
@@ -302,8 +304,14 @@ ${PROVENANCE_STRIP_JS}
       moduleDetails.open = true;
       var headerLabel = mod.name || 'Module ' + (mod.id != null ? mod.id : '');
       var moduleMeta = '';
-      var itemsCount = Array.isArray(mod.items) ? mod.items.length : 0;
-      moduleMeta = itemsCount + (itemsCount === 1 ? ' item' : ' items');
+      if (mod.items_truncated) {
+        // items is null, not [], when the server could not re-read this
+        // oversized module within its recovery cap -- never derive a count from it.
+        moduleMeta = 'items unknown (truncated)';
+      } else {
+        var itemsCount = Array.isArray(mod.items) ? mod.items.length : 0;
+        moduleMeta = itemsCount + (itemsCount === 1 ? ' item' : ' items');
+      }
       if (mod.state && mod.state !== 'active') moduleMeta += ' • ' + mod.state;
       var moduleSummary = el('summary', null, [
         el('span', { class: 'module-title', text: headerLabel }),

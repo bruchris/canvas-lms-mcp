@@ -7,6 +7,7 @@ import type {
   CanvasModule,
   CanvasModuleItem,
 } from '../canvas/types'
+import { hasCompleteInlinedItems, MAX_OVERSIZED_MODULE_RECOVERIES } from '../canvas/modules'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 
@@ -222,6 +223,11 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
             }
           }
 
+          // `items ?? []` would silently report an oversized module (Canvas omits the
+          // `items` key past the 100-item inline cliff) as clean — see BRU-3145. Fall
+          // back to the paginating per-module endpoint, bounded the same way
+          // `getCourseStructure` and `get_student_requirement_graph` are.
+          let recoveries = 0
           for (const mod of modules) {
             if (mod.published !== true) {
               items.push({
@@ -230,17 +236,36 @@ export function courseSetupTools(canvas: CanvasClient): ToolDefinition[] {
                 name: mod.name,
                 detail: 'not published — students cannot see this module or any of its items',
               })
+              continue
+            }
+
+            let modItems: CanvasModuleItem[]
+            if (hasCompleteInlinedItems(mod)) {
+              modItems = mod.items as CanvasModuleItem[]
+            } else if (recoveries < MAX_OVERSIZED_MODULE_RECOVERIES) {
+              recoveries += 1
+              modItems = await canvas.modules.listItems(courseId, mod.id)
             } else {
-              for (const item of mod.items ?? []) {
-                if (item.published !== true) {
-                  items.push({
-                    type: 'module_item',
-                    id: item.id,
-                    name: item.title,
-                    detail: `not published (inside published module "${mod.name}")`,
-                    parent_module_name: mod.name,
-                  })
-                }
+              items.push({
+                type: 'module',
+                id: mod.id,
+                name: mod.name,
+                detail:
+                  'has more items than this check could re-read (recovery cap reached) — ' +
+                  'unpublished items inside may have been missed; narrow the course or re-run',
+              })
+              continue
+            }
+
+            for (const item of modItems) {
+              if (item.published !== true) {
+                items.push({
+                  type: 'module_item',
+                  id: item.id,
+                  name: item.title,
+                  detail: `not published (inside published module "${mod.name}")`,
+                  parent_module_name: mod.name,
+                })
               }
             }
           }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ModulesModule } from '../../src/canvas/modules'
+import { ModulesModule, MAX_OVERSIZED_MODULE_RECOVERIES } from '../../src/canvas/modules'
 import { CanvasHttpClient, CanvasApiError } from '../../src/canvas/client'
 
 describe('ModulesModule', () => {
@@ -234,6 +234,7 @@ describe('ModulesModule', () => {
       total_modules: 1,
       total_items: 2,
       items_by_type: { Assignment: 1, Page: 1 },
+      items_truncated: false,
     })
   })
 
@@ -270,7 +271,150 @@ describe('ModulesModule', () => {
     vi.spyOn(client, 'paginate').mockResolvedValueOnce([])
     const result = await modules.getCourseStructure(100)
     expect(result.modules).toHaveLength(0)
-    expect(result.summary).toEqual({ total_modules: 0, total_items: 0, items_by_type: {} })
+    expect(result.summary).toEqual({
+      total_modules: 0,
+      total_items: 0,
+      items_by_type: {},
+      items_truncated: false,
+    })
+  })
+
+  describe('getCourseStructure oversized module recovery', () => {
+    const MODULES_ENDPOINT = '/api/v1/courses/100/modules'
+    const itemsEndpoint = (moduleId: number): string =>
+      `/api/v1/courses/100/modules/${String(moduleId)}/items`
+
+    it('falls back to listItems for a module Canvas omits the items key for, instead of reporting it empty', async () => {
+      const fullItems = Array.from({ length: 142 }, (_, i) => ({
+        id: i + 1,
+        module_id: 1,
+        title: `Item ${i + 1}`,
+        position: i + 1,
+        type: 'Page',
+        published: true,
+      }))
+      vi.spyOn(client, 'paginate').mockImplementation((endpoint: string) => {
+        if (endpoint === MODULES_ENDPOINT) {
+          return Promise.resolve([
+            {
+              id: 1,
+              name: 'Huge Module',
+              position: 1,
+              items_count: 142,
+              state: 'active',
+              published: true,
+              unlock_at: null,
+              // No `items` key at all — Canvas's behavior past the 100-item cliff.
+            },
+          ])
+        }
+        if (endpoint === itemsEndpoint(1)) {
+          return Promise.resolve(fullItems)
+        }
+        throw new Error(`unexpected paginate call: ${endpoint}`)
+      })
+
+      const result = await modules.getCourseStructure(100)
+
+      expect(result.modules[0].items).toHaveLength(142)
+      expect(result.modules[0].items_truncated).toBe(false)
+      expect(result.summary.total_items).toBe(142)
+      expect(result.summary.items_truncated).toBe(false)
+      expect(client.paginate).toHaveBeenCalledWith(itemsEndpoint(1))
+      expect(client.paginate).toHaveBeenCalledTimes(2)
+    })
+
+    it('recovers a module whose inlined items array disagrees with items_count, not just an absent key', async () => {
+      const recoveredItems = [
+        { id: 20, module_id: 3, title: 'A', position: 1, type: 'Page', published: true },
+        { id: 21, module_id: 3, title: 'B', position: 2, type: 'Page', published: true },
+      ]
+      vi.spyOn(client, 'paginate').mockImplementation((endpoint: string) => {
+        if (endpoint === MODULES_ENDPOINT) {
+          return Promise.resolve([
+            {
+              id: 3,
+              name: 'Stale Module',
+              position: 1,
+              items_count: 2,
+              state: 'active',
+              published: true,
+              unlock_at: null,
+              // `items` is present but stale/partial — length disagrees with items_count.
+              items: [
+                { id: 20, module_id: 3, title: 'A', position: 1, type: 'Page', published: true },
+              ],
+            },
+          ])
+        }
+        if (endpoint === itemsEndpoint(3)) {
+          return Promise.resolve(recoveredItems)
+        }
+        throw new Error(`unexpected paginate call: ${endpoint}`)
+      })
+
+      const result = await modules.getCourseStructure(100)
+
+      expect(result.modules[0].items).toHaveLength(2)
+      expect(result.modules[0].items_truncated).toBe(false)
+      expect(client.paginate).toHaveBeenCalledWith(itemsEndpoint(3))
+    })
+
+    it('treats items: [] with items_count: 0 as a genuinely empty module and makes no extra request', async () => {
+      vi.spyOn(client, 'paginate').mockResolvedValueOnce([
+        {
+          id: 2,
+          name: 'Empty Module',
+          position: 1,
+          items_count: 0,
+          state: 'active',
+          published: true,
+          unlock_at: null,
+          items: [],
+        },
+      ])
+
+      const result = await modules.getCourseStructure(100)
+
+      expect(result.modules[0].items).toEqual([])
+      expect(result.modules[0].items_truncated).toBe(false)
+      expect(result.summary.total_items).toBe(0)
+      expect(result.summary.items_truncated).toBe(false)
+      // The only call is the modules listing — no per-module items re-read.
+      expect(client.paginate).toHaveBeenCalledTimes(1)
+    })
+
+    it('caps recovery attempts and marks an unrecovered oversized module truncated, never silently empty', async () => {
+      const totalModules = MAX_OVERSIZED_MODULE_RECOVERIES + 1
+      const moduleFixtures = Array.from({ length: totalModules }, (_, i) => ({
+        id: i + 1,
+        name: `Module ${i + 1}`,
+        position: i + 1,
+        items_count: 101,
+        state: 'active',
+        published: true,
+        unlock_at: null,
+        // No `items` key — every module here is past the 100-item cliff.
+      }))
+      vi.spyOn(client, 'paginate').mockImplementation((endpoint: string) => {
+        if (endpoint === MODULES_ENDPOINT) return Promise.resolve(moduleFixtures)
+        return Promise.resolve([
+          { id: 900, module_id: 1, title: 'Some Item', position: 1, type: 'Page', published: true },
+        ])
+      })
+
+      const result = await modules.getCourseStructure(100)
+
+      const recovered = result.modules.filter((m) => m.items !== null)
+      const unrecovered = result.modules.filter((m) => m.items === null)
+      expect(recovered).toHaveLength(MAX_OVERSIZED_MODULE_RECOVERIES)
+      expect(unrecovered).toHaveLength(1)
+      expect(unrecovered[0].items).toBeNull()
+      expect(unrecovered[0].items_truncated).toBe(true)
+      expect(result.summary.items_truncated).toBe(true)
+      // One modules-list call plus exactly one listItems call per recovered module.
+      expect(client.paginate).toHaveBeenCalledTimes(1 + MAX_OVERSIZED_MODULE_RECOVERIES)
+    })
   })
 
   describe('listWithItems', () => {
