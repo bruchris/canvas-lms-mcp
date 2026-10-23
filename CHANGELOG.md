@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.9.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.0...canvas-lms-mcp-v2.9.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** clear GHSA-rxp7-6hxx-x8q5 via ip-address 10.7.4 lockfile bump (BRU-3147) ([#481](https://github.com/bruchris/canvas-lms-mcp/issues/481)) ([a3c7ed4](https://github.com/bruchris/canvas-lms-mcp/commit/a3c7ed4b07bc9833dd3f0584ffd41c8410b222d5))
+* **modules:** recover oversized-module item undercount in getCourseStructure, check_course_setup (BRU-3145) ([#484](https://github.com/bruchris/canvas-lms-mcp/issues/484)) ([fa66e05](https://github.com/bruchris/canvas-lms-mcp/commit/fa66e05132dafd4595dc0a6a28921c3bc5eb2c2d))
+
+
+### Documentation
+
+* **readme:** credit [#436](https://github.com/bruchris/canvas-lms-mcp/issues/436) and [#438](https://github.com/bruchris/canvas-lms-mcp/issues/438) in the Contributors list ([#479](https://github.com/bruchris/canvas-lms-mcp/issues/479)) ([773e0f6](https://github.com/bruchris/canvas-lms-mcp/commit/773e0f6ea9218c43820bfd8adfb94439ffd129be))
+* **spec:** independent oracle for pseudonymizer coverage (BRU-3146) ([#483](https://github.com/bruchris/canvas-lms-mcp/issues/483)) ([31c7429](https://github.com/bruchris/canvas-lms-mcp/commit/31c74292ddeec95a78a847a0b85c98a76a94fb7d))
+
 ## [2.9.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.8.4...canvas-lms-mcp-v2.9.0) (2026-10-22)
 
 
