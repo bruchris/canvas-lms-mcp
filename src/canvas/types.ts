@@ -11,7 +11,7 @@ export interface CanvasClientConfig {
 // --- Error ---
 
 export interface CanvasErrorResponse {
-  errors?: Array<{ message: string }>
+  errors?: Array<{ message: string }> | Record<string, Array<string | { message: string }>>
   message?: string
 }
 

@@ -161,6 +161,93 @@ describe('CanvasHttpClient', () => {
       expect(error.message).toContain('500')
     })
 
+    it('normalizes a field-keyed errors object with a single field', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: { scoring_algorithm: ['Value Exact not found in ["Numeric"]'] },
+            message: 'Unprocessable Entity',
+          }),
+          { status: 422 },
+        ),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error).toBeInstanceOf(CanvasApiError)
+      expect(error.status).toBe(422)
+      expect(error.message).toBe(
+        'Unprocessable Entity: scoring_algorithm: Value Exact not found in ["Numeric"]',
+      )
+    })
+
+    it('normalizes a field-keyed errors object with multiple fields and multiple messages', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: {
+              scoring_data: ['can’t be blank', 'is invalid'],
+              properties: ['contains keys not in schema ["word_count"]'],
+            },
+          }),
+          { status: 422 },
+        ),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error).toBeInstanceOf(CanvasApiError)
+      expect(error.message).toBe(
+        'scoring_data: can’t be blank, is invalid; properties: contains keys not in schema ["word_count"]',
+      )
+    })
+
+    it('falls back to the top-level message when the field-keyed errors object is empty', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ errors: {}, message: 'Unprocessable Entity' }), {
+          status: 422,
+        }),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error.message).toBe('Unprocessable Entity')
+    })
+
+    it('falls back to the status-code message when errors and message are both empty', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ errors: {} }), { status: 422 }),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error.message).toBe('Canvas API error: 422')
+    })
+
+    it('ignores a field whose messages array is empty when normalizing field-keyed errors', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: { scoring_algorithm: [], scoring_data: ["can't be blank"] },
+          }),
+          { status: 422 },
+        ),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error.message).toBe("scoring_data: can't be blank")
+    })
+
+    it('still takes the first message for array-shaped errors (unchanged behavior)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: [{ message: 'Value Equivalence not found' }, { message: 'other' }],
+          }),
+          { status: 422 },
+        ),
+      )
+
+      const error = await client.request('/api/v1/new_quizzes/1/items').catch((e) => e)
+      expect(error.message).toBe('Value Equivalence not found')
+    })
+
     it('returns undefined for 204 No Content without throwing', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 204 }))
 
