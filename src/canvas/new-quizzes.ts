@@ -222,6 +222,8 @@ export class NewQuizzesModule {
   private choiceToWire(item: ChoiceItem): Record<string, unknown> {
     return {
       interaction_type_slug: 'choice',
+      // Canvas documents the item heading as `item[entry][title]`.
+      ...(item.title !== undefined ? { title: item.title } : {}),
       item_body: item.item_body,
       interaction_data: {
         choices: item.choices.map((c, i) => ({
@@ -241,101 +243,179 @@ export class NewQuizzesModule {
     }
   }
 
+  /**
+   * Canvas stores true-false items as a pair of choice labels plus a boolean
+   * answer. The older `interaction_data.choices` + string `"true"` body was
+   * accepted by the API but is not the shape the New Quizzes editor reads.
+   */
   private trueFalseToWire(item: TrueFalseItem): Record<string, unknown> {
     return {
       interaction_type_slug: 'true-false',
       item_body: item.item_body,
       interaction_data: {
-        choices: [
-          { id: 'true', position: 1, item_body: 'True' },
-          { id: 'false', position: 2, item_body: 'False' },
-        ],
+        true_choice: 'True',
+        false_choice: 'False',
       },
       properties: {},
       scoring_data: {
-        value: item.correct_answer ? 'true' : 'false',
+        value: item.correct_answer,
       },
       scoring_algorithm: 'Equivalence',
     }
   }
 
+  /**
+   * Word limits belong in `interaction_data`, not `properties`: Canvas rejects
+   * an unknown `properties` key outright (`properties contains keys not in
+   * schema ["word_count"]`), and `scoring_data.value` — the grading notes —
+   * must be present or Canvas answers `scoring_data: can't be blank`.
+   */
   private essayToWire(item: EssayItem): Record<string, unknown> {
-    const properties: Record<string, unknown> = {}
-    if (item.word_count_min !== undefined || item.word_count_max !== undefined) {
-      const wc: Record<string, unknown> = {}
-      if (item.word_count_min !== undefined) wc.min = item.word_count_min
-      if (item.word_count_max !== undefined) wc.max = item.word_count_max
-      properties.word_count = wc
+    const hasMin = item.word_count_min !== undefined
+    const hasMax = item.word_count_max !== undefined
+    const limited = hasMin || hasMax
+    const interactionData: Record<string, unknown> = {
+      rce: item.rich_text !== false,
+      essay: null,
+      word_count: limited,
+      // Canvas documents essay file upload as always false.
+      file_upload: false,
+      spell_check: true,
+      word_limit_enabled: limited,
     }
+    // Only the limits the caller actually set are sent; Canvas applies the ones
+    // it receives and leaves the other side unbounded.
+    if (hasMin) interactionData.word_limit_min = String(item.word_count_min)
+    if (hasMax) interactionData.word_limit_max = String(item.word_count_max)
     return {
       interaction_type_slug: 'essay',
       item_body: item.item_body,
-      interaction_data: {
-        rce_enabled: item.rich_text !== false,
-      },
-      properties,
-      scoring_data: {},
+      interaction_data: interactionData,
+      properties: {},
+      scoring_data: { value: '' },
       scoring_algorithm: 'None',
     }
   }
 
+  /**
+   * Canvas keys a matching item by question: `interaction_data.questions` holds
+   * the prompts, `interaction_data.answers` is the flat pool shown to the
+   * student, `scoring_data.value` maps question id to the correct answer text,
+   * and `scoring_data.edit_data` is what the editor reads back.
+   *
+   * The answer pool is sorted and deduplicated on purpose. Emitting it in
+   * question order would hand the student the key, and a duplicate entry would
+   * show the same option twice.
+   */
   private matchingToWire(item: MatchingItem): Record<string, unknown> {
-    const matches = item.matches.map((m, i) => ({
+    const questions = item.matches.map((m, i) => ({
       id: `match_${i}`,
       item_body: m.question,
     }))
-    const correctResponses = item.matches.map((m, i) => ({
-      id: `resp_${i}`,
-      item_body: m.answer,
-    }))
-    const distractorResponses = (item.distractors ?? []).map((d, i) => ({
-      id: `dist_${i}`,
-      item_body: d,
-    }))
-    const scoringValue = item.matches.map((_, i) => ({
-      id: `match_${i}`,
-      match_id: `resp_${i}`,
-    }))
+    const correctAnswers = item.matches.map((m) => m.answer)
+    const distractors = [...new Set(item.distractors ?? [])].filter(
+      (d) => !correctAnswers.includes(d),
+    )
+    const answers = [...new Set([...correctAnswers, ...distractors])].sort()
+    const value: Record<string, string> = {}
+    item.matches.forEach((m, i) => {
+      value[`match_${i}`] = m.answer
+    })
     return {
       interaction_type_slug: 'matching',
       item_body: item.item_body,
       interaction_data: {
-        matches,
-        responses: [...correctResponses, ...distractorResponses],
+        answers,
+        questions,
       },
-      properties: {},
+      properties: {
+        shuffle_rules: { questions: { shuffled: true } },
+      },
       scoring_data: {
-        value: scoringValue,
+        value,
+        edit_data: {
+          matches: item.matches.map((m, i) => ({
+            answer_body: m.answer,
+            question_id: `match_${i}`,
+            question_body: m.question,
+          })),
+          distractors,
+        },
       },
-      scoring_algorithm: 'Equivalence',
+      // PartialDeep credits each correct pair; Canvas accepts only this or
+      // DeepEquals, which is all-or-nothing.
+      scoring_algorithm: 'PartialDeep',
     }
   }
 
+  /**
+   * Canvas takes every accepted numeric answer as one entry in
+   * `scoring_data.value`, each tagged with its own response type, under the
+   * single `Numeric` algorithm. The per-answer algorithms the older body used
+   * (`Exact`, `Range`, `Precision`) do not exist.
+   */
   private numericToWire(item: NumericItem): Record<string, unknown> {
-    const answers = item.answers
-    const first = answers[0]
-    if (first === undefined) {
+    if (item.answers.length === 0) {
       throw new Error('numeric item must have at least one answer')
-    }
-    let scoringData: Record<string, unknown>
-    let scoringAlgorithm: string
-    if (first.kind === 'exact') {
-      scoringData = { exact_answer: first.value, margin: first.margin ?? 0 }
-      scoringAlgorithm = 'Exact'
-    } else if (first.kind === 'range') {
-      scoringData = { lower_bound: first.min, upper_bound: first.max }
-      scoringAlgorithm = 'Range'
-    } else {
-      scoringData = { exact_answer: first.value, precision: first.precision }
-      scoringAlgorithm = 'Precision'
     }
     return {
       interaction_type_slug: 'numeric',
       item_body: item.item_body,
       interaction_data: {},
       properties: {},
-      scoring_data: scoringData,
-      scoring_algorithm: scoringAlgorithm,
+      scoring_data: {
+        value: item.answers.map((answer, i) => numericAnswerToWire(answer, String(i + 1))),
+      },
+      scoring_algorithm: 'Numeric',
     }
   }
+}
+
+/** Canvas carries numeric answer values as strings. */
+function numericAnswerToWire(answer: NumericAnswer, id: string): Record<string, unknown> {
+  switch (answer.kind) {
+    case 'range':
+      return {
+        id,
+        type: 'withinARange',
+        start: String(answer.min),
+        end: String(answer.max),
+      }
+    case 'precision':
+      return {
+        id,
+        type: 'preciseResponse',
+        value: withAtLeastDecimals(answer.value, answer.precision),
+        precision: String(answer.precision),
+        precision_type: 'decimals',
+      }
+    case 'exact':
+      // A margin turns the answer into a tolerance band; Canvas has no
+      // "exact with margin" response type.
+      if (answer.margin !== undefined && answer.margin !== 0) {
+        return {
+          id,
+          type: 'marginOfError',
+          value: String(answer.value),
+          margin: String(answer.margin),
+          margin_type: 'absolute',
+        }
+      }
+      return { id, type: 'exactResponse', value: String(answer.value) }
+  }
+}
+
+/**
+ * Canvas rejects a `preciseResponse` whose value carries fewer decimals than
+ * its precision ("Must provide at least same number of decimals as
+ * precision"). A caller writing 3.10 hands us the number 3.1, so pad it back
+ * out; a value with more decimals than the precision is left alone.
+ */
+function withAtLeastDecimals(value: number, precision: number): string {
+  const digits = Math.min(Math.max(Math.trunc(precision), 0), 100)
+  const raw = String(value)
+  const dot = raw.indexOf('.')
+  const decimals = dot === -1 ? 0 : raw.length - dot - 1
+  if (!raw.includes('e') && !raw.includes('E') && decimals >= digits) return raw
+  return value.toFixed(digits)
 }

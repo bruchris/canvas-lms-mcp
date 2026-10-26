@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NewQuizzesModule } from '../../src/canvas/new-quizzes'
+import { NewQuizzesModule, type NewQuizItemInput } from '../../src/canvas/new-quizzes'
 import { CanvasApiError, CanvasHttpClient } from '../../src/canvas/client'
 import type { CanvasNewQuizAccommodation } from '../../src/canvas/types'
 
 const COURSE_ID = 100
 const ASSIGNMENT_ID = 42
 const ITEM_ID = 'item-uuid-001'
+
+/** The `entry` object as it travels on the wire, before Canvas widens it. */
+type WireEntry = {
+  interaction_type_slug: string
+  title?: string
+  item_body: string
+  interaction_data: Record<string, unknown>
+  properties: Record<string, unknown>
+  scoring_data: Record<string, never> & { value?: unknown }
+  scoring_algorithm: string
+}
 
 function makeClient(): CanvasHttpClient {
   return new CanvasHttpClient({ token: 'test-token', baseUrl: 'https://canvas.example.com' })
@@ -124,6 +135,10 @@ describe('NewQuizzesModule', () => {
   })
 
   // --- createItem wire-format translations ---
+  //
+  // Every expected shape below is taken from the Canvas "New Quiz Items" REST
+  // docs (Appendix: Question Types) and was confirmed against live Canvas in
+  // GitHub issue #485. Canvas rejects anything else with a 422.
 
   it('createItem: choice — produces correct wire body', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
@@ -131,6 +146,7 @@ describe('NewQuizzesModule', () => {
       points_possible: 5,
       item: {
         interaction_type_slug: 'choice',
+        title: 'Arithmetic 1',
         item_body: '<p>What is 2+2?</p>',
         choices: [
           { id: 'a', item_body: '<p>3</p>' },
@@ -139,13 +155,6 @@ describe('NewQuizzesModule', () => {
         correct_choice_id: 'b',
       },
     })
-    expect(client.request).toHaveBeenCalledWith(
-      `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}/items`,
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"scoring_algorithm":"Equivalence"'),
-      }),
-    )
     const callArgs = vi.mocked(client.request).mock.calls[0]
     const body = JSON.parse(callArgs[1]!.body as string).item
     expect(body).toMatchObject({
@@ -153,6 +162,9 @@ describe('NewQuizzesModule', () => {
       points_possible: 5,
       entry: {
         interaction_type_slug: 'choice',
+        // Regression (#485): `title` was accepted by the tool and then dropped
+        // before the request. Canvas documents it as `item[entry][title]`.
+        title: 'Arithmetic 1',
         item_body: '<p>What is 2+2?</p>',
         interaction_data: {
           choices: [
@@ -166,7 +178,25 @@ describe('NewQuizzesModule', () => {
     })
   })
 
-  it('createItem: true-false — produces correct wire body', async () => {
+  it('createItem: choice — omits `title` entirely when the caller gives none', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 5,
+      item: {
+        interaction_type_slug: 'choice',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '<p>1</p>' },
+          { id: 'b', item_body: '<p>2</p>' },
+        ],
+        correct_choice_id: 'a',
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect('title' in entry).toBe(false)
+  })
+
+  it('createItem: true-false — sends true_choice/false_choice and a boolean value', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
       points_possible: 1,
@@ -183,19 +213,43 @@ describe('NewQuizzesModule', () => {
       entry: {
         interaction_type_slug: 'true-false',
         item_body: '<p>The sky is blue.</p>',
-        interaction_data: {
-          choices: [
-            { id: 'true', position: 1, item_body: 'True' },
-            { id: 'false', position: 2, item_body: 'False' },
-          ],
-        },
-        scoring_data: { value: 'true' },
+        interaction_data: { true_choice: 'True', false_choice: 'False' },
+        properties: {},
+        scoring_data: { value: true },
         scoring_algorithm: 'Equivalence',
       },
     })
   })
 
-  it('createItem: essay — produces correct wire body', async () => {
+  it('createItem: true-false — a false answer is the boolean false, not the string', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: {
+        interaction_type_slug: 'true-false',
+        item_body: '<p>Fish are mammals.</p>',
+        correct_answer: false,
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data.value).toBe(false)
+  })
+
+  it('createItem: true-false — never sends the editor-incompatible `choices` shape', async () => {
+    // Regression (#485): the old wire body sent `interaction_data.choices` and
+    // the string "true", which Canvas stored but the New Quizzes editor could
+    // not round-trip.
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: { interaction_type_slug: 'true-false', item_body: '<p>T</p>', correct_answer: true },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.interaction_data).not.toHaveProperty('choices')
+    expect(entry.scoring_data.value).not.toBe('true')
+  })
+
+  it('createItem: essay — sends documented interaction_data and a string scoring value', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
       points_possible: 10,
@@ -214,15 +268,81 @@ describe('NewQuizzesModule', () => {
       entry: {
         interaction_type_slug: 'essay',
         item_body: '<p>Describe the water cycle.</p>',
-        interaction_data: { rce_enabled: true },
-        properties: { word_count: { min: 50, max: 300 } },
-        scoring_data: {},
+        interaction_data: {
+          rce: true,
+          essay: null,
+          word_count: true,
+          file_upload: false,
+          spell_check: true,
+          word_limit_enabled: true,
+          word_limit_min: '50',
+          word_limit_max: '300',
+        },
+        properties: {},
+        // Regression (#485): Canvas answered `scoring_data: can't be blank` for
+        // the old `scoring_data: {}`. `value` carries the grading notes.
+        scoring_data: { value: '' },
         scoring_algorithm: 'None',
       },
     })
   })
 
-  it('createItem: matching — produces correct wire body with scoring pairs', async () => {
+  it('createItem: essay — no word limits means no word_limit_* keys and the flag off', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 10,
+      item: {
+        interaction_type_slug: 'essay',
+        item_body: '<p>Discuss.</p>',
+        rich_text: false,
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.interaction_data).toMatchObject({
+      rce: false,
+      word_count: false,
+      word_limit_enabled: false,
+    })
+    expect(entry.interaction_data).not.toHaveProperty('word_limit_min')
+    expect(entry.interaction_data).not.toHaveProperty('word_limit_max')
+  })
+
+  it('createItem: essay — a single word limit only sends that limit', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 10,
+      item: {
+        interaction_type_slug: 'essay',
+        item_body: '<p>Discuss.</p>',
+        rich_text: true,
+        word_count_min: 100,
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.interaction_data.word_limit_enabled).toBe(true)
+    expect(entry.interaction_data.word_limit_min).toBe('100')
+    expect(entry.interaction_data).not.toHaveProperty('word_limit_max')
+  })
+
+  it('createItem: essay — never sends undocumented `properties` keys', async () => {
+    // Regression (#485): Canvas answered
+    // `properties contains keys not in schema ["word_count"]`.
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 10,
+      item: {
+        interaction_type_slug: 'essay',
+        item_body: '<p>Discuss.</p>',
+        rich_text: true,
+        word_count_min: 50,
+        word_count_max: 300,
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.properties).toEqual({})
+  })
+
+  it('createItem: matching — sends answers/questions, a value map and edit_data', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
       points_possible: 4,
@@ -244,28 +364,133 @@ describe('NewQuizzesModule', () => {
         interaction_type_slug: 'matching',
         item_body: '<p>Match the capitals.</p>',
         interaction_data: {
-          matches: [
+          // Sorted and deduplicated: the answer pool must not reveal the key by
+          // listing correct answers in question order.
+          answers: ['Berlin', 'London', 'Paris'],
+          questions: [
             { id: 'match_0', item_body: 'France' },
             { id: 'match_1', item_body: 'Germany' },
           ],
-          responses: [
-            { id: 'resp_0', item_body: 'Paris' },
-            { id: 'resp_1', item_body: 'Berlin' },
-            { id: 'dist_0', item_body: 'London' },
-          ],
         },
+        properties: { shuffle_rules: { questions: { shuffled: true } } },
         scoring_data: {
-          value: [
-            { id: 'match_0', match_id: 'resp_0' },
-            { id: 'match_1', match_id: 'resp_1' },
-          ],
+          value: { match_0: 'Paris', match_1: 'Berlin' },
+          edit_data: {
+            matches: [
+              { answer_body: 'Paris', question_id: 'match_0', question_body: 'France' },
+              { answer_body: 'Berlin', question_id: 'match_1', question_body: 'Germany' },
+            ],
+            distractors: ['London'],
+          },
         },
-        scoring_algorithm: 'Equivalence',
+        // Regression (#485): Canvas answered
+        // `Value Equivalence not found in ["DeepEquals", "PartialDeep"]`.
+        scoring_algorithm: 'PartialDeep',
       },
     })
   })
 
-  it('createItem: numeric exact — produces Exact scoring algorithm', async () => {
+  it('createItem: matching — deduplicates distractors and drops ones equal to an answer', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 4,
+      item: {
+        interaction_type_slug: 'matching',
+        item_body: '<p>Match.</p>',
+        matches: [
+          { question: 'a', answer: 'aa' },
+          { question: 'b', answer: 'bb' },
+        ],
+        distractors: ['ff', 'ff', 'aa'],
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.interaction_data.answers).toEqual(['aa', 'bb', 'ff'])
+    expect(entry.scoring_data.edit_data.distractors).toEqual(['ff'])
+  })
+
+  it('createItem: matching — no distractors yields an empty distractor list', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 4,
+      item: {
+        interaction_type_slug: 'matching',
+        item_body: '<p>Match.</p>',
+        matches: [
+          { question: 'a', answer: 'aa' },
+          { question: 'b', answer: 'bb' },
+        ],
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data.edit_data.distractors).toEqual([])
+    expect(entry.interaction_data).not.toHaveProperty('matches')
+    expect(entry.interaction_data).not.toHaveProperty('responses')
+  })
+
+  it('createItem: numeric — sends every answer in Canvas’s Numeric shape', async () => {
+    // The four-answers-in-one-item case from #485, confirmed stored as sent by
+    // live Canvas on 2026-10-22.
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 2,
+      item: {
+        interaction_type_slug: 'numeric',
+        item_body: '<p>How many?</p>',
+        answers: [
+          { kind: 'exact', value: 200 },
+          { kind: 'exact', value: 200, margin: 3 },
+          { kind: 'range', min: 190, max: 210 },
+          { kind: 'precision', value: 200.0001, precision: 4 },
+        ],
+      },
+    })
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
+    expect(body.entry).toMatchObject({
+      interaction_type_slug: 'numeric',
+      interaction_data: {},
+      properties: {},
+      scoring_data: {
+        value: [
+          { id: '1', type: 'exactResponse', value: '200' },
+          { id: '2', type: 'marginOfError', value: '200', margin: '3', margin_type: 'absolute' },
+          { id: '3', type: 'withinARange', start: '190', end: '210' },
+          {
+            id: '4',
+            type: 'preciseResponse',
+            value: '200.0001',
+            precision: '4',
+            precision_type: 'decimals',
+          },
+        ],
+      },
+      // Regression (#485): Canvas answered
+      // `Value Exact not found in ["Numeric"]`.
+      scoring_algorithm: 'Numeric',
+    })
+  })
+
+  it('createItem: numeric — does not drop answers after the first', async () => {
+    // Regression (#485): `numericToWire` used only `answers[0]`.
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 2,
+      item: {
+        interaction_type_slug: 'numeric',
+        item_body: '<p>How many?</p>',
+        answers: [
+          { kind: 'exact', value: 1 },
+          { kind: 'exact', value: 2 },
+          { kind: 'exact', value: 3 },
+        ],
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data.value).toHaveLength(3)
+    expect(entry.scoring_data.value.map((a: { value: string }) => a.value)).toEqual(['1', '2', '3'])
+  })
+
+  it('createItem: numeric — a zero margin stays an exactResponse', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
       points_possible: 2,
@@ -275,54 +500,172 @@ describe('NewQuizzesModule', () => {
         answers: [{ kind: 'exact', value: 4, margin: 0 }],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
-    expect(body).toMatchObject({
-      entry: {
-        interaction_type_slug: 'numeric',
-        scoring_data: { exact_answer: 4, margin: 0 },
-        scoring_algorithm: 'Exact',
-      },
-    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data.value).toEqual([{ id: '1', type: 'exactResponse', value: '4' }])
   })
 
-  it('createItem: numeric range — produces Range scoring algorithm', async () => {
+  it('createItem: numeric — pads a precise answer to at least `precision` decimals', async () => {
+    // Canvas rejects a preciseResponse whose value carries fewer decimals than
+    // its precision ("Must provide at least same number of decimals as
+    // precision"), and `3.10` reaches us as the number 3.1.
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
       points_possible: 2,
       item: {
         interaction_type_slug: 'numeric',
-        item_body: '<p>Approximate value of pi?</p>',
-        answers: [{ kind: 'range', min: 3.1, max: 3.2 }],
+        item_body: '<p>Pi to 3 decimals?</p>',
+        answers: [
+          { kind: 'precision', value: 3.1, precision: 3 },
+          { kind: 'precision', value: 3.14159, precision: 2 },
+        ],
       },
     })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
-    expect(body).toMatchObject({
-      entry: {
-        interaction_type_slug: 'numeric',
-        scoring_data: { lower_bound: 3.1, upper_bound: 3.2 },
-        scoring_algorithm: 'Range',
-      },
-    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data.value[0].value).toBe('3.100')
+    // More decimals than the precision is accepted by Canvas and preserved.
+    expect(entry.scoring_data.value[1].value).toBe('3.14159')
   })
 
-  it('createItem: numeric precision — produces Precision scoring algorithm', async () => {
-    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
-    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
-      points_possible: 2,
-      item: {
-        interaction_type_slug: 'numeric',
-        item_body: '<p>Value of pi to 2 decimal places?</p>',
-        answers: [{ kind: 'precision', value: 3.14, precision: 2 }],
+  it('createItem: numeric — never sends the legacy flat scoring keys', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    const answers = [
+      [{ kind: 'exact' as const, value: 4, margin: 1 }],
+      [{ kind: 'range' as const, min: 1, max: 2 }],
+      [{ kind: 'precision' as const, value: 3.14, precision: 2 }],
+    ]
+    for (const a of answers) {
+      await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 2,
+        item: { interaction_type_slug: 'numeric', item_body: '<p>Q</p>', answers: a },
+      })
+    }
+    for (const call of vi.mocked(client.request).mock.calls) {
+      const entry = JSON.parse(call[1]!.body as string).item.entry
+      expect(entry.scoring_data).not.toHaveProperty('exact_answer')
+      expect(entry.scoring_data).not.toHaveProperty('margin')
+      expect(entry.scoring_data).not.toHaveProperty('lower_bound')
+      expect(entry.scoring_data).not.toHaveProperty('upper_bound')
+      expect(entry.scoring_data).not.toHaveProperty('precision')
+      expect(entry.scoring_algorithm).toBe('Numeric')
+    }
+  })
+
+  it('createItem: numeric — throws when given no answers', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await expect(
+      mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 2,
+        item: { interaction_type_slug: 'numeric', item_body: '<p>Q</p>', answers: [] },
+      }),
+    ).rejects.toThrow(/at least one answer/)
+    expect(client.request).not.toHaveBeenCalled()
+  })
+
+  // --- Round trip against Canvas's documented stored shapes ---
+
+  it('every item type round-trips: what we send is what Canvas stores and returns', async () => {
+    // Canvas echoes the `entry` it stored. For each type, post the item, take
+    // the exact `entry` we sent back as the stored item, and assert the fields
+    // that decide how the item scores survive unchanged.
+    const cases: Array<{ input: NewQuizItemInput; checks: (entry: WireEntry) => void }> = [
+      {
+        input: {
+          interaction_type_slug: 'choice',
+          title: 'T',
+          item_body: '<p>Q</p>',
+          choices: [
+            { id: 'a', item_body: '<p>1</p>' },
+            { id: 'b', item_body: '<p>2</p>' },
+          ],
+          correct_choice_id: 'b',
+        },
+        checks: (entry) => {
+          expect(entry.title).toBe('T')
+          expect(entry.scoring_data).toEqual({ value: 'b' })
+        },
       },
-    })
-    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
-    expect(body).toMatchObject({
-      entry: {
-        interaction_type_slug: 'numeric',
-        scoring_data: { exact_answer: 3.14, precision: 2 },
-        scoring_algorithm: 'Precision',
+      {
+        input: { interaction_type_slug: 'true-false', item_body: '<p>Q</p>', correct_answer: true },
+        checks: (entry) => {
+          expect(entry.interaction_data).toEqual({ true_choice: 'True', false_choice: 'False' })
+          expect(entry.scoring_data).toEqual({ value: true })
+        },
       },
-    })
+      {
+        input: {
+          interaction_type_slug: 'essay',
+          item_body: '<p>Q</p>',
+          word_count_min: 10,
+          word_count_max: 20,
+        },
+        checks: (entry) => {
+          expect(entry.interaction_data).toMatchObject({
+            word_limit_enabled: true,
+            word_limit_min: '10',
+            word_limit_max: '20',
+          })
+          expect(entry.scoring_data).toEqual({ value: '' })
+        },
+      },
+      {
+        input: {
+          interaction_type_slug: 'matching',
+          item_body: '<p>Q</p>',
+          matches: [
+            { question: 'a', answer: 'aa' },
+            { question: 'b', answer: 'bb' },
+          ],
+          distractors: ['cc'],
+        },
+        checks: (entry) => {
+          expect(entry.interaction_data).toEqual({
+            answers: ['aa', 'bb', 'cc'],
+            questions: [
+              { id: 'match_0', item_body: 'a' },
+              { id: 'match_1', item_body: 'b' },
+            ],
+          })
+          expect(entry.scoring_algorithm).toBe('PartialDeep')
+        },
+      },
+      {
+        input: {
+          interaction_type_slug: 'numeric',
+          item_body: '<p>Q</p>',
+          answers: [
+            { kind: 'range', min: 1, max: 2 },
+            { kind: 'exact', value: 5 },
+          ],
+        },
+        checks: (entry) => {
+          expect(entry.scoring_algorithm).toBe('Numeric')
+          expect(entry.scoring_data.value).toHaveLength(2)
+        },
+      },
+    ]
+
+    for (const { input, checks } of cases) {
+      const requestSpy = vi.spyOn(client, 'request')
+      requestSpy.mockReset()
+      // POST: echo back the entry Canvas received, the way Canvas does.
+      requestSpy.mockImplementation((_path, init) => {
+        const sent = JSON.parse((init?.body as string) ?? '{}').item
+        return Promise.resolve(makeItem({ entry: sent.entry }) as never)
+      })
+      const created = await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 1,
+        item: input,
+      })
+      const stored = created.entry as unknown as WireEntry
+      expect(stored.interaction_type_slug).toBe(input.interaction_type_slug)
+      checks(stored)
+
+      // GET: reading the stored item back changes nothing.
+      requestSpy.mockReset()
+      requestSpy.mockResolvedValueOnce(makeItem({ entry: stored }) as never)
+      const fetched = await mod.getItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID)
+      expect(fetched.entry).toEqual(stored)
+    }
   })
 
   // --- updateItem ---
@@ -344,7 +687,7 @@ describe('NewQuizzesModule', () => {
     const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
     expect(body).toMatchObject({
       points_possible: 3,
-      entry: { scoring_data: { value: 'false' } },
+      entry: { scoring_data: { value: false } },
     })
   })
 
@@ -367,14 +710,9 @@ describe('NewQuizzesModule', () => {
             entry: {
               interaction_type_slug: 'true-false',
               item_body: '<p>T</p>',
-              interaction_data: {
-                choices: [
-                  { id: 'true', position: 1, item_body: 'True' },
-                  { id: 'false', position: 2, item_body: 'False' },
-                ],
-              },
+              interaction_data: { true_choice: 'True', false_choice: 'False' },
               properties: {},
-              scoring_data: { value: 'true' },
+              scoring_data: { value: true },
               scoring_algorithm: 'Equivalence',
             },
             position: 2,
@@ -383,7 +721,6 @@ describe('NewQuizzesModule', () => {
       },
     )
   })
-
   it('updateItem: sends the exact body nested under `item`', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, {

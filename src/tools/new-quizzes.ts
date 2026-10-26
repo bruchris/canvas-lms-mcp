@@ -5,7 +5,7 @@ import { type CanvasId, canvasIdInput } from '../canvas/id'
 
 const choiceItemSchema = z.object({
   interaction_type_slug: z.literal('choice'),
-  title: z.string().optional(),
+  title: z.string().optional().describe('Optional item heading shown above the question stem'),
   item_body: z.string().describe('HTML question stem'),
   choices: z
     .array(
@@ -28,8 +28,16 @@ const essayItemSchema = z.object({
   interaction_type_slug: z.literal('essay'),
   item_body: z.string(),
   rich_text: z.boolean().default(true).describe('Allow rich text editor'),
-  word_count_min: z.number().int().optional(),
-  word_count_max: z.number().int().optional(),
+  word_count_min: z
+    .number()
+    .int()
+    .optional()
+    .describe('Minimum word count; enables the word limit. Omit to leave the minimum unbounded'),
+  word_count_max: z
+    .number()
+    .int()
+    .optional()
+    .describe('Maximum word count; enables the word limit. Omit to leave the maximum unbounded'),
 })
 
 const matchingItemSchema = z.object({
@@ -43,7 +51,12 @@ const matchingItemSchema = z.object({
       }),
     )
     .min(2),
-  distractors: z.array(z.string()).optional().describe('Wrong-answer distractor pool'),
+  distractors: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Wrong-answer distractor pool. Duplicates, and any entry equal to a correct answer, are dropped',
+    ),
 })
 
 const numericItemSchema = z.object({
@@ -52,16 +65,29 @@ const numericItemSchema = z.object({
   answers: z
     .array(
       z.discriminatedUnion('kind', [
-        z.object({ kind: z.literal('exact'), value: z.number(), margin: z.number().default(0) }),
+        z.object({
+          kind: z.literal('exact'),
+          value: z.number(),
+          margin: z
+            .number()
+            .default(0)
+            .describe('Absolute tolerance around the value; 0 requires the exact value'),
+        }),
         z.object({ kind: z.literal('range'), min: z.number(), max: z.number() }),
         z.object({
           kind: z.literal('precision'),
           value: z.number(),
-          precision: z.number().int(),
+          precision: z
+            .number()
+            .int()
+            .describe(
+              'Decimal places the answer must carry; the value is padded to this many decimals',
+            ),
         }),
       ]),
     )
-    .min(1),
+    .min(1)
+    .describe('Every accepted answer; all of them are sent to Canvas'),
 })
 
 const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
