@@ -283,8 +283,11 @@ export class NewQuizzesModule {
       spell_check: true,
       word_limit_enabled: limited,
     }
-    // Only the limits the caller actually set are sent; Canvas applies the ones
-    // it receives and leaves the other side unbounded.
+    // Canvas treats the two bounds as a pair — "if enabled, max and min must be
+    // set to word count values" — so a partial pair is an invalid item. The MCP
+    // input schema rejects it (src/tools/new-quizzes.ts); library callers get
+    // their input passed through unchanged to Canvas's own 422 rather than a
+    // bound this client invented for them.
     if (hasMin) interactionData.word_limit_min = String(item.word_count_min)
     if (hasMax) interactionData.word_limit_max = String(item.word_count_max)
     return {

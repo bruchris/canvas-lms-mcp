@@ -453,6 +453,68 @@ describe('newQuizTools', () => {
     })
   })
 
+  // ── Essay word limits are an all-or-nothing pair ────────────────────────────
+
+  describe('essay word-limit bounds', () => {
+    // Canvas: "if enabled, max and min must be set to word count values"
+    // (new_quiz_items.html). An item carrying `word_limit_enabled: true` with
+    // one bound 422s, so the input schema rejects the partial pair before the
+    // request is built. Both item-writing tools share one `item` union, so both
+    // are asserted here.
+    const ITEM_TOOLS = ['create_new_quiz_item', 'update_new_quiz_item'] as const
+
+    function itemSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema.item
+    }
+
+    const essay = (bounds: Record<string, number>) => ({
+      interaction_type_slug: 'essay',
+      item_body: '<p>Discuss.</p>',
+      rich_text: true,
+      ...bounds,
+    })
+
+    for (const toolName of ITEM_TOOLS) {
+      it(`${toolName}: rejects word_count_min without word_count_max`, () => {
+        const result = itemSchema(toolName).safeParse(essay({ word_count_min: 100 }))
+        expect(result.success).toBe(false)
+        expect(result.error!.issues[0].message).toContain(
+          'word_count_min and word_count_max must be set together',
+        )
+      })
+
+      it(`${toolName}: rejects word_count_max without word_count_min`, () => {
+        const result = itemSchema(toolName).safeParse(essay({ word_count_max: 300 }))
+        expect(result.success).toBe(false)
+        expect(result.error!.issues[0].message).toContain(
+          'word_count_min and word_count_max must be set together',
+        )
+      })
+
+      it(`${toolName}: accepts both bounds, and neither`, () => {
+        expect(
+          itemSchema(toolName).safeParse(essay({ word_count_min: 50, word_count_max: 300 }))
+            .success,
+        ).toBe(true)
+        expect(itemSchema(toolName).safeParse(essay({})).success).toBe(true)
+      })
+
+      it(`${toolName}: the pairing check does not reach other item types`, () => {
+        expect(
+          itemSchema(toolName).safeParse({
+            interaction_type_slug: 'true-false',
+            item_body: '<p>T</p>',
+            correct_answer: true,
+          }).success,
+        ).toBe(true)
+      })
+    }
+
+    it('update_new_quiz_item: item stays optional', () => {
+      expect(itemSchema('update_new_quiz_item').safeParse(undefined).success).toBe(true)
+    })
+  })
+
   // ── LTI not-enabled error mapping ───────────────────────────────────────────
 
   describe('LTI error mapping via formatError', () => {

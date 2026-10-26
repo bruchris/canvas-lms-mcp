@@ -307,23 +307,6 @@ describe('NewQuizzesModule', () => {
     expect(entry.interaction_data).not.toHaveProperty('word_limit_max')
   })
 
-  it('createItem: essay — a single word limit only sends that limit', async () => {
-    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
-    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
-      points_possible: 10,
-      item: {
-        interaction_type_slug: 'essay',
-        item_body: '<p>Discuss.</p>',
-        rich_text: true,
-        word_count_min: 100,
-      },
-    })
-    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
-    expect(entry.interaction_data.word_limit_enabled).toBe(true)
-    expect(entry.interaction_data.word_limit_min).toBe('100')
-    expect(entry.interaction_data).not.toHaveProperty('word_limit_max')
-  })
-
   it('createItem: essay — never sends undocumented `properties` keys', async () => {
     // Regression (#485): Canvas answered
     // `properties contains keys not in schema ["word_count"]`.

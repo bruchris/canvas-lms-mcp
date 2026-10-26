@@ -24,21 +24,37 @@ const trueFalseItemSchema = z.object({
   correct_answer: z.boolean(),
 })
 
-const essayItemSchema = z.object({
-  interaction_type_slug: z.literal('essay'),
-  item_body: z.string(),
-  rich_text: z.boolean().default(true).describe('Allow rich text editor'),
-  word_count_min: z
-    .number()
-    .int()
-    .optional()
-    .describe('Minimum word count; enables the word limit. Omit to leave the minimum unbounded'),
-  word_count_max: z
-    .number()
-    .int()
-    .optional()
-    .describe('Maximum word count; enables the word limit. Omit to leave the maximum unbounded'),
-})
+const essayItemSchema = z
+  .object({
+    interaction_type_slug: z.literal('essay'),
+    item_body: z.string(),
+    rich_text: z.boolean().default(true).describe('Allow rich text editor'),
+    word_count_min: z
+      .number()
+      .int()
+      .optional()
+      .describe(
+        'Minimum word count. Canvas enables the word limit only with both bounds set, so pass ' +
+          'word_count_max too; omit both for no word limit',
+      ),
+    word_count_max: z
+      .number()
+      .int()
+      .optional()
+      .describe(
+        'Maximum word count. Canvas enables the word limit only with both bounds set, so pass ' +
+          'word_count_min too; omit both for no word limit',
+      ),
+  })
+  // Canvas documents the pair as all-or-nothing — "if enabled, max and min must
+  // be set to word count values" (new_quiz_items.html) — so an item sent with
+  // word_limit_enabled and only one bound violates a documented requirement
+  // (not live-verified; #485's reporter exercised the both-bounds case). Reject
+  // the partial input here rather than guess the missing side.
+  .refine(
+    (item) => (item.word_count_min === undefined) === (item.word_count_max === undefined),
+    'word_count_min and word_count_max must be set together: Canvas requires both bounds when the essay word limit is enabled. Omit both for no word limit.',
+  )
 
 const matchingItemSchema = z.object({
   interaction_type_slug: z.literal('matching'),
