@@ -20,6 +20,39 @@ export class CanvasApiError extends Error {
 const DEFAULT_MAX_PAGINATION_PAGES = 1000
 const USER_AGENT = `canvas-lms-mcp/${version}`
 
+/**
+ * Canvas returns `errors` as an array of `{message}` objects for most
+ * endpoints, but field-keyed validation errors (New Quizzes 422s, e.g.
+ * `{errors: {scoring_algorithm: ["..."]}}`) arrive as an object keyed by
+ * field name instead. Normalize the latter into one deterministic string
+ * rather than falling through to the useless `body.message` summary.
+ */
+function formatCanvasErrorMessage(body: CanvasErrorResponse, status: number): string {
+  const fieldMessage = formatFieldKeyedErrors(body.errors)
+  if (fieldMessage) {
+    return body.message ? `${body.message}: ${fieldMessage}` : fieldMessage
+  }
+  if (Array.isArray(body.errors) && body.errors[0]?.message) {
+    return body.errors[0].message
+  }
+  return body.message ?? `Canvas API error: ${status}`
+}
+
+function formatFieldKeyedErrors(errors: CanvasErrorResponse['errors']): string | undefined {
+  if (typeof errors !== 'object' || errors === null || Array.isArray(errors)) return undefined
+
+  const parts: string[] = []
+  for (const [field, messages] of Object.entries(errors)) {
+    if (!Array.isArray(messages) || messages.length === 0) continue
+    const text = messages
+      .map((m) => (typeof m === 'string' ? m : (m?.message ?? String(m))))
+      .filter((m) => m.length > 0)
+      .join(', ')
+    if (text) parts.push(`${field}: ${text}`)
+  }
+  return parts.length > 0 ? parts.join('; ') : undefined
+}
+
 export interface CanvasRequestOptions extends RequestInit {
   /**
    * Query params to append to the endpoint URL. Arrays produce repeated
@@ -80,9 +113,11 @@ export class CanvasHttpClient {
 
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
-      const message =
-        body.errors?.[0]?.message ?? body.message ?? `Canvas API error: ${response.status}`
-      throw new CanvasApiError(message, response.status, endpoint)
+      throw new CanvasApiError(
+        formatCanvasErrorMessage(body, response.status),
+        response.status,
+        endpoint,
+      )
     }
 
     if (response.status === 204) {
@@ -116,9 +151,11 @@ export class CanvasHttpClient {
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
-        const message =
-          body.errors?.[0]?.message ?? body.message ?? `Canvas API error: ${response.status}`
-        throw new CanvasApiError(message, response.status, endpoint)
+        throw new CanvasApiError(
+          formatCanvasErrorMessage(body, response.status),
+          response.status,
+          endpoint,
+        )
       }
 
       const data = normalizeCanvasIds((await response.json()) as T[])
@@ -163,9 +200,11 @@ export class CanvasHttpClient {
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as CanvasErrorResponse
-        const message =
-          body.errors?.[0]?.message ?? body.message ?? `Canvas API error: ${response.status}`
-        throw new CanvasApiError(message, response.status, endpoint)
+        throw new CanvasApiError(
+          formatCanvasErrorMessage(body, response.status),
+          response.status,
+          endpoint,
+        )
       }
 
       // Normalized before the envelope is opened, not after: the `answer`
