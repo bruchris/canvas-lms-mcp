@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.1...canvas-lms-mcp-v2.9.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **canvas:** normalize field-keyed Canvas error bodies ([#486](https://github.com/bruchris/canvas-lms-mcp/issues/486)) ([ba3496b](https://github.com/bruchris/canvas-lms-mcp/commit/ba3496b4096c17e9bd05b69c139b377dc0da373b))
+
 ## [2.9.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.0...canvas-lms-mcp-v2.9.1) (2026-10-23)
 
 
