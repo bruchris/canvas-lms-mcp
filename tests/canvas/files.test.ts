@@ -237,7 +237,7 @@ describe('FilesModule', () => {
       )
     })
 
-    it('throws when S3 redirect Location hostname does not match Canvas base URL', async () => {
+    it('throws when S3 redirect Location host does not match Canvas base URL', async () => {
       vi.spyOn(client, 'request').mockResolvedValueOnce({
         upload_url: 'https://s3.example.com/upload',
         upload_params: {},
@@ -253,8 +253,99 @@ describe('FilesModule', () => {
       )
 
       await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
-        'File upload redirect points to unexpected host (evil.example.com)',
+        'File upload redirect points to unexpected origin (https://evil.example.com)',
       )
+    })
+
+    it('throws when S3 redirect Location has the right host but the wrong scheme', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'http://canvas.example.com/api/v1/files/42/confirm' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload redirect points to unexpected origin (http://canvas.example.com)',
+      )
+    })
+
+    it('throws when S3 redirect Location has the right host but the wrong port', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://canvas.example.com:8443/api/v1/files/42/confirm' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload redirect points to unexpected origin (https://canvas.example.com:8443)',
+      )
+    })
+
+    it('throws when S3 redirect Location is a malformed URL', async () => {
+      vi.spyOn(client, 'request').mockResolvedValueOnce({
+        upload_url: 'https://s3.example.com/upload',
+        upload_params: {},
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'not a valid url' },
+          }),
+        ),
+      )
+
+      await expect(files.upload(100, 'file.txt', btoa('data'), 'text/plain')).rejects.toThrow(
+        'File upload redirect points to unexpected origin (malformed URL)',
+      )
+    })
+
+    it('accepts a same-origin redirect on the default HTTPS port even when Canvas base URL omits it', async () => {
+      const confirmedFile = {
+        id: 42,
+        display_name: 'probe.txt',
+        filename: 'probe.txt',
+        content_type: 'text/plain',
+        url: 'https://canvas.example.com/files/42/download',
+        size: 5,
+        folder_id: 1,
+      }
+
+      vi.spyOn(client, 'request')
+        .mockResolvedValueOnce({
+          upload_url: 'https://s3.example.com/upload',
+          upload_params: {},
+        })
+        .mockResolvedValueOnce(confirmedFile)
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce(
+          new Response(null, {
+            status: 303,
+            headers: { location: 'https://canvas.example.com:443/api/v1/files/42/confirm' },
+          }),
+        ),
+      )
+
+      const result = await files.upload(100, 'file.txt', btoa('data'), 'text/plain')
+      expect(result).toEqual(confirmedFile)
     })
 
     it('throws when S3 200 response has no id field', async () => {

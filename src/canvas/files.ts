@@ -127,16 +127,16 @@ export class FilesModule {
       if (!confirmUrl) {
         throw new Error(`File upload redirect missing Location header (HTTP ${s3Response.status})`)
       }
-      let confirmHostname: string
+      let confirmOrigin: string
       try {
-        confirmHostname = new URL(confirmUrl).hostname
+        confirmOrigin = new URL(confirmUrl).origin
       } catch {
-        confirmHostname = ''
+        confirmOrigin = ''
       }
-      const canvasHostname = new URL(this.client.baseUrl).hostname
-      if (confirmHostname !== canvasHostname) {
+      const canvasOrigin = new URL(this.client.baseUrl).origin
+      if (confirmOrigin !== canvasOrigin) {
         throw new Error(
-          `File upload redirect points to unexpected host (${confirmHostname}); expected Canvas host (${canvasHostname})`,
+          `File upload redirect points to unexpected origin (${confirmOrigin || 'malformed URL'}); expected Canvas origin (${canvasOrigin})`,
         )
       }
       return this.client.request<CanvasFile>(confirmUrl, { method: 'POST' })
