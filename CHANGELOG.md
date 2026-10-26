@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.9.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.2...canvas-lms-mcp-v2.9.3) (2026-10-26)
+
+
+### Bug Fixes
+
+* **canvas:** harden file-upload confirm redirect to exact-origin validation ([#491](https://github.com/bruchris/canvas-lms-mcp/issues/491)) ([2833496](https://github.com/bruchris/canvas-lms-mcp/commit/2833496ee3f14632ac17ab69a2085d6ce2b560d1))
+* **new-quizzes:** send Canvas's documented item wire shapes ([#487](https://github.com/bruchris/canvas-lms-mcp/issues/487)) ([5d28c72](https://github.com/bruchris/canvas-lms-mcp/commit/5d28c727c1b31f1c0cd612b154932e7e0692bcae))
+
 ## [2.9.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.1...canvas-lms-mcp-v2.9.2) (2026-10-26)
 
 
