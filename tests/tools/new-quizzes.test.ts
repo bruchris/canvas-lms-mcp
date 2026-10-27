@@ -227,8 +227,24 @@ describe('newQuizTools', () => {
         unlock_at: undefined,
         lock_at: undefined,
         published: undefined,
+        quiz_settings: undefined,
       })
       expect(result).toEqual(mockQuiz)
+    })
+
+    it('passes quiz_settings through to canvas.newQuizzes.create unchanged', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz')!
+      const quizSettings = {
+        calculator_type: 'scientific' as const,
+        shuffle_questions: true,
+        multiple_attempts: { multiple_attempts_enabled: true, max_attempts: 2 },
+      }
+      await tool.handler({ course_id: '1', title: 'Quiz 1', quiz_settings: quizSettings })
+      expect(canvas.newQuizzes.create).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({ quiz_settings: quizSettings }),
+      )
     })
   })
 
@@ -245,8 +261,83 @@ describe('newQuizTools', () => {
         unlock_at: undefined,
         lock_at: undefined,
         published: undefined,
+        quiz_settings: undefined,
       })
     })
+
+    it('passes a partial multiple_attempts object through unchanged (Canvas replaces it whole)', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'update_new_quiz')!
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '42',
+        quiz_settings: { multiple_attempts: { max_attempts: 5 } },
+      })
+      expect(canvas.newQuizzes.update).toHaveBeenCalledWith(
+        '1',
+        '42',
+        expect.objectContaining({
+          quiz_settings: { multiple_attempts: { max_attempts: 5 } },
+        }),
+      )
+    })
+  })
+
+  describe('quiz_settings schema (BRU-3212)', () => {
+    const QUIZ_SETTINGS_TOOLS = ['create_new_quiz', 'update_new_quiz'] as const
+
+    function quizSettingsSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema
+        .quiz_settings
+    }
+
+    for (const toolName of QUIZ_SETTINGS_TOOLS) {
+      it(`${toolName}: accepts every flat field plus multiple_attempts`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({
+          calculator_type: 'basic',
+          one_at_a_time_type: 'question',
+          allow_backtracking: true,
+          shuffle_answers: true,
+          shuffle_questions: true,
+          require_student_access_code: true,
+          student_access_code: 'abc123',
+          has_time_limit: true,
+          session_time_limit_in_seconds: 600,
+          multiple_attempts: {
+            multiple_attempts_enabled: true,
+            attempt_limit: true,
+            max_attempts: 3,
+            score_to_keep: 'highest',
+            cooling_period: true,
+            cooling_period_seconds: 300,
+          },
+        })
+        expect(result.success).toBe(true)
+      })
+
+      it(`${toolName}: accepts an empty object and a null multiple_attempts`, () => {
+        expect(quizSettingsSchema(toolName)!.safeParse({}).success).toBe(true)
+        expect(quizSettingsSchema(toolName)!.safeParse({ multiple_attempts: null }).success).toBe(
+          true,
+        )
+      })
+
+      it(`${toolName}: strips result_view_settings and IP-filter fields rather than forwarding them`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({
+          calculator_type: 'none',
+          filter_ip_address: true,
+          filters: { ips: [['1.2.3.4', '1.2.3.9']] },
+          result_view_settings: { result_view_restricted: true },
+        })
+        expect(result.success).toBe(true)
+        expect(result.data).toEqual({ calculator_type: 'none' })
+      })
+
+      it(`${toolName}: rejects an unknown calculator_type value`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({ calculator_type: 'graphing' })
+        expect(result.success).toBe(false)
+      })
+    }
   })
 
   describe('delete_new_quiz', () => {
