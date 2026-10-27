@@ -103,6 +103,88 @@ describe('NewQuizzesModule', () => {
     )
   })
 
+  // --- quiz_settings (BRU-3212) ---
+
+  it('nests quiz_settings under quiz on create, with every flat field sent', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeQuiz())
+    await mod.create(COURSE_ID, {
+      title: 'Timed quiz',
+      quiz_settings: {
+        calculator_type: 'scientific',
+        one_at_a_time_type: 'question',
+        allow_backtracking: false,
+        shuffle_answers: true,
+        shuffle_questions: true,
+        require_student_access_code: true,
+        student_access_code: 'secret',
+        has_time_limit: true,
+        session_time_limit_in_seconds: 1800,
+      },
+    })
+    expect(client.request).toHaveBeenCalledWith(`/api/quiz/v1/courses/${COURSE_ID}/quizzes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        quiz: {
+          title: 'Timed quiz',
+          quiz_settings: {
+            calculator_type: 'scientific',
+            one_at_a_time_type: 'question',
+            allow_backtracking: false,
+            shuffle_answers: true,
+            shuffle_questions: true,
+            require_student_access_code: true,
+            student_access_code: 'secret',
+            has_time_limit: true,
+            session_time_limit_in_seconds: 1800,
+          },
+        },
+      }),
+    })
+  })
+
+  it('sends multiple_attempts exactly as given on update, without fetching or merging prior values', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeQuiz())
+    // Only two of the six multiple_attempts sub-fields are supplied; Canvas
+    // treats this nested object as replaced whole, so the client must not add
+    // the other four, read the quiz first, or otherwise fill them in.
+    await mod.update(COURSE_ID, ASSIGNMENT_ID, {
+      quiz_settings: {
+        multiple_attempts: {
+          multiple_attempts_enabled: true,
+          max_attempts: 3,
+        },
+      },
+    })
+    expect(client.request).toHaveBeenCalledTimes(1)
+    expect(client.request).toHaveBeenCalledWith(
+      `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          quiz: {
+            quiz_settings: {
+              multiple_attempts: { multiple_attempts_enabled: true, max_attempts: 3 },
+            },
+          },
+        }),
+      },
+    )
+  })
+
+  it('passes multiple_attempts: null through to clear it', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeQuiz())
+    await mod.update(COURSE_ID, ASSIGNMENT_ID, {
+      quiz_settings: { multiple_attempts: null },
+    })
+    expect(client.request).toHaveBeenCalledWith(
+      `/api/quiz/v1/courses/${COURSE_ID}/quizzes/${ASSIGNMENT_ID}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ quiz: { quiz_settings: { multiple_attempts: null } } }),
+      },
+    )
+  })
+
   // --- Item reads ---
 
   it('lists quiz items using bare-array pagination', async () => {

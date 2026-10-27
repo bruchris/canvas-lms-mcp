@@ -144,6 +144,79 @@ const numericItemSchema = z.object({
     .describe('Every accepted answer; all of them are sent to Canvas'),
 })
 
+const quizSettingsMultipleAttemptsSchema = z
+  .object({
+    multiple_attempts_enabled: z.boolean().optional(),
+    attempt_limit: z
+      .boolean()
+      .optional()
+      .describe('Caps attempts at max_attempts; false allows unlimited attempts'),
+    max_attempts: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when attempt_limit is true'),
+    score_to_keep: z
+      .enum(['average', 'first', 'highest', 'latest'])
+      .optional()
+      .describe('Which attempt score counts toward the grade'),
+    cooling_period: z.boolean().optional().describe('Require a wait between attempts'),
+    cooling_period_seconds: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when cooling_period is true'),
+  })
+  .describe(
+    'Canvas replaces this whole object on update — any sub-field you omit is cleared, not left ' +
+      'at its current value. Pass every sub-field you want to keep, not only the one you are changing.',
+  )
+
+const quizSettingsSchema = z
+  .object({
+    calculator_type: z
+      .enum(['none', 'basic', 'scientific'])
+      .optional()
+      .describe('Calculator available during the quiz'),
+    one_at_a_time_type: z
+      .enum(['none', 'question'])
+      .optional()
+      .describe('question shows one item per screen; none shows the whole quiz at once'),
+    allow_backtracking: z
+      .boolean()
+      .optional()
+      .describe(
+        'Lets students revisit earlier items; only applies when one_at_a_time_type is question',
+      ),
+    shuffle_answers: z.boolean().optional().describe('Randomize answer order per student'),
+    shuffle_questions: z.boolean().optional().describe('Randomize item order per student'),
+    require_student_access_code: z.boolean().optional(),
+    student_access_code: z
+      .string()
+      .optional()
+      .describe('Code students must enter to start the quiz'),
+    has_time_limit: z.boolean().optional(),
+    session_time_limit_in_seconds: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when has_time_limit is true'),
+    multiple_attempts: quizSettingsMultipleAttemptsSchema
+      .nullable()
+      .optional()
+      .describe(
+        'Replaced as a whole object by Canvas — see its own description. Pass null to clear it.',
+      ),
+  })
+  .describe(
+    'Quiz session settings. The flat fields above change independently of each other, but ' +
+      'multiple_attempts is replaced as a whole nested object — see its field for what that means. ' +
+      'IP-address access filtering and result_view_settings are not supported by this tool.',
+  )
+
 const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   choiceItemSchema,
   trueFalseItemSchema,
@@ -165,7 +238,12 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'only read and delete that older type. After creating, add questions with ' +
         'create_new_quiz_item, change title, dates, or points with update_new_quiz, and remove ' +
         'the quiz with delete_new_quiz. Each call creates another quiz (not idempotent), so check ' +
-        'list_quizzes before retrying. Requires permission to manage quizzes in the course.',
+        'list_quizzes before retrying. quiz_settings covers session behavior (calculator, shuffle, ' +
+        'time limit, access code, one-at-a-time, and multiple_attempts); its multiple_attempts ' +
+        'sub-object is replaced as a whole by Canvas, so a later update_new_quiz call must repeat ' +
+        'every multiple_attempts sub-field you want to keep. IP-address access filtering and ' +
+        'result_view_settings are not supported by this tool. Requires permission to manage ' +
+        'quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().describe('Title of the quiz'),
@@ -182,6 +260,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         unlock_at: z.string().optional().describe('ISO-8601 unlock time'),
         lock_at: z.string().optional().describe('ISO-8601 lock time'),
         published: z.boolean().optional().describe('Whether the quiz is visible to students'),
+        quiz_settings: quizSettingsSchema.optional(),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) => {
@@ -194,6 +273,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           unlock_at: params.unlock_at as string | null | undefined,
           lock_at: params.lock_at as string | null | undefined,
           published: params.published as boolean | undefined,
+          quiz_settings: params.quiz_settings as
+            Parameters<typeof canvas.newQuizzes.create>[1]['quiz_settings'] | undefined,
         })
       },
     },
@@ -209,7 +290,15 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'that date. Returns the updated quiz (id, title, points_possible, due_at, unlock_at, ' +
         'lock_at, published, assignment_id). Use update_new_quiz_item to change an individual ' +
         'question instead of the quiz shell, and delete_new_quiz to remove the whole quiz. ' +
-        'Requires permission to manage quizzes in the course.',
+        "quiz_settings's flat fields (calculator, shuffle, time limit, access code, " +
+        'one-at-a-time) each change independently, same as the rest of this call, but its ' +
+        'multiple_attempts sub-object is replaced as a whole by Canvas: passing ' +
+        '{ multiple_attempts: { max_attempts: 3 } } clears every other multiple_attempts ' +
+        'sub-field (which score to keep, the cooling period, …) instead of leaving them as they ' +
+        'were, so ' +
+        'repeat every sub-field you want kept. IP-address access filtering and ' +
+        'result_view_settings are not supported by this tool. Requires permission to manage ' +
+        'quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
@@ -228,6 +317,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           .describe('ISO-8601 unlock time (null to clear)'),
         lock_at: z.string().nullable().optional().describe('ISO-8601 lock time (null to clear)'),
         published: z.boolean().optional().describe('Whether the quiz is visible to students'),
+        quiz_settings: quizSettingsSchema.optional(),
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
@@ -241,6 +331,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           unlock_at: params.unlock_at as string | null | undefined,
           lock_at: params.lock_at as string | null | undefined,
           published: params.published as boolean | undefined,
+          quiz_settings: params.quiz_settings as
+            Parameters<typeof canvas.newQuizzes.update>[2]['quiz_settings'] | undefined,
         })
       },
     },
