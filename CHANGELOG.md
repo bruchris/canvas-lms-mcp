@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.11.0...canvas-lms-mcp-v2.11.1) (2026-10-27)
+
+
+### Miscellaneous
+
+* **deps:** bump @modelcontextprotocol/sdk from 1.32.1 to 1.32.2 ([#493](https://github.com/bruchris/canvas-lms-mcp/issues/493)) ([632af5b](https://github.com/bruchris/canvas-lms-mcp/commit/632af5ba3ccea62adfb410f53752dd2d9e1fbbd0))
+
 ## [2.11.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.10.0...canvas-lms-mcp-v2.11.0) (2026-10-27)
 
 
