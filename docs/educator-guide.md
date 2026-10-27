@@ -120,7 +120,7 @@ The server includes 62 write tools. All require appropriate Canvas permissions. 
 | Create a New Quiz | `create_new_quiz` | Creates a New Quiz (LTI) in a course | Yes (call `delete_new_quiz`) |
 | Update a New Quiz | `update_new_quiz` | Updates an existing New Quiz | Yes (call again to revert fields) |
 | Delete a New Quiz | `delete_new_quiz` | Deletes a New Quiz | No -- permanent |
-| Create a New Quiz item | `create_new_quiz_item` | Adds a question (choice, multi-answer, true/false, essay, matching, or numeric) to a New Quiz | Yes (call `delete_new_quiz_item`) |
+| Create a New Quiz item | `create_new_quiz_item` | Adds a question (choice, multi-answer, true/false, essay, matching, numeric, or fill-in-the-blank) to a New Quiz | Yes (call `delete_new_quiz_item`) |
 | Update a New Quiz item | `update_new_quiz_item` | Updates an existing New Quiz question | Yes (call again to revert fields) |
 | Delete a New Quiz item | `delete_new_quiz_item` | Deletes a question from a New Quiz | No -- permanent |
 
