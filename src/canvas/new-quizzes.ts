@@ -2,6 +2,42 @@ import { CanvasApiError, type CanvasHttpClient } from './client'
 import type { CanvasNewQuiz, CanvasNewQuizAccommodation, CanvasNewQuizItem } from './types'
 import type { CanvasId } from './id'
 
+/**
+ * Canvas replaces `multiple_attempts` as a whole object on every PATCH: a
+ * caller who sends only `multiple_attempts_enabled` clears every other
+ * sub-field (`max_attempts`, `score_to_keep`, …) rather than leaving them at
+ * their current value. This client does not fetch-then-merge — it passes the
+ * object through exactly as given, so a partial object really does mean a
+ * partial replacement.
+ */
+export interface QuizSettingsMultipleAttempts {
+  multiple_attempts_enabled?: boolean
+  attempt_limit?: boolean
+  max_attempts?: number
+  score_to_keep?: 'average' | 'first' | 'highest' | 'latest'
+  cooling_period?: boolean
+  cooling_period_seconds?: number
+}
+
+/**
+ * Scoped to the flat session settings plus `multiple_attempts`. IP-address
+ * filtering (`filter_ip_address`, `filters`) and `result_view_settings` are
+ * deliberately out of scope for this tool (BRU-3212) and are not accepted
+ * here.
+ */
+export interface QuizSettingsPayload {
+  calculator_type?: 'none' | 'basic' | 'scientific'
+  one_at_a_time_type?: 'none' | 'question'
+  allow_backtracking?: boolean
+  shuffle_answers?: boolean
+  shuffle_questions?: boolean
+  require_student_access_code?: boolean
+  student_access_code?: string
+  has_time_limit?: boolean
+  session_time_limit_in_seconds?: number
+  multiple_attempts?: QuizSettingsMultipleAttempts | null
+}
+
 export interface NewQuizPayload {
   title?: string
   instructions?: string | null
@@ -10,6 +46,7 @@ export interface NewQuizPayload {
   unlock_at?: string | null
   lock_at?: string | null
   published?: boolean
+  quiz_settings?: QuizSettingsPayload
 }
 
 type ChoiceItem = {
