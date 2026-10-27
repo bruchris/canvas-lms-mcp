@@ -239,6 +239,31 @@ const richFillBlankItemSchema = z
     if (problem !== null) ctx.addIssue({ code: 'custom', message: problem })
   })
 
+const orderingItemSchema = z.object({
+  interaction_type_slug: z.literal('ordering'),
+  title: z.string().optional().describe('Optional item heading shown above the question stem'),
+  item_body: z.string().describe('HTML question stem'),
+  choices: z
+    .array(z.string())
+    .min(2)
+    .describe(
+      'Items to order, listed top-to-bottom in the correct sequence. Canvas shuffles their ' +
+        "displayed order for the student; this array's order is what scoring is checked against",
+    ),
+  top_label: z.string().optional().describe('Label shown above the list, e.g. "youngest"'),
+  bottom_label: z.string().optional().describe('Label shown below the list, e.g. "oldest"'),
+  include_labels: z
+    .boolean()
+    .optional()
+    .describe(
+      'Show top_label/bottom_label above and below the list; defaults to true when either is given, false otherwise',
+    ),
+  display_answers_paragraph: z
+    .boolean()
+    .optional()
+    .describe('true renders the choices as a paragraph instead of a list; defaults to false'),
+})
+
 const quizSettingsMultipleAttemptsSchema = z
   .object({
     multiple_attempts_enabled: z.boolean().optional(),
@@ -320,6 +345,7 @@ const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   multiAnswerItemSchema,
   numericItemSchema,
   richFillBlankItemSchema,
+  orderingItemSchema,
 ])
 
 export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
@@ -502,9 +528,10 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Create one item (question) in a New Quiz (LTI). Returns the created item with its ' +
         'item_id, position, points_possible, and full entry body, including scoring_data. ' +
-        'Supports 7 types: choice (one correct answer), multi-answer (select all that apply), ' +
-        'true-false, essay, matching, numeric, and rich-fill-blank (fill in the blank, with ' +
-        'typed, dropdown, or word-bank blanks). Each call adds another item (not ' +
+        'Supports 8 types: choice (one correct answer), multi-answer (select all that apply), ' +
+        'true-false, essay, matching, numeric, rich-fill-blank (fill in the blank, with ' +
+        'typed, dropdown, or word-bank blanks), and ordering (choices listed top-to-bottom in ' +
+        'the correct sequence; Canvas shuffles their displayed order for the student). Each call adds another item (not ' +
         'idempotent), so check list_new_quiz_items before retrying a failed or uncertain ' +
         'create. Use update_new_quiz_item to change an existing item, delete_new_quiz_item to ' +
         'remove one, and create_new_quiz to make the quiz first. An item has no publish setting ' +
@@ -543,7 +570,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'updated item. Only the parts you pass are sent (position, points_possible, or item). ' +
         'When item is given, ' +
         'the whole item body (type, stem, choices, and answer) is rebuilt from it and sent, so ' +
-        'pass the complete item, not only the changed field. It takes the same 7 types ' +
+        'pass the complete item, not only the changed field. It takes the same 8 types ' +
         'as create_new_quiz_item. Find item_id with list_new_quiz_items or get_new_quiz_item. ' +
         'Use create_new_quiz_item to add an item, delete_new_quiz_item to remove one, and ' +
         'update_new_quiz for quiz-level fields. assignment_id identifies the New Quiz (from ' +
