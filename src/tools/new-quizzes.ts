@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
+import { richFillBlankProblem } from '../canvas/new-quizzes'
 
 const choiceItemSchema = z.object({
   interaction_type_slug: z.literal('choice'),
@@ -144,6 +145,100 @@ const numericItemSchema = z.object({
     .describe('Every accepted answer; all of them are sent to Canvas'),
 })
 
+const richFillBlankBlankSchema = z.discriminatedUnion('answer_type', [
+  z.object({
+    answer_type: z.literal('open_entry'),
+    answers: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Accepted answers. Defaults to the blank's own backticked text, so a blank written as " +
+          '`Paris` needs nothing here. Give several only with match "any_of"',
+      ),
+    match: z
+      .enum(['close_enough', 'contains', 'any_of', 'regex'])
+      .optional()
+      .describe(
+        'How the typed answer is scored: close_enough (the default for a single answer) accepts ' +
+          'near-misses within edit_distance; contains accepts an answer containing the correct ' +
+          'text; any_of (the default when several answers are given) accepts any one of them; ' +
+          'regex treats the answer as a regular expression',
+      ),
+    ignore_case: z
+      .boolean()
+      .optional()
+      .describe('close_enough only; defaults to true (case is ignored)'),
+    edit_distance: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        'close_enough only: how many character edits away an answer may be and still count. ' +
+          "Defaults to 1, Canvas's own documented example; pass 0 to require the exact spelling",
+      ),
+  }),
+  z.object({
+    answer_type: z.literal('dropdown'),
+    choices: z
+      .array(z.string())
+      .min(2)
+      .describe(
+        "Options shown in the dropdown, in order. One of them must be the blank's backticked " +
+          'text, which is the correct option; the rest are distractors',
+      ),
+  }),
+  z.object({
+    answer_type: z.literal('word_bank'),
+  }),
+])
+
+const richFillBlankItemSchema = z
+  .object({
+    interaction_type_slug: z.literal('rich-fill-blank'),
+    title: z.string().optional().describe('Optional item heading shown above the question stem'),
+    item_body: z
+      .string()
+      .describe(
+        'HTML question text with every blank written as its correct answer wrapped in backticks, ' +
+          'e.g. "<p>`Roses` are `red`.</p>". The backticked text is the correct answer and what ' +
+          'you see while authoring; a student sees a text box, a dropdown, or a word bank in its ' +
+          "place, depending on that blank's answer_type",
+      ),
+    blanks: z
+      .array(richFillBlankBlankSchema)
+      .min(1)
+      .describe(
+        'One entry per backticked blank, in the same order they appear in item_body. The count ' +
+          'must match',
+      ),
+    word_bank_choices: z
+      .array(z.string())
+      .min(1)
+      .optional()
+      .describe(
+        'The single pool of words shown for every word_bank blank. It must contain each ' +
+          "word_bank blank's backticked answer; any extra entries are distractors. Required if " +
+          'any blank is a word_bank, and rejected if none is',
+      ),
+    reuse_word_bank_choices: z
+      .boolean()
+      .optional()
+      .describe(
+        'Let one word bank entry answer more than one blank; defaults to false (each word is ' +
+          'used once)',
+      ),
+  })
+  // Every rejection here names a body this server could not turn into a valid
+  // Canvas item at all: the blank count has to agree with the backticks, a
+  // dropdown has to offer its own answer, and a word_bank blank has to draw
+  // from a pool that holds it. The message comes from the same function the
+  // Canvas client throws, so a library caller reads the identical sentence.
+  .superRefine((item, ctx) => {
+    const problem = richFillBlankProblem(item)
+    if (problem !== null) ctx.addIssue({ code: 'custom', message: problem })
+  })
+
 const quizSettingsMultipleAttemptsSchema = z
   .object({
     multiple_attempts_enabled: z.boolean().optional(),
@@ -224,6 +319,7 @@ const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   matchingItemSchema,
   multiAnswerItemSchema,
   numericItemSchema,
+  richFillBlankItemSchema,
 ])
 
 export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
@@ -406,8 +502,9 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Create one item (question) in a New Quiz (LTI). Returns the created item with its ' +
         'item_id, position, points_possible, and full entry body, including scoring_data. ' +
-        'Supports 6 types: choice (one correct answer), multi-answer (select all that apply), ' +
-        'true-false, essay, matching, and numeric. Each call adds another item (not ' +
+        'Supports 7 types: choice (one correct answer), multi-answer (select all that apply), ' +
+        'true-false, essay, matching, numeric, and rich-fill-blank (fill in the blank, with ' +
+        'typed, dropdown, or word-bank blanks). Each call adds another item (not ' +
         'idempotent), so check list_new_quiz_items before retrying a failed or uncertain ' +
         'create. Use update_new_quiz_item to change an existing item, delete_new_quiz_item to ' +
         'remove one, and create_new_quiz to make the quiz first. An item has no publish setting ' +
@@ -446,7 +543,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'updated item. Only the parts you pass are sent (position, points_possible, or item). ' +
         'When item is given, ' +
         'the whole item body (type, stem, choices, and answer) is rebuilt from it and sent, so ' +
-        'pass the complete item, not only the changed field. It takes the same 6 types ' +
+        'pass the complete item, not only the changed field. It takes the same 7 types ' +
         'as create_new_quiz_item. Find item_id with list_new_quiz_items or get_new_quiz_item. ' +
         'Use create_new_quiz_item to add an item, delete_new_quiz_item to remove one, and ' +
         'update_new_quiz for quiz-level fields. assignment_id identifies the New Quiz (from ' +

@@ -887,6 +887,446 @@ describe('NewQuizzesModule', () => {
     }
   })
 
+  // --- rich-fill-blank (BRU-3213) ---
+
+  describe('createItem: rich-fill-blank', () => {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+    async function entryFor(item: NewQuizItemInput): Promise<WireEntry> {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem() as never)
+      await mod.createItem(COURSE_ID, ASSIGNMENT_ID, { points_possible: 1, item })
+      return JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
+        .entry as WireEntry
+    }
+
+    /** The blank ids Canvas sees, read off interaction_data in blank order. */
+    function blankIds(entry: WireEntry): string[] {
+      return (entry.interaction_data.blanks as Array<{ id: string }>).map((b) => b.id)
+    }
+
+    /** Every `id="blank_…"` marker in the emitted item_body, in body order. */
+    function markers(entry: WireEntry): string[] {
+      return [...entry.item_body.matchAll(/id="blank_([^"]+)"/g)].map((m) => m[1])
+    }
+
+    it('open-entry: one blank, no per-blank config, is TextCloseEnough on the backticked text', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>The capital of France is `Paris`.</p>',
+        blanks: [{ answer_type: 'open_entry' }],
+      })
+      const [id] = blankIds(entry)
+      expect(id).toMatch(UUID_RE)
+      expect(entry.item_body).toBe(
+        `<p>The capital of France is <span id="blank_${id}"></span>.</p>`,
+      )
+      expect(entry.interaction_data).toEqual({ blanks: [{ id, answer_type: 'openEntry' }] })
+      expect(entry.properties).toEqual({
+        shuffle_rules: { blanks: { children: { '0': { children: null } } } },
+      })
+      expect(entry.scoring_data).toEqual({
+        value: [
+          {
+            id,
+            scoring_data: {
+              value: 'Paris',
+              blank_text: 'Paris',
+              ignore_case: true,
+              edit_distance: 1,
+            },
+            scoring_algorithm: 'TextCloseEnough',
+          },
+        ],
+        // Canvas's own working copy keeps the backticks (new_quiz_items.html).
+        working_item_body: '<p>The capital of France is `Paris`.</p>',
+      })
+      expect(entry.scoring_algorithm).toBe('MultipleMethods')
+    })
+
+    it('open-entry: ignore_case and edit_distance are passed through', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`Mitochondria` make ATP.</p>',
+        blanks: [{ answer_type: 'open_entry', ignore_case: false, edit_distance: 0 }],
+      })
+      const row = (entry.scoring_data.value as Array<{ scoring_data: Record<string, unknown> }>)[0]
+      expect(row.scoring_data).toEqual({
+        value: 'Mitochondria',
+        blank_text: 'Mitochondria',
+        ignore_case: false,
+        edit_distance: 0,
+      })
+    })
+
+    it('open-entry: several answers default to TextInChoices with the list as the value', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`Tulips` are pink.</p>',
+        blanks: [{ answer_type: 'open_entry', answers: ['Tulips', 'Peonies'] }],
+      })
+      const [row] = entry.scoring_data.value as Array<Record<string, unknown>>
+      expect(row.scoring_algorithm).toBe('TextInChoices')
+      // blank_text stays the teacher-visible text; value holds every accepted answer.
+      expect(row.scoring_data).toEqual({ value: ['Tulips', 'Peonies'], blank_text: 'Tulips' })
+    })
+
+    it.each([
+      ['contains', 'TextContainsAnswer'],
+      ['regex', 'TextRegex'],
+      ['any_of', 'TextInChoices'],
+      ['close_enough', 'TextCloseEnough'],
+    ] as const)('open-entry: match %s maps to %s', async (match, algorithm) => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>and I `love` you</p>',
+        blanks: [{ answer_type: 'open_entry', match }],
+      })
+      const [row] = entry.scoring_data.value as Array<Record<string, unknown>>
+      expect(row.scoring_algorithm).toBe(algorithm)
+      const data = row.scoring_data as Record<string, unknown>
+      // Only TextInChoices carries a list; only TextCloseEnough carries the
+      // closeness knobs.
+      expect(data.value).toEqual(match === 'any_of' ? ['love'] : 'love')
+      expect('edit_distance' in data).toBe(match === 'close_enough')
+    })
+
+    it('open-entry: answers override the value but never the teacher-visible blank_text', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>a three letter word: `you`</p>',
+        blanks: [{ answer_type: 'open_entry', match: 'regex', answers: ['[a-z][a-z][a-z]'] }],
+      })
+      const [row] = entry.scoring_data.value as Array<Record<string, unknown>>
+      expect(row.scoring_data).toEqual({ value: '[a-z][a-z][a-z]', blank_text: 'you' })
+    })
+
+    it('dropdown: emits positioned choices and scores the correct choice id under Equivalence', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>Tulips are `pink`.</p>',
+        blanks: [{ answer_type: 'dropdown', choices: ['pink', 'yellow', 'green'] }],
+      })
+      const [id] = blankIds(entry)
+      const blank = (entry.interaction_data.blanks as Array<Record<string, unknown>>)[0]
+      const choices = blank.choices as Array<{ id: string; position: number; item_body: string }>
+      expect(blank.answer_type).toBe('dropdown')
+      expect(choices.map((c) => [c.position, c.item_body])).toEqual([
+        [1, 'pink'],
+        [2, 'yellow'],
+        [3, 'green'],
+      ])
+      for (const c of choices) expect(c.id).toMatch(UUID_RE)
+      const [row] = entry.scoring_data.value as Array<Record<string, unknown>>
+      expect(row).toEqual({
+        id,
+        scoring_data: { value: choices[0].id, blank_text: 'pink' },
+        scoring_algorithm: 'Equivalence',
+      })
+      // A dropdown's options are shuffled, like every other choice list here.
+      expect(entry.properties).toEqual({
+        shuffle_rules: {
+          blanks: { children: { '0': { children: { choices: { shuffled: true } } } } },
+        },
+      })
+    })
+
+    it('word-bank: shares one pool, points the blank at its choice id, and keeps distractors', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>and I `love` you</p>',
+        blanks: [{ answer_type: 'word_bank' }],
+        word_bank_choices: ['hate', 'love', 'kinda like'],
+        reuse_word_bank_choices: true,
+      })
+      const [id] = blankIds(entry)
+      const interaction = entry.interaction_data as {
+        blanks: Array<Record<string, unknown>>
+        word_bank_choices: Array<{ id: string; item_body: string }>
+        reuse_word_bank_choices: boolean
+      }
+      // Canvas documents `choices: null` on a wordbank blank — the pool is shared.
+      expect(interaction.blanks[0]).toEqual({ id, answer_type: 'wordbank', choices: null })
+      expect(interaction.word_bank_choices.map((w) => w.item_body)).toEqual([
+        'hate',
+        'love',
+        'kinda like',
+      ])
+      expect(interaction.reuse_word_bank_choices).toBe(true)
+      const love = interaction.word_bank_choices.find((w) => w.item_body === 'love')!
+      expect(love.id).toMatch(UUID_RE)
+      const [row] = entry.scoring_data.value as Array<Record<string, unknown>>
+      expect(row).toEqual({
+        id,
+        scoring_data: { value: 'love', choice_id: love.id, blank_text: 'love' },
+        scoring_algorithm: 'TextEquivalence',
+      })
+    })
+
+    it('word-bank: reuse defaults to false', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`love`</p>',
+        blanks: [{ answer_type: 'word_bank' }],
+        word_bank_choices: ['love', 'hate'],
+      })
+      expect(
+        (entry.interaction_data as { reuse_word_bank_choices: boolean }).reuse_word_bank_choices,
+      ).toBe(false)
+    })
+
+    it('omits the word bank keys entirely when no blank uses one', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`Paris`</p>',
+        blanks: [{ answer_type: 'open_entry' }],
+      })
+      expect('word_bank_choices' in entry.interaction_data).toBe(false)
+      expect('reuse_word_bank_choices' in entry.interaction_data).toBe(false)
+    })
+
+    it('mixes all three blank modes in one item, in body order', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        title: 'Flowers',
+        item_body: '<p>`Roses` are `red`, and I `love` you.</p>',
+        blanks: [
+          { answer_type: 'open_entry' },
+          { answer_type: 'dropdown', choices: ['red', 'blue'] },
+          { answer_type: 'word_bank' },
+        ],
+        word_bank_choices: ['love', 'hate'],
+      })
+      expect(entry.title).toBe('Flowers')
+      const ids = blankIds(entry)
+      expect(ids).toHaveLength(3)
+      expect(
+        (entry.interaction_data.blanks as Array<{ answer_type: string }>).map((b) => b.answer_type),
+      ).toEqual(['openEntry', 'dropdown', 'wordbank'])
+      expect(
+        (entry.scoring_data.value as Array<{ scoring_algorithm: string }>).map(
+          (r) => r.scoring_algorithm,
+        ),
+      ).toEqual(['TextCloseEnough', 'Equivalence', 'TextEquivalence'])
+      // Only the two choice-backed blanks shuffle.
+      expect(entry.properties).toEqual({
+        shuffle_rules: {
+          blanks: {
+            children: {
+              '0': { children: null },
+              '1': { children: { choices: { shuffled: true } } },
+              '2': { children: { choices: { shuffled: true } } },
+            },
+          },
+        },
+      })
+      expect(entry.item_body).toBe(
+        `<p><span id="blank_${ids[0]}"></span> are <span id="blank_${ids[1]}"></span>, and I <span id="blank_${ids[2]}"></span> you.</p>`,
+      )
+      expect(entry.scoring_data.working_item_body).toBe(
+        '<p>`Roses` are `red`, and I `love` you.</p>',
+      )
+    })
+
+    it('markers in item_body are exactly the blank ids, in order, and every id is a v4 UUID', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`a` `b` `c`</p>',
+        blanks: [
+          { answer_type: 'open_entry' },
+          { answer_type: 'open_entry' },
+          { answer_type: 'open_entry' },
+        ],
+      })
+      const ids = blankIds(entry)
+      // The pairing between a rendered blank and its scoring row is carried by
+      // this id, so a mismatch here is the one failure Canvas cannot repair.
+      expect(markers(entry)).toEqual(ids)
+      expect(new Set(ids).size).toBe(3)
+      for (const id of ids) expect(id).toMatch(UUID_RE)
+      expect((entry.scoring_data.value as Array<{ id: string }>).map((r) => r.id)).toEqual(ids)
+    })
+
+    it('generates fresh ids on every call', async () => {
+      const item: NewQuizItemInput = {
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`a`</p>',
+        blanks: [{ answer_type: 'open_entry' }],
+      }
+      const first = blankIds(await entryFor(item))
+      const second = blankIds(await entryFor(item))
+      expect(first).not.toEqual(second)
+    })
+
+    it('leaves a backtick-free body alone — there is nothing to mark', async () => {
+      await expect(
+        mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+          points_possible: 1,
+          item: {
+            interaction_type_slug: 'rich-fill-blank',
+            item_body: '<p>No blanks here.</p>',
+            blanks: [{ answer_type: 'open_entry' }],
+          },
+        }),
+      ).rejects.toThrow(/backtick/i)
+    })
+
+    it.each([
+      [
+        'a blank count that disagrees with the body',
+        {
+          item_body: '<p>`a` and `b`</p>',
+          blanks: [{ answer_type: 'open_entry' as const }],
+        },
+        /marks 2 blank\(s\) but 1/,
+      ],
+      [
+        'an unmatched backtick',
+        {
+          item_body: '<p>`a` and `b</p>',
+          blanks: [{ answer_type: 'open_entry' as const }],
+        },
+        /unmatched backtick/i,
+      ],
+      [
+        'an empty blank',
+        {
+          item_body: '<p>`` is empty</p>',
+          blanks: [{ answer_type: 'open_entry' as const }],
+        },
+        /cannot be empty/i,
+      ],
+      [
+        'a dropdown that does not list its own answer',
+        {
+          item_body: '<p>`pink`</p>',
+          blanks: [{ answer_type: 'dropdown' as const, choices: ['red', 'blue'] }],
+        },
+        /must list its answer "pink"/,
+      ],
+      [
+        'a dropdown with a repeated choice',
+        {
+          item_body: '<p>`pink`</p>',
+          blanks: [{ answer_type: 'dropdown' as const, choices: ['pink', 'pink'] }],
+        },
+        /choices must be unique/i,
+      ],
+      [
+        'a word-bank blank with no pool',
+        {
+          item_body: '<p>`love`</p>',
+          blanks: [{ answer_type: 'word_bank' as const }],
+        },
+        /word_bank_choices/,
+      ],
+      [
+        'a word-bank answer missing from the pool',
+        {
+          item_body: '<p>`love`</p>',
+          blanks: [{ answer_type: 'word_bank' as const }],
+          word_bank_choices: ['hate', 'kinda like'],
+        },
+        /must be one of word_bank_choices/,
+      ],
+      [
+        'a pool with a repeated word',
+        {
+          item_body: '<p>`love`</p>',
+          blanks: [{ answer_type: 'word_bank' as const }],
+          word_bank_choices: ['love', 'love'],
+        },
+        /word_bank_choices must be unique/i,
+      ],
+      [
+        'a pool no blank uses',
+        {
+          item_body: '<p>`Paris`</p>',
+          blanks: [{ answer_type: 'open_entry' as const }],
+          word_bank_choices: ['love'],
+        },
+        /no blank uses a word bank/i,
+      ],
+      [
+        'several answers under a single-answer match',
+        {
+          item_body: '<p>`Tulips`</p>',
+          blanks: [
+            { answer_type: 'open_entry' as const, match: 'contains' as const, answers: ['a', 'b'] },
+          ],
+        },
+        /use match "any_of"/,
+      ],
+      [
+        'an empty answers list',
+        {
+          item_body: '<p>`Tulips`</p>',
+          blanks: [{ answer_type: 'open_entry' as const, answers: [] }],
+        },
+        /at least one answer/i,
+      ],
+    ])('rejects %s', async (_name, partial, expected) => {
+      await expect(
+        mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+          points_possible: 1,
+          item: { interaction_type_slug: 'rich-fill-blank', ...partial } as NewQuizItemInput,
+        }),
+      ).rejects.toThrow(expected)
+    })
+
+    it('round-trips: Canvas stores the three-mode item as sent, and a read back changes nothing', async () => {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      // POST: echo back the entry Canvas received, the way Canvas does.
+      spy.mockImplementation((_path, init) => {
+        const sent = JSON.parse((init?.body as string) ?? '{}').item
+        return Promise.resolve(makeItem({ entry: sent.entry }) as never)
+      })
+      const created = await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 3,
+        item: {
+          interaction_type_slug: 'rich-fill-blank',
+          item_body: '<p>`Roses` are `red`, and I `love` you.</p>',
+          blanks: [
+            { answer_type: 'open_entry', answers: ['Roses', 'Tulips'] },
+            { answer_type: 'dropdown', choices: ['red', 'blue'] },
+            { answer_type: 'word_bank' },
+          ],
+          word_bank_choices: ['love', 'hate'],
+        },
+      })
+      const stored = created.entry as unknown as WireEntry
+      expect(stored.interaction_type_slug).toBe('rich-fill-blank')
+      expect(markers(stored)).toEqual(blankIds(stored))
+      expect(stored.scoring_algorithm).toBe('MultipleMethods')
+
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem({ entry: stored }) as never)
+      const fetched = await mod.getItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID)
+      expect(fetched.entry).toEqual(stored)
+    })
+
+    it('updateItem sends the same rich-fill-blank entry', async () => {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem() as never)
+      await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, {
+        item: {
+          interaction_type_slug: 'rich-fill-blank',
+          item_body: '<p>`Paris`</p>',
+          blanks: [{ answer_type: 'open_entry' }],
+        },
+      })
+      const call = vi.mocked(client.request).mock.calls[0]
+      expect(call[1]!.method).toBe('PATCH')
+      const entry = JSON.parse(call[1]!.body as string).item.entry as WireEntry
+      expect(entry.interaction_type_slug).toBe('rich-fill-blank')
+      expect(entry.scoring_algorithm).toBe('MultipleMethods')
+      expect(markers(entry)).toEqual(blankIds(entry))
+    })
+  })
+
   // --- updateItem ---
 
   it('updateItem: sends entry when item provided', async () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { CanvasApiError, type CanvasHttpClient } from './client'
 import type { CanvasNewQuiz, CanvasNewQuizAccommodation, CanvasNewQuizItem } from './types'
 import type { CanvasId } from './id'
@@ -98,8 +99,54 @@ type NumericItem = {
   answers: NumericAnswer[]
 }
 
+/**
+ * How an open-entry blank is scored. Each value maps to one of the four
+ * algorithms Canvas documents on an `openEntry` blank:
+ * `close_enough` → TextCloseEnough, `contains` → TextContainsAnswer,
+ * `any_of` → TextInChoices, `regex` → TextRegex.
+ */
+export type RichFillBlankMatch = 'close_enough' | 'contains' | 'any_of' | 'regex'
+
+export type RichFillBlankBlank =
+  | {
+      answer_type: 'open_entry'
+      /** Accepted answers. Defaults to the blank's own backticked text. */
+      answers?: string[]
+      match?: RichFillBlankMatch
+      /** `close_enough` only. */
+      ignore_case?: boolean
+      /** `close_enough` only: Levenshtein distance still counted correct. */
+      edit_distance?: number
+    }
+  | { answer_type: 'dropdown'; choices: string[] }
+  | { answer_type: 'word_bank' }
+
+/**
+ * A fill-in-the-blank item. `item_body` is written with each blank's correct
+ * answer wrapped in backticks — the same convention Canvas itself uses for
+ * `scoring_data.working_item_body` — and `blanks` holds one entry per
+ * backticked segment, in body order. The blank ids, the `<span id="blank_…">`
+ * markers, the dropdown and word-bank choice ids and `working_item_body` are
+ * all derived from that one source, so they cannot drift apart.
+ */
+type RichFillBlankItem = {
+  interaction_type_slug: 'rich-fill-blank'
+  title?: string
+  item_body: string
+  blanks: RichFillBlankBlank[]
+  /** Shared pool for every `word_bank` blank; extra entries are distractors. */
+  word_bank_choices?: string[]
+  reuse_word_bank_choices?: boolean
+}
+
 export type NewQuizItemInput =
-  ChoiceItem | TrueFalseItem | EssayItem | MatchingItem | MultiAnswerItem | NumericItem
+  | ChoiceItem
+  | TrueFalseItem
+  | EssayItem
+  | MatchingItem
+  | MultiAnswerItem
+  | NumericItem
+  | RichFillBlankItem
 
 export interface NewQuizItemCreatePayload {
   position?: number
@@ -265,6 +312,107 @@ export class NewQuizzesModule {
         return this.multiAnswerToWire(item)
       case 'numeric':
         return this.numericToWire(item)
+      case 'rich-fill-blank':
+        return this.richFillBlankToWire(item)
+    }
+  }
+
+  /**
+   * Canvas keys a fill-in-the-blank item by blank id: each blank appears in
+   * `interaction_data.blanks`, is positioned in `item_body` by a
+   * `<span id="blank_<id>">` marker, and is scored by the matching row in
+   * `scoring_data.value`. The teacher's working copy,
+   * `scoring_data.working_item_body`, carries the same text with the answers
+   * back in backticks.
+   *
+   * The item-level algorithm is always `MultipleMethods`; the real algorithm
+   * sits on each blank's own row, because the three blank kinds are scored
+   * differently (new_quiz_items.html, "Rich Fill In The Blank").
+   */
+  private richFillBlankToWire(item: RichFillBlankItem): Record<string, unknown> {
+    const problem = richFillBlankProblem(item)
+    if (problem !== null) throw new Error(problem)
+
+    const { texts, render } = parseBlankBody(item.item_body)
+    const blankIds = texts.map(() => randomUUID() as string)
+    const wordBank = (item.word_bank_choices ?? []).map((word) => ({
+      id: randomUUID() as string,
+      item_body: word,
+    }))
+
+    const wireBlanks: Array<Record<string, unknown>> = []
+    const scoringRows: Array<Record<string, unknown>> = []
+    const shuffleChildren: Record<string, unknown> = {}
+
+    item.blanks.forEach((blank, index) => {
+      const id = blankIds[index]
+      const blankText = texts[index]!
+      // A dropdown or word bank shows a choice list, so its options are
+      // shuffled, as everywhere else in this module. An open entry has no
+      // list to shuffle.
+      shuffleChildren[String(index)] =
+        blank.answer_type === 'open_entry'
+          ? { children: null }
+          : { children: { choices: { shuffled: true } } }
+
+      switch (blank.answer_type) {
+        case 'open_entry': {
+          const answers = blank.answers?.length ? blank.answers : [blankText]
+          wireBlanks.push({ id, answer_type: 'openEntry' })
+          scoringRows.push({
+            id,
+            scoring_data: openEntryScoringData(blank, answers, blankText),
+            scoring_algorithm: OPEN_ENTRY_ALGORITHMS[openEntryMatch(blank, answers)],
+          })
+          break
+        }
+        case 'dropdown': {
+          const choices = blank.choices.map((choice, position) => ({
+            id: randomUUID() as string,
+            position: position + 1,
+            item_body: choice,
+          }))
+          const correct = choices.find((choice) => choice.item_body === blankText)!
+          wireBlanks.push({ id, answer_type: 'dropdown', choices })
+          scoringRows.push({
+            id,
+            // The answer is the chosen option's id, not its text.
+            scoring_data: { value: correct.id, blank_text: blankText },
+            scoring_algorithm: 'Equivalence',
+          })
+          break
+        }
+        case 'word_bank': {
+          const correct = wordBank.find((word) => word.item_body === blankText)!
+          // Canvas documents `choices: null` on a wordbank blank — the pool
+          // lives once on `interaction_data.word_bank_choices`.
+          wireBlanks.push({ id, answer_type: 'wordbank', choices: null })
+          scoringRows.push({
+            id,
+            scoring_data: { value: blankText, choice_id: correct.id, blank_text: blankText },
+            scoring_algorithm: 'TextEquivalence',
+          })
+          break
+        }
+      }
+    })
+
+    return {
+      interaction_type_slug: 'rich-fill-blank',
+      ...(item.title !== undefined ? { title: item.title } : {}),
+      item_body: render(blankIds),
+      interaction_data: {
+        blanks: wireBlanks,
+        ...(wordBank.length > 0
+          ? {
+              word_bank_choices: wordBank,
+              reuse_word_bank_choices: item.reuse_word_bank_choices ?? false,
+            }
+          : {}),
+      },
+      properties: { shuffle_rules: { blanks: { children: shuffleChildren } } },
+      scoring_data: { value: scoringRows, working_item_body: item.item_body },
+      scoring_algorithm: 'MultipleMethods',
     }
   }
 
@@ -504,4 +652,159 @@ function withAtLeastDecimals(value: number, precision: number): string {
   const decimals = dot === -1 ? 0 : raw.length - dot - 1
   if (!raw.includes('e') && !raw.includes('E') && decimals >= digits) return raw
   return value.toFixed(digits)
+}
+
+const OPEN_ENTRY_ALGORITHMS: Record<RichFillBlankMatch, string> = {
+  close_enough: 'TextCloseEnough',
+  contains: 'TextContainsAnswer',
+  any_of: 'TextInChoices',
+  regex: 'TextRegex',
+}
+
+type OpenEntryBlank = Extract<RichFillBlankBlank, { answer_type: 'open_entry' }>
+
+/** Several accepted answers only fit `TextInChoices`, so default to it. */
+function openEntryMatch(blank: OpenEntryBlank, answers: string[]): RichFillBlankMatch {
+  return blank.match ?? (answers.length > 1 ? 'any_of' : 'close_enough')
+}
+
+/**
+ * `blank_text` is always the backticked text — what the teacher sees in the
+ * working copy — even when the scored value is a regex or a list of accepted
+ * answers (new_quiz_items.html shows `value: "[a-z][a-z][a-z]"` with
+ * `blank_text: "you"`, and `value: ["Tulips", "Peonies"]` with
+ * `blank_text: "Tulips"`).
+ */
+function openEntryScoringData(
+  blank: OpenEntryBlank,
+  answers: string[],
+  blankText: string,
+): Record<string, unknown> {
+  const match = openEntryMatch(blank, answers)
+  if (match === 'any_of') return { value: answers, blank_text: blankText }
+  if (match === 'close_enough') {
+    return {
+      value: answers[0],
+      blank_text: blankText,
+      ignore_case: blank.ignore_case ?? true,
+      // Canvas's own example uses 1; a caller wanting an exact match passes 0.
+      edit_distance: blank.edit_distance ?? 1,
+    }
+  }
+  return { value: answers[0], blank_text: blankText }
+}
+
+/**
+ * Splits a backticked body into the blanks' texts plus a renderer that puts
+ * the `<span id="blank_…">` markers back in their place.
+ *
+ * Throws on a body no mapping could rescue: no blank at all, an unmatched
+ * backtick, or an empty blank. `richFillBlankProblem` surfaces the same
+ * messages ahead of time so the MCP input schema can reject them.
+ */
+function parseBlankBody(body: string): { texts: string[]; render: (ids: string[]) => string } {
+  const backticks = (body.match(/`/g) ?? []).length
+  if (backticks === 0) {
+    throw new Error(
+      'rich-fill-blank item_body must mark every blank by wrapping its answer in backticks, ' +
+        'e.g. "<p>The capital of France is `Paris`.</p>"',
+    )
+  }
+  if (backticks % 2 !== 0) {
+    throw new Error(
+      'rich-fill-blank item_body has an unmatched backtick: every blank needs an opening and a closing one',
+    )
+  }
+  const texts: string[] = []
+  // One more literal part than there are blanks: the text before, between and
+  // after them.
+  const parts: string[] = []
+  let cursor = 0
+  const blank = /`([^`]*)`/g
+  let found: RegExpExecArray | null
+  while ((found = blank.exec(body)) !== null) {
+    parts.push(body.slice(cursor, found.index))
+    texts.push(found[1]!)
+    cursor = found.index + found[0].length
+  }
+  parts.push(body.slice(cursor))
+  if (texts.some((text) => text.trim() === '')) {
+    throw new Error('rich-fill-blank blank text cannot be empty: ``')
+  }
+  return {
+    texts,
+    render: (ids) =>
+      parts.reduce(
+        (html, part, index) =>
+          html + part + (index < ids.length ? `<span id="blank_${ids[index]}"></span>` : ''),
+        '',
+      ),
+  }
+}
+
+/**
+ * Every way a fill-in-the-blank item can be unbuildable, as one message, or
+ * `null` when it is sound. Shared by the client (which throws it) and the MCP
+ * input schema (which reports it as a validation issue), so a library caller
+ * and a tool caller read the same sentence.
+ */
+export function richFillBlankProblem(item: {
+  item_body: string
+  blanks: RichFillBlankBlank[]
+  word_bank_choices?: string[]
+}): string | null {
+  let texts: string[]
+  try {
+    texts = parseBlankBody(item.item_body).texts
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err)
+  }
+  if (texts.length !== item.blanks.length) {
+    return `rich-fill-blank item_body marks ${texts.length} blank(s) but ${item.blanks.length} blank(s) were given; there must be one blank per backticked answer, in body order`
+  }
+
+  const pool = item.word_bank_choices ?? []
+  if (new Set(pool).size !== pool.length) {
+    return 'rich-fill-blank word_bank_choices must be unique'
+  }
+  const usesWordBank = item.blanks.some((blank) => blank.answer_type === 'word_bank')
+  if (pool.length > 0 && !usesWordBank) {
+    return 'rich-fill-blank word_bank_choices was given but no blank uses a word bank; set answer_type "word_bank" on the blanks that should draw from it'
+  }
+  if (usesWordBank && pool.length === 0) {
+    return 'rich-fill-blank word_bank blanks need word_bank_choices: the pool of words students pick from'
+  }
+
+  for (const [index, blank] of item.blanks.entries()) {
+    const blankText = texts[index]!
+    const where = `rich-fill-blank blank ${index + 1} ("${blankText}")`
+    switch (blank.answer_type) {
+      case 'open_entry': {
+        if (blank.answers !== undefined && blank.answers.length === 0) {
+          return `${where} needs at least one answer, or omit answers to score the backticked text`
+        }
+        const answers = blank.answers?.length ? blank.answers : [blankText]
+        if (blank.match !== undefined && blank.match !== 'any_of' && answers.length > 1) {
+          return `${where} gives ${answers.length} answers but match "${blank.match}" scores a single answer; use match "any_of" to accept any of them`
+        }
+        break
+      }
+      case 'dropdown': {
+        if (new Set(blank.choices).size !== blank.choices.length) {
+          return `${where}: dropdown choices must be unique`
+        }
+        if (!blank.choices.includes(blankText)) {
+          return `${where}: a dropdown must list its answer "${blankText}" among its choices, because the backticked text is the correct option`
+        }
+        break
+      }
+      case 'word_bank': {
+        if (!pool.includes(blankText)) {
+          return `${where}: a word_bank answer must be one of word_bank_choices`
+        }
+        break
+      }
+    }
+  }
+  return null
 }
