@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.10.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.3...canvas-lms-mcp-v2.10.0) (2026-10-27)
+
+
+### Features
+
+* **new-quizzes:** add multi-answer (select all that apply) items ([dbcc1c9](https://github.com/bruchris/canvas-lms-mcp/commit/dbcc1c98b75861cfab4f0b486d58bd4959c83f11)), closes [#485](https://github.com/bruchris/canvas-lms-mcp/issues/485)
+* **new-quizzes:** add multi-answer items ([#492](https://github.com/bruchris/canvas-lms-mcp/issues/492)) ([dbcc1c9](https://github.com/bruchris/canvas-lms-mcp/commit/dbcc1c98b75861cfab4f0b486d58bd4959c83f11))
+
 ## [2.9.3](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.2...canvas-lms-mcp-v2.9.3) (2026-10-26)
 
 
