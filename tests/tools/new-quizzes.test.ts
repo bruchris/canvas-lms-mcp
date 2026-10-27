@@ -227,8 +227,24 @@ describe('newQuizTools', () => {
         unlock_at: undefined,
         lock_at: undefined,
         published: undefined,
+        quiz_settings: undefined,
       })
       expect(result).toEqual(mockQuiz)
+    })
+
+    it('passes quiz_settings through to canvas.newQuizzes.create unchanged', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz')!
+      const quizSettings = {
+        calculator_type: 'scientific' as const,
+        shuffle_questions: true,
+        multiple_attempts: { multiple_attempts_enabled: true, max_attempts: 2 },
+      }
+      await tool.handler({ course_id: '1', title: 'Quiz 1', quiz_settings: quizSettings })
+      expect(canvas.newQuizzes.create).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({ quiz_settings: quizSettings }),
+      )
     })
   })
 
@@ -245,8 +261,83 @@ describe('newQuizTools', () => {
         unlock_at: undefined,
         lock_at: undefined,
         published: undefined,
+        quiz_settings: undefined,
       })
     })
+
+    it('passes a partial multiple_attempts object through unchanged (Canvas replaces it whole)', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'update_new_quiz')!
+      await tool.handler({
+        course_id: '1',
+        assignment_id: '42',
+        quiz_settings: { multiple_attempts: { max_attempts: 5 } },
+      })
+      expect(canvas.newQuizzes.update).toHaveBeenCalledWith(
+        '1',
+        '42',
+        expect.objectContaining({
+          quiz_settings: { multiple_attempts: { max_attempts: 5 } },
+        }),
+      )
+    })
+  })
+
+  describe('quiz_settings schema (BRU-3212)', () => {
+    const QUIZ_SETTINGS_TOOLS = ['create_new_quiz', 'update_new_quiz'] as const
+
+    function quizSettingsSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema
+        .quiz_settings
+    }
+
+    for (const toolName of QUIZ_SETTINGS_TOOLS) {
+      it(`${toolName}: accepts every flat field plus multiple_attempts`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({
+          calculator_type: 'basic',
+          one_at_a_time_type: 'question',
+          allow_backtracking: true,
+          shuffle_answers: true,
+          shuffle_questions: true,
+          require_student_access_code: true,
+          student_access_code: 'abc123',
+          has_time_limit: true,
+          session_time_limit_in_seconds: 600,
+          multiple_attempts: {
+            multiple_attempts_enabled: true,
+            attempt_limit: true,
+            max_attempts: 3,
+            score_to_keep: 'highest',
+            cooling_period: true,
+            cooling_period_seconds: 300,
+          },
+        })
+        expect(result.success).toBe(true)
+      })
+
+      it(`${toolName}: accepts an empty object and a null multiple_attempts`, () => {
+        expect(quizSettingsSchema(toolName)!.safeParse({}).success).toBe(true)
+        expect(quizSettingsSchema(toolName)!.safeParse({ multiple_attempts: null }).success).toBe(
+          true,
+        )
+      })
+
+      it(`${toolName}: strips result_view_settings and IP-filter fields rather than forwarding them`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({
+          calculator_type: 'none',
+          filter_ip_address: true,
+          filters: { ips: [['1.2.3.4', '1.2.3.9']] },
+          result_view_settings: { result_view_restricted: true },
+        })
+        expect(result.success).toBe(true)
+        expect(result.data).toEqual({ calculator_type: 'none' })
+      })
+
+      it(`${toolName}: rejects an unknown calculator_type value`, () => {
+        const result = quizSettingsSchema(toolName)!.safeParse({ calculator_type: 'graphing' })
+        expect(result.success).toBe(false)
+      })
+    }
   })
 
   describe('delete_new_quiz', () => {
@@ -590,6 +681,240 @@ describe('newQuizTools', () => {
         }
       })
     }
+  })
+
+  describe('rich-fill-blank schema (BRU-3213)', () => {
+    const ITEM_TOOLS = ['create_new_quiz_item', 'update_new_quiz_item'] as const
+
+    function itemSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema.item
+    }
+
+    const fill = (over: object = {}) => ({
+      interaction_type_slug: 'rich-fill-blank',
+      item_body: '<p>The capital of France is `Paris`.</p>',
+      blanks: [{ answer_type: 'open_entry' }],
+      ...over,
+    })
+
+    for (const toolName of ITEM_TOOLS) {
+      it(`${toolName}: accepts the three blank modes in one item`, () => {
+        const result = itemSchema(toolName).safeParse(
+          fill({
+            item_body: '<p>`Roses` are `red`, and I `love` you.</p>',
+            blanks: [
+              { answer_type: 'open_entry', answers: ['Roses', 'Tulips'], match: 'any_of' },
+              { answer_type: 'dropdown', choices: ['red', 'blue'] },
+              { answer_type: 'word_bank' },
+            ],
+            word_bank_choices: ['love', 'hate'],
+            reuse_word_bank_choices: true,
+          }),
+        )
+        expect(result.success).toBe(true)
+      })
+
+      it(`${toolName}: accepts a bare open-entry blank with no per-blank config`, () => {
+        expect(itemSchema(toolName).safeParse(fill()).success).toBe(true)
+      })
+
+      it.each([
+        [
+          'a blank count that disagrees with the body',
+          fill({ item_body: '<p>`a` and `b`</p>' }),
+          'marks 2 blank(s) but 1',
+        ],
+        ['an unmatched backtick', fill({ item_body: '<p>`a</p>' }), 'unmatched backtick'],
+        [
+          'a body with no blank marked at all',
+          fill({ item_body: '<p>Nothing marked.</p>' }),
+          'wrapping its answer in backticks',
+        ],
+        ['an empty blank', fill({ item_body: '<p>`` empty</p>' }), 'cannot be empty'],
+        [
+          'a dropdown that omits its own answer',
+          fill({
+            item_body: '<p>Tulips are `pink`.</p>',
+            blanks: [{ answer_type: 'dropdown', choices: ['red', 'blue'] }],
+          }),
+          'must list its answer "pink"',
+        ],
+        [
+          'a dropdown with a repeated choice',
+          fill({
+            item_body: '<p>`pink`</p>',
+            blanks: [{ answer_type: 'dropdown', choices: ['pink', 'pink'] }],
+          }),
+          'dropdown choices must be unique',
+        ],
+        [
+          'a word-bank blank with no pool',
+          fill({ item_body: '<p>`love`</p>', blanks: [{ answer_type: 'word_bank' }] }),
+          'need word_bank_choices',
+        ],
+        [
+          'a word-bank answer missing from the pool',
+          fill({
+            item_body: '<p>`love`</p>',
+            blanks: [{ answer_type: 'word_bank' }],
+            word_bank_choices: ['hate'],
+          }),
+          'must be one of word_bank_choices',
+        ],
+        [
+          'a pool with a repeated word',
+          fill({
+            item_body: '<p>`love`</p>',
+            blanks: [{ answer_type: 'word_bank' }],
+            word_bank_choices: ['love', 'love'],
+          }),
+          'word_bank_choices must be unique',
+        ],
+        [
+          'a pool no blank draws from',
+          fill({ word_bank_choices: ['love'] }),
+          'no blank uses a word bank',
+        ],
+        [
+          'several answers under a single-answer match',
+          fill({
+            blanks: [{ answer_type: 'open_entry', match: 'close_enough', answers: ['a', 'b'] }],
+          }),
+          'use match "any_of"',
+        ],
+        [
+          'an empty answers list',
+          fill({ blanks: [{ answer_type: 'open_entry', answers: [] }] }),
+          'needs at least one answer',
+        ],
+      ])(`${toolName}: rejects %s`, (_name, item, expected) => {
+        const result = itemSchema(toolName).safeParse(item)
+        expect(result.success).toBe(false)
+        expect(result.error!.issues.map((i) => i.message).join(' | ')).toContain(expected)
+      })
+
+      it(`${toolName}: rejects an unknown answer_type and a dropdown with one choice`, () => {
+        expect(
+          itemSchema(toolName).safeParse(fill({ blanks: [{ answer_type: 'hot_spot' }] })).success,
+        ).toBe(false)
+        expect(
+          itemSchema(toolName).safeParse(
+            fill({
+              item_body: '<p>`pink`</p>',
+              blanks: [{ answer_type: 'dropdown', choices: ['pink'] }],
+            }),
+          ).success,
+        ).toBe(false)
+      })
+
+      it(`${toolName}: rejects an empty blanks list and a negative edit_distance`, () => {
+        expect(itemSchema(toolName).safeParse(fill({ blanks: [] })).success).toBe(false)
+        expect(
+          itemSchema(toolName).safeParse(
+            fill({ blanks: [{ answer_type: 'open_entry', edit_distance: -1 }] }),
+          ).success,
+        ).toBe(false)
+      })
+    }
+
+    it('create_new_quiz_item passes a rich-fill-blank item through to createItem', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz_item')!
+      const item = {
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`Roses` are `red`.</p>',
+        blanks: [
+          { answer_type: 'open_entry' },
+          { answer_type: 'dropdown', choices: ['red', 'blue'] },
+        ],
+      }
+      await tool.handler({ course_id: 1, assignment_id: 2, points_possible: 2, item })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 2, {
+        points_possible: 2,
+        position: undefined,
+        item,
+      })
+    })
+
+    it('create_new_quiz_item names rich-fill-blank and its three blank modes', () => {
+      const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === 'create_new_quiz_item')!
+      expect(tool.description).toMatch(/rich-fill-blank/)
+      expect(tool.description).toMatch(/dropdown/)
+      expect(tool.description).toMatch(/word.bank/i)
+    })
+
+    it('both item tools count the same 8 types', () => {
+      // update_new_quiz_item deliberately points at create_new_quiz_item for
+      // the type list rather than repeating it, so only the count is asserted
+      // here — but the count must not drift when a type is added.
+      for (const name of ITEM_TOOLS) {
+        const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === name)!
+        expect(tool.description).toMatch(/8 types/)
+      }
+    })
+  })
+
+  // ── ordering schema (BRU-3214) ──────────────────────────────────────────────
+
+  describe('ordering schema (BRU-3214)', () => {
+    const ITEM_TOOLS = ['create_new_quiz_item', 'update_new_quiz_item'] as const
+
+    function itemSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema.item
+    }
+
+    const order = (over: object = {}) => ({
+      interaction_type_slug: 'ordering',
+      item_body: '<p>Order these from youngest to oldest.</p>',
+      choices: ['ava', 'blake', 'skylar'],
+      ...over,
+    })
+
+    for (const toolName of ITEM_TOOLS) {
+      it(`${toolName}: accepts a minimal ordering item`, () => {
+        expect(itemSchema(toolName).safeParse(order()).success).toBe(true)
+      })
+
+      it(`${toolName}: accepts labels, include_labels, and display_answers_paragraph`, () => {
+        const result = itemSchema(toolName).safeParse(
+          order({
+            title: 'Order by age',
+            top_label: 'youngest',
+            bottom_label: 'oldest',
+            include_labels: true,
+            display_answers_paragraph: true,
+          }),
+        )
+        expect(result.success).toBe(true)
+      })
+
+      it(`${toolName}: rejects fewer than 2 choices`, () => {
+        const result = itemSchema(toolName).safeParse(order({ choices: ['only-one'] }))
+        expect(result.success).toBe(false)
+      })
+
+      it(`${toolName}: rejects an empty choices list`, () => {
+        const result = itemSchema(toolName).safeParse(order({ choices: [] }))
+        expect(result.success).toBe(false)
+      })
+    }
+
+    it('create_new_quiz_item passes an ordering item through to createItem', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz_item')!
+      const item = order({ top_label: 'youngest', bottom_label: 'oldest' })
+      await tool.handler({ course_id: 1, assignment_id: 2, points_possible: 2, item })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 2, {
+        points_possible: 2,
+        position: undefined,
+        item,
+      })
+    })
+
+    it('create_new_quiz_item names ordering', () => {
+      const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === 'create_new_quiz_item')!
+      expect(tool.description).toMatch(/\bordering\b/)
+    })
   })
 
   // ── LTI not-enabled error mapping ───────────────────────────────────────────

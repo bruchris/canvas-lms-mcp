@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.11.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.10.0...canvas-lms-mcp-v2.11.0) (2026-10-27)
+
+
+### Features
+
+* **new-quizzes:** add ordering items ([#499](https://github.com/bruchris/canvas-lms-mcp/issues/499)) ([7e05a15](https://github.com/bruchris/canvas-lms-mcp/commit/7e05a15596f2aabceedae9394e4c72119984b5cf))
+* **new-quizzes:** add rich-fill-blank items ([#498](https://github.com/bruchris/canvas-lms-mcp/issues/498)) ([42a83a9](https://github.com/bruchris/canvas-lms-mcp/commit/42a83a951544c15e15fa72b01fbb19b95e79e270))
+* **new-quizzes:** add scoped quiz settings ([#495](https://github.com/bruchris/canvas-lms-mcp/issues/495)) ([d71edb3](https://github.com/bruchris/canvas-lms-mcp/commit/d71edb3a790422c22b6e5228f4fbefc3fb37e829))
+
+
+### Bug Fixes
+
+* **deps:** resolve pnpm audit advisories ([#500](https://github.com/bruchris/canvas-lms-mcp/issues/500)) ([8e9f5b0](https://github.com/bruchris/canvas-lms-mcp/commit/8e9f5b0c1370d18f81a13993db79274dd4e391e0))
+
+
+### Documentation
+
+* **readme:** credit algorithm0r for multi-answer New Quiz items ([#492](https://github.com/bruchris/canvas-lms-mcp/issues/492)) ([#496](https://github.com/bruchris/canvas-lms-mcp/issues/496)) ([fdd3f3d](https://github.com/bruchris/canvas-lms-mcp/commit/fdd3f3dfc7aa406cd66a199286c16c5faa1a37f2))
+
 ## [2.10.0](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.9.3...canvas-lms-mcp-v2.10.0) (2026-10-27)
 
 

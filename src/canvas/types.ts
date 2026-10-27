@@ -1,4 +1,5 @@
 import type { CanvasId } from './id'
+import type { QuizSettingsPayload } from './new-quizzes'
 
 // --- Config ---
 
@@ -2022,6 +2023,11 @@ export interface CanvasNewQuiz {
   lock_at: string | null
   published: boolean
   assignment_id: CanvasId
+  /**
+   * Present on Canvas's own responses; optional here because older test
+   * fixtures predate this field and this client never requires it on input.
+   */
+  quiz_settings?: QuizSettingsPayload | null
 }
 
 export interface CanvasNewQuizItem {

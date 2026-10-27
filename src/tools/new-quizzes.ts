@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CanvasClient } from '../canvas'
 import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
+import { richFillBlankProblem } from '../canvas/new-quizzes'
 
 const choiceItemSchema = z.object({
   interaction_type_slug: z.literal('choice'),
@@ -144,6 +145,198 @@ const numericItemSchema = z.object({
     .describe('Every accepted answer; all of them are sent to Canvas'),
 })
 
+const richFillBlankBlankSchema = z.discriminatedUnion('answer_type', [
+  z.object({
+    answer_type: z.literal('open_entry'),
+    answers: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Accepted answers. Defaults to the blank's own backticked text, so a blank written as " +
+          '`Paris` needs nothing here. Give several only with match "any_of"',
+      ),
+    match: z
+      .enum(['close_enough', 'contains', 'any_of', 'regex'])
+      .optional()
+      .describe(
+        'How the typed answer is scored: close_enough (the default for a single answer) accepts ' +
+          'near-misses within edit_distance; contains accepts an answer containing the correct ' +
+          'text; any_of (the default when several answers are given) accepts any one of them; ' +
+          'regex treats the answer as a regular expression',
+      ),
+    ignore_case: z
+      .boolean()
+      .optional()
+      .describe('close_enough only; defaults to true (case is ignored)'),
+    edit_distance: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        'close_enough only: how many character edits away an answer may be and still count. ' +
+          "Defaults to 1, Canvas's own documented example; pass 0 to require the exact spelling",
+      ),
+  }),
+  z.object({
+    answer_type: z.literal('dropdown'),
+    choices: z
+      .array(z.string())
+      .min(2)
+      .describe(
+        "Options shown in the dropdown, in order. One of them must be the blank's backticked " +
+          'text, which is the correct option; the rest are distractors',
+      ),
+  }),
+  z.object({
+    answer_type: z.literal('word_bank'),
+  }),
+])
+
+const richFillBlankItemSchema = z
+  .object({
+    interaction_type_slug: z.literal('rich-fill-blank'),
+    title: z.string().optional().describe('Optional item heading shown above the question stem'),
+    item_body: z
+      .string()
+      .describe(
+        'HTML question text with every blank written as its correct answer wrapped in backticks, ' +
+          'e.g. "<p>`Roses` are `red`.</p>". The backticked text is the correct answer and what ' +
+          'you see while authoring; a student sees a text box, a dropdown, or a word bank in its ' +
+          "place, depending on that blank's answer_type",
+      ),
+    blanks: z
+      .array(richFillBlankBlankSchema)
+      .min(1)
+      .describe(
+        'One entry per backticked blank, in the same order they appear in item_body. The count ' +
+          'must match',
+      ),
+    word_bank_choices: z
+      .array(z.string())
+      .min(1)
+      .optional()
+      .describe(
+        'The single pool of words shown for every word_bank blank. It must contain each ' +
+          "word_bank blank's backticked answer; any extra entries are distractors. Required if " +
+          'any blank is a word_bank, and rejected if none is',
+      ),
+    reuse_word_bank_choices: z
+      .boolean()
+      .optional()
+      .describe(
+        'Let one word bank entry answer more than one blank; defaults to false (each word is ' +
+          'used once)',
+      ),
+  })
+  // Every rejection here names a body this server could not turn into a valid
+  // Canvas item at all: the blank count has to agree with the backticks, a
+  // dropdown has to offer its own answer, and a word_bank blank has to draw
+  // from a pool that holds it. The message comes from the same function the
+  // Canvas client throws, so a library caller reads the identical sentence.
+  .superRefine((item, ctx) => {
+    const problem = richFillBlankProblem(item)
+    if (problem !== null) ctx.addIssue({ code: 'custom', message: problem })
+  })
+
+const orderingItemSchema = z.object({
+  interaction_type_slug: z.literal('ordering'),
+  title: z.string().optional().describe('Optional item heading shown above the question stem'),
+  item_body: z.string().describe('HTML question stem'),
+  choices: z
+    .array(z.string())
+    .min(2)
+    .describe(
+      'Items to order, listed top-to-bottom in the correct sequence. Canvas shuffles their ' +
+        "displayed order for the student; this array's order is what scoring is checked against",
+    ),
+  top_label: z.string().optional().describe('Label shown above the list, e.g. "youngest"'),
+  bottom_label: z.string().optional().describe('Label shown below the list, e.g. "oldest"'),
+  include_labels: z
+    .boolean()
+    .optional()
+    .describe(
+      'Show top_label/bottom_label above and below the list; defaults to true when either is given, false otherwise',
+    ),
+  display_answers_paragraph: z
+    .boolean()
+    .optional()
+    .describe('true renders the choices as a paragraph instead of a list; defaults to false'),
+})
+
+const quizSettingsMultipleAttemptsSchema = z
+  .object({
+    multiple_attempts_enabled: z.boolean().optional(),
+    attempt_limit: z
+      .boolean()
+      .optional()
+      .describe('Caps attempts at max_attempts; false allows unlimited attempts'),
+    max_attempts: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when attempt_limit is true'),
+    score_to_keep: z
+      .enum(['average', 'first', 'highest', 'latest'])
+      .optional()
+      .describe('Which attempt score counts toward the grade'),
+    cooling_period: z.boolean().optional().describe('Require a wait between attempts'),
+    cooling_period_seconds: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when cooling_period is true'),
+  })
+  .describe(
+    'Canvas replaces this whole object on update — any sub-field you omit is cleared, not left ' +
+      'at its current value. Pass every sub-field you want to keep, not only the one you are changing.',
+  )
+
+const quizSettingsSchema = z
+  .object({
+    calculator_type: z
+      .enum(['none', 'basic', 'scientific'])
+      .optional()
+      .describe('Calculator available during the quiz'),
+    one_at_a_time_type: z
+      .enum(['none', 'question'])
+      .optional()
+      .describe('question shows one item per screen; none shows the whole quiz at once'),
+    allow_backtracking: z
+      .boolean()
+      .optional()
+      .describe(
+        'Lets students revisit earlier items; only applies when one_at_a_time_type is question',
+      ),
+    shuffle_answers: z.boolean().optional().describe('Randomize answer order per student'),
+    shuffle_questions: z.boolean().optional().describe('Randomize item order per student'),
+    require_student_access_code: z.boolean().optional(),
+    student_access_code: z
+      .string()
+      .optional()
+      .describe('Code students must enter to start the quiz'),
+    has_time_limit: z.boolean().optional(),
+    session_time_limit_in_seconds: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Used only when has_time_limit is true'),
+    multiple_attempts: quizSettingsMultipleAttemptsSchema
+      .nullable()
+      .optional()
+      .describe(
+        'Replaced as a whole object by Canvas — see its own description. Pass null to clear it.',
+      ),
+  })
+  .describe(
+    'Quiz session settings. The flat fields above change independently of each other, but ' +
+      'multiple_attempts is replaced as a whole nested object — see its field for what that means. ' +
+      'IP-address access filtering and result_view_settings are not supported by this tool.',
+  )
+
 const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   choiceItemSchema,
   trueFalseItemSchema,
@@ -151,6 +344,8 @@ const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   matchingItemSchema,
   multiAnswerItemSchema,
   numericItemSchema,
+  richFillBlankItemSchema,
+  orderingItemSchema,
 ])
 
 export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
@@ -165,7 +360,12 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'only read and delete that older type. After creating, add questions with ' +
         'create_new_quiz_item, change title, dates, or points with update_new_quiz, and remove ' +
         'the quiz with delete_new_quiz. Each call creates another quiz (not idempotent), so check ' +
-        'list_quizzes before retrying. Requires permission to manage quizzes in the course.',
+        'list_quizzes before retrying. quiz_settings covers session behavior (calculator, shuffle, ' +
+        'time limit, access code, one-at-a-time, and multiple_attempts); its multiple_attempts ' +
+        'sub-object is replaced as a whole by Canvas, so a later update_new_quiz call must repeat ' +
+        'every multiple_attempts sub-field you want to keep. IP-address access filtering and ' +
+        'result_view_settings are not supported by this tool. Requires permission to manage ' +
+        'quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         title: z.string().describe('Title of the quiz'),
@@ -182,6 +382,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         unlock_at: z.string().optional().describe('ISO-8601 unlock time'),
         lock_at: z.string().optional().describe('ISO-8601 lock time'),
         published: z.boolean().optional().describe('Whether the quiz is visible to students'),
+        quiz_settings: quizSettingsSchema.optional(),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
       handler: async (params) => {
@@ -194,6 +395,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           unlock_at: params.unlock_at as string | null | undefined,
           lock_at: params.lock_at as string | null | undefined,
           published: params.published as boolean | undefined,
+          quiz_settings: params.quiz_settings as
+            Parameters<typeof canvas.newQuizzes.create>[1]['quiz_settings'] | undefined,
         })
       },
     },
@@ -209,7 +412,15 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'that date. Returns the updated quiz (id, title, points_possible, due_at, unlock_at, ' +
         'lock_at, published, assignment_id). Use update_new_quiz_item to change an individual ' +
         'question instead of the quiz shell, and delete_new_quiz to remove the whole quiz. ' +
-        'Requires permission to manage quizzes in the course.',
+        "quiz_settings's flat fields (calculator, shuffle, time limit, access code, " +
+        'one-at-a-time) each change independently, same as the rest of this call, but its ' +
+        'multiple_attempts sub-object is replaced as a whole by Canvas: passing ' +
+        '{ multiple_attempts: { max_attempts: 3 } } clears every other multiple_attempts ' +
+        'sub-field (which score to keep, the cooling period, …) instead of leaving them as they ' +
+        'were, so ' +
+        'repeat every sub-field you want kept. IP-address access filtering and ' +
+        'result_view_settings are not supported by this tool. Requires permission to manage ' +
+        'quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
@@ -228,6 +439,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           .describe('ISO-8601 unlock time (null to clear)'),
         lock_at: z.string().nullable().optional().describe('ISO-8601 lock time (null to clear)'),
         published: z.boolean().optional().describe('Whether the quiz is visible to students'),
+        quiz_settings: quizSettingsSchema.optional(),
       },
       annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
       handler: async (params) => {
@@ -241,6 +453,8 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
           unlock_at: params.unlock_at as string | null | undefined,
           lock_at: params.lock_at as string | null | undefined,
           published: params.published as boolean | undefined,
+          quiz_settings: params.quiz_settings as
+            Parameters<typeof canvas.newQuizzes.update>[2]['quiz_settings'] | undefined,
         })
       },
     },
@@ -314,8 +528,10 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       description:
         'Create one item (question) in a New Quiz (LTI). Returns the created item with its ' +
         'item_id, position, points_possible, and full entry body, including scoring_data. ' +
-        'Supports 6 types: choice (one correct answer), multi-answer (select all that apply), ' +
-        'true-false, essay, matching, and numeric. Each call adds another item (not ' +
+        'Supports 8 types: choice (one correct answer), multi-answer (select all that apply), ' +
+        'true-false, essay, matching, numeric, rich-fill-blank (fill in the blank, with ' +
+        'typed, dropdown, or word-bank blanks), and ordering (choices listed top-to-bottom in ' +
+        'the correct sequence; Canvas shuffles their displayed order for the student). Each call adds another item (not ' +
         'idempotent), so check list_new_quiz_items before retrying a failed or uncertain ' +
         'create. Use update_new_quiz_item to change an existing item, delete_new_quiz_item to ' +
         'remove one, and create_new_quiz to make the quiz first. An item has no publish setting ' +
@@ -354,7 +570,7 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
         'updated item. Only the parts you pass are sent (position, points_possible, or item). ' +
         'When item is given, ' +
         'the whole item body (type, stem, choices, and answer) is rebuilt from it and sent, so ' +
-        'pass the complete item, not only the changed field. It takes the same 6 types ' +
+        'pass the complete item, not only the changed field. It takes the same 8 types ' +
         'as create_new_quiz_item. Find item_id with list_new_quiz_items or get_new_quiz_item. ' +
         'Use create_new_quiz_item to add an item, delete_new_quiz_item to remove one, and ' +
         'update_new_quiz for quiz-level fields. assignment_id identifies the New Quiz (from ' +
