@@ -9,7 +9,6 @@
   "create_content_migration": ["R4b"],
   "create_group": ["R4a", "R4b"],
   "create_group_category": ["R1", "R2", "R4a", "R4b"],
-  "create_new_quiz_item": ["R2", "R4a", "R4b"],
   "create_rubric": ["R4b"],
   "delete_discussion": ["R1", "R2", "R4a", "R4b"],
   "delete_group": ["R1", "R2", "R4a", "R4b"],
@@ -84,6 +83,5 @@
   "submit_rubric_assessment": ["R1", "R2", "R4a", "R4b"],
   "update_calendar_event": ["R1", "R2", "R4a", "R4b"],
   "update_module_item": ["R2", "R4a", "R4b"],
-  "update_new_quiz_item": ["R2", "R4a", "R4b"],
   "upload_submission_file": ["R4a", "R4b"]
 }

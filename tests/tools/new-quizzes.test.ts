@@ -130,6 +130,8 @@ describe('newQuizTools', () => {
     const REWRITTEN_WRITE_TOOLS = new Set([
       'create_new_quiz',
       'update_new_quiz',
+      'create_new_quiz_item',
+      'update_new_quiz_item',
       'delete_new_quiz_item',
     ])
     const REWRITTEN_READ_TOOLS = new Set(['list_new_quiz_items', 'get_new_quiz_item'])
@@ -167,6 +169,8 @@ describe('newQuizTools', () => {
       'update_new_quiz',
       'list_new_quiz_items',
       'get_new_quiz_item',
+      'create_new_quiz_item',
+      'update_new_quiz_item',
       'delete_new_quiz_item',
     ])(
       '%s routes assignment_id discovery through list_assignments/get_assignment ' +
@@ -374,6 +378,27 @@ describe('newQuizTools', () => {
       })
     })
 
+    it('passes multi-answer item to createItem', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz_item')!
+      const maItem = {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Which are prime?</p>',
+        choices: [
+          { id: 'a', item_body: '<p>2</p>' },
+          { id: 'b', item_body: '<p>4</p>' },
+        ],
+        correct_choice_ids: ['a'],
+        scoring: 'all_or_nothing',
+      }
+      await tool.handler({ course_id: '1', assignment_id: '42', points_possible: 1, item: maItem })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith('1', '42', {
+        points_possible: 1,
+        position: undefined,
+        item: maItem,
+      })
+    })
+
     it('passes numeric item to createItem', async () => {
       const canvas = buildMockCanvas()
       const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz_item')!
@@ -513,6 +538,58 @@ describe('newQuizTools', () => {
     it('update_new_quiz_item: item stays optional', () => {
       expect(itemSchema('update_new_quiz_item').safeParse(undefined).success).toBe(true)
     })
+  })
+
+  describe('multi-answer choice ids', () => {
+    // A correct id that names no choice would make a question nobody can
+    // answer correctly, and duplicate choice ids make the answer ambiguous, so
+    // the shared item schema rejects both before a request is built.
+    const ITEM_TOOLS = ['create_new_quiz_item', 'update_new_quiz_item'] as const
+
+    function itemSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema.item
+    }
+
+    const multi = (choiceIds: string[], correct: string[], extra: object = {}) => ({
+      interaction_type_slug: 'multi-answer',
+      item_body: '<p>Pick all.</p>',
+      choices: choiceIds.map((id) => ({ id, item_body: `<p>${id}</p>` })),
+      correct_choice_ids: correct,
+      ...extra,
+    })
+
+    for (const toolName of ITEM_TOOLS) {
+      it(`${toolName}: rejects a correct id that is not a choice id`, () => {
+        const result = itemSchema(toolName).safeParse(multi(['a', 'b'], ['a', 'z']))
+        expect(result.success).toBe(false)
+        expect(result.error!.issues[0].message).toContain(
+          'correct_choice_ids must each match the id of one of the choices',
+        )
+      })
+
+      it(`${toolName}: rejects duplicate choice ids`, () => {
+        const result = itemSchema(toolName).safeParse(multi(['a', 'a'], ['a']))
+        expect(result.success).toBe(false)
+        expect(result.error!.issues[0].message).toContain('choice ids must be unique')
+      })
+
+      it(`${toolName}: rejects an empty correct set and an unknown scoring mode`, () => {
+        expect(itemSchema(toolName).safeParse(multi(['a', 'b'], [])).success).toBe(false)
+        expect(
+          itemSchema(toolName).safeParse(multi(['a', 'b'], ['a'], { scoring: 'some' })).success,
+        ).toBe(false)
+      })
+
+      it(`${toolName}: accepts both scoring modes, and none`, () => {
+        for (const scoring of ['partial', 'all_or_nothing', undefined]) {
+          expect(
+            itemSchema(toolName).safeParse(
+              multi(['a', 'b', 'c'], ['a', 'c'], scoring ? { scoring } : {}),
+            ).success,
+          ).toBe(true)
+        }
+      })
+    }
   })
 
   // ── LTI not-enabled error mapping ───────────────────────────────────────────

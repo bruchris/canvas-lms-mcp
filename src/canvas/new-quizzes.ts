@@ -41,6 +41,15 @@ type MatchingItem = {
   distractors?: string[]
 }
 
+type MultiAnswerItem = {
+  interaction_type_slug: 'multi-answer'
+  title?: string
+  item_body: string
+  choices: Array<{ id: string; item_body: string }>
+  correct_choice_ids: string[]
+  scoring?: 'partial' | 'all_or_nothing'
+}
+
 type NumericAnswer =
   | { kind: 'exact'; value: number; margin?: number }
   | { kind: 'range'; min: number; max: number }
@@ -52,7 +61,8 @@ type NumericItem = {
   answers: NumericAnswer[]
 }
 
-export type NewQuizItemInput = ChoiceItem | TrueFalseItem | EssayItem | MatchingItem | NumericItem
+export type NewQuizItemInput =
+  ChoiceItem | TrueFalseItem | EssayItem | MatchingItem | MultiAnswerItem | NumericItem
 
 export interface NewQuizItemCreatePayload {
   position?: number
@@ -214,6 +224,8 @@ export class NewQuizzesModule {
         return this.essayToWire(item)
       case 'matching':
         return this.matchingToWire(item)
+      case 'multi-answer':
+        return this.multiAnswerToWire(item)
       case 'numeric':
         return this.numericToWire(item)
     }
@@ -240,6 +252,40 @@ export class NewQuizzesModule {
       },
       // Equivalence hard-coded per CTO direction; not exposed to callers
       scoring_algorithm: 'Equivalence',
+    }
+  }
+
+  /**
+   * Canvas stores a select-all item as the same `choices` list a choice item
+   * uses, with `scoring_data.value` holding every correct choice id. It accepts
+   * only `PartialScore` (credit per choice) or `AllOrNothing` for this type.
+   */
+  private multiAnswerToWire(item: MultiAnswerItem): Record<string, unknown> {
+    const choiceIds = new Set(item.choices.map((c) => c.id))
+    const unknown = item.correct_choice_ids.filter((id) => !choiceIds.has(id))
+    if (unknown.length > 0) {
+      throw new Error(
+        `multi-answer correct_choice_ids must be choice ids; not found: ${unknown.join(', ')}`,
+      )
+    }
+    return {
+      interaction_type_slug: 'multi-answer',
+      ...(item.title !== undefined ? { title: item.title } : {}),
+      item_body: item.item_body,
+      interaction_data: {
+        choices: item.choices.map((c, i) => ({
+          id: c.id,
+          position: i + 1,
+          item_body: c.item_body,
+        })),
+      },
+      properties: {
+        shuffle_rules: { choices: { shuffled: true } },
+      },
+      scoring_data: {
+        value: [...new Set(item.correct_choice_ids)],
+      },
+      scoring_algorithm: item.scoring === 'all_or_nothing' ? 'AllOrNothing' : 'PartialScore',
     }
   }
 

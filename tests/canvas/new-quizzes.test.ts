@@ -546,6 +546,143 @@ describe('NewQuizzesModule', () => {
 
   // --- Round trip against Canvas's documented stored shapes ---
 
+  it('createItem: multi-answer — sends choices, every correct id, and PartialScore', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 2,
+      item: {
+        interaction_type_slug: 'multi-answer',
+        title: 'Primes',
+        item_body: '<p>Which are prime?</p>',
+        choices: [
+          { id: 'a', item_body: '<p>2</p>' },
+          { id: 'b', item_body: '<p>4</p>' },
+          { id: 'c', item_body: '<p>5</p>' },
+        ],
+        correct_choice_ids: ['a', 'c'],
+        scoring: 'partial',
+      },
+    })
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
+    expect(body).toEqual({
+      entry_type: 'Item',
+      points_possible: 2,
+      entry: {
+        interaction_type_slug: 'multi-answer',
+        title: 'Primes',
+        item_body: '<p>Which are prime?</p>',
+        interaction_data: {
+          choices: [
+            { id: 'a', position: 1, item_body: '<p>2</p>' },
+            { id: 'b', position: 2, item_body: '<p>4</p>' },
+            { id: 'c', position: 3, item_body: '<p>5</p>' },
+          ],
+        },
+        properties: { shuffle_rules: { choices: { shuffled: true } } },
+        scoring_data: { value: ['a', 'c'] },
+        scoring_algorithm: 'PartialScore',
+      },
+    })
+  })
+
+  it('createItem: multi-answer — all_or_nothing scoring sends AllOrNothing', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '<p>1</p>' },
+          { id: 'b', item_body: '<p>2</p>' },
+        ],
+        correct_choice_ids: ['b'],
+        scoring: 'all_or_nothing',
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_algorithm).toBe('AllOrNothing')
+    expect(entry.scoring_data).toEqual({ value: ['b'] })
+  })
+
+  it('createItem: multi-answer — no scoring given means PartialScore and no title key', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '<p>1</p>' },
+          { id: 'b', item_body: '<p>2</p>' },
+        ],
+        correct_choice_ids: ['a', 'b'],
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_algorithm).toBe('PartialScore')
+    expect('title' in entry).toBe(false)
+  })
+
+  it('createItem: multi-answer — a repeated correct id is sent once', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '<p>1</p>' },
+          { id: 'b', item_body: '<p>2</p>' },
+        ],
+        correct_choice_ids: ['a', 'a'],
+      },
+    })
+    const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
+    expect(entry.scoring_data).toEqual({ value: ['a'] })
+  })
+
+  it('createItem: multi-answer — throws on a correct id that is not a choice, before any request', async () => {
+    const requestSpy = vi.spyOn(client, 'request')
+    await expect(
+      mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 1,
+        item: {
+          interaction_type_slug: 'multi-answer',
+          item_body: '<p>Q</p>',
+          choices: [
+            { id: 'a', item_body: '<p>1</p>' },
+            { id: 'b', item_body: '<p>2</p>' },
+          ],
+          correct_choice_ids: ['a', 'z'],
+        },
+      }),
+    ).rejects.toThrow('not found: z')
+    expect(requestSpy).not.toHaveBeenCalled()
+  })
+
+  it('updateItem: multi-answer — sends the same entry createItem would', async () => {
+    vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
+    await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, {
+      item: {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '<p>1</p>' },
+          { id: 'b', item_body: '<p>2</p>' },
+        ],
+        correct_choice_ids: ['b'],
+        scoring: 'all_or_nothing',
+      },
+    })
+    const body = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
+    expect(body.entry).toMatchObject({
+      interaction_type_slug: 'multi-answer',
+      scoring_data: { value: ['b'] },
+      scoring_algorithm: 'AllOrNothing',
+    })
+  })
+
   it('every item type round-trips: what we send is what Canvas stores and returns', async () => {
     // Canvas echoes the `entry` it stored. For each type, post the item, take
     // the exact `entry` we sent back as the stored item, and assert the fields
@@ -609,6 +746,23 @@ describe('NewQuizzesModule', () => {
             ],
           })
           expect(entry.scoring_algorithm).toBe('PartialDeep')
+        },
+      },
+      {
+        input: {
+          interaction_type_slug: 'multi-answer',
+          item_body: '<p>Q</p>',
+          choices: [
+            { id: 'a', item_body: '<p>1</p>' },
+            { id: 'b', item_body: '<p>2</p>' },
+            { id: 'c', item_body: '<p>3</p>' },
+          ],
+          correct_choice_ids: ['a', 'c'],
+          scoring: 'all_or_nothing',
+        },
+        checks: (entry) => {
+          expect(entry.scoring_data).toEqual({ value: ['a', 'c'] })
+          expect(entry.scoring_algorithm).toBe('AllOrNothing')
         },
       },
       {

@@ -75,6 +75,44 @@ const matchingItemSchema = z.object({
     ),
 })
 
+const multiAnswerItemSchema = z
+  .object({
+    interaction_type_slug: z.literal('multi-answer'),
+    title: z.string().optional().describe('Optional item heading shown above the question stem'),
+    item_body: z.string().describe('HTML question stem'),
+    choices: z
+      .array(
+        z.object({
+          id: z.string().describe('Stable choice identifier (caller-generated, e.g. "a")'),
+          item_body: z.string().describe('HTML choice text'),
+        }),
+      )
+      .min(2),
+    correct_choice_ids: z
+      .array(z.string())
+      .min(1)
+      .describe('ids of every correct choice (select all that apply); each must be a choice id'),
+    scoring: z
+      .enum(['partial', 'all_or_nothing'])
+      .optional()
+      .describe(
+        'partial (the default) gives credit per choice (Canvas PartialScore); all_or_nothing ' +
+          'gives credit only for exactly the correct set (Canvas AllOrNothing)',
+      ),
+  })
+  // The correct ids are scored against the choice ids, so an id that names no
+  // choice would make a question nobody can answer correctly. Reject it before
+  // the request is built, along with duplicate choice ids, which would make
+  // the answer ambiguous.
+  .refine(
+    (item) => new Set(item.choices.map((c) => c.id)).size === item.choices.length,
+    'multi-answer choice ids must be unique.',
+  )
+  .refine((item) => {
+    const ids = new Set(item.choices.map((c) => c.id))
+    return item.correct_choice_ids.every((id) => ids.has(id))
+  }, 'multi-answer correct_choice_ids must each match the id of one of the choices.')
+
 const numericItemSchema = z.object({
   interaction_type_slug: z.literal('numeric'),
   item_body: z.string(),
@@ -111,6 +149,7 @@ const itemDiscriminatedUnion = z.discriminatedUnion('interaction_type_slug', [
   trueFalseItemSchema,
   essayItemSchema,
   matchingItemSchema,
+  multiAnswerItemSchema,
   numericItemSchema,
 ])
 
@@ -273,7 +312,18 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'create_new_quiz_item',
       title: 'Create New Quiz Item',
       description:
-        'Create an item (question) in a New Quiz (LTI). Supports 5 types: choice (MCQ), true-false, essay, matching, numeric. Canvas may rate-limit rapid sequential creates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
+        'Create one item (question) in a New Quiz (LTI). Returns the created item with its ' +
+        'item_id, position, points_possible, and full entry body, including scoring_data. ' +
+        'Supports 6 types: choice (one correct answer), multi-answer (select all that apply), ' +
+        'true-false, essay, matching, and numeric. Each call adds another item (not ' +
+        'idempotent), so check list_new_quiz_items before retrying a failed or uncertain ' +
+        'create. Use update_new_quiz_item to change an existing item, delete_new_quiz_item to ' +
+        'remove one, and create_new_quiz to make the quiz first. An item has no publish setting ' +
+        'of its own; students see it when the quiz itself is published (update_new_quiz). ' +
+        'assignment_id identifies the New Quiz (from list_assignments or get_assignment, ' +
+        'filtered on is_quiz_lti_assignment), not a Classic Quiz ID. Canvas may rate-limit ' +
+        'rapid creates, so call serially and pause between batches of about 50. Requires ' +
+        'permission to manage quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
@@ -300,7 +350,17 @@ export function newQuizTools(canvas: CanvasClient): ToolDefinition[] {
       name: 'update_new_quiz_item',
       title: 'Update New Quiz Item',
       description:
-        'Update an existing item (question) in a New Quiz (LTI). All fields are optional; supply only what changes. Canvas may rate-limit rapid sequential updates. Call serially (not in parallel). For >50 items, chunk and pause between batches.',
+        'Update one existing item (question) in a New Quiz (LTI) by its item_id. Returns the ' +
+        'updated item. Only the parts you pass are sent (position, points_possible, or item). ' +
+        'When item is given, ' +
+        'the whole item body (type, stem, choices, and answer) is rebuilt from it and sent, so ' +
+        'pass the complete item, not only the changed field. It takes the same 6 types ' +
+        'as create_new_quiz_item. Find item_id with list_new_quiz_items or get_new_quiz_item. ' +
+        'Use create_new_quiz_item to add an item, delete_new_quiz_item to remove one, and ' +
+        'update_new_quiz for quiz-level fields. assignment_id identifies the New Quiz (from ' +
+        'list_assignments or get_assignment, filtered on is_quiz_lti_assignment), not a Classic ' +
+        'Quiz ID. Canvas may rate-limit rapid updates, so call serially. Requires permission to ' +
+        'manage quizzes in the course.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
         assignment_id: canvasIdInput().describe('The assignment ID of the New Quiz'),
