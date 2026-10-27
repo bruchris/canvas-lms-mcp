@@ -139,6 +139,23 @@ type RichFillBlankItem = {
   reuse_word_bank_choices?: boolean
 }
 
+/**
+ * An ordering item. `choices` is written top-to-bottom in the correct
+ * sequence — the same convention `matches` uses on a matching item — and the
+ * per-choice ids plus the scoring sequence are both derived from it, so they
+ * cannot drift apart.
+ */
+type OrderingItem = {
+  interaction_type_slug: 'ordering'
+  title?: string
+  item_body: string
+  choices: string[]
+  top_label?: string
+  bottom_label?: string
+  include_labels?: boolean
+  display_answers_paragraph?: boolean
+}
+
 export type NewQuizItemInput =
   | ChoiceItem
   | TrueFalseItem
@@ -147,6 +164,7 @@ export type NewQuizItemInput =
   | MultiAnswerItem
   | NumericItem
   | RichFillBlankItem
+  | OrderingItem
 
 export interface NewQuizItemCreatePayload {
   position?: number
@@ -314,6 +332,8 @@ export class NewQuizzesModule {
         return this.numericToWire(item)
       case 'rich-fill-blank':
         return this.richFillBlankToWire(item)
+      case 'ordering':
+        return this.orderingToWire(item)
     }
   }
 
@@ -601,6 +621,42 @@ export class NewQuizzesModule {
         value: item.answers.map((answer, i) => numericAnswerToWire(answer, String(i + 1))),
       },
       scoring_algorithm: 'Numeric',
+    }
+  }
+
+  /**
+   * Canvas keys an ordering item by choice id: `interaction_data.choices` is
+   * an object keyed by each choice's own Version 4 UUID (the same id repeated
+   * as the entry's `id` field), and `scoring_data.value` lists those ids in
+   * the correct sequence. `properties.shuffle_rules` is documented as a
+   * null-only value — Canvas controls the student-facing shuffle itself,
+   * there is nothing for this client to set. The only accepted
+   * scoring_algorithm is `DeepEquals` (new_quiz_items.html, "Ordering").
+   */
+  private orderingToWire(item: OrderingItem): Record<string, unknown> {
+    if (item.choices.length < 2) {
+      throw new Error('ordering choices must have at least 2 entries')
+    }
+    const ids = item.choices.map(() => randomUUID() as string)
+    const choices: Record<string, { id: string; item_body: string }> = {}
+    item.choices.forEach((text, i) => {
+      choices[ids[i]!] = { id: ids[i]!, item_body: text }
+    })
+    const hasLabel = item.top_label !== undefined || item.bottom_label !== undefined
+    return {
+      interaction_type_slug: 'ordering',
+      ...(item.title !== undefined ? { title: item.title } : {}),
+      item_body: item.item_body,
+      interaction_data: { choices },
+      properties: {
+        top_label: item.top_label ?? '',
+        bottom_label: item.bottom_label ?? '',
+        shuffle_rules: null,
+        include_labels: item.include_labels ?? hasLabel,
+        display_answers_paragraph: item.display_answers_paragraph ?? false,
+      },
+      scoring_data: { value: ids },
+      scoring_algorithm: 'DeepEquals',
     }
   }
 }

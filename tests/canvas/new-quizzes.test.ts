@@ -1327,6 +1327,187 @@ describe('NewQuizzesModule', () => {
     })
   })
 
+  // --- ordering (BRU-3214) ---
+
+  describe('createItem: ordering', () => {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+    async function entryFor(item: NewQuizItemInput): Promise<WireEntry> {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem() as never)
+      await mod.createItem(COURSE_ID, ASSIGNMENT_ID, { points_possible: 1, item })
+      return JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item
+        .entry as WireEntry
+    }
+
+    it('sends choices keyed by their own id and the correct order under DeepEquals', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these from youngest to oldest.</p>',
+        choices: ['ava', 'blake', 'skylar'],
+      })
+      const choices = entry.interaction_data.choices as Record<
+        string,
+        { id: string; item_body: string }
+      >
+      const ids = Object.keys(choices)
+      expect(ids).toHaveLength(3)
+      for (const id of ids) {
+        expect(id).toMatch(UUID_RE)
+        // Each entry is keyed by its own id.
+        expect(choices[id]!.id).toBe(id)
+      }
+      // The choices map preserves no inherent order (it's an object), so the
+      // correct sequence lives only in scoring_data.value, read off in input
+      // order.
+      const byText = Object.fromEntries(Object.values(choices).map((c) => [c.item_body, c.id]))
+      expect(entry.scoring_data).toEqual({
+        value: [byText.ava, byText.blake, byText.skylar],
+      })
+      expect(entry.scoring_algorithm).toBe('DeepEquals')
+    })
+
+    it('defaults properties: empty labels, shuffle_rules null, labels and paragraph off', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+      })
+      expect(entry.properties).toEqual({
+        top_label: '',
+        bottom_label: '',
+        shuffle_rules: null,
+        include_labels: false,
+        display_answers_paragraph: false,
+      })
+    })
+
+    it('a given top_label or bottom_label turns include_labels on by default', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+        top_label: 'youngest',
+        bottom_label: 'oldest',
+      })
+      expect(entry.properties).toEqual({
+        top_label: 'youngest',
+        bottom_label: 'oldest',
+        shuffle_rules: null,
+        include_labels: true,
+        display_answers_paragraph: false,
+      })
+    })
+
+    it('include_labels and display_answers_paragraph are passed through explicitly', async () => {
+      const entry = await entryFor({
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+        top_label: 'youngest',
+        include_labels: false,
+        display_answers_paragraph: true,
+      })
+      expect(entry.properties).toMatchObject({
+        include_labels: false,
+        display_answers_paragraph: true,
+      })
+    })
+
+    it('title is passed through when given, omitted otherwise', async () => {
+      const withTitle = await entryFor({
+        interaction_type_slug: 'ordering',
+        title: 'Order by age',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+      })
+      expect(withTitle.title).toBe('Order by age')
+
+      const withoutTitle = await entryFor({
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+      })
+      expect('title' in withoutTitle).toBe(false)
+    })
+
+    it('generates fresh ids on every call', async () => {
+      const item: NewQuizItemInput = {
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Order these.</p>',
+        choices: ['one', 'two'],
+      }
+      const first = Object.keys(
+        (await entryFor(item)).interaction_data.choices as Record<string, unknown>,
+      )
+      const second = Object.keys(
+        (await entryFor(item)).interaction_data.choices as Record<string, unknown>,
+      )
+      expect(first).not.toEqual(second)
+    })
+
+    it('rejects fewer than 2 choices, before any request', async () => {
+      await expect(
+        mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+          points_possible: 1,
+          item: {
+            interaction_type_slug: 'ordering',
+            item_body: '<p>Order these.</p>',
+            choices: ['only-one'],
+          },
+        }),
+      ).rejects.toThrow(/at least 2 entries/)
+    })
+
+    it('round-trips: Canvas stores the item as sent, and a read back changes nothing', async () => {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      spy.mockImplementation((_path, init) => {
+        const sent = JSON.parse((init?.body as string) ?? '{}').item
+        return Promise.resolve(makeItem({ entry: sent.entry }) as never)
+      })
+      const created = await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+        points_possible: 5,
+        item: {
+          interaction_type_slug: 'ordering',
+          item_body: '<p>Order these from youngest to oldest.</p>',
+          choices: ['ava', 'blake', 'skylar'],
+          top_label: 'youngest',
+          bottom_label: 'oldest',
+        },
+      })
+      const stored = created.entry as unknown as WireEntry
+      expect(stored.interaction_type_slug).toBe('ordering')
+      expect(stored.scoring_algorithm).toBe('DeepEquals')
+      const choiceIds = Object.keys(stored.interaction_data.choices as Record<string, unknown>)
+      expect((stored.scoring_data.value as string[]).sort()).toEqual([...choiceIds].sort())
+
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem({ entry: stored }) as never)
+      const fetched = await mod.getItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID)
+      expect(fetched.entry).toEqual(stored)
+    })
+
+    it('updateItem sends the same ordering entry', async () => {
+      const spy = vi.spyOn(client, 'request')
+      spy.mockReset()
+      spy.mockResolvedValueOnce(makeItem() as never)
+      await mod.updateItem(COURSE_ID, ASSIGNMENT_ID, ITEM_ID, {
+        item: {
+          interaction_type_slug: 'ordering',
+          item_body: '<p>Order these.</p>',
+          choices: ['one', 'two'],
+        },
+      })
+      const call = vi.mocked(client.request).mock.calls[0]
+      expect(call[1]!.method).toBe('PATCH')
+      const entry = JSON.parse(call[1]!.body as string).item.entry as WireEntry
+      expect(entry.interaction_type_slug).toBe('ordering')
+      expect(entry.scoring_algorithm).toBe('DeepEquals')
+    })
+  })
+
   // --- updateItem ---
 
   it('updateItem: sends entry when item provided', async () => {

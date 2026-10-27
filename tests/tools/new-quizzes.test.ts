@@ -843,14 +843,77 @@ describe('newQuizTools', () => {
       expect(tool.description).toMatch(/word.bank/i)
     })
 
-    it('both item tools count the same 7 types', () => {
+    it('both item tools count the same 8 types', () => {
       // update_new_quiz_item deliberately points at create_new_quiz_item for
       // the type list rather than repeating it, so only the count is asserted
       // here — but the count must not drift when a type is added.
       for (const name of ITEM_TOOLS) {
         const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === name)!
-        expect(tool.description).toMatch(/7 types/)
+        expect(tool.description).toMatch(/8 types/)
       }
+    })
+  })
+
+  // ── ordering schema (BRU-3214) ──────────────────────────────────────────────
+
+  describe('ordering schema (BRU-3214)', () => {
+    const ITEM_TOOLS = ['create_new_quiz_item', 'update_new_quiz_item'] as const
+
+    function itemSchema(toolName: string) {
+      return newQuizTools(buildMockCanvas()).find((t) => t.name === toolName)!.inputSchema.item
+    }
+
+    const order = (over: object = {}) => ({
+      interaction_type_slug: 'ordering',
+      item_body: '<p>Order these from youngest to oldest.</p>',
+      choices: ['ava', 'blake', 'skylar'],
+      ...over,
+    })
+
+    for (const toolName of ITEM_TOOLS) {
+      it(`${toolName}: accepts a minimal ordering item`, () => {
+        expect(itemSchema(toolName).safeParse(order()).success).toBe(true)
+      })
+
+      it(`${toolName}: accepts labels, include_labels, and display_answers_paragraph`, () => {
+        const result = itemSchema(toolName).safeParse(
+          order({
+            title: 'Order by age',
+            top_label: 'youngest',
+            bottom_label: 'oldest',
+            include_labels: true,
+            display_answers_paragraph: true,
+          }),
+        )
+        expect(result.success).toBe(true)
+      })
+
+      it(`${toolName}: rejects fewer than 2 choices`, () => {
+        const result = itemSchema(toolName).safeParse(order({ choices: ['only-one'] }))
+        expect(result.success).toBe(false)
+      })
+
+      it(`${toolName}: rejects an empty choices list`, () => {
+        const result = itemSchema(toolName).safeParse(order({ choices: [] }))
+        expect(result.success).toBe(false)
+      })
+    }
+
+    it('create_new_quiz_item passes an ordering item through to createItem', async () => {
+      const canvas = buildMockCanvas()
+      const tool = newQuizTools(canvas).find((t) => t.name === 'create_new_quiz_item')!
+      const item = order({ top_label: 'youngest', bottom_label: 'oldest' })
+      await tool.handler({ course_id: 1, assignment_id: 2, points_possible: 2, item })
+      expect(canvas.newQuizzes.createItem).toHaveBeenCalledWith(1, 2, {
+        points_possible: 2,
+        position: undefined,
+        item,
+      })
+    })
+
+    it('create_new_quiz_item names ordering', () => {
+      const tool = newQuizTools(buildMockCanvas()).find((t) => t.name === 'create_new_quiz_item')!
+      expect(tool.description).toMatch(/\bordering\b/)
     })
   })
 
