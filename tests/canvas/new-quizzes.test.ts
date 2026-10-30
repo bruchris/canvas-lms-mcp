@@ -331,6 +331,32 @@ describe('NewQuizzesModule', () => {
     expect(entry.scoring_data.value).not.toBe('true')
   })
 
+  it('createItem: true-false — sends the title when given, omits it otherwise', async () => {
+    // Regression (BRU-3258): `title` was accepted by the tool schema for
+    // true-false (and essay, matching, numeric) and then silently dropped
+    // before the request reached Canvas, because `trueFalseToWire` never
+    // emitted it. Canvas documents `item[entry][title]` as entry-level.
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: {
+        interaction_type_slug: 'true-false',
+        title: 'Sky color',
+        item_body: '<p>The sky is blue.</p>',
+        correct_answer: true,
+      },
+    })
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 1,
+      item: { interaction_type_slug: 'true-false', item_body: '<p>Q</p>', correct_answer: true },
+    })
+    const [withTitle, withoutTitle] = vi
+      .mocked(client.request)
+      .mock.calls.map((call) => JSON.parse(call[1]!.body as string).item.entry)
+    expect(withTitle.title).toBe('Sky color')
+    expect('title' in withoutTitle).toBe(false)
+  })
+
   it('createItem: essay — sends documented interaction_data and a string scoring value', async () => {
     vi.spyOn(client, 'request').mockResolvedValueOnce(makeItem())
     await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
@@ -405,6 +431,27 @@ describe('NewQuizzesModule', () => {
     })
     const entry = JSON.parse(vi.mocked(client.request).mock.calls[0][1]!.body as string).item.entry
     expect(entry.properties).toEqual({})
+  })
+
+  it('createItem: essay — sends the title when given, omits it otherwise (BRU-3258)', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 10,
+      item: {
+        interaction_type_slug: 'essay',
+        title: 'Water cycle',
+        item_body: '<p>Describe the water cycle.</p>',
+      },
+    })
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 10,
+      item: { interaction_type_slug: 'essay', item_body: '<p>Discuss.</p>' },
+    })
+    const [withTitle, withoutTitle] = vi
+      .mocked(client.request)
+      .mock.calls.map((call) => JSON.parse(call[1]!.body as string).item.entry)
+    expect(withTitle.title).toBe('Water cycle')
+    expect('title' in withoutTitle).toBe(false)
   })
 
   it('createItem: matching — sends answers/questions, a value map and edit_data', async () => {
@@ -491,6 +538,38 @@ describe('NewQuizzesModule', () => {
     expect(entry.scoring_data.edit_data.distractors).toEqual([])
     expect(entry.interaction_data).not.toHaveProperty('matches')
     expect(entry.interaction_data).not.toHaveProperty('responses')
+  })
+
+  it('createItem: matching — sends the title when given, omits it otherwise (BRU-3258)', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 4,
+      item: {
+        interaction_type_slug: 'matching',
+        title: 'Capitals',
+        item_body: '<p>Match the capitals.</p>',
+        matches: [
+          { question: 'France', answer: 'Paris' },
+          { question: 'Germany', answer: 'Berlin' },
+        ],
+      },
+    })
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 4,
+      item: {
+        interaction_type_slug: 'matching',
+        item_body: '<p>Match.</p>',
+        matches: [
+          { question: 'a', answer: 'aa' },
+          { question: 'b', answer: 'bb' },
+        ],
+      },
+    })
+    const [withTitle, withoutTitle] = vi
+      .mocked(client.request)
+      .mock.calls.map((call) => JSON.parse(call[1]!.body as string).item.entry)
+    expect(withTitle.title).toBe('Capitals')
+    expect('title' in withoutTitle).toBe(false)
   })
 
   it('createItem: numeric — sends every answer in Canvas’s Numeric shape', async () => {
@@ -624,6 +703,32 @@ describe('NewQuizzesModule', () => {
       }),
     ).rejects.toThrow(/at least one answer/)
     expect(client.request).not.toHaveBeenCalled()
+  })
+
+  it('createItem: numeric — sends the title when given, omits it otherwise (BRU-3258)', async () => {
+    vi.spyOn(client, 'request').mockResolvedValue(makeItem())
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 2,
+      item: {
+        interaction_type_slug: 'numeric',
+        title: 'Pi estimate',
+        item_body: '<p>Q</p>',
+        answers: [{ kind: 'exact', value: 4 }],
+      },
+    })
+    await mod.createItem(COURSE_ID, ASSIGNMENT_ID, {
+      points_possible: 2,
+      item: {
+        interaction_type_slug: 'numeric',
+        item_body: '<p>Q</p>',
+        answers: [{ kind: 'exact', value: 4 }],
+      },
+    })
+    const [withTitle, withoutTitle] = vi
+      .mocked(client.request)
+      .mock.calls.map((call) => JSON.parse(call[1]!.body as string).item.entry)
+    expect(withTitle.title).toBe('Pi estimate')
+    expect('title' in withoutTitle).toBe(false)
   })
 
   // --- Round trip against Canvas's documented stored shapes ---
