@@ -529,6 +529,71 @@ describe('newQuizTools', () => {
     })
   })
 
+  describe('item title accepted across every type (BRU-3258)', () => {
+    // Regression: `title` was accepted by the tool schema for only 4 of the 8
+    // types (choice, multi-answer, rich-fill-blank, ordering) — Zod silently
+    // strips unknown keys, so a title on the other four never reached Canvas.
+    // Parse the real input schema per type, the same way the bug was found.
+    const itemSchema = newQuizTools(buildMockCanvas()).find(
+      (t) => t.name === 'create_new_quiz_item',
+    )!.inputSchema.item
+
+    const minimalByType: Record<string, Record<string, unknown>> = {
+      choice: {
+        interaction_type_slug: 'choice',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '1' },
+          { id: 'b', item_body: '2' },
+        ],
+        correct_choice_id: 'a',
+      },
+      'true-false': {
+        interaction_type_slug: 'true-false',
+        item_body: '<p>Q</p>',
+        correct_answer: true,
+      },
+      essay: { interaction_type_slug: 'essay', item_body: '<p>Q</p>' },
+      matching: {
+        interaction_type_slug: 'matching',
+        item_body: '<p>Q</p>',
+        matches: [
+          { question: 'a', answer: 'aa' },
+          { question: 'b', answer: 'bb' },
+        ],
+      },
+      'multi-answer': {
+        interaction_type_slug: 'multi-answer',
+        item_body: '<p>Q</p>',
+        choices: [
+          { id: 'a', item_body: '1' },
+          { id: 'b', item_body: '2' },
+        ],
+        correct_choice_ids: ['a'],
+      },
+      numeric: {
+        interaction_type_slug: 'numeric',
+        item_body: '<p>Q</p>',
+        answers: [{ kind: 'exact', value: 1 }],
+      },
+      'rich-fill-blank': {
+        interaction_type_slug: 'rich-fill-blank',
+        item_body: '<p>`Paris`</p>',
+        blanks: [{ answer_type: 'open_entry' }],
+      },
+      ordering: {
+        interaction_type_slug: 'ordering',
+        item_body: '<p>Q</p>',
+        choices: ['one', 'two'],
+      },
+    }
+
+    it.each(Object.entries(minimalByType))('keeps title on %s', (_slug, payload) => {
+      const parsed = itemSchema.parse({ ...payload, title: 'MY TITLE' }) as { title?: string }
+      expect(parsed.title).toBe('MY TITLE')
+    })
+  })
+
   describe('update_new_quiz_item', () => {
     it('delegates with item when provided', async () => {
       const canvas = buildMockCanvas()

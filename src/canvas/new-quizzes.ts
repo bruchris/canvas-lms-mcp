@@ -50,21 +50,30 @@ export interface NewQuizPayload {
   quiz_settings?: QuizSettingsPayload
 }
 
-type ChoiceItem = {
-  interaction_type_slug: 'choice'
+/**
+ * Canvas documents the item heading as `item[entry][title]` — an entry-level
+ * field accepted alongside every `interaction_type_slug`, not a per-type one
+ * (New Quiz Items API, Create/Update Item). `toWireItem` emits it once for
+ * whichever type is given, so no per-type builder needs its own copy.
+ */
+interface ItemTitle {
   title?: string
+}
+
+type ChoiceItem = ItemTitle & {
+  interaction_type_slug: 'choice'
   item_body: string
   choices: Array<{ id: string; item_body: string }>
   correct_choice_id: string
 }
 
-type TrueFalseItem = {
+type TrueFalseItem = ItemTitle & {
   interaction_type_slug: 'true-false'
   item_body: string
   correct_answer: boolean
 }
 
-type EssayItem = {
+type EssayItem = ItemTitle & {
   interaction_type_slug: 'essay'
   item_body: string
   rich_text?: boolean
@@ -72,16 +81,15 @@ type EssayItem = {
   word_count_max?: number
 }
 
-type MatchingItem = {
+type MatchingItem = ItemTitle & {
   interaction_type_slug: 'matching'
   item_body: string
   matches: Array<{ question: string; answer: string }>
   distractors?: string[]
 }
 
-type MultiAnswerItem = {
+type MultiAnswerItem = ItemTitle & {
   interaction_type_slug: 'multi-answer'
-  title?: string
   item_body: string
   choices: Array<{ id: string; item_body: string }>
   correct_choice_ids: string[]
@@ -93,7 +101,7 @@ type NumericAnswer =
   | { kind: 'range'; min: number; max: number }
   | { kind: 'precision'; value: number; precision: number }
 
-type NumericItem = {
+type NumericItem = ItemTitle & {
   interaction_type_slug: 'numeric'
   item_body: string
   answers: NumericAnswer[]
@@ -129,9 +137,8 @@ export type RichFillBlankBlank =
  * markers, the dropdown and word-bank choice ids and `working_item_body` are
  * all derived from that one source, so they cannot drift apart.
  */
-type RichFillBlankItem = {
+type RichFillBlankItem = ItemTitle & {
   interaction_type_slug: 'rich-fill-blank'
-  title?: string
   item_body: string
   blanks: RichFillBlankBlank[]
   /** Shared pool for every `word_bank` blank; extra entries are distractors. */
@@ -145,9 +152,8 @@ type RichFillBlankItem = {
  * per-choice ids plus the scoring sequence are both derived from it, so they
  * cannot drift apart.
  */
-type OrderingItem = {
+type OrderingItem = ItemTitle & {
   interaction_type_slug: 'ordering'
-  title?: string
   item_body: string
   choices: string[]
   top_label?: string
@@ -317,6 +323,11 @@ export class NewQuizzesModule {
   }
 
   private toWireItem(item: NewQuizItemInput): Record<string, unknown> {
+    const entry = this.wireEntry(item)
+    return item.title !== undefined ? { ...entry, title: item.title } : entry
+  }
+
+  private wireEntry(item: NewQuizItemInput): Record<string, unknown> {
     switch (item.interaction_type_slug) {
       case 'choice':
         return this.choiceToWire(item)
@@ -419,7 +430,6 @@ export class NewQuizzesModule {
 
     return {
       interaction_type_slug: 'rich-fill-blank',
-      ...(item.title !== undefined ? { title: item.title } : {}),
       item_body: render(blankIds),
       interaction_data: {
         blanks: wireBlanks,
@@ -439,8 +449,6 @@ export class NewQuizzesModule {
   private choiceToWire(item: ChoiceItem): Record<string, unknown> {
     return {
       interaction_type_slug: 'choice',
-      // Canvas documents the item heading as `item[entry][title]`.
-      ...(item.title !== undefined ? { title: item.title } : {}),
       item_body: item.item_body,
       interaction_data: {
         choices: item.choices.map((c, i) => ({
@@ -475,7 +483,6 @@ export class NewQuizzesModule {
     }
     return {
       interaction_type_slug: 'multi-answer',
-      ...(item.title !== undefined ? { title: item.title } : {}),
       item_body: item.item_body,
       interaction_data: {
         choices: item.choices.map((c, i) => ({
@@ -645,7 +652,6 @@ export class NewQuizzesModule {
     const hasLabel = item.top_label !== undefined || item.bottom_label !== undefined
     return {
       interaction_type_slug: 'ordering',
-      ...(item.title !== undefined ? { title: item.title } : {}),
       item_body: item.item_body,
       interaction_data: { choices },
       properties: {

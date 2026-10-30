@@ -4,9 +4,16 @@ import type { ToolDefinition } from './types'
 import { type CanvasId, canvasIdInput } from '../canvas/id'
 import { richFillBlankProblem } from '../canvas/new-quizzes'
 
+// Canvas documents the item heading as `item[entry][title]` — an entry-level
+// field accepted by every interaction type, not a per-type one.
+const itemTitleField = z
+  .string()
+  .optional()
+  .describe('Optional item heading shown above the question stem')
+
 const choiceItemSchema = z.object({
   interaction_type_slug: z.literal('choice'),
-  title: z.string().optional().describe('Optional item heading shown above the question stem'),
+  title: itemTitleField,
   item_body: z.string().describe('HTML question stem'),
   choices: z
     .array(
@@ -21,6 +28,7 @@ const choiceItemSchema = z.object({
 
 const trueFalseItemSchema = z.object({
   interaction_type_slug: z.literal('true-false'),
+  title: itemTitleField,
   item_body: z.string(),
   correct_answer: z.boolean(),
 })
@@ -28,6 +36,7 @@ const trueFalseItemSchema = z.object({
 const essayItemSchema = z
   .object({
     interaction_type_slug: z.literal('essay'),
+    title: itemTitleField,
     item_body: z.string(),
     rich_text: z.boolean().default(true).describe('Allow rich text editor'),
     word_count_min: z
@@ -59,6 +68,7 @@ const essayItemSchema = z
 
 const matchingItemSchema = z.object({
   interaction_type_slug: z.literal('matching'),
+  title: itemTitleField,
   item_body: z.string(),
   matches: z
     .array(
@@ -79,7 +89,7 @@ const matchingItemSchema = z.object({
 const multiAnswerItemSchema = z
   .object({
     interaction_type_slug: z.literal('multi-answer'),
-    title: z.string().optional().describe('Optional item heading shown above the question stem'),
+    title: itemTitleField,
     item_body: z.string().describe('HTML question stem'),
     choices: z
       .array(
@@ -116,6 +126,7 @@ const multiAnswerItemSchema = z
 
 const numericItemSchema = z.object({
   interaction_type_slug: z.literal('numeric'),
+  title: itemTitleField,
   item_body: z.string(),
   answers: z
     .array(
@@ -196,7 +207,7 @@ const richFillBlankBlankSchema = z.discriminatedUnion('answer_type', [
 const richFillBlankItemSchema = z
   .object({
     interaction_type_slug: z.literal('rich-fill-blank'),
-    title: z.string().optional().describe('Optional item heading shown above the question stem'),
+    title: itemTitleField,
     item_body: z
       .string()
       .describe(
@@ -241,7 +252,7 @@ const richFillBlankItemSchema = z
 
 const orderingItemSchema = z.object({
   interaction_type_slug: z.literal('ordering'),
-  title: z.string().optional().describe('Optional item heading shown above the question stem'),
+  title: itemTitleField,
   item_body: z.string().describe('HTML question stem'),
   choices: z
     .array(z.string())
