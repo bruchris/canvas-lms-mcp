@@ -93,7 +93,7 @@ describe('BRU-3146 §6.1 Phase 1: marked-name fixture sweep', () => {
     })
 
     it('anti-vacuity: the quoted-literal lint flags a mark written in prose', () => {
-      expect(marksOutsideStringLiterals("// the leader is REAL_NAME_2\n")).toHaveLength(1)
+      expect(marksOutsideStringLiterals('// the leader is REAL_NAME_2\n')).toHaveLength(1)
       expect(marksOutsideStringLiterals("display_name: 'REAL_NAME_2',\n")).toEqual([])
     })
 
@@ -157,8 +157,7 @@ describe('BRU-3146 §6.1 Phase 1: marked-name fixture sweep', () => {
       // §5.1's recipe: replace a fixture's buildCanvas with one returning [].
       const unarmed: MarkedNameFixture = {
         ...MARKED_NAME_FIXTURES.list_students,
-        buildCanvas: () =>
-          ({ users: { listStudents: async () => [] } }) as unknown as CanvasClient,
+        buildCanvas: () => ({ users: { listStudents: async () => [] } }) as unknown as CanvasClient,
       }
       const result = await runSweep('list_students', unarmed)
       expect(result.verdict).toBe('VACUOUS')

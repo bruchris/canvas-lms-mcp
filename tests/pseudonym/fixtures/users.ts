@@ -147,7 +147,11 @@ function apiShowUser() {
     pronouns: 'she/her',
     locale: null,
     effective_locale: 'en',
-    permissions: { can_update_name: true, can_update_avatar: false, limit_parent_app_web_access: false },
+    permissions: {
+      can_update_name: true,
+      can_update_avatar: false,
+      limit_parent_app_web_access: false,
+    },
   }
 }
 
