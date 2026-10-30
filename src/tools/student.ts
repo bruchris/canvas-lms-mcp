@@ -17,6 +17,20 @@ const MY_SUBMISSION_FEEDBACK_INCLUDE = [
   'read_status',
 ] as const satisfies ReadonlyArray<SubmissionListInclude>
 
+// `user` and `visibility` are excluded from the student-facing include list:
+// `user` is the authenticated student's own identity (pointless here, and a
+// PII surface), and `visibility` is a teacher-facing concern.
+const MY_SUBMISSIONS_INCLUDE = [
+  'submission_history',
+  'submission_comments',
+  'rubric_assessment',
+  'assignment',
+  'course',
+  'group',
+  'read_status',
+  'sub_assignment_submissions',
+] as const satisfies ReadonlyArray<SubmissionListInclude>
+
 /**
  * Default cap on `get_my_activity_stream`. Canvas serves the endpoint at
  * `per_page=100`, so this is one page: enough for a daily "what changed"
@@ -146,9 +160,17 @@ export function studentTools(
     {
       name: 'get_my_submissions',
       title: 'Get My Submissions',
-      description: 'List all submissions for the authenticated student in a course.',
+      description:
+        'List all submissions for the authenticated student in a course. Omit `include` for ' +
+        "today's default shape; pass it to add submission_history, submission_comments, " +
+        'rubric_assessment, assignment, course, group, read_status, or ' +
+        'sub_assignment_submissions. `user` and `visibility` are not available here.',
       inputSchema: {
         course_id: canvasIdInput().describe('The Canvas course ID'),
+        include: z
+          .array(z.enum(MY_SUBMISSIONS_INCLUDE))
+          .optional()
+          .describe('Extra fields to include (Canvas include[] param). Omit for no extra fields.'),
       },
       annotations: {
         readOnlyHint: true,
@@ -156,7 +178,40 @@ export function studentTools(
       },
       handler: async (params) => {
         const course_id = params.course_id as CanvasId
-        return canvas.submissions.listMy(course_id)
+        const include = params.include as ReadonlyArray<SubmissionListInclude> | undefined
+        const submissions = include
+          ? await canvas.submissions.listMy(course_id, { include })
+          : await canvas.submissions.listMy(course_id)
+
+        if (!pseudonymizer?.isEnabled()) return submissions
+
+        // Fail-closed wrap (same pattern as `get_my_submission_feedback`
+        // below): pre-warm peer comment authors so the shared per-course
+        // pseudonym map assigns them before `anonymizeSubmission` reads it,
+        // then run every submission through it regardless of whether
+        // `submission_comments` was actually requested — so a future
+        // widening of `MY_SUBMISSIONS_INCLUDE`, or a Canvas instance that
+        // returns comments unasked, cannot leak a real name silently
+        // (BRU-3260, precedent: `list_sections` BRU-3129).
+        const peerAuthors = new Map<string, { id: CanvasId; name: string }>()
+        for (const submission of submissions) {
+          for (const comment of submission.submission_comments ?? []) {
+            const authorKey = submissionCommentAuthorKey(comment)
+            if (authorKey === null) continue
+            if (classifyCommentAuthor(comment, submission) === 'peer') {
+              peerAuthors.set(authorKey, { id: authorKey, name: comment.author_name })
+            }
+          }
+        }
+        await Promise.all(
+          [...peerAuthors.values()].map((p) =>
+            pseudonymizer.anonymizeUser(course_id, { id: p.id, name: p.name }),
+          ),
+        )
+
+        return Promise.all(
+          submissions.map((submission) => pseudonymizer.anonymizeSubmission(course_id, submission)),
+        )
       },
     },
     {

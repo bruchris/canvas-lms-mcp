@@ -76,6 +76,10 @@ export const PSEUDONYMIZER_WRAPPED_TOOLS: readonly string[] = [
   'project_grade',
 
   // src/tools/student.ts
+  // Fail-closed wrap, same reasoning as `list_sections`: `include` defaults
+  // to no extra fields, so the response carries no name today, but a widened
+  // include or an unasked-for Canvas field must not leak silently (BRU-3260).
+  'get_my_submissions',
   'get_my_submission_feedback',
   'get_my_activity_stream',
   'list_my_planner_items',
