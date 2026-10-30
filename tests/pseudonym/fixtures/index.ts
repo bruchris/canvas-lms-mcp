@@ -11,6 +11,7 @@
  * gate real: a name cannot be added to satisfy the completeness check without
  * also supplying the payload the sweep runs against.
  */
+import { appointmentGroupFixtures } from './appointment-groups'
 import { conversationFixtures } from './conversations'
 import { enrollmentFixtures } from './enrollments'
 import { gradebookHistoryFixtures } from './gradebook-history'
@@ -32,4 +33,5 @@ export const MARKED_NAME_FIXTURES: Record<string, MarkedNameFixture> = {
   ...rubricFixtures,
   ...gradebookHistoryFixtures,
   ...outcomeFixtures,
+  ...appointmentGroupFixtures,
 }

@@ -1261,6 +1261,22 @@ export interface CanvasCalendarEvent {
   child_events?: CanvasCalendarEvent[]
   /** Participant user on a reservation event when viewed by a manager. Contains student PII. */
   user?: CanvasUser
+  /**
+   * The participant on a reservation event for a **group** sign-up appointment
+   * group. `calendar_event_json` emits exactly one of the two, chosen by the
+   * reservation's context type:
+   *
+   * ```ruby
+   * when "User"  then hash["user"]  = user_json(event.context, user, session)
+   * when "Group" then hash["group"] = group_json(event.context, user, session,
+   *                                              include: ["users"])
+   * ```
+   *
+   * — and the group arm is the richer of the two, because that `group_json`
+   * carries both the group's `leader` and, under the include it passes itself,
+   * the full `users` roster (BRU-3257).
+   */
+  group?: CanvasGroup
 }
 
 // --- Appointment Groups ---

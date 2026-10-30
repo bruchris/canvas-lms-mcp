@@ -787,6 +787,18 @@ export class Pseudonymizer {
     apptGroupId: CanvasId,
     event: CanvasCalendarEvent,
   ): Promise<CanvasCalendarEvent> {
+    // `calendar_event_json` emits exactly one of `user` / `group` on a
+    // reservation, chosen by the reservation's context type — and on a
+    // group-signup appointment group it is the `group` arm, carrying the
+    // group's `leader` plus the full `users` roster because that `group_json`
+    // passes `include: ["users"]` itself. Handling only `user` left every
+    // group-signup appointment group leaking both (BRU-3257, same class as
+    // #438/#441). The group arm is scoped by `groupScopeKey`, not
+    // `_apptgrp_<id>`, so a person's label here is the one `list_groups` and
+    // `list_group_members` give them.
+    if (event.group) {
+      return { ...event, group: await this.anonymizeGroup(event.group) }
+    }
     if (!event.user) return event
     const anonymizedUser = await this.anonymizeUser(`_apptgrp_${apptGroupId}`, event.user)
     return { ...event, user: anonymizedUser }
