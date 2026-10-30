@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.2](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.11.1...canvas-lms-mcp-v2.11.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **docs:** add missing tools to README inventory table and guard membership ([#502](https://github.com/bruchris/canvas-lms-mcp/issues/502)) ([7c3c3b2](https://github.com/bruchris/canvas-lms-mcp/commit/7c3c3b2f36d7172c1631346ed6123cadb159c208))
+
 ## [2.11.1](https://github.com/bruchris/canvas-lms-mcp/compare/canvas-lms-mcp-v2.11.0...canvas-lms-mcp-v2.11.1) (2026-10-27)
 
 
