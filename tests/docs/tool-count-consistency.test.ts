@@ -475,3 +475,48 @@ describe('design spec tool inventory enumeration', () => {
     ).toBe(true)
   })
 })
+
+describe('README.md "All Registered Tools" inventory enumeration', () => {
+  // BRU-3254: the table said "(187)" and tests/docs/tool-count-consistency.test.ts
+  // only ever checked that numeral against the manifest, never which tools the
+  // table actually names — 13 tools (group discussions, student
+  // activity/planner/course-requirements, and the whole content_migrations
+  // domain) were missing from every row while the count stayed "correct".
+  //
+  // Unlike the design spec table (one tool per row, name in the first cell),
+  // this table packs several comma-separated tool names into a single "Tools"
+  // cell per category row, so there is no "first cell" to anchor on. Instead
+  // this scopes to the table's own slice of the file — from its heading to the
+  // next "### " heading — and collects every backtick-quoted, tool-shaped token
+  // in that slice. Scoping matters: a tool mentioned in prose elsewhere in the
+  // README (CLI examples, env var docs, the destructive-tools table) must not
+  // be able to mask a missing inventory row.
+  const TABLE_HEADING = '### All Registered Tools'
+  const tableStart = readme.indexOf(TABLE_HEADING)
+  const tableEnd = readme.indexOf('\n### ', tableStart + TABLE_HEADING.length)
+  const tableSection = readme.slice(tableStart, tableEnd === -1 ? undefined : tableEnd)
+  const inventoryToolNames = new Set(
+    [...tableSection.matchAll(/`([a-z][a-z0-9_]*)`/g)].map((match) => match[1]),
+  )
+
+  it('anti-vacuity: the README inventory table was located and has tool-shaped entries', () => {
+    expect(tableStart, `"${TABLE_HEADING}" heading not found in README.md`).toBeGreaterThan(-1)
+    // `it.each([])` registers zero tests and reports green, so the per-tool
+    // assertions below are only meaningful while the table is intact.
+    expect(
+      inventoryToolNames.size,
+      `only ${inventoryToolNames.size} tool-shaped backtick entries found in the README "All ` +
+        `Registered Tools" table — the table was not found or its layout changed, so the per-tool ` +
+        `assertions below would be checking an empty or truncated set`,
+    ).toBeGreaterThan(150)
+  })
+
+  it.each(tools.map((t) => t.name))('README "All Registered Tools" table lists `%s`', (name) => {
+    expect(
+      inventoryToolNames.has(name),
+      `tool "${name}" is in docs/generated/tool-manifest.json but has no entry in the README.md ` +
+        '"All Registered Tools" table — add it to the matching category row (do NOT edit the ' +
+        'CI-gated count lines directly below the table)',
+    ).toBe(true)
+  })
+})

@@ -117,6 +117,7 @@ Once configured, try these prompts with your AI client:
 | Submissions | `list_submissions`, `get_submission`, `grade_submission`, `comment_on_submission` |
 | Submissions Awaiting Grading | `list_submissions_awaiting_grading` |
 | Submission Files | `list_course_submission_files` |
+| Assignment Submission (opt-in) | `upload_submission_file`, `submit_assignment` — registered only when `CANVAS_ENABLE_ASSIGNMENT_SUBMISSION=true` (see [Student assignment submission](#student-assignment-submission-opt-in)) |
 | Rubrics | `list_rubrics`, `get_rubric`, `get_rubric_assessment`, `submit_rubric_assessment`, `create_rubric`, `attach_rubric`, `delete_rubric` |
 | Quizzes | `list_quizzes`, `get_quiz`, `list_quiz_submissions`, `list_quiz_questions`, `get_quiz_submission_answers`, `score_quiz_question`, `get_quiz_submission_events`, `delete_quiz`, `delete_quiz_question` |
 | Quiz Question Responses | `get_quiz_question_responses` |
@@ -132,7 +133,7 @@ Once configured, try these prompts with your AI client:
 | Users | `list_students`, `get_user`, `get_profile`, `search_users`, `list_course_users` |
 | Groups | `list_groups`, `list_group_members`, `list_group_categories`, `create_group_category`, `create_group`, `delete_group`, `add_group_member`, `remove_group_member` |
 | Enrollments | `list_enrollments`, `list_course_enrollments`, `enroll_user`, `remove_enrollment` |
-| Discussions | `list_discussions`, `get_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
+| Discussions | `list_discussions`, `get_discussion`, `list_group_discussions`, `get_group_discussion`, `list_announcements`, `post_discussion_entry`, `create_discussion`, `update_discussion`, `delete_discussion` |
 | Modules | `list_modules`, `get_module`, `list_module_items`, `get_course_structure`, `view_course_structure`, `create_module`, `update_module`, `delete_module`, `create_module_item`, `update_module_item`, `delete_module_item` |
 | Pages | `list_pages`, `get_page`, `create_page`, `update_page`, `delete_page` |
 | Calendar | `list_calendar_events`, `create_calendar_event`, `update_calendar_event` |
@@ -142,11 +143,12 @@ Once configured, try these prompts with your AI client:
 | Analytics | `search_course_content`, `get_course_analytics`, `get_student_analytics`, `get_course_activity_stream`, `get_assignment_analytics` |
 | Outcomes | `get_root_outcome_group`, `list_outcome_groups`, `list_outcome_group_links`, `get_outcome_group`, `list_outcome_group_outcomes`, `list_outcome_group_subgroups`, `get_outcome`, `get_outcome_alignments`, `get_outcome_results`, `get_outcome_rollups`, `get_outcome_contributing_scores`, `get_outcome_mastery_distribution` |
 | Content Exports | `list_content_exports`, `get_content_export`, `create_content_export` |
+| Content Migrations | `list_content_migrations`, `get_content_migration`, `list_content_migration_types`, `get_migration_selective_data`, `get_migration_asset_id_mapping`, `list_migration_issues`, `create_content_migration` |
 | Course Setup | `check_course_setup` |
 | Link Audit | `audit_course_links` |
 | Accessibility Audit | `audit_course_accessibility` |
 | Appointment Groups | `list_appointment_groups`, `get_appointment_group`, `create_appointment_group`, `update_appointment_group`, `delete_appointment_group`, `list_appointment_group_users`, `list_appointment_group_groups`, `next_appointment` |
-| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments`, `get_my_submission_feedback` |
+| Student | `get_my_courses`, `get_my_grades`, `get_my_submissions`, `get_my_upcoming_assignments`, `get_my_submission_feedback`, `get_my_activity_stream_summary`, `get_my_activity_stream`, `list_my_planner_items`, `get_my_course_requirements` |
 | Student Search | `find_student_across_courses` |
 | Dashboard | `get_dashboard_cards`, `get_todo_items`, `get_upcoming_events`, `get_missing_submissions` |
 | Attention | `list_submission_comments_needing_attention`, `list_students_needing_attention` |
