@@ -13,7 +13,11 @@
  */
 import { conversationFixtures } from './conversations'
 import { enrollmentFixtures } from './enrollments'
+import { gradebookHistoryFixtures } from './gradebook-history'
 import { groupFixtures } from './groups'
+import { rubricFixtures } from './rubrics'
+import { sectionFixtures } from './sections'
+import { submissionFixtures } from './submissions'
 import type { MarkedNameFixture } from './sweep'
 import { userFixtures } from './users'
 
@@ -22,4 +26,8 @@ export const MARKED_NAME_FIXTURES: Record<string, MarkedNameFixture> = {
   ...enrollmentFixtures,
   ...conversationFixtures,
   ...groupFixtures,
+  ...sectionFixtures,
+  ...submissionFixtures,
+  ...rubricFixtures,
+  ...gradebookHistoryFixtures,
 }
