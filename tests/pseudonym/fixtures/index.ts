@@ -12,13 +12,18 @@
  * also supplying the payload the sweep runs against.
  */
 import { appointmentGroupFixtures } from './appointment-groups'
+import { attentionFixtures } from './attention'
 import { conversationFixtures } from './conversations'
 import { enrollmentFixtures } from './enrollments'
 import { gradebookHistoryFixtures } from './gradebook-history'
+import { gradeFixtures } from './grades'
 import { groupFixtures } from './groups'
 import { outcomeFixtures } from './outcomes'
+import { quizFixtures } from './quizzes'
 import { rubricFixtures } from './rubrics'
 import { sectionFixtures } from './sections'
+import { studentFixtures } from './student'
+import { studentSearchFixtures } from './student-search'
 import { submissionFixtures } from './submissions'
 import type { MarkedNameFixture } from './sweep'
 import { userFixtures } from './users'
@@ -34,4 +39,9 @@ export const MARKED_NAME_FIXTURES: Record<string, MarkedNameFixture> = {
   ...gradebookHistoryFixtures,
   ...outcomeFixtures,
   ...appointmentGroupFixtures,
+  ...attentionFixtures,
+  ...gradeFixtures,
+  ...studentFixtures,
+  ...quizFixtures,
+  ...studentSearchFixtures,
 }
