@@ -808,6 +808,15 @@ export interface CanvasUser {
   name: string
   sortable_name?: string
   short_name?: string
+  /**
+   * `user_json` emits `first_name` / `last_name` under `include[]=first_name` /
+   * `include[]=last_name` — and `users_controller#api_show_includes` passes
+   * BOTH unconditionally, so `GET /users/:id` (`get_user`) always carries
+   * them. Declared here because they are two more real-name strings the
+   * Pseudonymizer has to rewrite (BRU-3257).
+   */
+  first_name?: string
+  last_name?: string
   login_id?: string
   sis_user_id?: string | null
   integration_id?: string | null

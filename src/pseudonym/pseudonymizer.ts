@@ -1120,6 +1120,15 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
     sortable_name: pseudonym,
   }
 
+  // `first_name` / `last_name` are the same person's name split in two, and
+  // `users_controller#api_show_includes` puts both on EVERY `GET /users/:id`
+  // response with no `include[]` asked for — so `get_user` leaked them for as
+  // long as this function existed. Found by the BRU-3146 marked-name sweep on
+  // its first five fixtures (BRU-3257); no artifact in this repo named either
+  // key before that, which is the §1.5 shape exactly.
+  if (user.first_name !== undefined) out.first_name = pseudonym
+  if (user.last_name !== undefined) out.last_name = pseudonym
+
   if (user.email !== undefined) {
     const slug = pseudonym.toLowerCase().replace(/\s+/g, '-')
     out.email = `${slug}@anon.invalid`
