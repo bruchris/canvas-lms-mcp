@@ -165,6 +165,41 @@ describe('anonymizeUser', () => {
     expect(out.avatar_url).toBeUndefined()
   })
 
+  it('replaces the three name keys that only some endpoints emit (BRU-3257)', async () => {
+    // `first_name` / `last_name` ride on EVERY `GET /users/:id`
+    // (`users_controller#api_show_includes` passes both unconditionally), and
+    // `display_name` / `sis_id` are what
+    // `lib/api/v1/outcome_results.rb#outcome_results_linked_users_json`
+    // renames `short_name` / `sis_user_id` to before dropping the originals.
+    // All four survived pseudonymization until the BRU-3146 marked-name sweep
+    // reached them; `sis_id` is asserted here rather than in the sweep
+    // because it is an identifier, not a name, so it carries no mark.
+    const p = make()
+    const out = await p.anonymizeUser(COURSE_ID, {
+      ...student(1, 'Alice Smith'),
+      first_name: 'Alice',
+      last_name: 'Smith',
+      display_name: 'Alice S.',
+      sis_id: 'SIS-0001',
+    })
+    expect(out.first_name).toBe('Student 1')
+    expect(out.last_name).toBe('Student 1')
+    expect(out.display_name).toBe('Student 1')
+    expect(out.sis_id).toBeNull()
+  })
+
+  it('leaves the three extra keys absent when Canvas did not send them', async () => {
+    // The guards are `!== undefined`, so a payload without these keys must not
+    // grow them — a client reading `Object.keys` would otherwise see fields
+    // Canvas never sent.
+    const p = make()
+    const out = await p.anonymizeUser(COURSE_ID, student(1, 'Alice Smith'))
+    expect('first_name' in out).toBe(false)
+    expect('last_name' in out).toBe(false)
+    expect('display_name' in out).toBe(false)
+    expect('sis_id' in out).toBe(false)
+  })
+
   it('passes staff (teacher) users through unchanged', async () => {
     const p = make()
     const t = teacher(99, 'Prof Jones')

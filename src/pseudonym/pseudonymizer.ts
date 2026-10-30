@@ -787,6 +787,18 @@ export class Pseudonymizer {
     apptGroupId: CanvasId,
     event: CanvasCalendarEvent,
   ): Promise<CanvasCalendarEvent> {
+    // `calendar_event_json` emits exactly one of `user` / `group` on a
+    // reservation, chosen by the reservation's context type — and on a
+    // group-signup appointment group it is the `group` arm, carrying the
+    // group's `leader` plus the full `users` roster because that `group_json`
+    // passes `include: ["users"]` itself. Handling only `user` left every
+    // group-signup appointment group leaking both (BRU-3257, same class as
+    // #438/#441). The group arm is scoped by `groupScopeKey`, not
+    // `_apptgrp_<id>`, so a person's label here is the one `list_groups` and
+    // `list_group_members` give them.
+    if (event.group) {
+      return { ...event, group: await this.anonymizeGroup(event.group) }
+    }
     if (!event.user) return event
     const anonymizedUser = await this.anonymizeUser(`_apptgrp_${apptGroupId}`, event.user)
     return { ...event, user: anonymizedUser }
@@ -1120,6 +1132,24 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
     sortable_name: pseudonym,
   }
 
+  // `display_name` is this person's name under a third key.
+  // `outcome_results_linked_users_json` builds a `user_json` and then does
+  // `u[:display_name] = u[:short_name]` before `select!` DROPS `short_name`,
+  // so on `get_outcome_results` / `get_outcome_rollups` the only copy of the
+  // short name is at a key no other wrapped tool uses. Rewriting `short_name`
+  // alone left it untouched (BRU-3257). The same mapping renames
+  // `sis_user_id` to `sis_id`, which is why that is nulled below.
+  if (user.display_name !== undefined) out.display_name = pseudonym
+
+  // `first_name` / `last_name` are the same person's name split in two, and
+  // `users_controller#api_show_includes` puts both on EVERY `GET /users/:id`
+  // response with no `include[]` asked for — so `get_user` leaked them for as
+  // long as this function existed. Found by the BRU-3146 marked-name sweep on
+  // its first five fixtures (BRU-3257); no artifact in this repo named either
+  // key before that, which is the §1.5 shape exactly.
+  if (user.first_name !== undefined) out.first_name = pseudonym
+  if (user.last_name !== undefined) out.last_name = pseudonym
+
   if (user.email !== undefined) {
     const slug = pseudonym.toLowerCase().replace(/\s+/g, '-')
     out.email = `${slug}@anon.invalid`
@@ -1131,6 +1161,10 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
   // Explicit null-out — these would otherwise leak identity.
   out.sis_user_id = null
   out.integration_id = null
+  // `sis_id` is `sis_user_id` under the key
+  // `outcome_results_linked_users_json` renames it to, and it re-identifies
+  // the student just as well as the one above (BRU-3257).
+  if (user.sis_id !== undefined) out.sis_id = null
   if (user.avatar_url !== undefined) out.avatar_url = undefined
   if (user.bio !== undefined) out.bio = null
   if (user.pronouns !== undefined) out.pronouns = null

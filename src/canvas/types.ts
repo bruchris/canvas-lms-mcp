@@ -808,6 +808,24 @@ export interface CanvasUser {
   name: string
   sortable_name?: string
   short_name?: string
+  /**
+   * `user_json` emits `first_name` / `last_name` under `include[]=first_name` /
+   * `include[]=last_name` — and `users_controller#api_show_includes` passes
+   * BOTH unconditionally, so `GET /users/:id` (`get_user`) always carries
+   * them. Declared here because they are two more real-name strings the
+   * Pseudonymizer has to rewrite (BRU-3257).
+   */
+  first_name?: string
+  last_name?: string
+  /**
+   * Not emitted by `user_json` itself.
+   * `lib/api/v1/outcome_results.rb#outcome_results_linked_users_json` copies
+   * `short_name` here and then drops `short_name` from the hash, so on the
+   * outcome endpoints this is the only copy of the person's short name — and
+   * it likewise renames `sis_user_id` to `sis_id` (BRU-3257).
+   */
+  display_name?: string
+  sis_id?: string | null
   login_id?: string
   sis_user_id?: string | null
   integration_id?: string | null
@@ -1243,6 +1261,22 @@ export interface CanvasCalendarEvent {
   child_events?: CanvasCalendarEvent[]
   /** Participant user on a reservation event when viewed by a manager. Contains student PII. */
   user?: CanvasUser
+  /**
+   * The participant on a reservation event for a **group** sign-up appointment
+   * group. `calendar_event_json` emits exactly one of the two, chosen by the
+   * reservation's context type:
+   *
+   * ```ruby
+   * when "User"  then hash["user"]  = user_json(event.context, user, session)
+   * when "Group" then hash["group"] = group_json(event.context, user, session,
+   *                                              include: ["users"])
+   * ```
+   *
+   * — and the group arm is the richer of the two, because that `group_json`
+   * carries both the group's `leader` and, under the include it passes itself,
+   * the full `users` roster (BRU-3257).
+   */
+  group?: CanvasGroup
 }
 
 // --- Appointment Groups ---
