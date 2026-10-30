@@ -277,6 +277,160 @@ describe('studentTools', () => {
       const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
       await expect(tool.handler({ course_id: '1' })).rejects.toThrow(CanvasApiError)
     })
+
+    it('omits include[] entirely when not provided (byte-identical to today)', async () => {
+      const canvas = buildMockCanvas()
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
+      await tool.handler({ course_id: '1' })
+      expect(canvas.submissions.listMy).toHaveBeenCalledWith('1')
+    })
+
+    it('forwards include[] to canvas.submissions.listMy when provided', async () => {
+      const canvas = buildMockCanvas()
+      const tool = studentTools(canvas).find((t) => t.name === 'get_my_submissions')!
+      await tool.handler({
+        course_id: '1',
+        include: ['submission_comments', 'rubric_assessment'],
+      })
+      expect(canvas.submissions.listMy).toHaveBeenCalledWith('1', {
+        include: ['submission_comments', 'rubric_assessment'],
+      })
+    })
+
+    it('rejects "user" in include at the schema level (own identity, pointless + a PII surface)', () => {
+      const tool = studentTools(buildMockCanvas()).find((t) => t.name === 'get_my_submissions')!
+      const schema = z.object(tool.inputSchema)
+      expect(schema.safeParse({ course_id: '1', include: ['user'] }).success).toBe(false)
+    })
+
+    it('rejects "visibility" in include at the schema level (teacher-facing concern)', () => {
+      const tool = studentTools(buildMockCanvas()).find((t) => t.name === 'get_my_submissions')!
+      const schema = z.object(tool.inputSchema)
+      expect(schema.safeParse({ course_id: '1', include: ['visibility'] }).success).toBe(false)
+    })
+
+    it('accepts every other SubmissionListInclude value at the schema level', () => {
+      const tool = studentTools(buildMockCanvas()).find((t) => t.name === 'get_my_submissions')!
+      const schema = z.object(tool.inputSchema)
+      const allowed = [
+        'submission_history',
+        'submission_comments',
+        'rubric_assessment',
+        'assignment',
+        'course',
+        'group',
+        'read_status',
+        'sub_assignment_submissions',
+      ]
+      expect(schema.safeParse({ course_id: '1', include: allowed }).success).toBe(true)
+    })
+
+    describe('pseudonymization', () => {
+      let tmpDir: string
+      beforeEach(async () => {
+        tmpDir = await mkdtemp(join(tmpdir(), 'student-my-submissions-'))
+      })
+      afterEach(async () => {
+        await rm(tmpDir, { recursive: true, force: true })
+      })
+
+      function makePseudonymizer(enabled = true) {
+        return new Pseudonymizer({
+          baseUrl: 'https://school.instructure.com/api/v1',
+          rootDir: tmpDir,
+          env: enabled ? { CANVAS_PSEUDONYMIZE_STUDENTS: 'true' } : {},
+        })
+      }
+
+      function getTool(canvas: CanvasClient, pseudonymizer?: Pseudonymizer) {
+        return studentTools(canvas, pseudonymizer).find((t) => t.name === 'get_my_submissions')!
+      }
+
+      it('passes real comment author names through when disabled', async () => {
+        const canvas = buildMockCanvas()
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
+        const result = (await getTool(canvas, makePseudonymizer(false)).handler({
+          course_id: '1',
+          include: ['submission_comments'],
+        })) as CanvasSubmission[]
+        const nameById = (id: string) =>
+          result[0].submission_comments!.find((c) => c.id === id)!.author_name
+        expect(nameById('900')).toBe('Dr. Chen')
+        expect(nameById('901')).toBe('Jordan (peer reviewer)')
+        expect(nameById('902')).toBe('Alex Rivera')
+      })
+
+      it('pseudonymizes peer and self comment authors but not the recorded grader', async () => {
+        const canvas = buildMockCanvas()
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
+        const result = (await getTool(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+          include: ['submission_comments'],
+        })) as CanvasSubmission[]
+        const nameById = (id: string) =>
+          result[0].submission_comments!.find((c) => c.id === id)!.author_name
+        // teacher (recorded grader) keeps their real name
+        expect(nameById('900')).toBe('Dr. Chen')
+        // peer reviewer is pseudonymized
+        expect(nameById('901')).toMatch(/^Student \d+$/)
+        expect(nameById('901')).not.toBe('Jordan (peer reviewer)')
+        // self (the submission owner) is pseudonymized too
+        expect(nameById('902')).toMatch(/^Student \d+$/)
+      })
+
+      it('wraps fail-closed: masks comment authors even when include did not request submission_comments', async () => {
+        // Guards against a future widening of the include list, or a Canvas
+        // instance that returns submission_comments unasked — the wrap must
+        // not depend on the caller having asked for it (BRU-3260).
+        const canvas = buildMockCanvas()
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([feedbackSubmission])
+        const result = (await getTool(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+        })) as CanvasSubmission[]
+        const nameById = (id: string) =>
+          result[0].submission_comments!.find((c) => c.id === id)!.author_name
+        expect(nameById('901')).toMatch(/^Student \d+$/)
+        expect(nameById('901')).not.toBe('Jordan (peer reviewer)')
+      })
+
+      it("leaves no real name anywhere in a peer comment, against Canvas's real submission_comment_json shape (author_name AND sibling author.display_name)", async () => {
+        // `submission_comment_json` emits BOTH `author_name` and a sibling
+        // `author` = `user_display_json(...)` (lib/api/v1/submission_comment.rb)
+        // whenever the viewer holds `:read_author` — masking only `author_name`
+        // would leave the real name one key over, in `author.display_name`.
+        const peerCommentWithDisplay: CanvasSubmissionComment = {
+          id: '950',
+          author_id: '55',
+          author_name: 'Jordan (peer reviewer)',
+          comment: 'Solid structure, needs a stronger conclusion.',
+          created_at: '2026-06-29T09:00:00Z',
+          author: {
+            id: '55',
+            display_name: 'Jordan (peer reviewer)',
+            avatar_image_url: 'https://school.instructure.com/images/avatar55.png',
+            html_url: 'https://school.instructure.com/courses/1/users/55',
+            pronouns: 'they/them',
+          },
+        }
+        const submissionWithRealShapeComment: CanvasSubmission = {
+          ...feedbackSubmission,
+          submission_comments: [peerCommentWithDisplay],
+        }
+        const canvas = buildMockCanvas()
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([submissionWithRealShapeComment])
+        const result = (await getTool(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+          include: ['submission_comments'],
+        })) as CanvasSubmission[]
+        const comment = result[0].submission_comments![0]
+
+        expect(JSON.stringify(comment)).not.toContain('Jordan')
+        expect(comment.author_name).toMatch(/^Student \d+$/)
+        expect(comment.author?.display_name).toBe(comment.author_name)
+        expect(comment.author?.avatar_image_url).toBeNull()
+        expect(comment.author?.pronouns).toBeNull()
+      })
+    })
   })
 
   describe('get_my_upcoming_assignments', () => {

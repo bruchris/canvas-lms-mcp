@@ -2106,7 +2106,7 @@
       "name": "get_my_submissions",
       "title": "Get My Submissions",
       "domain": "student",
-      "description": "List all submissions for the authenticated student in a course.",
+      "description": "List all submissions for the authenticated student in a course. Omit `include` for today's default shape; pass it to add submission_history, submission_comments, rubric_assessment, assignment, course, group, read_status, or sub_assignment_submissions. `user` and `visibility` are not available here.",
       "annotations": {
         "readOnlyHint": true,
         "openWorldHint": true
