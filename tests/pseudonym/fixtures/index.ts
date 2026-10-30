@@ -11,9 +11,15 @@
  * gate real: a name cannot be added to satisfy the completeness check without
  * also supplying the payload the sweep runs against.
  */
+import { conversationFixtures } from './conversations'
+import { enrollmentFixtures } from './enrollments'
+import { groupFixtures } from './groups'
 import type { MarkedNameFixture } from './sweep'
 import { userFixtures } from './users'
 
 export const MARKED_NAME_FIXTURES: Record<string, MarkedNameFixture> = {
   ...userFixtures,
+  ...enrollmentFixtures,
+  ...conversationFixtures,
+  ...groupFixtures,
 }
