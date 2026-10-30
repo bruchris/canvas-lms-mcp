@@ -817,6 +817,15 @@ export interface CanvasUser {
    */
   first_name?: string
   last_name?: string
+  /**
+   * Not emitted by `user_json` itself.
+   * `lib/api/v1/outcome_results.rb#outcome_results_linked_users_json` copies
+   * `short_name` here and then drops `short_name` from the hash, so on the
+   * outcome endpoints this is the only copy of the person's short name — and
+   * it likewise renames `sis_user_id` to `sis_id` (BRU-3257).
+   */
+  display_name?: string
+  sis_id?: string | null
   login_id?: string
   sis_user_id?: string | null
   integration_id?: string | null

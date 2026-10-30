@@ -1120,6 +1120,15 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
     sortable_name: pseudonym,
   }
 
+  // `display_name` is this person's name under a third key.
+  // `outcome_results_linked_users_json` builds a `user_json` and then does
+  // `u[:display_name] = u[:short_name]` before `select!` DROPS `short_name`,
+  // so on `get_outcome_results` / `get_outcome_rollups` the only copy of the
+  // short name is at a key no other wrapped tool uses. Rewriting `short_name`
+  // alone left it untouched (BRU-3257). The same mapping renames
+  // `sis_user_id` to `sis_id`, which is why that is nulled below.
+  if (user.display_name !== undefined) out.display_name = pseudonym
+
   // `first_name` / `last_name` are the same person's name split in two, and
   // `users_controller#api_show_includes` puts both on EVERY `GET /users/:id`
   // response with no `include[]` asked for — so `get_user` leaked them for as
@@ -1140,6 +1149,10 @@ function applyPseudonymToUser(user: CanvasUser, pseudonym: string): CanvasUser {
   // Explicit null-out — these would otherwise leak identity.
   out.sis_user_id = null
   out.integration_id = null
+  // `sis_id` is `sis_user_id` under the key
+  // `outcome_results_linked_users_json` renames it to, and it re-identifies
+  // the student just as well as the one above (BRU-3257).
+  if (user.sis_id !== undefined) out.sis_id = null
   if (user.avatar_url !== undefined) out.avatar_url = undefined
   if (user.bio !== undefined) out.bio = null
   if (user.pronouns !== undefined) out.pronouns = null
