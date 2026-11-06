@@ -7,7 +7,7 @@ import { CLIENTS, type PathEnv } from '../../src/init/clients'
 const entry: McpEntry = {
   command: 'npx',
   args: ['canvas-lms-mcp', '--stdio'],
-  env: { CANVAS_API_TOKEN: 'tok', CANVAS_BASE_URL: 'https://school.instructure.com/api/v1' },
+  env: { CANVAS_API_TOKEN: 'tok', CANVAS_BASE_URL: 'https://school.instructure.com' },
 }
 
 const linuxEnv: PathEnv = { platform: 'linux', home: '/home/alice' }

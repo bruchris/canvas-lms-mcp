@@ -97,12 +97,14 @@ function err(message: string): StepErr {
   return { ok: false, message }
 }
 
+/**
+ * Reduce user input to the form `CANVAS_BASE_URL` expects: no trailing slash
+ * and no `/api/v1` suffix. Every Canvas client endpoint carries its own prefix
+ * (`/api/v1/...`, `/api/quiz/v1/...`), so saving the suffix here would double it
+ * on every request.
+ */
 export function normalizeBaseUrl(input: string): string {
-  let url = input.trim().replace(/\/+$/, '')
-  if (!/\/api\/v\d+$/i.test(url)) {
-    url = `${url}/api/v1`
-  }
-  return url
+  return input.trim().replace(/(?:\/api\/v\d+)?\/*$/i, '')
 }
 
 async function resolveBaseUrl(
@@ -157,7 +159,7 @@ async function resolveTokenAndValidate(
       if (!token) return err('Cancelled — no token provided.')
     }
 
-    deps.log(`Validating token against ${baseUrl}/users/self ...`)
+    deps.log(`Validating token against ${baseUrl}/api/v1/users/self ...`)
     const result = await deps.pingUsersSelf(token, baseUrl)
     if (result.ok) {
       const who = result.displayName ?? 'unknown user'

@@ -17,7 +17,7 @@ const SOFT_FAIL_HINT = 'Canvas unreachable, continue anyway?'
 export async function pingUsersSelf(token: string, baseUrl: string): Promise<ValidateResult> {
   const client = new CanvasHttpClient({ token, baseUrl })
   try {
-    const user = await client.request<UsersSelfResponse>('/users/self')
+    const user = await client.request<UsersSelfResponse>('/api/v1/users/self')
     return { ok: true, displayName: user?.name }
   } catch (error) {
     if (error instanceof CanvasApiError) {
