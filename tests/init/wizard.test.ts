@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { runWizard, type WizardDeps } from '../../src/init/wizard'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CanvasHttpClient } from '../../src/canvas/client'
+import { normalizeBaseUrl, runWizard, type WizardDeps } from '../../src/init/wizard'
 import type { InitConfig } from '../../src/init/argv'
 import { createMemoryFileSystem } from '../../src/init/io'
 import { CLIENTS, type ClientId, type PathEnv } from '../../src/init/clients'
 import type { McpEntry, WriteConfigOptions } from '../../src/init/config-writer'
 import type { ClientDescriptor } from '../../src/init/clients'
-import type { ValidateResult } from '../../src/init/validate'
+import { pingUsersSelf, type ValidateResult } from '../../src/init/validate'
 
 const linuxEnv: PathEnv = { platform: 'linux', home: '/home/alice' }
 
@@ -99,14 +100,14 @@ describe('runWizard — interactive flow', () => {
       args: ['-y', 'canvas-lms-mcp'],
       env: {
         CANVAS_API_TOKEN: 's3cret',
-        CANVAS_BASE_URL: 'https://school.instructure.com/api/v1',
+        CANVAS_BASE_URL: 'https://school.instructure.com',
       },
     })
     expect(prompts.remaining()).toBe(0)
     expect(logs.some((l) => /Authenticated as Jane Smith/.test(l))).toBe(true)
   })
 
-  it('normalizes the base URL — strips trailing slash and appends /api/v1', async () => {
+  it('normalizes the base URL — strips the trailing slash', async () => {
     const prompts = scriptedPrompts([
       { baseUrl: 'https://school.instructure.com/' },
       { token: 't' },
@@ -119,10 +120,10 @@ describe('runWizard — interactive flow', () => {
       initialConfig: baseConfig(),
     })
 
-    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com/api/v1')
+    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com')
   })
 
-  it('does not double-append /api/v1 when the user already typed it', async () => {
+  it('strips /api/v1 when the user typed it', async () => {
     const prompts = scriptedPrompts([
       { baseUrl: 'https://school.instructure.com/api/v1' },
       { token: 't' },
@@ -135,7 +136,7 @@ describe('runWizard — interactive flow', () => {
       initialConfig: baseConfig(),
     })
 
-    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com/api/v1')
+    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com')
   })
 
   it('skips the URL prompt when --base-url was supplied', async () => {
@@ -149,7 +150,7 @@ describe('runWizard — interactive flow', () => {
     })
 
     expect(prompts.remaining()).toBe(0)
-    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com/api/v1')
+    expect(writer.calls[0].entry.env.CANVAS_BASE_URL).toBe('https://school.instructure.com')
   })
 
   it('re-prompts the token on a 401 hard failure', async () => {
@@ -595,4 +596,61 @@ describe('runWizard — role filtering', () => {
     expect(prompts.calls).toHaveLength(0)
     expect(writer.calls[0].entry.env.CANVAS_ROLE).toBeUndefined()
   })
+})
+
+describe('normalizeBaseUrl', () => {
+  it.each([
+    ['https://school.instructure.com', 'https://school.instructure.com'],
+    ['https://school.instructure.com/', 'https://school.instructure.com'],
+    ['https://school.instructure.com///', 'https://school.instructure.com'],
+    ['  https://school.instructure.com  ', 'https://school.instructure.com'],
+    ['https://school.instructure.com/api/v1', 'https://school.instructure.com'],
+    ['https://school.instructure.com/api/v1/', 'https://school.instructure.com'],
+    ['https://school.instructure.com/API/V1', 'https://school.instructure.com'],
+    ['http://localhost:3000/api/v1', 'http://localhost:3000'],
+  ])('normalizes %j to %j', (input, expected) => {
+    expect(normalizeBaseUrl(input)).toBe(expected)
+  })
+})
+
+describe('runWizard — saved base URL reaches Canvas with a single API prefix', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it.each(['https://school.instructure.com', 'https://school.instructure.com/api/v1/'])(
+    'when the user enters %j',
+    async (typed) => {
+      const fetchMock = vi.fn(
+        async () => new Response(JSON.stringify([{ name: 'Jane Smith' }]), { status: 200 }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const prompts = scriptedPrompts([
+        { baseUrl: typed },
+        { token: 't' },
+        { clients: ['cursor'] },
+        { role: 'all' },
+      ])
+      const writer = recordingWriter()
+
+      await runWizard(
+        makeDeps({ prompts: prompts.fn, pingUsersSelf, writeClientConfigs: writer.fn }),
+        {
+          initialConfig: baseConfig(),
+        },
+      )
+
+      const saved = writer.calls[0].entry.env.CANVAS_BASE_URL
+      const client = new CanvasHttpClient({ token: 't', baseUrl: saved })
+      await client.paginate('/api/v1/courses')
+      await client.request('/api/quiz/v1/courses/1/quizzes')
+
+      const requested = fetchMock.mock.calls.map((call: unknown[]) => String(call[0]))
+      expect(requested).toEqual([
+        'https://school.instructure.com/api/v1/users/self',
+        'https://school.instructure.com/api/v1/courses?per_page=100',
+        'https://school.instructure.com/api/quiz/v1/courses/1/quizzes',
+      ])
+    },
+  )
 })

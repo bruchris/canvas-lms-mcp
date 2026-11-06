@@ -5,7 +5,7 @@ import { mergeJsonConfig, type McpEntry } from '../../src/init/json-merge'
 const entry: McpEntry = {
   command: 'npx',
   args: ['canvas-lms-mcp', '--stdio'],
-  env: { CANVAS_API_TOKEN: 'tok', CANVAS_BASE_URL: 'https://school.instructure.com/api/v1' },
+  env: { CANVAS_API_TOKEN: 'tok', CANVAS_BASE_URL: 'https://school.instructure.com' },
 }
 
 describe('mergeJsonConfig', () => {

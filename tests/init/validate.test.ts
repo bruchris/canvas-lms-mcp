@@ -26,7 +26,7 @@ describe('pingUsersSelf', () => {
         }),
     )
 
-    const result = await pingUsersSelf('valid-token', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('valid-token', 'https://school.instructure.com')
 
     expect(result.ok).toBe(true)
     expect(result.displayName).toBe('Jane Smith')
@@ -39,7 +39,7 @@ describe('pingUsersSelf', () => {
       return new Response(JSON.stringify({ name: 'X' }), { status: 200 })
     })
 
-    await pingUsersSelf('t', 'https://school.instructure.com/api/v1/')
+    await pingUsersSelf('t', 'https://school.instructure.com/')
 
     expect(calledUrl).toBe('https://school.instructure.com/api/v1/users/self')
   })
@@ -52,7 +52,7 @@ describe('pingUsersSelf', () => {
       return new Response(JSON.stringify({ name: 'X' }), { status: 200 })
     })
 
-    await pingUsersSelf('s3cret', 'https://school.instructure.com/api/v1')
+    await pingUsersSelf('s3cret', 'https://school.instructure.com')
 
     expect(authHeader).toBe('Bearer s3cret')
   })
@@ -65,7 +65,7 @@ describe('pingUsersSelf', () => {
         }),
     )
 
-    const result = await pingUsersSelf('bad', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('bad', 'https://school.instructure.com')
 
     expect(result.ok).toBe(false)
     expect(result.status).toBe(401)
@@ -75,7 +75,7 @@ describe('pingUsersSelf', () => {
   it('treats 5xx as a soft failure with a "continue anyway?" hint', async () => {
     mockFetch(async () => new Response('{}', { status: 503 }))
 
-    const result = await pingUsersSelf('t', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('t', 'https://school.instructure.com')
 
     expect(result.ok).toBe(false)
     expect(result.status).toBe(503)
@@ -87,7 +87,7 @@ describe('pingUsersSelf', () => {
       throw new TypeError('fetch failed')
     })
 
-    const result = await pingUsersSelf('t', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('t', 'https://school.instructure.com')
 
     expect(result.ok).toBe(false)
     expect(result.status).toBeUndefined()
@@ -97,7 +97,7 @@ describe('pingUsersSelf', () => {
   it('returns ok=false with status and "Unexpected error" for other non-2xx codes', async () => {
     mockFetch(async () => new Response('{}', { status: 403 }))
 
-    const result = await pingUsersSelf('t', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('t', 'https://school.instructure.com')
 
     expect(result.ok).toBe(false)
     expect(result.status).toBe(403)
@@ -107,7 +107,7 @@ describe('pingUsersSelf', () => {
   it('returns ok=true even when Canvas omits a name field', async () => {
     mockFetch(async () => new Response(JSON.stringify({ id: 1 }), { status: 200 }))
 
-    const result = await pingUsersSelf('t', 'https://school.instructure.com/api/v1')
+    const result = await pingUsersSelf('t', 'https://school.instructure.com')
 
     expect(result.ok).toBe(true)
     expect(result.displayName).toBeUndefined()
