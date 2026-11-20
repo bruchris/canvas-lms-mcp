@@ -39,6 +39,7 @@ const EXPECTED_PII_BEARING_TOOLS = new Set([
   'list_students_needing_attention',
   'explain_grade',
   'project_grade',
+  'get_my_submissions',
   'get_my_submission_feedback',
   'get_my_activity_stream',
   'list_my_planner_items',
