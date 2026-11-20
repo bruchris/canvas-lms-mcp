@@ -430,6 +430,55 @@ describe('studentTools', () => {
         expect(comment.author?.avatar_image_url).toBeNull()
         expect(comment.author?.pronouns).toBeNull()
       })
+
+      it('keeps the recorded grader name even when that user is a peer commenter elsewhere (BRU-3426)', async () => {
+        // Same user (id 7) is the recorded grader on submission A (teacher) and a
+        // non-grader commenter on submission B (peer) in the same course. The peer
+        // pre-warm allocates a pseudonym for user 7 in the shared course map; the
+        // teacher comment on A must still keep its real name — parity with the
+        // same scenario already covered for `get_my_submission_feedback` above.
+        const canvas = buildMockCanvas()
+        const graderComment: CanvasSubmissionComment = {
+          id: '800',
+          author_id: '7',
+          author_name: 'Dr. Chen',
+          comment: 'Graded feedback on your essay.',
+          created_at: '2026-06-30T10:00:00Z',
+        }
+        const sameUserPeerComment: CanvasSubmissionComment = {
+          id: '801',
+          author_id: '7',
+          author_name: 'Dr. Chen',
+          comment: 'A note left without being the grader here.',
+          created_at: '2026-06-29T10:00:00Z',
+        }
+        const subA: CanvasSubmission = {
+          ...feedbackSubmission,
+          id: '300',
+          assignment_id: '30',
+          grader_id: '7',
+          submission_comments: [graderComment],
+        }
+        const subB: CanvasSubmission = {
+          ...feedbackSubmission,
+          id: '301',
+          assignment_id: '31',
+          grader_id: '99', // author 7 is NOT the grader here -> peer
+          submission_comments: [sameUserPeerComment],
+        }
+        vi.mocked(canvas.submissions.listMy).mockResolvedValue([subA, subB])
+        const result = (await getTool(canvas, makePseudonymizer()).handler({
+          course_id: '1',
+          include: ['submission_comments'],
+        })) as CanvasSubmission[]
+        const subAResult = result.find((s) => s.id === '300')!
+        const subBResult = result.find((s) => s.id === '301')!
+        const teacherOnA = subAResult.submission_comments!.find((c) => c.id === '800')!
+        const peerOnB = subBResult.submission_comments!.find((c) => c.id === '801')!
+        expect(teacherOnA.author_name).toBe('Dr. Chen') // grader name preserved
+        expect(peerOnB.author_name).toMatch(/^Student \d+$/) // same user, masked as a peer here
+        expect(peerOnB.author_name).not.toBe('Dr. Chen')
+      })
     })
   })
 

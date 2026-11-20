@@ -210,7 +210,30 @@ export function studentTools(
         )
 
         return Promise.all(
-          submissions.map((submission) => pseudonymizer.anonymizeSubmission(course_id, submission)),
+          submissions.map(async (submission) => {
+            const resolved = await pseudonymizer.anonymizeSubmission(course_id, submission)
+            if (!resolved.submission_comments) return resolved
+            // Restore the recorded grader's comment untouched (same pattern as
+            // `get_my_submission_feedback` above): the shared per-course
+            // pseudonym map is keyed by user_id, not role, so pre-warming this
+            // same user_id as a peer from a DIFFERENT submission in this
+            // response would otherwise mask their name here too — in both
+            // `author_name` AND the sibling `author.display_name` — even
+            // though on THIS submission they are the recognized grader. Swap
+            // back the whole original comment, not just `author_name`, so
+            // `author.display_name`/`avatar_image_url`/`pronouns` cannot drift
+            // out of sync with it (BRU-3426).
+            const originalById = new Map(
+              (submission.submission_comments ?? []).map((c) => [c.id, c]),
+            )
+            return {
+              ...resolved,
+              submission_comments: resolved.submission_comments.map((c) => {
+                if (classifyCommentAuthor(c, submission) !== 'teacher') return c
+                return originalById.get(c.id) ?? c
+              }),
+            }
+          }),
         )
       },
     },
