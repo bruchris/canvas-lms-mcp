@@ -1,7 +1,7 @@
 overrides:
   esbuild: ^0.28.1
-  hono: ^4.12.34
-  '@hono/node-server': ^2.0.5
+  hono: ^4.13.16
+  '@hono/node-server': ^2.1.6
   vite: ^8.1.5
   ip-address: ^10.3.1
   fast-uri: ^3.1.9
@@ -10,3 +10,4 @@ overrides:
   body-parser: ^2.4.0
   postcss: ^8.5.23
   nanoid: ^3.3.18
+  minimatch: ^11.0.1
